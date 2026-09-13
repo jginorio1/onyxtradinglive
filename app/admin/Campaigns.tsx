@@ -57,6 +57,8 @@ export default function Campaigns() {
   const [camps, setCamps] = useState<Campaign[]>([]);
   const [segs, setSegs] = useState<Seg[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [weeklyCap, setWeeklyCap] = useState<number>(4);
+  const [capBusy, setCapBusy] = useState(false);
   const [editing, setEditing] = useState<Campaign | null>(null);
   const [cf, setCf] = useState<any>(null);
   const [histOpen, setHistOpen] = useState<string | null>(null);   // key con historial abierto
@@ -65,6 +67,19 @@ export default function Campaigns() {
   async function load() {
     const r = await fetch('/api/admin/campaigns'); const j = await r.json();
     setCamps(j.campaigns || []); setSegs(j.segments || []); setStats(j.stats || null);
+    if (typeof j.weeklyCap === 'number') setWeeklyCap(j.weeklyCap);
+  }
+
+  // Guarda el tope semanal de correos por persona (0 = sin tope).
+  async function saveCap(n: number) {
+    setCapBusy(true);
+    try {
+      const r = await fetch('/api/admin/campaigns', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ weeklyCap: n }) });
+      const j = await r.json();
+      if (!r.ok) { toastErr(j); return; }
+      setWeeklyCap(j.weeklyCap ?? n);
+      toast(n === 0 ? L('Tope desactivado.', 'Cap disabled.') : L(`Tope: máx ${n} correos/semana por persona.`, `Cap: max ${n} emails/week per person.`), 'ok');
+    } finally { setCapBusy(false); }
   }
   // Auto-refresco: los números (aperturas/clics) suben solos sin pulsar nada.
   useEffect(() => { load(); const iv = setInterval(load, 15000); return () => clearInterval(iv); }, []);
@@ -145,6 +160,24 @@ export default function Campaigns() {
           <span className="muted" style={{ marginLeft: 'auto', opacity: .7 }}>↻ {L('auto', 'auto')}</span>
         </div>
       )}
+
+      {/* Tope de frecuencia por persona (anti-fatiga de correo) */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="row between" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ minWidth: 220, flex: 1 }}>
+            <h3 style={{ marginBottom: 4 }}>🛡️ {L('Tope semanal de correos', 'Weekly email cap')}</h3>
+            <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>{L('Nadie recibe más de este número de correos de marketing por semana (campañas + blog + noticias). Protege de la fatiga y del spam. 0 = sin tope.', 'No one gets more than this many marketing emails per week (campaigns + blog + news). Protects from fatigue and spam. 0 = no cap.')}</p>
+          </div>
+          <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+            {[0, 2, 3, 4, 5, 7].map((n) => (
+              <button key={n} type="button" disabled={capBusy} onClick={() => saveCap(n)}
+                className="btn btn-ghost" style={{ padding: '7px 12px', fontSize: 13, fontWeight: 700, border: '1px solid ' + (weeklyCap === n ? 'var(--brand)' : 'var(--line)'), background: weeklyCap === n ? 'rgba(124,140,255,.16)' : 'transparent', color: weeklyCap === n ? 'var(--soft-brand)' : 'var(--tx)' }}>
+                {n === 0 ? '∞' : n}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Automáticas */}
       <div className="card" style={{ marginBottom: 14 }}>

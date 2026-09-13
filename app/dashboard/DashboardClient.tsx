@@ -835,11 +835,12 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
       <DailyCheckinPopup lang={lang} onState={setCheckin} />
 
       <div className="wrap-wide" style={{ padding: '14px clamp(16px,1.6vw,40px)' }}>
-        {/* Info del trader: alineada a la izquierda. Banda compacta (v469): avatar
-            y título menores, chips en una sola línea, poco padding vertical. */}
-        <div className="row between hero-row" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
+        {/* Franja del trader (v470): barra lineal ÚNICA con fondo propio (surface +
+            borde suave) para separarla del resto. Todo en una línea; identidad y
+            chips con separador; balance anclado a la derecha. */}
+        <div className="row between hero-row" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 12, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '10px 16px' }}>
           <div className="row hero-left" style={{ gap: 11, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
+            <div style={{ width: 38, height: 38, borderRadius: 11, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>
             <div className="hero-name">
               <h1 style={{ marginBottom: 2, fontSize: 19, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={19} /></span>
                 {checkin?.pending && (
@@ -849,34 +850,35 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   </button>
                 )}
               </h1>
-              {heroChips.length ? (
-                <div className="row" style={{ gap: 7, flexWrap: 'wrap', marginTop: 2, alignItems: 'center' }}>
+            </div>
+            {/* Chips de perfil en la MISMA línea, tras un separador vertical. */}
+            {heroChips.length ? (
+              <>
+                <span style={{ width: 1, height: 22, background: 'var(--line)', flex: 'none' }} className="hero-sep" />
+                <div className="row" style={{ gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
                   {heroChips.map((c, i) => (
-                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
                       {i > 0 && <span style={{ color: 'var(--mut)', opacity: .5, fontSize: 12 }}>·</span>}
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--mut)' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--mut)', whiteSpace: 'nowrap' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>
                     </span>
                   ))}
                 </div>
-              ) : (
-                <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
-              )}
-            </div>
+              </>
+            ) : (
+              <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
+            )}
           </div>
-          {/* Zona derecha: balance del portafolio (stat con su "actualizado") + Exportar,
-              agrupados con un separador. Antes el balance vivía pegado al nombre; al pasarlo
-              aquí, la fila queda en dos zonas claras (identidad | balance + acción). */}
-          <div className="row hero-right" style={{ gap: 12, alignItems: 'stretch', flexWrap: 'wrap' }}>
-            {/* Balance destacado: pastilla con icono + número grande, para que sea el dato
-                protagonista y no texto suelto. */}
-            <div className="hero-balance" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 12, padding: '6px 13px', boxShadow: '0 0 22px -8px rgba(124,140,255,.5)' }}>
-              <span style={{ width: 31, height: 31, borderRadius: 9, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="💼" size={16} /></span>
-              <span style={{ textAlign: 'right' }}>
-                <span className="muted" style={{ fontSize: 10, display: 'block' }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</span>
-                <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.5px', lineHeight: 1.1, display: 'block' }}>${totalBalance.toLocaleString()}</span>
+          {/* Balance anclado a la derecha, DENTRO de la barra (sin caja propia): icono
+              + número + "actualizado", en línea con el resto. */}
+          <div className="row hero-right" style={{ gap: 9, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ width: 31, height: 31, borderRadius: 9, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="💼" size={16} /></span>
+            <span style={{ textAlign: 'right', lineHeight: 1.15 }}>
+              <span className="muted" style={{ fontSize: 10, display: 'block', whiteSpace: 'nowrap' }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</span>
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, justifyContent: 'flex-end' }}>
+                <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.5px' }}>${totalBalance.toLocaleString()}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: GREEN, whiteSpace: 'nowrap' }}><span className="livedot" style={{ width: 6, height: 6 }} /> {updatedTxt}</span>
               </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: GREEN, whiteSpace: 'nowrap' }}><span className="livedot" style={{ width: 6, height: 6 }} /> {updatedTxt}</span>
-            </div>
+            </span>
           </div>
         </div>
 

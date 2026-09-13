@@ -47,7 +47,7 @@ export async function sendBlogEmailNow(post: any, segment = 'all', force = false
   if (!(post.body_es || post.body_en) || !(post.title_es || post.title_en)) return null;
   const mail = buildBlogEmail(post);
   try {
-    const res = await sendManual({ segment: segment || 'all', ...mail });
+    const res = await sendManual({ segment: segment || 'all', respectCap: true, ...mail });
     await markSent(post.id);
     return res;
   } catch (e) { await logError('blog_email_send', e); return null; }

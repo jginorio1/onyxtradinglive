@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, requirePerm, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { ensureDefaultCampaigns, campaignStats } from '@/lib/campaigns';
+import { ensureDefaultCampaigns, campaignStats, getWeeklyCap } from '@/lib/campaigns';
 import { SEGMENTS } from '@/lib/segments';
+import { getSetting, saveSetting } from '@/lib/settings';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +17,8 @@ export async function GET() {
     await ensureDefaultCampaigns();
     const { data: campaigns } = await supabaseAdmin.from('campaigns').select('*').order('kind').order('created_at');
     const stats = await campaignStats();
-    return NextResponse.json({ campaigns: campaigns || [], segments: SEGMENTS, stats });
+    const weeklyCap = await getWeeklyCap();
+    return NextResponse.json({ campaigns: campaigns || [], segments: SEGMENTS, stats, weeklyCap });
   } catch (e: any) {
     await logError('campaigns_get', e);
     return NextResponse.json({ error: e?.message || 'error', campaigns: [], segments: SEGMENTS }, { status: 500 });
@@ -63,6 +65,13 @@ export async function PATCH(req: Request) {
   if (!p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   try {
     const b = await req.json().catch(() => ({} as any));
+    // Ajuste global: tope de correos de marketing por persona por semana.
+    if (b.weeklyCap !== undefined) {
+      const n = Math.max(0, Math.min(50, Math.round(Number(b.weeklyCap) || 0)));
+      await saveSetting('email_weekly_cap', n);
+      await logAdmin(p.user?.email || '', 'campaign_weekly_cap', String(n));
+      return NextResponse.json({ ok: true, weeklyCap: n });
+    }
     if (!b.id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
     const patch: any = { updated_at: new Date().toISOString() };
     for (const k of ['name', 'segment', 'subject_es', 'body_es', 'subject_en', 'body_en', 'schedule']) {

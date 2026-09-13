@@ -258,6 +258,33 @@ async function alreadySent(campaignKey: string | null, campaignId: string): Prom
   return set;
 }
 
+// --- Tope de frecuencia por persona (anti-fatiga). Nadie recibe más de N correos
+// de marketing por semana. 0 = sin tope. Ajustable en Ajustes (email_weekly_cap).
+const DEFAULT_WEEKLY_CAP = 4;
+export async function getWeeklyCap(): Promise<number> {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    const v = Number(await getSetting<number>('email_weekly_cap', DEFAULT_WEEKLY_CAP));
+    if (!Number.isFinite(v) || v <= 0) return 0;              // 0/negativo = sin tope
+    return Math.min(50, Math.max(1, Math.round(v)));
+  } catch { return DEFAULT_WEEKLY_CAP; }
+}
+// Cuántos correos de marketing recibió cada usuario en los últimos 7 días.
+async function weeklyCounts(): Promise<Map<string, number>> {
+  const m = new Map<string, number>();
+  try {
+    const since = new Date(Date.now() - 7 * 86400000).toISOString();
+    const { data } = await supabaseAdmin.from('campaign_sends')
+      .select('user_id,campaign_key,status,created_at').gte('created_at', since).limit(100000);
+    for (const s of (data || []) as any[]) {
+      if (!s.user_id || s.campaign_key === '__test__') continue;   // las pruebas no cuentan
+      if (s.status && s.status !== 'sent') continue;
+      m.set(s.user_id, (m.get(s.user_id) || 0) + 1);
+    }
+  } catch {}
+  return m;
+}
+
 // --- CRON: recorre las campañas automáticas activas y envía lo que toca.
 export async function runCampaigns(dryRun = false): Promise<{ sent: number; detail: Array<{ campaign: string; sent: number }> }> {
   await ensureDefaultCampaigns();
@@ -267,6 +294,11 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
   let budget = PER_RUN;
   let total = 0;
   const detail: Array<{ campaign: string; sent: number }> = [];
+
+  // Tope de frecuencia: cargamos una vez cuántos correos lleva cada quien esta
+  // semana y lo vamos actualizando al enviar (para respetarlo dentro del run).
+  const cap = await getWeeklyCap();
+  const wk = cap ? await weeklyCounts() : null;
 
   for (const c of (camps || []) as CampaignRow[]) {
     if (budget <= 0) break;
@@ -289,7 +321,11 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
     const recips = await resolveSegment(c.segment, c.trigger || {});
     // 'trigger' = una vez por usuario (para siempre). 'scheduled' = una vez por corrida.
     const seen = c.kind === 'trigger' ? await alreadySent(c.key, c.id) : new Set<string>();
-    const targets = recips.filter((r) => !seen.has(r.id)).slice(0, budget);
+    // Tope de frecuencia: salta a quien ya llegó a su límite semanal de correos.
+    const targets = recips
+      .filter((r) => !seen.has(r.id))
+      .filter((r) => !wk || (wk.get(r.id) || 0) < cap)
+      .slice(0, budget);
 
     // Contenido efectivo (auto-redacción con IA + red de seguridad). Se compone
     // UNA vez por campaña, no por destinatario.
@@ -304,7 +340,7 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
       const subject = r.lang === 'en' ? (content!.subject_en || content!.subject_es) : (content!.subject_es || content!.subject_en);
       const body = r.lang === 'en' ? (content!.body_en || content!.body_es) : (content!.body_es || content!.body_en);
       if (!subject || !body) continue;
-      if (!dryRun) { const ok = await sendOne(c, r, subject, body, runId); if (ok) sent++; }
+      if (!dryRun) { const ok = await sendOne(c, r, subject, body, runId); if (ok) { sent++; if (wk) wk.set(r.id, (wk.get(r.id) || 0) + 1); } }
       else sent++;
     }
     budget -= sent; total += sent;
@@ -361,7 +397,7 @@ export async function campaignRuns(key: string, limit = 12): Promise<Array<{ id:
 }
 
 export async function sendManual(opts: {
-  campaignId?: string; segment?: string; subject_es?: string; body_es?: string; subject_en?: string; body_en?: string; dryRun?: boolean;
+  campaignId?: string; segment?: string; subject_es?: string; body_es?: string; subject_en?: string; body_en?: string; dryRun?: boolean; respectCap?: boolean;
 }): Promise<{ count: number; sent: number }> {
   let seg = opts.segment || 'all';
   let sEs = opts.subject_es || '', bEs = opts.body_es || '', sEn = opts.subject_en || '', bEn = opts.body_en || '';
@@ -379,13 +415,19 @@ export async function sendManual(opts: {
   const recips = await resolveSegment(seg, {});
   if (opts.dryRun) return { count: recips.length, sent: 0 };
 
+  // Tope de frecuencia opcional (para blog/noticias automáticas). El envío manual
+  // explícito del panel NO lo aplica: es una decisión deliberada del dueño.
+  const cap = opts.respectCap ? await getWeeklyCap() : 0;
+  const wk = cap ? await weeklyCounts() : null;
+
   let sent = 0;
   for (const r of recips.slice(0, 5000)) {
+    if (wk && (wk.get(r.id) || 0) >= cap) continue;   // ya llegó a su tope semanal
     const subject = r.lang === 'en' ? (sEn || sEs) : sEs;
     const body = r.lang === 'en' ? (bEn || bEs) : bEs;
     if (!subject || !body) continue;
     const ok = await sendOne(camp, r, subject, body);
-    if (ok) sent++;
+    if (ok) { sent++; if (wk) wk.set(r.id, (wk.get(r.id) || 0) + 1); }
   }
   return { count: recips.length, sent };
 }
