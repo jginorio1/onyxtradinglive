@@ -5,7 +5,21 @@
 //
 // Requiere: exceljs (workbook + estilos + imagen) y @napi-rs/canvas (dibujo).
 import ExcelJS from 'exceljs';
-import { createCanvas } from '@napi-rs/canvas';
+import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
+import { FONT_REGULAR_B64, FONT_BOLD_B64 } from './reportFont';
+
+// Registrar la fuente incrustada UNA vez (Vercel no trae fuentes de sistema, así
+// que sin esto el texto de las gráficas sale invisible). Alias 'OnyxSans'.
+let fontsReady = false;
+function ensureFonts() {
+  if (fontsReady) return;
+  try {
+    GlobalFonts.register(Buffer.from(FONT_REGULAR_B64, 'base64'), 'OnyxSans');
+    GlobalFonts.register(Buffer.from(FONT_BOLD_B64, 'base64'), 'OnyxSans');
+  } catch { /* ya registrada */ }
+  fontsReady = true;
+}
+const FF = 'OnyxSans, Arial, sans-serif';
 
 export type XKpi = { label: string; value: string; tone?: 'good' | 'bad' | 'neutral' };
 export type XReport = {
@@ -19,7 +33,24 @@ export type XReport = {
   bySym: { sym: string; n: number; net: number }[];
   winLoss: { wins: number; losses: number };
   trades: { open: string; close: string; sym: string; side: string; vol: string; dur: string; net: number; gross: string; commission: string; swap: string }[];
+  avatar?: Buffer | null;
 };
+
+// Código de país → nombre legible (los más comunes; si ya viene el nombre, se usa tal cual).
+const COUNTRY: Record<string, { es: string; en: string }> = {
+  pr: { es: 'Puerto Rico', en: 'Puerto Rico' }, us: { es: 'Estados Unidos', en: 'United States' }, usa: { es: 'Estados Unidos', en: 'United States' },
+  mx: { es: 'México', en: 'Mexico' }, es: { es: 'España', en: 'Spain' }, ar: { es: 'Argentina', en: 'Argentina' }, co: { es: 'Colombia', en: 'Colombia' },
+  cl: { es: 'Chile', en: 'Chile' }, pe: { es: 'Perú', en: 'Peru' }, ve: { es: 'Venezuela', en: 'Venezuela' }, do: { es: 'Rep. Dominicana', en: 'Dominican Rep.' },
+  ec: { es: 'Ecuador', en: 'Ecuador' }, gt: { es: 'Guatemala', en: 'Guatemala' }, br: { es: 'Brasil', en: 'Brazil' }, pa: { es: 'Panamá', en: 'Panama' },
+  uy: { es: 'Uruguay', en: 'Uruguay' }, py: { es: 'Paraguay', en: 'Paraguay' }, bo: { es: 'Bolivia', en: 'Bolivia' }, cr: { es: 'Costa Rica', en: 'Costa Rica' },
+  hn: { es: 'Honduras', en: 'Honduras' }, sv: { es: 'El Salvador', en: 'El Salvador' }, ni: { es: 'Nicaragua', en: 'Nicaragua' },
+};
+function countryName(v: string | undefined, lang: 'es' | 'en'): string {
+  const raw = (v || '').trim(); if (!raw) return '';
+  const key = raw.toLowerCase();
+  if (key.length <= 3 && COUNTRY[key]) return COUNTRY[key][lang];
+  return raw; // ya es un nombre completo
+}
 
 // ---- Paleta (ARGB para exceljs, hex para canvas) ----
 const C = {
@@ -33,6 +64,7 @@ const nfMoney = '#,##0.00';
 
 // ============ GRÁFICA COMPUESTA (PNG) ============
 function chartPng(o: XReport): Buffer {
+  ensureFonts();
   const W = 960, H = 560, S = 2; // supersampling x2 para nitidez
   const cv = createCanvas(W * S, H * S);
   const ctx = cv.getContext('2d');
@@ -40,7 +72,7 @@ function chartPng(o: XReport): Buffer {
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
   const es = o.lang === 'es';
 
-  const font = (px: number, w = '400') => `${w} ${px}px Arial, sans-serif`;
+  const font = (px: number, w = '400') => `${w} ${px}px ${FF}`;
   const text = (s: string, x: number, y: number, col: string, px: number, w = '400', align: CanvasTextAlign = 'left') => {
     ctx.fillStyle = '#' + col; ctx.font = font(px, w); ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, x, y);
   };
@@ -73,40 +105,44 @@ function chartPng(o: XReport): Buffer {
   ctx.fillStyle = '#' + (last >= 0 ? C.good : C.bad); ctx.beginPath(); ctx.arc(X(eq.length - 1), Y(last), 4, 0, Math.PI * 2); ctx.fill();
   text((last >= 0 ? '+' : '') + Math.round(last).toLocaleString('en-US'), gx + gw, gy - 6, last >= 0 ? C.good : C.bad, 13, '700', 'right');
 
+  // Punto sólido (en vez del carácter ● que no existe en la fuente).
+  const dot = (x: number, y: number, col: string, rr = 5) => { ctx.fillStyle = '#' + col; ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill(); };
+
   // ---- 2) Barras por instrumento (abajo izq) ----
-  const bx = 44, by = 300, bw = 540, bh = 220;
-  text(es ? 'Neto por instrumento' : 'Net by instrument', bx, by - 10, C.head, 15, '700');
+  const bx = 44, byTitle = 302, by = 326, bh = 190;
+  text(es ? 'Neto por instrumento' : 'Net by instrument', bx, byTitle, C.head, 15, '700');
   const syms = [...(o.bySym || [])].sort((a, b) => Math.abs(b.net) - Math.abs(a.net)).slice(0, 7);
   if (syms.length) {
     const maxA = Math.max(...syms.map((s) => Math.abs(s.net)), 1);
     const rowH = Math.min(26, bh / syms.length);
-    const labelW = 78, zeroX = bx + labelW + (bw - labelW) / 2, half = (bw - labelW) / 2 - 60;
+    const labelW = 92, zeroX = bx + labelW + 150, half = 120;   // eje cero desplazado, barras a ±120px
     syms.forEach((s, i) => {
       const yy = by + i * rowH + rowH / 2;
-      text(s.sym.length > 9 ? s.sym.slice(0, 9) : s.sym, bx, yy + 4, C.mut, 12, '600');
-      const w = (Math.abs(s.net) / maxA) * half;
+      text(s.sym.length > 11 ? s.sym.slice(0, 11) : s.sym, bx, yy + 4, C.mut, 12, '700');
+      const w = Math.max(2, (Math.abs(s.net) / maxA) * half);
       ctx.fillStyle = '#' + (s.net >= 0 ? C.good : C.bad);
       if (s.net >= 0) roundRect(ctx, zeroX, yy - 8, w, 16, 3);
       else roundRect(ctx, zeroX - w, yy - 8, w, 16, 3);
       ctx.fill();
-      text((s.net >= 0 ? '+' : '-') + Math.abs(Math.round(s.net)).toLocaleString('en-US'), s.net >= 0 ? zeroX + w + 6 : zeroX - w - 6, yy + 4, s.net >= 0 ? C.good : C.bad, 11, '700', s.net >= 0 ? 'left' : 'right');
+      text((s.net >= 0 ? '+' : '-') + Math.abs(Math.round(s.net)).toLocaleString('en-US'), s.net >= 0 ? zeroX + w + 7 : zeroX - w - 7, yy + 4, s.net >= 0 ? C.good : C.bad, 11, '700', s.net >= 0 ? 'left' : 'right');
     });
-    ctx.strokeStyle = '#CBD5E1'; ctx.beginPath(); ctx.moveTo(zeroX, by - 2); ctx.lineTo(zeroX, by + syms.length * rowH); ctx.stroke();
-  } else { text(es ? 'Sin operaciones' : 'No trades', bx, by + 30, C.mut, 13); }
+    ctx.strokeStyle = '#CBD5E1'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(zeroX, by - 4); ctx.lineTo(zeroX, by + syms.length * rowH); ctx.stroke();
+  } else { text(es ? 'Sin operaciones en el período' : 'No trades in range', bx, by + 24, C.mut, 13); }
 
   // ---- 3) Dona ganadoras/perdedoras (abajo der) ----
   const wins = o.winLoss.wins, losses = o.winLoss.losses, tot = wins + losses;
-  const cx = 780, cy = 400, r = 78, ir = 48;
-  text(es ? 'Ganadoras vs perdedoras' : 'Winners vs losers', 660, 300 - 10 + 0, C.head, 15, '700');
+  const cx = 860, cy = 418, r = 70, ir = 43;
+  text(es ? 'Ganadoras vs perdedoras' : 'Winners vs losers', 640, byTitle, C.head, 15, '700');
   if (tot > 0) {
     const wa = (wins / tot) * Math.PI * 2;
     donut(ctx, cx, cy, r, ir, -Math.PI / 2, -Math.PI / 2 + wa, C.good);
     donut(ctx, cx, cy, r, ir, -Math.PI / 2 + wa, -Math.PI / 2 + Math.PI * 2, C.bad);
-    text(Math.round((wins / tot) * 100) + '%', cx, cy + 2, C.head, 24, '800', 'center');
-    text(es ? 'aciertos' : 'win rate', cx, cy + 20, C.mut, 11, '500', 'center');
-    text('● ' + wins + (es ? ' ganadas' : ' won'), cx - r, cy + r + 22, C.good, 12, '700', 'left');
-    text('● ' + losses + (es ? ' perdidas' : ' lost'), cx - r, cy + r + 40, C.bad, 12, '700', 'left');
-  } else { text(es ? 'Sin operaciones' : 'No trades', 660, 400, C.mut, 13); }
+    text(Math.round((wins / tot) * 100) + '%', cx, cy + 4, C.head, 22, '800', 'center');
+    text(es ? 'aciertos' : 'win rate', cx, cy + 21, C.mut, 11, '400', 'center');
+    // Leyenda a la izquierda de la dona (sin solaparla).
+    dot(648, cy - 6, C.good); text(wins + (es ? ' ganadas' : ' won'), 662, cy - 2, C.good, 13, '700', 'left');
+    dot(648, cy + 20, C.bad); text(losses + (es ? ' perdidas' : ' lost'), 662, cy + 24, C.bad, 13, '700', 'left');
+  } else { text(es ? 'Sin operaciones en el período' : 'No trades in range', 640, by + 24, C.mut, 13); }
 
   return cv.toBuffer('image/png');
 }
@@ -149,8 +185,15 @@ export async function buildReportXlsx(o: XReport): Promise<Buffer> {
   ws.mergeCells('A1:N2');
   const t = ws.getCell('A1'); t.value = L.app; t.fill = fill(C.head); t.font = { color: { argb: argb('FFFFFF') }, bold: true, size: 18 };
   t.alignment = { vertical: 'middle', indent: 1 }; ws.getRow(1).height = 20; ws.getRow(2).height = 20;
+  // Foto de perfil (si vino) arriba a la derecha del título.
+  if (o.avatar && o.avatar.length) {
+    try {
+      const aId = wb.addImage({ buffer: o.avatar as any, extension: 'png' });
+      ws.addImage(aId, { tl: { col: 12.15, row: 0.15 } as any, ext: { width: 46, height: 46 } });
+    } catch { /* imagen inválida: seguir sin ella */ }
+  }
   ws.mergeCells('A3:N3');
-  const sub = ws.getCell('A3'); sub.value = `${L.period}: ${o.from} → ${o.to}      ·      ${L.gen}: ${o.generated} UTC      ·      ${L.currency}: ${o.currency}`;
+  const sub = ws.getCell('A3'); sub.value = `${L.period}: ${o.from} - ${o.to}      ·      ${L.gen}: ${o.generated} UTC      ·      ${L.currency}: ${o.currency}`;
   sub.fill = fill(C.soft); sub.font = { color: { argb: argb(C.mut) }, size: 10.5 }; sub.alignment = { vertical: 'middle', indent: 1 }; ws.getRow(3).height = 20;
 
   let r = 5;
@@ -159,7 +202,7 @@ export async function buildReportXlsx(o: XReport): Promise<Buffer> {
   kv(r++, L.style, o.profile.style || L.dash);
   kv(r++, L.exp, o.profile.experience || L.dash);
   kv(r++, L.goal, o.profile.goal || L.dash);
-  kv(r++, L.country, o.profile.country || L.dash);
+  kv(r++, L.country, countryName(o.profile.country, o.lang) || L.dash);
   r++;
   setBand(r, L.port); r++;
   kv(r++, L.bal, `${o.currency} ${o.portfolio.totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);

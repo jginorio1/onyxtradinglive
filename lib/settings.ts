@@ -39,7 +39,14 @@ export async function hasAlgo(userId: string): Promise<boolean> {
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
   try {
     const { data } = await supabaseAdmin.from('app_settings').select('value').eq('key', key).maybeSingle();
-    return { ...fallback, ...(data?.value || {}) };
+    const v: any = data?.value;
+    if (v === undefined || v === null) return fallback;
+    // Solo hacemos "merge" cuando AMBOS son objetos planos (settings tipo config).
+    // Para escalares (número/string/bool) y arrays, devolvemos el valor tal cual —
+    // antes se esparcía un número dentro de {} y quedaba {} → NaN (bug del cap).
+    const plain = (x: any) => x && typeof x === 'object' && !Array.isArray(x);
+    if (plain(fallback) && plain(v)) return { ...(fallback as any), ...v };
+    return v as T;
   } catch { return fallback; }
 }
 export async function saveSetting(key: string, value: any) {

@@ -133,6 +133,17 @@ export async function GET(req: Request) {
   // ---- Excel (.xlsx) con formato + gráficas incrustadas ----
   if (sp.get('export') === 'xlsx') {
     const { buildReportXlsx } = await import('@/lib/reportXlsx');
+    // Foto de perfil (best-effort): la bajamos y la convertimos a PNG con sharp.
+    let avatarBuf: Buffer | null = null;
+    if (prof.avatar_url && /^https?:\/\//.test(prof.avatar_url)) {
+      try {
+        const ab = await fetch(prof.avatar_url).then((r) => (r.ok ? r.arrayBuffer() : null));
+        if (ab) {
+          const sharp = (await import('sharp')).default;
+          avatarBuf = await sharp(Buffer.from(ab)).resize(92, 92, { fit: 'cover' }).png().toBuffer();
+        }
+      } catch { avatarBuf = null; }
+    }
     const durX = (t: any) => {
       const a = t.open_time ? Date.parse(t.open_time) : NaN, b = t.close_time ? Date.parse(t.close_time) : NaN;
       if (!isFinite(a) || !isFinite(b) || b < a) return '';
@@ -166,6 +177,7 @@ export async function GET(req: Request) {
         sym: t.symbol || '', side: t.side || '', vol: String(t.volume ?? ''), dur: durX(t),
         net: net(t), gross: t.profit != null ? String(Number(t.profit)) : '', commission: String(t.commission ?? ''), swap: String(t.swap ?? ''),
       })),
+      avatar: avatarBuf,
     });
     return new NextResponse(buf as any, { headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'content-disposition': `attachment; filename="onyx-reporte-${from}.xlsx"` } });
   }

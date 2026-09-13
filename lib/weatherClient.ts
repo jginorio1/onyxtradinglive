@@ -18,15 +18,15 @@ export function getWeather(country?: string): Promise<Weather | null> {
 }
 
 // Países que usan Fahrenheit en el día a día.
-const FAHRENHEIT = [
-  'united states', 'usa', 'us', 'estados unidos', 'eeuu', 'ee.uu', 'america',
-  'puerto rico', 'pr', 'bahamas', 'belize', 'cayman', 'palau',
-  'micronesia', 'marshall', 'liberia',
-];
+// Códigos exactos (para no confundir 'us' dentro de "Mauritius", etc.).
+const F_CODES = new Set(['us', 'usa', 'pr', 'bs', 'bz', 'ky', 'pw', 'fm', 'mh', 'lr']);
+// Nombres completos (comparación por "incluye", ya son largos y seguros).
+const F_NAMES = ['united states', 'estados unidos', 'puerto rico', 'bahamas', 'belize', 'cayman', 'palau', 'micronesia', 'marshall', 'liberia'];
 function unitFor(country?: string): WxUnit {
   const c = (country || '').trim().toLowerCase();
   if (!c) return 'C';
-  return FAHRENHEIT.some((k) => c === k || c.includes(k)) ? 'F' : 'C';
+  if (c.length <= 3) return F_CODES.has(c) ? 'F' : 'C';
+  return F_NAMES.some((k) => c.includes(k)) ? 'F' : 'C';
 }
 
 function codeToCond(c: number): WxCond {
