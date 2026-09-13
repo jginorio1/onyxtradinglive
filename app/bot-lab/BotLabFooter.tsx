@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 
 // Pie DEDICADO de Onyx Bot Lab. Mismo esqueleto que el pie global (marca + CTA,
@@ -10,6 +11,18 @@ export default function BotLabFooter() {
   const { lang } = useLang();
   const es = lang === 'es';
   const L = (a: string, b: string) => (es ? a : b);
+
+  // Aviso legal: EXACTAMENTE el mismo que el pie global de Onyx. Se lee de
+  // Landing Builder (footer.legal_es/en) para reflejar lo que el dueño edite;
+  // si no hay override, usa el mismo texto por defecto que SiteFooter.
+  const [fx, setFx] = useState<any>(null);
+  useEffect(() => {
+    fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((c) => setFx(c?.footer || null)).catch(() => {});
+  }, []);
+  const legal = (es ? (fx?.legal_es) : (fx?.legal_en)) || L(
+    'Aviso legal: Onyx Trading Live es una herramienta de software; no somos asesores financieros ni ofrecemos servicios de inversión. Operar en FOREX y en general conlleva riesgo de pérdida total y no es apto para todos. Los resultados pasados no garantizan resultados futuros; los rendimientos hipotéticos tienen limitaciones inherentes. Nunca inviertas dinero que no puedas permitirte perder. Consulta a un profesional antes de operar.',
+    'Legal notice: Onyx Trading Live is a software tool; we are not financial advisors and do not offer investment services. Trading FOREX and in general involves risk of total loss and is not suitable for everyone. Past results do not guarantee future results; hypothetical performance has inherent limitations. Never invest money you cannot afford to lose. Consult a professional before trading.',
+  );
 
   const cols: { title: string; items: [string, string][] }[] = [
     { title: 'Marketplace', items: [
@@ -77,9 +90,7 @@ export default function BotLabFooter() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, padding: '11px 13px' }}>
           <span aria-hidden style={{ color: 'var(--amber)', flex: 'none', marginTop: 1 }}>⚠️</span>
           <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.65 }}>
-            {L('El trading conlleva riesgo de pérdida total y no es apto para todos. Los resultados pasados no garantizan resultados futuros. Los robots son herramientas de software, no asesoría financiera.',
-               'Trading involves risk of total loss and is not suitable for everyone. Past results do not guarantee future results. Robots are software tools, not financial advice.')}
-            {' '}<Link href="/terms" style={{ color: 'var(--tx)', textDecoration: 'underline' }}>{L('Ver términos', 'See terms')}</Link>
+            {legal} <Link href="/terms" style={{ color: 'var(--tx)', textDecoration: 'underline' }}>{L('Ver términos', 'See terms')}</Link>
           </div>
         </div>
 
