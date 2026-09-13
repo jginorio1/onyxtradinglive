@@ -870,18 +870,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
             )}
           </div>
-          {/* Balance anclado a la derecha (sin caja propia), con un divisor a su
-              izquierda para separarlo de los chips. */}
-          <div className="row hero-right" style={{ gap: 9, alignItems: 'center', flexWrap: 'wrap', borderLeft: '1px solid var(--line)', paddingLeft: 14 }}>
-            <span style={{ width: 31, height: 31, borderRadius: 9, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="💼" size={16} /></span>
-            <span style={{ textAlign: 'right', lineHeight: 1.15 }}>
-              <span className="muted" style={{ fontSize: 10, display: 'block', whiteSpace: 'nowrap' }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {accounts.length} {L.accountsWord}</span>
-              <span style={{ display: 'flex', alignItems: 'baseline', gap: 6, justifyContent: 'flex-end' }}>
-                <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: '-.5px' }}>${totalBalance.toLocaleString()}</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: GREEN, whiteSpace: 'nowrap' }}><span className="livedot" style={{ width: 6, height: 6 }} /> {updatedTxt}</span>
-              </span>
-            </span>
-          </div>
+          {/* El balance del portafolio se movió al lado del selector de cuenta (abajo),
+              para que siga la cuenta elegida. El saludo queda solo con identidad+chips. */}
         </div>
 
         {/* Onboarding grande: solo cuando aún NO hay cuentas — se queda a lo ancho para
@@ -929,6 +919,19 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                     ...accounts.map((x) => { const s = accStats(x.id); return { key: x.id, text: accName(x), net: s.net, dot: s.net >= 0 ? GREEN : RED, active: sel === x.id }; }),
                   ]}
                   onPick={(k) => setSel(k)} />
+                {/* Balance del portafolio integrado JUNTO al selector: sigue la cuenta
+                    elegida (todo el portafolio o una cuenta). Antes vivía en el saludo. */}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginLeft: 2 }}>
+                  <span style={{ width: 1, height: 24, background: 'var(--line)', flex: 'none' }} />
+                  <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="💼" size={15} /></span>
+                  <span style={{ lineHeight: 1.12 }}>
+                    <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                      <span style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.5px' }}>${(sel === 'all' ? totalBalance : Number(cur?.balance || 0)).toLocaleString()}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: GREEN, whiteSpace: 'nowrap' }}><span className="livedot" style={{ width: 6, height: 6 }} /> {updatedTxt}</span>
+                    </span>
+                    <span className="muted" style={{ fontSize: 10, display: 'block', whiteSpace: 'nowrap' }}>{lang === 'es' ? 'Balance del portafolio' : 'Portfolio balance'} · {sel === 'all' ? accounts.length : 1} {L.accountsWord}</span>
+                  </span>
+                </span>
                 {view === 'rendimiento' && (<>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--mut)', marginLeft: 4 }}><OnyxIcon emoji="🔎" size={13} /> {L.filterBy}:</span>
                   <PickerMenu search width={230} ph={L.searchAsset} btnStyle={{ borderColor: 'var(--brand)' }} btnClass={nudge ? 'onyx-nudge' : ''}

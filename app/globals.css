@@ -368,7 +368,10 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
   .hero-row{flex-direction:column;align-items:stretch;}
   .hero-left{width:100%;}
   .hero-name h1{font-size:22px !important;}
-  /* El balance deja de ir "al lado del nombre": pasa a tarjeta a lo ancho */
+  /* En móvil se apila: el balance ya NO va al lado del nombre. Quita el divisor
+     izquierdo (que se ve raro apilado) y lo deja a lo ancho, alineado a la izq. */
+  .hero-right{border-left:0 !important;padding-left:0 !important;width:100%;justify-content:flex-start;}
+  /* La versión vieja usaba .hero-balance (tarjeta); se conserva por compatibilidad. */
   .hero-balance{border-left:0 !important;padding:11px 14px !important;width:100%;
     background:var(--bg2);border:1px solid var(--line);border-radius:12px;margin-top:2px;align-self:stretch !important;}
   .hero-export{width:100%;}
