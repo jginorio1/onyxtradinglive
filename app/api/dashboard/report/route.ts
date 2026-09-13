@@ -130,6 +130,46 @@ export async function GET(req: Request) {
   const expMap: any = { novato: es ? 'Principiante' : 'Beginner', intermedio: es ? 'Intermedio' : 'Intermediate', avanzado: es ? 'Avanzado' : 'Advanced', pro: 'Pro' };
   const goalMap: any = { pasar_challenge: es ? 'Pasar reto' : 'Pass challenge', consistencia: es ? 'Consistencia' : 'Consistency', crecer: es ? 'Crecer cuenta' : 'Grow account', vivir: es ? 'Vivir del trading' : 'Trade for a living' };
 
+  // ---- Excel (.xlsx) con formato + gráficas incrustadas ----
+  if (sp.get('export') === 'xlsx') {
+    const { buildReportXlsx } = await import('@/lib/reportXlsx');
+    const durX = (t: any) => {
+      const a = t.open_time ? Date.parse(t.open_time) : NaN, b = t.close_time ? Date.parse(t.close_time) : NaN;
+      if (!isFinite(a) || !isFinite(b) || b < a) return '';
+      const m = Math.round((b - a) / 60000);
+      if (m < 60) return m + 'm';
+      if (m < 1440) return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+      return Math.floor(m / 1440) + 'd ' + Math.floor((m % 1440) / 60) + 'h';
+    };
+    const buf = await buildReportXlsx({
+      lang: es ? 'es' : 'en', from, to, generated: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      currency: cur,
+      profile: {
+        name: prof.full_name || '', style: styleMap[prof.trade_style] || prof.trade_style || '',
+        experience: expMap[prof.experience] || '', goal: goalMap[prof.goal] || '', country: prof.country || '',
+      },
+      portfolio: { totalBalance, accounts: accIds.length },
+      kpis: [
+        { label: T.pnl, value: cur + ' ' + num(netTotal), tone: netTotal >= 0 ? 'good' : 'bad' },
+        { label: T.trades, value: String(total), tone: 'neutral' },
+        { label: T.win, value: winRate + '%', tone: winRate >= 50 ? 'good' : 'neutral' },
+        { label: T.pf, value: String(pf), tone: pf >= 1.3 ? 'good' : pf < 1 ? 'bad' : 'neutral' },
+        { label: T.avg, value: cur + ' ' + num(avg), tone: avg >= 0 ? 'good' : 'bad' },
+        { label: T.best, value: total ? num(best) : '—', tone: 'good' },
+        { label: T.worst, value: total ? num(worst) : '—', tone: 'bad' },
+      ],
+      equity,
+      bySym: Object.entries(bySym).sort((a, b) => b[1].net - a[1].net).map(([s, v]) => ({ sym: s, n: v.n, net: v.net })),
+      winLoss: { wins, losses },
+      trades: trades.map((t) => ({
+        open: (t.open_time || '').slice(0, 16).replace('T', ' '), close: (t.close_time || '').slice(0, 16).replace('T', ' '),
+        sym: t.symbol || '', side: t.side || '', vol: String(t.volume ?? ''), dur: durX(t),
+        net: net(t), gross: t.profit != null ? String(Number(t.profit)) : '', commission: String(t.commission ?? ''), swap: String(t.swap ?? ''),
+      })),
+    });
+    return new NextResponse(buf as any, { headers: { 'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'content-disposition': `attachment; filename="onyx-reporte-${from}.xlsx"` } });
+  }
+
   const html = reportPage({
     lang: es ? 'es' : 'en', from, to,
     profile: {

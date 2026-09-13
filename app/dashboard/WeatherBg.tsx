@@ -13,6 +13,9 @@ const TINT: Record<WxCond, string> = {
   snow: 'rgba(224,242,254,.16)',
   fog: 'rgba(148,163,184,.14)',
 };
+// De noche el cielo despejado no es dorado: tinte azul-noche.
+const TINT_NIGHT_CLEAR = 'rgba(56,70,140,.18)';
+function tintFor(w: Weather) { return w.cond === 'clear' && !w.isDay ? TINT_NIGHT_CLEAR : TINT[w.cond]; }
 
 export default function WeatherBg({ country }: { country?: string }) {
   const [wx, setWx] = useState<Weather | null>(null);
@@ -78,13 +81,20 @@ export default function WeatherBg({ country }: { country?: string }) {
   if (!wx) return null;
   return (
     <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none' }}>
-      <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(120% 80% at 85% -10%, ${TINT[wx.cond]}, transparent 55%)` }} />
+      <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(120% 80% at 85% -10%, ${tintFor(wx)}, transparent 55%)` }} />
       <canvas ref={cvRef} style={{ position: 'absolute', inset: 0, opacity: .8 }} />
     </div>
   );
 }
 
 const EMOJI: Record<WxCond, string> = { clear: '☀️', clouds: '☁️', rain: '🌧️', storm: '⛈️', snow: '❄️', fog: '🌫️' };
+// De noche: la luna en vez del sol; nubes con luna.
+function emojiFor(w: Weather) {
+  if (w.isDay) return EMOJI[w.cond];
+  if (w.cond === 'clear') return '🌙';
+  if (w.cond === 'clouds') return '☁️';
+  return EMOJI[w.cond];
+}
 const LABEL: Record<string, Record<WxCond, string>> = {
   es: { clear: 'Despejado', clouds: 'Nublado', rain: 'Lluvia', storm: 'Tormenta', snow: 'Nieve', fog: 'Niebla' },
   en: { clear: 'Clear', clouds: 'Cloudy', rain: 'Rain', storm: 'Storm', snow: 'Snow', fog: 'Fog' },
@@ -105,7 +115,7 @@ export function WeatherChip({ country, lang = 'es', sep = false }: { country?: s
       {sep && <span style={{ width: 1, height: 22, background: 'var(--line)', flex: 'none' }} className="hero-sep" />}
       <span title={(wx.city ? wx.city + ' · ' : '') + L[wx.cond]}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--mut)', whiteSpace: 'nowrap' }}>
-        <span style={{ fontSize: 13 }}>{EMOJI[wx.cond]}</span> {wx.tempC}° <span style={{ opacity: .7 }}>{L[wx.cond]}</span>
+        <span style={{ fontSize: 13 }}>{emojiFor(wx)}</span> {wx.temp}°{wx.unit} <span style={{ opacity: .7 }}>{L[wx.cond]}</span>
       </span>
     </>
   );

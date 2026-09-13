@@ -644,6 +644,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const expFrom = rangeDates.from || '2000-01-01';
   const expTo = rangeDates.to || new Date().toISOString().slice(0, 10);
   const pdfHref = `/api/dashboard/report?from=${expFrom}&to=${expTo}&lang=${lang}`;
+  const xlsxHref = `/api/dashboard/report?export=xlsx&from=${expFrom}&to=${expTo}&lang=${lang}`;
   const csvHref = `/api/dashboard/report?export=csv&from=${expFrom}&to=${expTo}&lang=${lang}`;
 
   // Cuántas operaciones suyas quedan fuera por el límite de historial de su plan
@@ -971,7 +972,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                     <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, minWidth: 220, boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
                       <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
                       <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</a>
-                      <a className="btn btn-ghost" href={csvHref} download={`onyx-operaciones-${expFrom}.csv`} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📊" size={14} /> CSV</a>
+                      <a className="btn btn-ghost" href={xlsxHref} download={`onyx-reporte-${expFrom}.xlsx`} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'con gráficas' : 'with charts'}</span></a>
+                      <a className="btn btn-ghost" href={csvHref} download={`onyx-reporte-${expFrom}.csv`} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📋" size={14} /> CSV <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'datos planos' : 'raw data'}</span></a>
                     </div>
                   </details>
                 )}
