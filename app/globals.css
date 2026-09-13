@@ -340,15 +340,13 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
    columna derecha (mismo ancho que "Tus cuentas"), perfectamente alineados a
    sus lados. La columna central (1fr) queda como separador. */
 @media(min-width:1280px){
-  .hero-row{display:grid !important;grid-template-columns:250px 1fr 280px;gap:16px;align-items:stretch;}
-  .hero-row > .hero-left{grid-column:1;min-width:0;}
-  .hero-row > .hero-right{grid-column:3;width:100%;justify-content:stretch;}
-  .hero-right .hero-balance{width:100%;justify-content:flex-start;text-align:left;box-sizing:border-box;}
-  .hero-right .hero-balance > span{text-align:left !important;}
-  .hero-name h1{font-size:21px;line-height:1.2;}
-}
-@media(min-width:2200px){
-  .hero-row{grid-template-columns:300px 1fr 330px;gap:22px;}
+  /* Franja lineal (v473): una sola fila flex. La identidad+chips fluyen a la
+     izquierda (crecen para ocupar el espacio) y el balance queda anclado a la
+     derecha. NO grid de 3 columnas (eso dejaba el centro vacío y apilaba). */
+  .hero-row{display:flex !important;flex-wrap:nowrap;align-items:center;gap:14px;}
+  .hero-row > .hero-left{flex:1 1 auto;min-width:0;}
+  .hero-row > .hero-right{flex:0 0 auto;}
+  .hero-name h1{font-size:20px;line-height:1.2;}
 }
 
 /* Panel personal (cuentas/mercado/neto/coach): botón-menú solo en móvil */

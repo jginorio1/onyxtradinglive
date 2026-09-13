@@ -282,6 +282,33 @@ export default function AccountClient({ email }: { email: string }) {
   }
   function setField(k: string, v: any) { setP({ ...p, [k]: v }); }
 
+  // Foto de perfil: sube la imagen a nuestro Storage y guarda la URL en el perfil.
+  async function uploadAvatar(file: File | null) {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { toast(lang === 'en' ? 'Pick an image.' : 'Elige una imagen.'); return; }
+    if (file.size > 8 * 1024 * 1024) { toast(lang === 'en' ? 'Max 8 MB.' : 'Máximo 8 MB.'); return; }
+    setBusy('avatar');
+    try {
+      const fd = new FormData(); fd.append('file', file);
+      const up = await fetch('/api/upload', { method: 'POST', body: fd });
+      const uj = await up.json();
+      if (!up.ok || !uj.url) { toast(errMsg(uj, lang)); return; }
+      const r = await fetch('/api/account', { method: 'PATCH', body: JSON.stringify({ avatar_url: uj.url }) });
+      const j = await r.json();
+      if (!r.ok) { toast(errMsg(j, lang)); return; }
+      setP((o: any) => ({ ...o, avatar_url: uj.url }));
+      setMsg(lang === 'en' ? 'Photo updated.' : 'Foto actualizada.'); setTimeout(() => setMsg(''), 2500);
+    } finally { setBusy(''); }
+  }
+  async function removeAvatar() {
+    setBusy('avatar');
+    try {
+      const r = await fetch('/api/account', { method: 'PATCH', body: JSON.stringify({ avatar_url: '' }) });
+      if (!r.ok) { toast(errMsg(await r.json(), lang)); return; }
+      setP((o: any) => ({ ...o, avatar_url: null }));
+    } finally { setBusy(''); }
+  }
+
   async function mtAction(acc: any, mode: 'disconnect' | 'delete') {
     const q = mode === 'delete' ? L.mtDelQ : L.mtDiscQ;
     if (!(await confirmDialog(q))) return;
@@ -624,6 +651,19 @@ export default function AccountClient({ email }: { email: string }) {
             {data && tab === 'perfil' && (
               <Section icon="👤" title={L.nav.perfil} subtitle={L.perfilSub}>
               <div className="card">
+                {/* Foto de perfil */}
+                <div className="row" style={{ gap: 14, alignItems: 'center', marginBottom: 14 }}>
+                  {p.avatar_url
+                    ? <img src={p.avatar_url} alt="" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', flex: 'none', border: '1px solid var(--line)' }} />
+                    : <span style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, flex: 'none' }}>{(p.full_name || email || '?').slice(0, 2).toUpperCase()}</span>}
+                  <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                    <label className="btn btn-ghost" style={{ cursor: 'pointer', margin: 0 }}>
+                      {busy === 'avatar' ? '…' : (p.avatar_url ? (lang === 'en' ? 'Change photo' : 'Cambiar foto') : (lang === 'en' ? 'Upload photo' : 'Subir foto'))}
+                      <input type="file" accept="image/*" onChange={(e) => { uploadAvatar(e.target.files?.[0] || null); e.currentTarget.value = ''; }} disabled={busy === 'avatar'} style={{ display: 'none' }} />
+                    </label>
+                    {p.avatar_url && <button className="btn btn-ghost" onClick={removeAvatar} disabled={busy === 'avatar'} style={{ color: 'var(--red)' }}>{lang === 'en' ? 'Remove' : 'Quitar'}</button>}
+                  </div>
+                </div>
                 <span style={lbl}>{L.email}</span>
                 <input value={p.email || email} disabled style={{ margin: '4px 0 0', opacity: .6 }} />
                 <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{L.emailNote}</div>
