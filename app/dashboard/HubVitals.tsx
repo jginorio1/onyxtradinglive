@@ -42,7 +42,9 @@ function GlowRing({ v }: { v: Vital }) {
   const mix = (p: number) => `color-mix(in srgb, ${v.color} ${p}%, transparent)`;
   return (
     <div style={{ background: 'var(--bg2)', borderRadius: 16, padding: '14px 6px 12px', textAlign: 'center', boxShadow: `inset 0 0 0 1px ${mix(30)}` }}>
-      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} style={{ filter: `drop-shadow(0 0 6px ${mix(70)})` }}>
+      {/* Halo del anillo MUY suave (0 0 3px, 28%): en tema claro un 0 0 6px al 70%
+          se veía como una sombra/mancha rosada alrededor del anillo. */}
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} style={{ filter: `drop-shadow(0 0 3px ${mix(28)})` }}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line)" strokeWidth="9" />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={v.color} strokeWidth="9" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
         <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle" fontSize={v.value.length > 4 ? 16 : 20} fontWeight="800" fill={v.color}>{v.value}</text>

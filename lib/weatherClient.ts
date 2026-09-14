@@ -63,6 +63,15 @@ async function load(country?: string): Promise<Weather | null> {
     }
     if (lat == null || lon == null) return null;
 
+    // Si la ciudad aún no se conoce (p. ej. vino de la geolocalización GPS, que no
+    // trae nombre), la resolvemos con reverse-geocoding gratuito (sin API key, CORS).
+    if (!city) {
+      try {
+        const rg = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=${(country || '').toLowerCase().includes('estados') || (country || '').toLowerCase() === 'us' ? 'en' : 'es'}`).then((r) => r.json()).catch(() => null);
+        city = rg?.city || rg?.locality || rg?.principalSubdivision || undefined;
+      } catch {}
+    }
+
     const tu = unit === 'F' ? '&temperature_unit=fahrenheit' : '';
     const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,is_day${tu}`).then((r) => r.json()).catch(() => null);
     const cur = w?.current;

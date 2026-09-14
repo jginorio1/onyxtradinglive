@@ -73,12 +73,17 @@ export async function GET(req: Request) {
   if (!has(process.env.RESEND_API_KEY)) fails.push('Correo: falta RESEND_API_KEY (no se envían correos).');
   if (!has(process.env.STRIPE_SECRET_KEY)) fails.push('Stripe: falta STRIPE_SECRET_KEY (no cobra).');
 
-  // 5) Backup fresco (menos de 3 días)
+  // 5) Backup fresco (menos de 3 días). Usa la copia MÁS reciente entre last_at y
+  // el historial (por si last_at quedó rezagado): si CUALQUIER copia de los últimos
+  // 3 días existe, no hay alarma. Evita falsos avisos cuando sí hubo backup diario.
   try {
     const { data: bk } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'backup').maybeSingle();
-    const lastAt = (bk as any)?.value?.last_at;
-    if (!lastAt) fails.push('Backups: sin copias registradas.');
-    else if ((Date.now() - new Date(lastAt).getTime()) / 86400000 > 3) fails.push('Backups: la última copia tiene más de 3 días.');
+    const v = (bk as any)?.value || {};
+    const stamps = [v.last_at, ...((v.history || []) as any[]).map((h) => h?.at)]
+      .map((s) => (s ? new Date(s).getTime() : 0)).filter((n) => Number.isFinite(n) && n > 0);
+    const newest = stamps.length ? Math.max(...stamps) : 0;
+    if (!newest) fails.push('Backups: sin copias registradas.');
+    else if ((Date.now() - newest) / 86400000 > 3) fails.push('Backups: la última copia tiene más de 3 días.');
   } catch {}
 
   if (fails.length) {

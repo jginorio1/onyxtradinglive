@@ -98,6 +98,7 @@ export function WeatherCard({ country, lang = 'es', sep = false }: { country?: s
         <span style={{ position: 'relative', fontSize: 13 }}>{emojiFor(wx)}</span>
         <span style={{ position: 'relative', fontWeight: 700 }}>{wx.temp}°{wx.unit}</span>
         <span style={{ position: 'relative', fontWeight: 600 }}>{L[wx.cond]}</span>
+        {wx.city && <><span style={{ position: 'relative', opacity: .5 }}>·</span><span style={{ position: 'relative', fontWeight: 600, opacity: .85 }}>{wx.city}</span></>}
       </span>
     </>
   );
