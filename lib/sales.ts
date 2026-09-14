@@ -20,15 +20,50 @@ export type SalesSettings = {
   review_before_pay: boolean; // freno global: encola pero apruebas tú
   allow_recruit: boolean;     // los supervisores pueden reclutar su equipo
   level_names: { l2: string; l1: string; vendedor: string };  // nombres personalizados de las posiciones
+  // Sobre qué líneas de ingreso se paga comisión (configurable con interruptores).
+  commission_scope: { subscriptions: boolean; addons: boolean; guardian: boolean; academy: boolean; botlab: boolean; copy: boolean };
+  // Permisos por defecto de cada nivel (se pueden sobreescribir por rep en sales_reps.perms).
+  perms_defaults: { l2: RepPerms; l1: RepPerms; vendedor: RepPerms };
+  // Criterios de las evaluaciones 360 (editables).
+  eval_criteria: string[];
+  // Umbrales del "plan de manejo": puntaje 0-100 → Estrella / Sólido / En riesgo.
+  tier_thresholds: { star: number; risk: number };
+  // Reseñas de clientes: se piden solas tras X días de ser cliente.
+  review: { enabled: boolean; after_days: number; email: boolean };
 };
+
+// Qué puede hacer un representante dentro del sistema.
+export type RepPerms = {
+  can_trial: boolean;      // dar pruebas
+  can_discount: boolean;   // dar descuentos
+  can_clients: boolean;    // ver y gestionar sus clientes
+  can_tickets: boolean;    // atender tickets de sus clientes
+  can_recruit: boolean;    // reclutar/gestionar su equipo (solo tiene sentido en supervisores)
+  can_team: boolean;       // ver el desempeño de su equipo
+};
+
+const PERM_ALL: RepPerms = { can_trial: true, can_discount: true, can_clients: true, can_tickets: true, can_recruit: true, can_team: true };
+const PERM_SELLER: RepPerms = { can_trial: true, can_discount: true, can_clients: true, can_tickets: true, can_recruit: false, can_team: false };
 
 const DEFAULTS: SalesSettings = {
   enabled: true, direct_rate: 20, override1_rate: 7, override2_rate: 4,
   commission_months: 0, hold_days: 30, min_payout: 50,
   trial_max_days: 14, discount_max_pct: 20,
   auto_payout: true, review_before_pay: false, allow_recruit: true,
-  level_names: { l2: 'Supervisor N2', l1: 'Supervisor N1', vendedor: 'Vendedor' },
+  level_names: { l2: 'Director', l1: 'Lead', vendedor: 'Advisor' },
+  commission_scope: { subscriptions: true, addons: true, guardian: true, academy: false, botlab: false, copy: false },
+  perms_defaults: { l2: { ...PERM_ALL }, l1: { ...PERM_ALL }, vendedor: { ...PERM_SELLER } },
+  eval_criteria: ['Comunicación', 'Conocimiento del producto', 'Puntualidad', 'Cierre de ventas', 'Trabajo en equipo', 'Actitud'],
+  tier_thresholds: { star: 75, risk: 45 },
+  review: { enabled: true, after_days: 20, email: false },
 };
+
+// Permisos efectivos de un rep: default del nivel + override propio (rep.perms).
+export function permsFor(rep: Pick<Rep, 'level'> & { perms?: any }, s: SalesSettings): RepPerms {
+  const base = (s.perms_defaults && (s.perms_defaults as any)[rep.level]) || (rep.level === 'vendedor' ? PERM_SELLER : PERM_ALL);
+  const ov = rep && (rep as any).perms;
+  return { ...base, ...(ov && typeof ov === 'object' ? ov : {}) };
+}
 
 export async function salesSettings(): Promise<SalesSettings> {
   try {
@@ -62,6 +97,7 @@ export type Rep = {
   id: string; user_id: string; level: 'vendedor' | 'l1' | 'l2'; parent_id: string | null;
   code: string; status: string; rate_override: number | null; display_name: string | null;
   stripe_account_id: string | null; payouts_enabled: boolean; on_hold: boolean; note?: string | null;
+  perms?: any | null;
 };
 
 export async function repByUser(userId: string): Promise<Rep | null> {
@@ -118,9 +154,14 @@ async function monthsBilled(clientUserId: string): Promise<number> {
 // Acredita comisiones de un cobro a toda la cadena. Idempotente por invoice_id.
 export async function creditFromPayment(opts: {
   clientUserId: string; invoiceId: string; baseAmount: number; currency?: string;
+  line?: 'subscriptions' | 'addons' | 'guardian' | 'academy' | 'botlab' | 'copy';
 }): Promise<{ credited: number; reason?: string }> {
   const s = await salesSettings();
   if (!s.enabled) return { credited: 0, reason: 'disabled' };
+  // Alcance: solo se paga comisión sobre las líneas de ingreso activadas.
+  const line = opts.line || 'subscriptions';
+  const scope = s.commission_scope || ({ subscriptions: true } as any);
+  if (scope[line] === false) return { credited: 0, reason: 'scope_off' };
 
   const { data: sc } = await supabaseAdmin.from('sales_clients').select('rep_id').eq('user_id', opts.clientUserId).maybeSingle();
   const directRepId = (sc as any)?.rep_id;

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import SalesPerf from './SalesPerf';
 
 // Panel ADMIN de la red de ventas · rediseño moderno:
 // tarjetas de color por nivel, arrastrar y soltar para mover vendedores en el
@@ -13,7 +14,7 @@ const LV = {
 
 export default function SalesAdmin({ canManage = true }: { canManage?: boolean }) {
   const [d, setD] = useState<any>(null);
-  const [sub, setSub] = useState<'solicitudes' | 'red' | 'ajustes' | 'pagos'>('red');
+  const [sub, setSub] = useState<'solicitudes' | 'red' | 'desempeno' | 'ajustes' | 'pagos'>('red');
   const [msg, setMsg] = useState('');
   const [dragId, setDragId] = useState<string>('');
 
@@ -65,6 +66,7 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         {subBtn('red', 'La red', reps.length)}
+        {subBtn('desempeno', 'Desempeño')}
         {subBtn('solicitudes', 'Solicitudes', apps.length)}
         {subBtn('ajustes', 'Ajustes')}
         {subBtn('pagos', 'Pagos')}
@@ -106,6 +108,9 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
         </>}
       </div>}
 
+      {/* ===== DESEMPEÑO ===== */}
+      {sub === 'desempeno' && <SalesPerf canManage={canManage} names={names} />}
+
       {/* ===== SOLICITUDES ===== */}
       {sub === 'solicitudes' && <div>
         {apps.length === 0 && <div className="muted">No hay solicitudes pendientes.</div>}
@@ -146,7 +151,13 @@ function RepCard({ r, c, names, reps, act, canManage, dragId, setDragId, onDropO
   const [parent, setParent] = useState(r.parent_id || '');
   const [rate, setRate] = useState(r.rate_override ?? '');
   const [assign, setAssign] = useState('');
+  const dfl = r.level === 'vendedor'
+    ? { can_trial: true, can_discount: true, can_clients: true, can_tickets: true, can_recruit: false, can_team: false }
+    : { can_trial: true, can_discount: true, can_clients: true, can_tickets: true, can_recruit: true, can_team: true };
+  const [perms, setPerms] = useState<any>(r.perms ? { ...dfl, ...r.perms } : { ...dfl });
+  const [customPerms, setCustomPerms] = useState<boolean>(!!r.perms);
   const b = r.balances || {};
+  const PERM_LABELS: [string, string][] = [['can_trial', 'Dar pruebas'], ['can_discount', 'Dar descuentos'], ['can_clients', 'Gestionar clientes'], ['can_tickets', 'Atender tickets'], ['can_recruit', 'Reclutar equipo'], ['can_team', 'Ver equipo']];
   const isDragging = dragId === r.id;
   return (
     <div
@@ -176,6 +187,22 @@ function RepCard({ r, c, names, reps, act, canManage, dragId, setDragId, onDropO
         <div style={{ display: 'flex', gap: 6 }}>
           <input placeholder="asignar cliente (correo)" value={assign} onChange={(e) => setAssign(e.target.value)} style={{ ...inp, flex: 1 }} />
           <button style={btn} onClick={() => assign && act({ action: 'assign_client', rep_id: r.id, email: assign })}>+</button>
+        </div>
+        {/* Permisos del representante */}
+        <div style={{ borderTop: '1px solid var(--line,#2a3350)', paddingTop: 8, marginTop: 2 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, cursor: 'pointer', color: 'var(--tx,#e8ecf5)' }}>
+            <input type="checkbox" checked={customPerms} onChange={(e) => setCustomPerms(e.target.checked)} style={{ width: 15, height: 15, flex: 'none', margin: 0 }} />
+            <span>Permisos personalizados (si no, hereda del nivel)</span>
+          </label>
+          {customPerms && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginTop: 6 }}>
+            {PERM_LABELS.map(([k, lab]) => (
+              <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', color: 'var(--mut,#9aa6bd)' }}>
+                <input type="checkbox" checked={!!perms[k]} onChange={(e) => setPerms((p: any) => ({ ...p, [k]: e.target.checked }))} style={{ width: 14, height: 14, flex: 'none', margin: 0 }} />
+                <span>{lab}</span>
+              </label>
+            ))}
+          </div>}
+          <button style={{ ...btnP, marginTop: 8, width: '100%', padding: '5px' }} onClick={() => act({ action: 'set_perms', rep_id: r.id, perms: customPerms ? perms : null })}>Guardar permisos</button>
         </div>
       </div>}
     </div>
@@ -239,6 +266,18 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
   useEffect(() => { setF({ ...s, level_names: names }); }, [s]);
   const u = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
   const un = (k: string, v: any) => setF((x: any) => ({ ...x, level_names: { ...x.level_names, [k]: v } }));
+  const uscope = (k: string, v: any) => setF((x: any) => ({ ...x, commission_scope: { ...(x.commission_scope || {}), [k]: v } }));
+  const uth = (k: string, v: any) => setF((x: any) => ({ ...x, tier_thresholds: { ...(x.tier_thresholds || {}), [k]: Number(v) } }));
+  const urev = (k: string, v: any) => setF((x: any) => ({ ...x, review: { ...(x.review || {}), [k]: v } }));
+  const scope = f.commission_scope || {};
+  const th = f.tier_thresholds || { star: 75, risk: 45 };
+  const rev = f.review || { enabled: true, after_days: 20, email: false };
+  const scopeTog = (k: string, label: string, hint?: string) => (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, cursor: 'pointer', color: 'var(--tx,#e8ecf5)', padding: '2px 0' }}>
+      <input type="checkbox" checked={!!scope[k]} onChange={(e) => uscope(k, e.target.checked)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} />
+      <span>{label}{hint && <span className="muted" style={{ fontSize: 11.5 }}> · {hint}</span>}</span>
+    </label>
+  );
   const card: React.CSSProperties = { background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: 16, marginBottom: 12 };
   const num = (k: string, label: string, suf = '') => (
     <label style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', display: 'block' }}>{label}<div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}><input type="number" value={f[k] ?? 0} onChange={(e) => u(k, Number(e.target.value))} style={{ ...inp, width: 90 }} />{suf && <span className="muted">{suf}</span>}</div></label>
@@ -281,6 +320,41 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           {tog('auto_payout', 'Pago automático cuando el saldo madura')}
           {tog('review_before_pay', 'Freno global: revisar antes de pagar')}
           {tog('allow_recruit', 'Los supervisores pueden reclutar su equipo')}
+        </div>
+      </div>
+      <div style={card}>
+        <b>Sobre qué servicios se paga comisión</b>
+        <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 520 }}>
+          {scopeTog('subscriptions', 'Suscripciones y planes', 'recomendado')}
+          {scopeTog('addons', 'Add-ons y cuentas extra')}
+          {scopeTog('guardian', 'Onyx Guardian')}
+          {scopeTog('academy', 'Academia', 'ya paga a los mentores')}
+          {scopeTog('botlab', 'Bot Lab', 'ya paga a los creadores')}
+          {scopeTog('copy', 'Comisiones de Copy')}
+        </div>
+      </div>
+      <div style={card}>
+        <b>Umbrales del plan de manejo (puntaje 0-100)</b>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10, alignItems: 'flex-end' }}>
+          <label style={{ fontSize: 12.5, color: '#e5b567' }}>Estrella ≥<input type="number" value={th.star} onChange={(e) => uth('star', e.target.value)} style={{ ...inp, display: 'block', marginTop: 4, width: 90 }} /></label>
+          <label style={{ fontSize: 12.5, color: '#f0736f' }}>En riesgo &lt;<input type="number" value={th.risk} onChange={(e) => uth('risk', e.target.value)} style={{ ...inp, display: 'block', marginTop: 4, width: 90 }} /></label>
+          <span className="muted" style={{ fontSize: 12 }}>Entre ambos = Sólido.</span>
+        </div>
+      </div>
+      <div style={card}>
+        <b>Criterios de evaluación 360</b>
+        <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Uno por línea. Se usan en las evaluaciones supervisor↔vendedor.</div>
+        <textarea value={(f.eval_criteria || []).join('\n')} onChange={(e) => u('eval_criteria', e.target.value.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 12))}
+          style={{ ...inp, marginTop: 8, width: '100%', minHeight: 110, resize: 'vertical', fontFamily: 'inherit' }} />
+      </div>
+      <div style={card}>
+        <b>Reseñas de clientes</b>
+        <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 520 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, cursor: 'pointer', color: 'var(--tx,#e8ecf5)' }}>
+            <input type="checkbox" checked={!!rev.enabled} onChange={(e) => urev('enabled', e.target.checked)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} />
+            <span>Pedir reseña al cliente automáticamente</span>
+          </label>
+          <label style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)' }}>Pedirla después de<input type="number" value={rev.after_days} onChange={(e) => urev('after_days', Number(e.target.value))} style={{ ...inp, width: 90, margin: '0 8px' }} />días de ser cliente</label>
         </div>
       </div>
       {canManage && <button style={btnP} onClick={() => act({ action: 'save_settings', settings: f })}>Guardar ajustes</button>}

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { repByUser, salesSettings, balances, listClients, teamRollup, grantTrial } from '@/lib/sales';
+import { repByUser, repById, salesSettings, balances, listClients, teamRollup, grantTrial, permsFor, subtreeRepIds } from '@/lib/sales';
+import { repScorecard, scoreboard, reviewsForRep, reviewsForTeam, evaluationsFor, submitEvaluation, logAction } from '@/lib/salesPerf';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -39,11 +40,40 @@ export async function GET() {
 
   const link = `${appUrl()}/?sv=${rep.code}`;
   const caps = { trial_max_days: s.trial_max_days, discount_max_pct: s.discount_max_pct, min_payout: s.min_payout, hold_days: s.hold_days };
+
+  // Desempeño propio + mis reseñas (para que se vea a sí mismo y mejore).
+  const perms = permsFor(rep as any, s);
+  const myCard = await repScorecard(rep.id, s);
+  const myReviews = await reviewsForRep(rep.id, 40);
+
+  // Supervisores: tablero de su equipo + reseñas del equipo + a quién puede evaluar.
+  let teamBoard: any[] = [], teamReviews: any[] = [], evalTargets: any[] = [];
+  if (rep.level !== 'vendedor') {
+    teamBoard = await scoreboard(rep.id);
+    teamReviews = await reviewsForTeam(rep.id, 120);
+    const ids = await subtreeRepIds(rep.id);
+    if (ids.length) {
+      const { data: subs } = await supabaseAdmin.from('sales_reps').select('id,user_id,level,display_name').in('id', ids);
+      for (const r of (subs || []) as any[]) {
+        const { data: p } = await supabaseAdmin.from('profiles').select('email').eq('id', r.user_id).maybeSingle();
+        evalTargets.push({ id: r.id, level: r.level, name: r.display_name || (p as any)?.email || 'Rep' });
+      }
+    }
+  }
+  // A mi supervisor lo puedo evaluar (evaluación hacia arriba).
+  let mySupervisor: any = null;
+  if (rep.parent_id) {
+    const sup = await repById(rep.parent_id);
+    if (sup) { const { data: p } = await supabaseAdmin.from('profiles').select('email').eq('id', sup.user_id).maybeSingle(); mySupervisor = { id: sup.id, level: sup.level, name: sup.display_name || (p as any)?.email || 'Supervisor' }; }
+  }
+
   return NextResponse.json({
     isRep: true,
     rep: { id: rep.id, level: rep.level, code: rep.code, display_name: rep.display_name, from_name: rep.from_name, reply_to: rep.reply_to, payout_method: (rep as any).payout_method || 'stripe', on_hold: rep.on_hold, status: rep.status },
     link, balances: bal, caps, clients, team, tickets, connect,
-    level_names: s.level_names || { l2: 'Supervisor N2', l1: 'Supervisor N1', vendedor: 'Vendedor' },
+    perms, scorecard: myCard, myReviews, teamBoard, teamReviews, evalTargets, mySupervisor,
+    eval_criteria: s.eval_criteria || [],
+    level_names: s.level_names || { l2: 'Director', l1: 'Lead', vendedor: 'Advisor' },
     wallets: { trc20: (prof as any)?.payout_usdt_trc20 || '', erc20: (prof as any)?.payout_usdt_erc20 || '', network: (prof as any)?.payout_usdt_network || 'trc20' },
     payouts: payouts || [],
     activeClients: clients.filter((c) => c.active).length,
@@ -116,6 +146,44 @@ export async function POST(req: Request) {
       if (!own) return NextResponse.json({ ok: false, error: 'no es tu cliente' }, { status: 403 });
       await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'agent', sender_id: user.id, body });
       await supabaseAdmin.from('support_tickets').update({ status: 'answered', updated_at: new Date().toISOString() }).eq('id', ticketId);
+      return NextResponse.json({ ok: true });
+    }
+
+    // Insight de IA sobre mi propio desempeño (o de un miembro de mi equipo).
+    if (action === 'insight') {
+      const s = await salesSettings();
+      let targetId = rep.id, targetLevel = rep.level, targetName = rep.display_name || 'Rep';
+      if (b.rep_id && b.rep_id !== rep.id && rep.level !== 'vendedor') {
+        const ids = await subtreeRepIds(rep.id);
+        if (!ids.includes(b.rep_id)) return NextResponse.json({ ok: false, error: 'no es de tu equipo' }, { status: 403 });
+        const t = await repById(b.rep_id); if (t) { targetId = t.id; targetLevel = t.level; targetName = t.display_name || 'Rep'; }
+      }
+      const card = await repScorecard(targetId, s);
+      const { perfInsight } = await import('@/lib/salesAI');
+      const names = s.level_names;
+      const roleName = targetLevel === 'l2' ? names.l2 : targetLevel === 'l1' ? names.l1 : names.vendedor;
+      const insight = await perfInsight(card, { name: targetName, role: roleName }, names, b.lang === 'en' ? 'en' : 'es');
+      return NextResponse.json({ ok: true, card, insight });
+    }
+
+    // Evaluación: hacia mi supervisor (rep_to_sup) o a un miembro de mi equipo (sup_to_rep).
+    if (action === 'submit_eval' && b.ratee_rep_id) {
+      let direction = '';
+      if (rep.parent_id && b.ratee_rep_id === rep.parent_id) direction = 'rep_to_sup';
+      else if (rep.level !== 'vendedor') {
+        const ids = await subtreeRepIds(rep.id);
+        if (ids.includes(b.ratee_rep_id)) direction = 'sup_to_rep';
+      }
+      if (!direction) return NextResponse.json({ ok: false, error: 'no puedes evaluar a esta persona' }, { status: 403 });
+      const r = await submitEvaluation({ raterRepId: rep.id, rateeRepId: b.ratee_rep_id, direction, scores: b.scores || {}, comment: b.comment, period: b.period });
+      return NextResponse.json(r);
+    }
+
+    // Coaching/nota de un supervisor a un miembro de su equipo (bitácora).
+    if (action === 'coach' && b.rep_id && rep.level !== 'vendedor') {
+      const ids = await subtreeRepIds(rep.id);
+      if (!ids.includes(b.rep_id)) return NextResponse.json({ ok: false, error: 'no es de tu equipo' }, { status: 403 });
+      await logAction({ repId: b.rep_id, kind: String(b.kind || 'coach'), note: b.note, by: user.id });
       return NextResponse.json({ ok: true });
     }
 

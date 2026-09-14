@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { salesSettings, saveSalesSettings, uniqueRepCode, balances } from '@/lib/sales';
+import { scoreboard, repScorecard, reviewsForTeam, evaluationsFor, actionsFor, submitEvaluation, logAction } from '@/lib/salesPerf';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -46,6 +47,56 @@ export async function POST(req: Request) {
     if (action === 'save_settings') {
       const s = await saveSalesSettings(b.settings || {});
       return NextResponse.json({ ok: true, settings: s });
+    }
+
+    // ---- DESEMPEÑO ----
+    // Tablero de todo el equipo (o de una rama si se pasa root_rep_id).
+    if (action === 'scoreboard') {
+      const cards = await scoreboard(b.root_rep_id || null);
+      return NextResponse.json({ ok: true, cards });
+    }
+    // Detalle de un rep: tarjeta + reseñas + evaluaciones + acciones + insight IA.
+    if (action === 'rep_detail' && b.rep_id) {
+      const s = await salesSettings();
+      const { data: rep } = await supabaseAdmin.from('sales_reps').select('id,user_id,level,display_name').eq('id', b.rep_id).maybeSingle();
+      const { data: prof } = rep ? await supabaseAdmin.from('profiles').select('email,name').eq('id', (rep as any).user_id).maybeSingle() : { data: null } as any;
+      const card = await repScorecard(b.rep_id, s);
+      const reviews = await (await import('@/lib/salesPerf')).reviewsForRep(b.rep_id, 60);
+      const evals = await evaluationsFor(b.rep_id, 40);
+      const actions = await actionsFor(b.rep_id, 30);
+      const names = s.level_names;
+      let insight: any = null;
+      if (b.ai) {
+        const { perfInsight } = await import('@/lib/salesAI');
+        const roleName = (rep as any)?.level === 'l2' ? names.l2 : (rep as any)?.level === 'l1' ? names.l1 : names.vendedor;
+        insight = await perfInsight(card, { name: (rep as any)?.display_name || (prof as any)?.email || 'Rep', role: roleName }, names, b.lang === 'en' ? 'en' : 'es');
+      }
+      return NextResponse.json({ ok: true, card, reviews, evals, actions, insight, email: (prof as any)?.email || null, name: (rep as any)?.display_name || (prof as any)?.name || null });
+    }
+    // Reseñas del equipo (feed).
+    if (action === 'team_reviews') {
+      const reviews = await reviewsForTeam(b.root_rep_id || null, 200);
+      return NextResponse.json({ ok: true, reviews });
+    }
+    // Permisos por rep (override del nivel).
+    if (action === 'set_perms' && b.rep_id) {
+      await supabaseAdmin.from('sales_reps').update({ perms: b.perms || null }).eq('id', b.rep_id);
+      return NextResponse.json({ ok: true });
+    }
+    // Guardar evaluación (admin evalúa a cualquiera).
+    if (action === 'save_eval' && b.ratee_rep_id) {
+      const r = await submitEvaluation({ raterRepId: null, rateeRepId: b.ratee_rep_id, direction: 'admin', scores: b.scores || {}, comment: b.comment, period: b.period });
+      return NextResponse.json(r);
+    }
+    // Registrar acción del plan de manejo (promover/coaching/pausar/etc.).
+    if (action === 'log_action' && b.rep_id) {
+      await logAction({ repId: b.rep_id, kind: String(b.kind || 'note'), note: b.note, tier: b.tier });
+      // Acciones que además cambian el estado del rep.
+      if (b.kind === 'pause') await supabaseAdmin.from('sales_reps').update({ on_hold: true }).eq('id', b.rep_id);
+      if (b.kind === 'resume') await supabaseAdmin.from('sales_reps').update({ on_hold: false }).eq('id', b.rep_id);
+      if (b.kind === 'promote' && b.to_level) await supabaseAdmin.from('sales_reps').update({ level: b.to_level }).eq('id', b.rep_id);
+      if (b.kind === 'demote' && b.to_level) await supabaseAdmin.from('sales_reps').update({ level: b.to_level }).eq('id', b.rep_id);
+      return NextResponse.json({ ok: true });
     }
 
     // Crear un rep a partir de un correo (aprobación o alta manual).

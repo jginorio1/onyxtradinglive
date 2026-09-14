@@ -18,6 +18,7 @@ import ReferralCard from './ReferralCard';
 import CancelFlow from './CancelFlow';
 import TelegramCard from './TelegramCard';
 import NotifPrefs from './NotifPrefs';
+import SalesReviewCard from '@/app/components/SalesReviewCard';
 import BillingCard from './BillingCard';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import InstallApp from '@/app/dashboard/InstallApp';
@@ -384,6 +385,7 @@ export default function AccountClient({ email }: { email: string }) {
     <>
 
       <div className="wrap-wide" style={{ padding: '22px 0' }}>
+        <SalesReviewCard />
         <div className="adminlayout">
           <div className="adminnav card" style={{ padding: 12 }}>
             <div className="row" style={{ gap: 10, alignItems: 'center', padding: '4px 4px 12px', borderBottom: '1px solid var(--line)', marginBottom: 8 }}>

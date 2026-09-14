@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 // atender tickets, su equipo y cobros (Stripe Connect o USDT).
 export default function VentasPanel() {
   const [d, setD] = useState<any>(null);
-  const [tab, setTab] = useState<'resumen' | 'clientes' | 'equipo' | 'soporte' | 'cobros' | 'guia'>('resumen');
+  const [tab, setTab] = useState<'resumen' | 'desempeno' | 'clientes' | 'equipo' | 'evaluar' | 'soporte' | 'cobros' | 'guia'>('resumen');
   const [msg, setMsg] = useState('');
   const [lang, setLang] = useState<'es' | 'en'>('es');
   const L = (es: string, en: string) => (lang === 'es' ? es : en);
@@ -49,7 +49,7 @@ export default function VentasPanel() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <div>
           <h1 style={{ fontSize: 23, margin: 0, color: 'var(--tx,#e8ecf5)' }}>{L('Mi panel de ventas', 'My sales panel')}</h1>
-          <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)' }}>{d.rep.level === 'l2' ? 'Supervisor Nivel 2' : d.rep.level === 'l1' ? 'Supervisor Nivel 1' : L('Vendedor', 'Seller')} · {d.rep.display_name || d.rep.code}</div>
+          <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)' }}>{(d.level_names ? (d.rep.level === 'l2' ? d.level_names.l2 : d.rep.level === 'l1' ? d.level_names.l1 : d.level_names.vendedor) : L('Vendedor', 'Seller'))} · {d.rep.display_name || d.rep.code}</div>
         </div>
         <button onClick={() => setLang(lang === 'es' ? 'en' : 'es')} style={btn}>{lang === 'es' ? '🇬🇧 EN' : '🇪🇸 ES'}</button>
       </div>
@@ -59,8 +59,10 @@ export default function VentasPanel() {
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         {tabBtn('resumen', L('Resumen', 'Overview'))}
+        {tabBtn('desempeno', L('Mi desempeño', 'My performance'))}
         {tabBtn('clientes', L('Mis clientes', 'My clients') + ` (${d.clients.length})`)}
         {d.team.length > 0 && tabBtn('equipo', L('Mi equipo', 'My team'))}
+        {((d.evalTargets && d.evalTargets.length) || d.mySupervisor) && tabBtn('evaluar', L('Evaluar', 'Evaluate'))}
         {tabBtn('soporte', L('Soporte', 'Support') + (d.tickets.length ? ` (${d.tickets.length})` : ''))}
         {tabBtn('cobros', L('Cobros', 'Payouts'))}
         {tabBtn('guia', L('Guía', 'Guide'))}
@@ -81,6 +83,10 @@ export default function VentasPanel() {
           </div>
         </div>
       </div>}
+
+      {tab === 'desempeno' && <MyPerf d={d} L={L} act={act} card={card} btn={btn} btnP={btnP} />}
+
+      {tab === 'evaluar' && <Evaluate d={d} L={L} act={act} card={card} btn={btn} btnP={btnP} />}
 
       {tab === 'clientes' && <div style={card}>
         <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginBottom: 10 }}>{L('Puedes darles prueba (hasta', 'You can grant a trial (up to')} {d.caps.trial_max_days} {L('días) o generar un descuento (hasta', 'days) or generate a discount (up to')} {d.caps.discount_max_pct}%).</div>
@@ -228,6 +234,108 @@ function PayoutBox({ d, L, act, btn, btnP, card }: any) {
               <td style={{ padding: '7px 4px', color: p.status === 'paid' ? 'var(--green,#5ed6a0)' : 'var(--mut,#9aa6bd)', textAlign: 'right' }}>{p.status}</td>
             </tr>)}
           </tbody></table>}
+      </div>
+    </div>
+  );
+}
+
+// ===== Mi desempeño (vendedor ve su propia tarjeta + IA + reseñas) =====
+const TIERC: any = { star: { fg: '#e5b567', lbl: 'Estrella' }, solid: { fg: '#5ed6a0', lbl: 'Sólido' }, risk: { fg: '#f0736f', lbl: 'En riesgo' } };
+const starStr = (r: number) => '★★★★★'.slice(0, Math.round(r)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(r));
+
+function MyPerf({ d, L, act, card, btn }: any) {
+  const sc = d.scorecard || {};
+  const [ins, setIns] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const t = TIERC[sc.tier] || TIERC.solid;
+  async function ai() { setBusy(true); const r = await act({ action: 'insight' }); setIns(r?.insight || null); setBusy(false); }
+  const mini = (label: string, v: any, c?: string) => (
+    <div style={{ background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: '10px 12px', minWidth: 110, flex: 1 }}>
+      <div style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)' }}>{label}</div>
+      <div style={{ fontSize: 19, fontWeight: 700, color: c || 'var(--tx,#e8ecf5)' }}>{v}</div>
+    </div>
+  );
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ ...card, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 40, fontWeight: 800, color: t.fg, lineHeight: 1 }}>{sc.score ?? '—'}</div>
+          <div style={{ fontSize: 12, color: t.fg, fontWeight: 600 }}>{t.lbl}</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ color: '#e5b567', fontSize: 16 }}>{sc.reviews ? `${starStr(sc.rating)} ${sc.rating}` : L('Aún sin reseñas', 'No reviews yet')}</div>
+          <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginTop: 2 }}>{L('Tu puntaje mide reseñas, conversión, actividad, atención y retención.', 'Your score blends reviews, conversion, activity, support and retention.')}</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {mini(L('Clientes activos', 'Active clients'), `${sc.active}/${sc.clients}`, '#5ed6a0')}
+        {mini(L('Conversión prueba', 'Trial conversion'), `${sc.trial_conv || 0}%`)}
+        {mini(L('Tickets abiertos', 'Open tickets'), sc.tickets_open ?? 0)}
+        {mini(L('Respuesta', 'Response'), sc.resp_hrs == null ? '—' : `${sc.resp_hrs}h`)}
+        {mini(L('Comisión 30d', 'Commission 30d'), '$' + (sc.earned30 || 0), '#e5b567')}
+      </div>
+      <div style={card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Consejo de la IA', 'AI coaching')}</b>
+          <button style={btn} disabled={busy} onClick={ai}>{busy ? L('Analizando…', 'Analyzing…') : L('Generar consejo', 'Get coaching')}</button>
+        </div>
+        {ins && <div style={{ marginTop: 10 }}>
+          <div style={{ fontWeight: 700, color: 'var(--tx,#e8ecf5)' }}>{ins.headline}</div>
+          {ins.summary && <p style={{ fontSize: 13.5, color: 'var(--tx,#e8ecf5)', margin: '6px 0 0', lineHeight: 1.5 }}>{ins.summary}</p>}
+          {!!(ins.actions || []).length && <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--mut,#9aa6bd)' }}>{ins.actions.map((a: string, i: number) => <li key={i}>{a}</li>)}</ul>}
+        </div>}
+      </div>
+      <div style={card}>
+        <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Reseñas de tus clientes', 'Your clients’ reviews')}</b>
+        {!d.myReviews?.length ? <p style={{ color: 'var(--mut,#9aa6bd)', fontSize: 13 }}>{L('Aún no tienes reseñas.', 'No reviews yet.')}</p> :
+          d.myReviews.map((r: any) => (
+            <div key={r.id} style={{ borderTop: '1px solid var(--line,#2a3350)', padding: '8px 0' }}>
+              <div style={{ color: '#e5b567', fontSize: 13 }}>{starStr(r.rating)} <span style={{ color: 'var(--mut,#9aa6bd)', fontSize: 11 }}>{new Date(r.created_at).toLocaleDateString()}</span></div>
+              {r.comment && <div style={{ fontSize: 13, color: 'var(--tx,#e8ecf5)', marginTop: 2 }}>{r.comment}</div>}
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
+// ===== Evaluar (a mi supervisor y/o a mi equipo) =====
+function Evaluate({ d, L, act, card, btn, btnP }: any) {
+  const targets: any[] = [];
+  if (d.mySupervisor) targets.push({ ...d.mySupervisor, dir: 'sup' });
+  (d.evalTargets || []).forEach((t: any) => targets.push({ ...t, dir: 'rep' }));
+  const [sel, setSel] = useState<string>(targets[0]?.id || '');
+  const criteria: string[] = d.eval_criteria || [];
+  const [scores, setScores] = useState<Record<string, number>>({});
+  const [comment, setComment] = useState('');
+  const [done, setDone] = useState(false);
+  const cur = targets.find((t) => t.id === sel);
+  async function send() {
+    await act({ action: 'submit_eval', ratee_rep_id: sel, scores, comment });
+    setDone(true); setScores({}); setComment('');
+  }
+  if (!targets.length) return <div style={card}><p style={{ color: 'var(--mut,#9aa6bd)' }}>{L('No hay nadie a quien evaluar por ahora.', 'No one to evaluate right now.')}</p></div>;
+  return (
+    <div style={card}>
+      <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Evaluación', 'Evaluation')}</b>
+      <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', margin: '4px 0 10px' }}>{L('Tu evaluación es privada y ayuda a mejorar al equipo.', 'Your evaluation is private and helps the team improve.')}</div>
+      <select value={sel} onChange={(e) => { setSel(e.target.value); setDone(false); }} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13, marginBottom: 12 }}>
+        {targets.map((t) => <option key={t.id} value={t.id}>{t.name}{t.dir === 'sup' ? L(' (mi supervisor)', ' (my supervisor)') : ''}</option>)}
+      </select>
+      {criteria.map((c) => (
+        <div key={c} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: '1px solid var(--line,#2a3350)' }}>
+          <span style={{ fontSize: 13.5, color: 'var(--tx,#e8ecf5)' }}>{c}</span>
+          <span style={{ display: 'flex', gap: 3 }}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} onClick={() => setScores((s) => ({ ...s, [c]: n }))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 22, color: (scores[c] || 0) >= n ? '#e5b567' : 'var(--line,#3a4363)', padding: 0 }}>{(scores[c] || 0) >= n ? '★' : '☆'}</button>
+            ))}
+          </span>
+        </div>
+      ))}
+      <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder={L('Comentario (opcional)', 'Comment (optional)')} style={{ width: '100%', minHeight: 60, resize: 'vertical', marginTop: 10, padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13.5 }} />
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10 }}>
+        <button style={btnP} disabled={!Object.keys(scores).length} onClick={send}>{L('Enviar evaluación', 'Submit evaluation')}</button>
+        {done && <span style={{ color: 'var(--green,#5ed6a0)', fontSize: 13 }}>{L('¡Gracias! Evaluación guardada.', 'Thanks! Evaluation saved.')}</span>}
       </div>
     </div>
   );
