@@ -7,7 +7,7 @@ import { accountLimit, addonSettings, retentionSettings, ensureProfile } from '@
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const FIELDS = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,avatar_url,timezone,lang,country,experience,trade_style,platform,prop_firm,goal,notify_email,notify_weekly,notify_funding,notify_marketing,marketing_emails,public_track,created_at,pending_plan,pending_plan_at,pending_keep';
+const FIELDS = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,avatar_url,timezone,tz_manual,lang,country,experience,trade_style,platform,prop_firm,goal,notify_email,notify_weekly,notify_funding,notify_marketing,marketing_emails,public_track,created_at,pending_plan,pending_plan_at,pending_keep';
 // Sin las columnas del perfil de trader, por si aún no se corrió onboarding_v1.sql
 const FIELDS_BASE = 'id,email,plan,subscription_status,stripe_customer_id,stripe_subscription_id,full_name,timezone,lang,notify_email,notify_weekly,notify_funding,notify_marketing,created_at';
 
@@ -105,6 +105,9 @@ export async function PATCH(req: Request) {
     const b = await req.json();
     const fields: any = {};
     ['full_name', 'timezone', 'lang', 'country', 'prop_firm'].forEach((k) => { if (b[k] !== undefined) fields[k] = String(b[k] || '').slice(0, 120); });
+    // Zona horaria elegida a mano en el perfil → fija tz_manual para que el
+    // auto-sincronizador (TzSync) ya no la sobreescriba con la del navegador.
+    if (b.tz_manual !== undefined) fields.tz_manual = !!b.tz_manual;
     // Foto de perfil: solo aceptamos una URL de nuestro propio Storage (la sube
     // /api/upload) o vacío para quitarla. Evita meter URLs externas arbitrarias.
     if (b.avatar_url !== undefined) {

@@ -11,6 +11,7 @@ import CountrySelect from '@/app/components/CountrySelect';
 import StudentBilling from '@/app/components/StudentBilling';
 import { useCatalog } from '@/lib/useCatalog';
 import { platformLabel } from '@/lib/platforms';
+import { TZ_GROUPS, ensureZone } from '@/lib/timezones';
 import { errMsg, planName } from '@/lib/i18nErrors';
 import Ambassador from './Ambassador';
 import ReferralCard from './ReferralCard';
@@ -274,7 +275,7 @@ export default function AccountClient({ email }: { email: string }) {
 
   async function saveProfile(extra: any = {}) {
     setBusy('save'); setMsg('');
-    const body = { full_name: p.full_name, timezone: p.timezone, lang: p.lang, country: p.country, experience: p.experience, trade_style: p.trade_style, platform: p.platform, prop_firm: p.prop_firm, goal: p.goal, notify_email: p.notify_email, notify_weekly: p.notify_weekly, notify_funding: p.notify_funding, notify_marketing: p.notify_marketing, ...extra };
+    const body = { full_name: p.full_name, timezone: p.timezone, tz_manual: p.tz_manual, lang: p.lang, country: p.country, experience: p.experience, trade_style: p.trade_style, platform: p.platform, prop_firm: p.prop_firm, goal: p.goal, notify_email: p.notify_email, notify_weekly: p.notify_weekly, notify_funding: p.notify_funding, notify_marketing: p.notify_marketing, ...extra };
     const r = await fetch('/api/account', { method: 'PATCH', body: JSON.stringify(body) });
     const j = await r.json(); setBusy('');
     if (!r.ok) { toast(errMsg(j, lang)); return; }
@@ -702,7 +703,29 @@ export default function AccountClient({ email }: { email: string }) {
                 <span style={lbl}>{L.name}</span>
                 <input value={p.full_name || ''} onChange={(e) => setField('full_name', e.target.value)} style={{ margin: '4px 0 0' }} />
                 <span style={lbl}>{L.tz}</span>
-                <input placeholder="America/New_York" value={p.timezone || ''} onChange={(e) => setField('timezone', e.target.value)} style={{ margin: '4px 0 0' }} />
+                {(() => {
+                  // Zona actual: si el navegador reportó una zona IANA que no está en
+                  // la lista, la añadimos como opción extra para no perderla.
+                  const cur = p.timezone || '';
+                  const extra = ensureZone(cur);
+                  const onPick = (v: string) => { if (!v) return; setP({ ...p, timezone: v, tz_manual: true }); };
+                  return (
+                    <select value={cur} onChange={(e) => onPick(e.target.value)} style={{ margin: '4px 0 0' }}>
+                      {!cur && <option value="">{lang === 'en' ? 'Choose your time zone…' : 'Elige tu zona horaria…'}</option>}
+                      {extra && <option value={extra.id}>{extra.label}</option>}
+                      {TZ_GROUPS.map((g) => (
+                        <optgroup key={g.region} label={g.region}>
+                          {g.zones.map((z) => <option key={z.id} value={z.id}>{z.label}</option>)}
+                        </optgroup>
+                      ))}
+                    </select>
+                  );
+                })()}
+                <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                  {p.tz_manual
+                    ? (lang === 'en' ? 'You chose this zone. Change it any time.' : 'Elegiste esta zona. Puedes cambiarla cuando quieras.')
+                    : (lang === 'en' ? 'Detected automatically from your device. Pick one to fix it.' : 'Detectada automáticamente desde tu dispositivo. Elige una para fijarla.')}
+                </div>
                 <span style={lbl}>{L.langL}</span>
                 <select value={p.lang || 'es'} onChange={(e) => setField('lang', e.target.value)} style={{ margin: '4px 0 0' }}><option value="es">Español</option><option value="en">English</option></select>
 

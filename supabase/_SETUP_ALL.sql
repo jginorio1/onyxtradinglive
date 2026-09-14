@@ -193,6 +193,8 @@ notify pgrst, 'reload schema';
 -- Datos de perfil que el usuario puede editar
 alter table profiles add column if not exists full_name text;
 alter table profiles add column if not exists timezone text default 'UTC';
+alter table profiles add column if not exists tz_offset_min integer;            -- desfase del navegador (min)
+alter table profiles add column if not exists tz_manual boolean not null default false; -- true = zona elegida a mano
 alter table profiles add column if not exists lang text default 'es';
 
 -- Preferencias de notificaciones
