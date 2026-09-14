@@ -59,12 +59,14 @@ export async function GET(req: Request) {
 
   // Resumen JSON ligero para la tarjeta compartible (dashboard → Compartir).
   if (sp.get('export') === 'json') {
+    // Mapa local de estilo (styleMap se declara más abajo → evitamos el TDZ).
+    const styleMapJ: any = { scalping: 'Scalper', day: 'Day Trader', swing: 'Swing Trader', position: 'Position Trader', algo: 'Algo/Robots' };
     const chronoJ = [...trades].reverse();
     let cumJ = 0; const equityJ = [0, ...chronoJ.map((t) => (cumJ += net(t)))];
     const pct = totalBalance > 0 ? Math.round((netTotal / totalBalance) * 1000) / 10 : 0;
     return NextResponse.json({
       name: prof.full_name || '', avatar: prof.avatar_url || '',
-      style: styleMap[prof.trade_style] || prof.trade_style || '',
+      style: styleMapJ[prof.trade_style] || prof.trade_style || '',
       currency: cur, from, to,
       net: Math.round(netTotal * 100) / 100, pct,
       winRate, pf, trades: total,

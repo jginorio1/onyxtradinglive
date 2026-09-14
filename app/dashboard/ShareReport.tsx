@@ -20,6 +20,7 @@ export default function ShareReport({
   const es = lang !== 'en';
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<Summary | null>(null);
+  const [failed, setFailed] = useState(false);
   const [showMoney, setShowMoney] = useState(false); // por defecto solo %
   const [note, setNote] = useState('');
   const [preview, setPreview] = useState('');
@@ -30,7 +31,11 @@ export default function ShareReport({
 
   useEffect(() => {
     if (!open || data) return;
-    fetch(jsonHref).then((r) => r.json()).then((d) => setData(d)).catch(() => setData(null));
+    setFailed(false);
+    fetch(jsonHref)
+      .then((r) => r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)))
+      .then((d) => { if (d && typeof d.net === 'number') setData(d); else setFailed(true); })
+      .catch(() => setFailed(true));
   }, [open]);
 
   // Redibuja la tarjeta cada vez que cambian los datos o el modo $/%.
@@ -170,7 +175,12 @@ export default function ShareReport({
               <button className="btn btn-ghost" onClick={() => setOpen(false)} style={{ padding: '4px 10px' }}>✕</button>
             </div>
 
-            {!data ? (
+            {failed ? (
+              <div style={{ textAlign: 'center', padding: '24px 6px' }}>
+                <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{es ? 'No se pudo preparar la tarjeta. Puedes ver el reporte completo:' : 'Could not prepare the card. You can view the full report:'}</div>
+                <a className="btn btn-primary" href={pdfHref} target="_blank" rel="noopener noreferrer">{es ? 'Ver reporte' : 'View report'}</a>
+              </div>
+            ) : !data ? (
               <div className="muted" style={{ textAlign: 'center', padding: '30px 0', fontSize: 13 }}>{es ? 'Preparando tu tarjeta…' : 'Preparing your card…'}</div>
             ) : (<>
               <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--line)', background: '#0b1020' }}>
