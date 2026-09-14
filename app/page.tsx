@@ -874,7 +874,7 @@ export default function Home() {
       </div>
 
       {/* GESTOR DE RIESGO — el EA que gestiona y frena, sin abrir nunca una operación */}
-      <div id="gestor" className="wrap section cv-auto">
+      <div id="gestor" className="wrap section">
         <div style={{ textAlign: 'center', marginBottom: 34 }}>
           <span className="pill green">{t.mgr.badge}</span>
           <h2 style={{ marginTop: 14 }}>{t.mgr.title}</h2>
@@ -905,7 +905,7 @@ export default function Home() {
       </div>
 
       {/* PRICING */}
-      <div id="pricing" className="wrap section cv-auto">
+      <div id="pricing" className="wrap section">
         <h2 style={{ textAlign: 'center' }}>{t.priceT}</h2>
         <p className="muted" style={{ textAlign: 'center', margin: '10px 0 20px' }}>{t.priceS}</p>
         <div className="row" style={{ justifyContent: 'center', marginBottom: 20 }}>
@@ -950,7 +950,7 @@ export default function Home() {
       </div>
 
       {/* Embajadores */}
-      <div id="embajadores" className="wrap section cv-auto">
+      <div id="embajadores" className="wrap section">
         <div className="card" style={{ border: '1px solid var(--brand)', background: 'linear-gradient(135deg,rgba(124,140,255,.14),rgba(160,107,255,.06))', textAlign: 'center', padding: '34px 22px' }}>
           <h2 style={{ marginBottom: 10 }}>{t.amb.t}</h2>
           <p className="muted" style={{ maxWidth: 620, margin: '0 auto 22px', fontSize: 16 }}>{t.amb.d}</p>
@@ -972,7 +972,7 @@ export default function Home() {
           acceptedAnswer: { '@type': 'Answer', text: f[1] },
         })),
       }) }} />
-      <div id="faq" className="wrap section cv-auto" style={{ maxWidth: 760 }}>
+      <div id="faq" className="wrap section" style={{ maxWidth: 760 }}>
         <h2 style={{ textAlign: 'center', marginBottom: 26 }}>{t.faqT}</h2>
         {lcFaqs.map((f, i) => (
           <details key={i} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
