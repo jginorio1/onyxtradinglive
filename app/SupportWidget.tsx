@@ -308,7 +308,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
               <button onClick={(e) => { e.stopPropagation(); dismissTease(); }} aria-label="close" style={{ position: 'absolute', top: 2, right: 5, background: 'none', border: 'none', color: 'var(--mut)', fontSize: 14, cursor: 'pointer', lineHeight: 1 }}>×</button>
             </div>
           )}
-          <button onClick={launch} aria-label={x.help}
+          <button onClick={launch} aria-label={x.help || (es ? 'Abrir el chat de ayuda' : 'Open help chat')}
             style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', cursor: 'pointer', flexDirection: side === 'left' ? 'row-reverse' : 'row' }}>
             {x.help && <span style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 20, padding: '7px 13px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 6px 18px rgba(0,0,0,.3)' }}>{x.help}</span>}
             <span style={{ position: 'relative', width: lsz, height: lsz, borderRadius: '50%', background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 22px rgba(0,0,0,.35)' }}><OnyxIcon emoji={cfg.launcher || '💬'} size={Math.round(lsz * 0.5)} glow={false} />
