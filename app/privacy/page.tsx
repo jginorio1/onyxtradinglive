@@ -11,45 +11,51 @@ export default function Privacy() {
   const es = (
     <>
       <h1>Política de Privacidad</h1>
-      <p className="muted">Última actualización: 2026</p>
+      <p className="muted">Última actualización: septiembre de 2026</p>
+      <p>Esta política aplica al sitio web y a la aplicación móvil de Onyx Trading Live.</p>
       <h3>1. Qué datos recogemos</h3>
-      <p>Recogemos tu email (para tu cuenta), los datos de tu historial de trading que envía el connector (operaciones, balance, cuenta) y datos de pago gestionados por Stripe (no almacenamos números de tarjeta).</p>
+      <p>Recogemos: (a) datos de tu cuenta (nombre, correo electrónico y país); (b) los datos de tu historial de trading que envía el connector en modo solo lectura (operaciones, balance, número de cuenta); (c) datos de pago gestionados por Stripe (no almacenamos números de tarjeta); (d) datos de uso y analítica de la app y el sitio (páginas vistas, eventos), mediante Google Analytics; y (e) si activas las notificaciones, un identificador de dispositivo para poder enviártelas.</p>
       <h3>2. Para qué los usamos</h3>
-      <p>Usamos tus datos para mostrarte tus estadísticas, gestionar tu suscripción y mejorar el servicio. No vendemos tus datos a terceros.</p>
-      <h3>3. Dónde se guardan</h3>
-      <p>Los datos se almacenan de forma segura en nuestra base de datos (Supabase). Los pagos se procesan a través de Stripe.</p>
-      <h3>4. Terceros</h3>
-      <p>Usamos proveedores de confianza: Supabase (base de datos), Vercel (hosting) y Stripe (pagos). Cada uno tiene sus propias políticas de privacidad.</p>
-      <h3>5. Seguridad</h3>
-      <p>La conexión con tu plataforma (MetaTrader, cTrader…) es de solo lectura. Aplicamos medidas para proteger tu información, aunque ningún sistema es 100% infalible.</p>
-      <h3>6. Tus derechos</h3>
-      <p>Puedes acceder, corregir o eliminar tus datos y tu cuenta en cualquier momento contactándonos.</p>
-      <h3>7. Cookies</h3>
-      <p>Usamos cookies esenciales para mantener tu sesión iniciada.</p>
-      <h3>8. Contacto</h3>
-      <p>Para ejercer tus derechos o cualquier consulta, contáctanos a través del correo indicado en la web.</p>
+      <p>Usamos tus datos para crear y mantener tu cuenta, mostrarte tus estadísticas, gestionar tu suscripción, enviarte avisos que hayas activado y mejorar el servicio. <b>No vendemos tus datos a terceros.</b></p>
+      <h3>3. Dónde se guardan y con quién los compartimos</h3>
+      <p>Los datos se almacenan de forma segura en nuestra base de datos (Supabase). Solo los compartimos con proveedores que los procesan en nuestro nombre: Supabase (base de datos y almacenamiento), Vercel (hosting), Stripe (pagos), Google Analytics (analítica) y Resend (correos). Cada uno tiene su propia política de privacidad. No compartimos tus datos con terceros para su propio marketing.</p>
+      <h3>4. Cifrado y seguridad</h3>
+      <p>Todos los datos viajan cifrados (HTTPS). La conexión con tu plataforma (MetaTrader, cTrader…) es de solo lectura: nunca tenemos tu contraseña del bróker ni podemos operar ni mover tu dinero. Aplicamos medidas para proteger tu información, aunque ningún sistema es 100% infalible.</p>
+      <h3>5. Cuánto tiempo guardamos tus datos</h3>
+      <p>Conservamos tus datos mientras tengas una cuenta activa. Si eliminas tu cuenta, borramos tus datos personales en un plazo máximo de 30 días, salvo lo que la ley nos obligue a conservar (por ejemplo, registros de facturación).</p>
+      <h3>6. Tus derechos y cómo borrar tus datos</h3>
+      <p>Puedes acceder, corregir o eliminar tus datos y tu cuenta en cualquier momento. Para solicitar la eliminación de tu cuenta y tus datos, escríbenos a <a href="mailto:support@onyxtradinglive.com">support@onyxtradinglive.com</a> desde el correo de tu cuenta, o contáctanos desde la app. Procesamos tu solicitud sin coste.</p>
+      <h3>7. Menores</h3>
+      <p>Onyx Trading Live no está dirigido a menores de 18 años y no recogemos a sabiendas datos de menores.</p>
+      <h3>8. Cookies</h3>
+      <p>Usamos cookies esenciales para mantener tu sesión iniciada y tu idioma. La analítica es opcional.</p>
+      <h3>9. Contacto</h3>
+      <p>Para ejercer tus derechos o cualquier consulta, escríbenos a <a href="mailto:support@onyxtradinglive.com">support@onyxtradinglive.com</a>.</p>
     </>
   );
   const en = (
     <>
       <h1>Privacy Policy</h1>
-      <p className="muted">Last updated: 2026</p>
+      <p className="muted">Last updated: September 2026</p>
+      <p>This policy applies to the Onyx Trading Live website and mobile app.</p>
       <h3>1. What data we collect</h3>
-      <p>We collect your email (for your account), the trading history data sent by the connector (trades, balance, account) and payment data handled by Stripe (we do not store card numbers).</p>
+      <p>We collect: (a) account data (name, email and country); (b) the trading history data sent by the connector in read-only mode (trades, balance, account number); (c) payment data handled by Stripe (we do not store card numbers); (d) usage and analytics data from the app and website (page views, events) via Google Analytics; and (e) if you enable notifications, a device identifier so we can deliver them.</p>
       <h3>2. How we use it</h3>
-      <p>We use your data to show your statistics, manage your subscription and improve the service. We do not sell your data to third parties.</p>
-      <h3>3. Where it is stored</h3>
-      <p>Data is stored securely in our database (Supabase). Payments are processed through Stripe.</p>
-      <h3>4. Third parties</h3>
-      <p>We use trusted providers: Supabase (database), Vercel (hosting) and Stripe (payments). Each has its own privacy policy.</p>
-      <h3>5. Security</h3>
-      <p>The connection to your platform (MetaTrader, cTrader…) is read-only. We apply measures to protect your information, although no system is 100% foolproof.</p>
-      <h3>6. Your rights</h3>
-      <p>You can access, correct or delete your data and account at any time by contacting us.</p>
-      <h3>7. Cookies</h3>
-      <p>We use essential cookies to keep your session logged in.</p>
-      <h3>8. Contact</h3>
-      <p>To exercise your rights or for any questions, contact us via the email listed on the website.</p>
+      <p>We use your data to create and maintain your account, show your statistics, manage your subscription, send the alerts you enable, and improve the service. <b>We do not sell your data to third parties.</b></p>
+      <h3>3. Where it is stored and who we share it with</h3>
+      <p>Data is stored securely in our database (Supabase). We only share it with providers that process it on our behalf: Supabase (database and storage), Vercel (hosting), Stripe (payments), Google Analytics (analytics) and Resend (emails). Each has its own privacy policy. We do not share your data with third parties for their own marketing.</p>
+      <h3>4. Encryption and security</h3>
+      <p>All data travels encrypted (HTTPS). The connection to your platform (MetaTrader, cTrader…) is read-only: we never have your broker password and can never trade or move your money. We apply measures to protect your information, although no system is 100% foolproof.</p>
+      <h3>5. How long we keep your data</h3>
+      <p>We keep your data while your account is active. If you delete your account, we erase your personal data within 30 days, except where the law requires us to keep it (for example, billing records).</p>
+      <h3>6. Your rights and how to delete your data</h3>
+      <p>You can access, correct or delete your data and account at any time. To request deletion of your account and data, email <a href="mailto:support@onyxtradinglive.com">support@onyxtradinglive.com</a> from your account email, or contact us from the app. We process your request at no cost.</p>
+      <h3>7. Children</h3>
+      <p>Onyx Trading Live is not directed to anyone under 18, and we do not knowingly collect data from minors.</p>
+      <h3>8. Cookies</h3>
+      <p>We use essential cookies to keep your session logged in and remember your language. Analytics is optional.</p>
+      <h3>9. Contact</h3>
+      <p>To exercise your rights or for any questions, email <a href="mailto:support@onyxtradinglive.com">support@onyxtradinglive.com</a>.</p>
     </>
   );
   return (

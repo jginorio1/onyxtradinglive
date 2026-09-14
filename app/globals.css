@@ -906,3 +906,20 @@ details[open] > summary > span:first-child { transform: rotate(90deg); }
   .blf-bottom{ justify-content:flex-start; gap:6px; }
   .blf-hide-mobile{ display:none !important; }
 }
+
+/* ============================================================
+   App nativa (Capacitor): áreas seguras del dispositivo (notch, barra de
+   estado, gestos). Solo aplica cuando NativeInit añade la clase .native-app al
+   <html>; en el navegador no cambia nada. Usamos env(safe-area-inset-*) para
+   que el contenido no quede debajo de la muesca ni de la barra inferior.
+   ============================================================ */
+html.native-app body{
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+/* La barra fija superior de sesión respeta el notch. */
+html.native-app .topbar,
+html.native-app .sessionbar,
+html.native-app header.topbar{ padding-top:env(safe-area-inset-top,0px); }
+/* La barra inferior de la academia se despega del borde por los gestos. */
+html.native-app .sk-bottom{ padding-bottom:calc(8px + env(safe-area-inset-bottom,0px)); }

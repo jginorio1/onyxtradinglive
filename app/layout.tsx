@@ -19,6 +19,7 @@ import { LanguageProvider } from '@/lib/lang';
 import { BetaProvider } from '@/lib/beta';
 import BetaBanner from './BetaBanner';
 import EnvBanner from './EnvBanner';
+import NativeInit from './NativeInit';
 import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
 import OnlineNow from './OnlineNow';
@@ -158,6 +159,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={lang} data-theme={theme || undefined} suppressHydrationWarning>
       <body>
+        {/* Arranque nativo (Capacitor): no hace nada en el navegador. */}
+        <NativeInit />
         {/* Google Analytics 4 (solo si hay NEXT_PUBLIC_GA_ID). Mide tráfico y conversión. */}
         {ga && (
           <>

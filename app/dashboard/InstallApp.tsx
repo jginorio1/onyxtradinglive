@@ -3,6 +3,7 @@ import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import QrPop from '@/app/components/QrPop';
+import { isNativeApp } from '@/lib/native';
 
 type Lang = 'es' | 'en';
 
@@ -38,7 +39,9 @@ export default function InstallApp({ lang }: { lang: Lang }) {
     const isSafari = /^((?!chrome|chromium|crios|android|edg).)*safari/i.test(s);
     const macSafari = /Macintosh/.test(s) && isSafari && !ios;
     setUa({ ios, macSafari });
-    const sa = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
+    // Dentro de la app nativa (Capacitor) no aplica "instalar desde el navegador":
+    // ya ES la app. La tratamos como instalada para ocultar este aviso.
+    const sa = isNativeApp() || window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true;
     setStandalone(sa);
     setCanInstall(!!(window as any).__onyxInstall);
     const on = () => setCanInstall(!!(window as any).__onyxInstall);
