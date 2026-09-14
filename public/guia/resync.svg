@@ -1,0 +1,29 @@
+<svg viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Al re-sincronizar el historial, los costes del panel cuadran con los de tu plataforma">
+  <rect width="820" height="300" rx="18" fill="#0e121b"/>
+  <rect x="1" y="1" width="818" height="298" rx="18" fill="none" stroke="#232a3d"/>
+  <text x="40" y="46" fill="#e8ecf4" font-family="Arial" font-size="18" font-weight="bold">Re-sincronizar: que los costes cuadren</text>
+  <!-- MT5 -->
+  <g transform="translate(60,80)">
+    <rect width="260" height="170" rx="14" fill="#151a26" stroke="#2b3350"/>
+    <text x="20" y="34" fill="#8b93a7" font-family="Arial" font-size="13">En tu MetaTrader 5</text>
+    <text x="20" y="72" fill="#c9d0e6" font-family="Arial" font-size="13">Comisión</text><text x="240" y="72" text-anchor="end" fill="#e24b4a" font-family="Arial" font-size="13">-$2,652.73</text>
+    <text x="20" y="102" fill="#c9d0e6" font-family="Arial" font-size="13">Swap</text><text x="240" y="102" text-anchor="end" fill="#c9d0e6" font-family="Arial" font-size="13">-$18.40</text>
+    <line x1="20" y1="120" x2="240" y2="120" stroke="#2b3350"/>
+    <text x="20" y="146" fill="#e8ecf4" font-family="Arial" font-size="14" font-weight="bold">Neto</text><text x="240" y="146" text-anchor="end" fill="#34e2a0" font-family="Arial" font-size="14" font-weight="bold">+$1,204.55</text>
+  </g>
+  <!-- equals -->
+  <g transform="translate(360,165)">
+    <circle r="26" fill="#12331f" stroke="#1d9e75"/>
+    <path d="M-11 -5 H11 M-11 5 H11" stroke="#34e2a0" stroke-width="3"/>
+    <text x="0" y="52" text-anchor="middle" fill="#34e2a0" font-family="Arial" font-size="12.5">cuadra</text>
+  </g>
+  <!-- Onyx -->
+  <g transform="translate(500,80)">
+    <rect width="260" height="170" rx="14" fill="#151a26" stroke="#1d9e75"/>
+    <text x="20" y="34" fill="#8b93a7" font-family="Arial" font-size="13">En tu panel de Onyx</text>
+    <text x="20" y="72" fill="#c9d0e6" font-family="Arial" font-size="13">Comisión</text><text x="240" y="72" text-anchor="end" fill="#e24b4a" font-family="Arial" font-size="13">-$2,652.73</text>
+    <text x="20" y="102" fill="#c9d0e6" font-family="Arial" font-size="13">Swap</text><text x="240" y="102" text-anchor="end" fill="#c9d0e6" font-family="Arial" font-size="13">-$18.40</text>
+    <line x1="20" y1="120" x2="240" y2="120" stroke="#2b3350"/>
+    <text x="20" y="146" fill="#e8ecf4" font-family="Arial" font-size="14" font-weight="bold">Neto</text><text x="240" y="146" text-anchor="end" fill="#34e2a0" font-family="Arial" font-size="14" font-weight="bold">+$1,204.55</text>
+  </g>
+</svg>
