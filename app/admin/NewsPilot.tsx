@@ -33,6 +33,7 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
   const [sources, setSources] = useState<Src[]>([]);
   const [recent, setRecent] = useState<any[]>([]);
   const [lastRun, setLastRun] = useState<{ at: string; via: string; reason: string; posted: number; candidate: string } | null>(null);
+  const [cronHits1h, setCronHits1h] = useState<number | null>(null);
   const [busy, setBusy] = useState('');
   // Añadir fuente personalizada + resultado de la prueba de cada URL.
   const [nf, setNf] = useState<{ name: string; url: string; cat: string }>({ name: '', url: '', cat: 'markets' });
@@ -41,7 +42,7 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
   async function load() {
     try {
       const r = await fetch('/api/admin/news'); const j = await r.json();
-      if (j.settings) { setCfg(j.settings); setSources(j.sources || []); setRecent(j.recent || []); setLastRun(j.lastRun || null); }
+      if (j.settings) { setCfg(j.settings); setSources(j.sources || []); setRecent(j.recent || []); setLastRun(j.lastRun || null); setCronHits1h(typeof j.cronHits1h === 'number' ? j.cronHits1h : null); }
     } catch {}
   }
   useEffect(() => { load(); }, []);
@@ -174,9 +175,18 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
               ) : <span className="muted" style={{ fontSize: 12 }}>{L('Aún sin corridas registradas', 'No runs recorded yet')}</span>}
             </div>
             {lastRun && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{reasonLbl(lastRun.reason)}{lastRun.candidate ? ` — “${lastRun.candidate.slice(0, 70)}”` : ''}</div>}
-            {lastRun && lastRun.via === 'test' && (
+            {/* LATIDOS DEL CRON: prueba definitiva. ~20 por hora (cada 3 min) = el cron
+                de Vercel dispara bien. 0 = no dispara (aunque esté en Pro). */}
+            {cronHits1h != null && (
+              <div style={{ fontSize: 12, marginTop: 8, display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', flex: 'none', background: cronHits1h >= 3 ? '#34e2a0' : '#f5b23e', boxShadow: cronHits1h >= 3 ? '0 0 8px #34e2a0' : 'none' }} />
+                <span style={{ fontWeight: 700 }}>{cronHits1h}</span>
+                <span className="muted">{L('corridas automáticas en la última hora', 'automatic runs in the last hour')} <span style={{ opacity: .7 }}>({L('esperado ~20', 'expected ~20')})</span></span>
+              </div>
+            )}
+            {cronHits1h === 0 && (
               <div style={{ fontSize: 11.5, marginTop: 6, color: '#f5b23e' }}>
-                {L('Solo hay corridas de prueba. Si nunca ves “automática” aquí, el cron de Vercel no está disparando (revisa que el proyecto esté desplegado con vercel.json y que CRON_SECRET coincida).', 'Only test runs so far. If you never see “automatic” here, Vercel cron isn’t firing (check the project is deployed with vercel.json and CRON_SECRET matches).')}
+                {L('El cron de Vercel NO está disparando /api/cron/news (0 corridas/hora). Aun estando en Pro puede pasar si el deploy no registró vercel.json o hay demasiados crons. Solución segura: un cron externo (cron-job.org) que llame /api/cron/news?key=CRON_SECRET cada 3 min.', 'Vercel cron is NOT firing /api/cron/news (0 runs/hour). Even on Pro this can happen if the deploy didn’t register vercel.json or there are too many crons. Safe fix: an external cron (cron-job.org) hitting /api/cron/news?key=CRON_SECRET every 3 min.')}
               </div>
             )}
           </div>

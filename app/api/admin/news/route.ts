@@ -37,12 +37,18 @@ export async function GET() {
   const settings = await newsPilotSettings();
   const sources = NEWS_SOURCES.map((s) => ({ id: s.id, name: s.name, url: s.url, tier: s.tier, cat: s.cat }));
   const lastRun = await getSetting<any>('news_pilot_last', null);
+  // Latidos del cron: cuántas corridas automáticas hubo en la última hora (esperado
+  // ~20 con */3). Prueba definitiva de si Vercel está disparando el cron o no.
+  const cron = await getSetting<{ hits: number[] }>('news_pilot_cron', { hits: [] });
+  const nowMs = Date.now();
+  const cronHits1h = (cron.hits || []).filter((t) => nowMs - t <= 3600 * 1000).length;
+  const cronLastAt = (cron.hits || []).length ? new Date(Math.max(...cron.hits)).toISOString() : null;
   let recent: any[] = [];
   try {
     const { data } = await supabaseAdmin.from('news_seen').select('title,source,url,posted,created_at').order('created_at', { ascending: false }).limit(20);
     recent = data || [];
   } catch {}
-  return NextResponse.json({ settings, sources, recent, lastRun });
+  return NextResponse.json({ settings, sources, recent, lastRun, cronHits1h, cronLastAt });
 }
 
 // PATCH · guardar ajustes del piloto (owner/gestor de módulos).
