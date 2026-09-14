@@ -38,8 +38,17 @@ export function WeatherCard({ country, lang = 'es', sep = false }: { country?: s
 
   useEffect(() => {
     try { if (localStorage.getItem('onyx_weatherbg') === 'off') setOn(false); } catch {}
-    let alive = true; getWeather(country).then((w) => { if (alive) setWx(w); });
-    return () => { alive = false; };
+    let alive = true;
+    // Refresco automático: al montar, cada 10 min, y al volver a la pestaña
+    // (respetando el TTL para no pedir de más). force=true en el intervalo para
+    // garantizar que se actualice de verdad aunque la caché siga válida.
+    const pull = (force = false) => getWeather(country, force).then((w) => { if (alive && w) setWx(w); });
+    pull();
+    const id = setInterval(() => pull(true), 10 * 60 * 1000);
+    const onFocus = () => { if (typeof document === 'undefined' || document.visibilityState === 'visible') pull(); };
+    document.addEventListener('visibilitychange', onFocus);
+    window.addEventListener('focus', onFocus);
+    return () => { alive = false; clearInterval(id); document.removeEventListener('visibilitychange', onFocus); window.removeEventListener('focus', onFocus); };
   }, [country]);
 
   useEffect(() => {

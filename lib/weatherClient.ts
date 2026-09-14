@@ -10,11 +10,20 @@ export type WxCond = 'clear' | 'clouds' | 'rain' | 'snow' | 'storm' | 'fog';
 export type WxUnit = 'C' | 'F';
 export type Weather = { temp: number; unit: WxUnit; code: number; cond: WxCond; city?: string; isDay: boolean };
 
-let cache: Promise<Weather | null> | null = null;
+// Caché con CADUCIDAD (antes era para siempre → el clima se congelaba toda la
+// sesión). Guardamos la marca de tiempo y el país; si pasa el TTL o se pide
+// forzado (refresco automático), se vuelve a pedir de verdad.
+const TTL_MS = 10 * 60 * 1000; // 10 min
+let cache: { at: number; country?: string; p: Promise<Weather | null> } | null = null;
 
-export function getWeather(country?: string): Promise<Weather | null> {
-  if (!cache) cache = load(country);
-  return cache;
+export function getWeather(country?: string, force = false): Promise<Weather | null> {
+  const now = Date.now();
+  if (!force && cache && cache.country === country && now - cache.at < TTL_MS) return cache.p;
+  const p = load(country);
+  cache = { at: now, country, p };
+  // Si falla (null), invalidamos para poder reintentar antes del TTL.
+  p.then((w) => { if (!w && cache && cache.p === p) cache = null; }).catch(() => { if (cache && cache.p === p) cache = null; });
+  return p;
 }
 
 // Países que usan Fahrenheit en el día a día.
