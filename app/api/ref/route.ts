@@ -33,6 +33,11 @@ export async function POST() {
 
     // 2) Código de un usuario común → "Invita y gana" (crédito)
     const member = await linkMemberByCode(user.id, code);
+    // 3) Atribución de VENDEDOR (independiente): cookie onyx_sv.
+    try {
+      const sv = cookies().get('onyx_sv')?.value;
+      if (sv) { const { attachClientByCode } = await import('@/lib/sales'); await attachClientByCode(user.id, sv, 'link'); }
+    } catch {}
     return NextResponse.json({ ok: true, linked: member, kind: member ? 'member' : null });
   } catch {
     return NextResponse.json({ ok: true, linked: false });

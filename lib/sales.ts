@@ -179,6 +179,81 @@ export async function balances(repId: string): Promise<{ pending: number; availa
   return { pending: Math.round(pending * 100) / 100, available: Math.round(available * 100) / 100, paid: Math.round(paid * 100) / 100 };
 }
 
+// Ata un cliente recién registrado a un vendedor por su código (atribución de por
+// vida). Idempotente: si ya está atado, no hace nada. No se ata a sí mismo.
+export async function attachClientByCode(userId: string, code: string, source: 'link' | 'invite' | 'manual' = 'link'): Promise<{ linked: boolean }> {
+  try {
+    const { data: prev } = await supabaseAdmin.from('sales_clients').select('id').eq('user_id', userId).maybeSingle();
+    if (prev) return { linked: false };
+    const rep = await repByCode(code);
+    if (!rep || rep.user_id === userId) return { linked: false };
+    await supabaseAdmin.from('sales_clients').insert({ rep_id: rep.id, user_id: userId, source });
+    await supabaseAdmin.from('profiles').update({ sales_rep_id: rep.id }).eq('id', userId);
+    return { linked: true };
+  } catch { return { linked: false }; }
+}
+
+// Asignación/reasignación manual (admin o supervisor): mueve el cliente a un rep.
+export async function assignClient(userId: string, repId: string, source: 'manual' | 'invite' = 'manual'): Promise<boolean> {
+  try {
+    await supabaseAdmin.from('sales_clients').upsert({ rep_id: repId, user_id: userId, source }, { onConflict: 'user_id' });
+    await supabaseAdmin.from('profiles').update({ sales_rep_id: repId }).eq('id', userId);
+    return true;
+  } catch { return false; }
+}
+
+export async function recordClick(code: string) {
+  try { await supabaseAdmin.from('sales_clicks').insert({ code: String(code || '').toLowerCase() }); } catch {}
+}
+
+// Lista de clientes de un rep, con estado (plan + suscripción) y correo.
+export async function listClients(repId: string): Promise<any[]> {
+  const { data: cs } = await supabaseAdmin.from('sales_clients').select('user_id,source,created_at,first_paid_at').eq('rep_id', repId).order('created_at', { ascending: false }).limit(500);
+  const rows = cs || [];
+  if (!rows.length) return [];
+  const ids = rows.map((r: any) => r.user_id);
+  const { data: profs } = await supabaseAdmin.from('profiles').select('id,email,name,plan,subscription_status,comp_until').in('id', ids);
+  const byId: Record<string, any> = {}; (profs || []).forEach((p: any) => { byId[p.id] = p; });
+  return rows.map((r: any) => {
+    const p = byId[r.user_id] || {};
+    const active = p.plan && p.plan !== 'free' && ['active', 'trialing'].includes(p.subscription_status);
+    return { user_id: r.user_id, email: p.email || null, name: p.name || null, plan: p.plan || 'free', status: p.subscription_status || null, active: !!active, comp_until: p.comp_until || null, source: r.source, since: r.created_at };
+  });
+}
+
+// Rollup del equipo: cada rep descendiente con su nº de clientes y saldo.
+export async function teamRollup(rootId: string): Promise<any[]> {
+  const ids = await subtreeRepIds(rootId);
+  if (!ids.length) return [];
+  const { data: reps } = await supabaseAdmin.from('sales_reps').select('id,user_id,level,display_name,status').in('id', ids);
+  const out: any[] = [];
+  for (const r of (reps || []) as any[]) {
+    const { data: prof } = await supabaseAdmin.from('profiles').select('email').eq('id', r.user_id).maybeSingle();
+    const { count } = await supabaseAdmin.from('sales_clients').select('*', { count: 'exact', head: true }).eq('rep_id', r.id);
+    const bal = await balances(r.id);
+    out.push({ id: r.id, level: r.level, name: r.display_name || (prof as any)?.email || 'Rep', email: (prof as any)?.email || null, status: r.status, clients: count || 0, available: bal.available });
+  }
+  return out;
+}
+
+// Dar PRUEBA a un cliente existente del rep: extiende su acceso de cortesía
+// (comp_until) hasta N días, con tope trial_max_days. Registra el grant.
+export async function grantTrial(repId: string, clientUserId: string, days: number): Promise<{ ok: boolean; error?: string; until?: string }> {
+  const s = await salesSettings();
+  const d = Math.max(1, Math.min(Number(days) || 0, s.trial_max_days || 14));
+  // El cliente debe pertenecer a este rep.
+  const { data: sc } = await supabaseAdmin.from('sales_clients').select('id').eq('rep_id', repId).eq('user_id', clientUserId).maybeSingle();
+  if (!sc) return { ok: false, error: 'no es tu cliente' };
+  const { data: prof } = await supabaseAdmin.from('profiles').select('plan,comp_plan,comp_until').eq('id', clientUserId).maybeSingle();
+  const now = Date.now();
+  const base = (prof as any)?.comp_until ? Math.max(now, new Date((prof as any).comp_until).getTime()) : now;
+  const until = new Date(base + d * 86400000).toISOString();
+  const compPlan = (prof as any)?.comp_plan || ((prof as any)?.plan && (prof as any).plan !== 'free' ? (prof as any).plan : 'pro');
+  await supabaseAdmin.from('profiles').update({ comp_plan: compPlan, comp_until: until, comp_warned: false, comp_expired_seen: false }).eq('id', clientUserId);
+  await supabaseAdmin.from('sales_grants').insert({ rep_id: repId, client_user_id: clientUserId, kind: 'trial', value: d });
+  return { ok: true, until };
+}
+
 // Cuántos clientes activos (pagando) tiene un rep ahora mismo.
 export async function activeClients(repId: string): Promise<number> {
   const { data } = await supabaseAdmin.from('sales_clients').select('user_id').eq('rep_id', repId);

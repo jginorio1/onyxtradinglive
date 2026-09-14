@@ -39,6 +39,12 @@ export async function middleware(req: NextRequest) {
   if (ref && /^[a-zA-Z0-9_-]{2,30}$/.test(ref) && !req.cookies.get('onyx_ref')) {
     res.cookies.set({ name: 'onyx_ref', value: ref.toLowerCase(), maxAge: 60 * 60 * 24 * 60, path: '/', sameSite: 'lax' });
   }
+
+  // Atribución de VENDEDOR: ?sv=codigo se guarda 60 días (gana el primero).
+  const sv = req.nextUrl.searchParams.get('sv');
+  if (sv && /^[a-zA-Z0-9_-]{2,30}$/.test(sv) && !req.cookies.get('onyx_sv')) {
+    res.cookies.set({ name: 'onyx_sv', value: sv.toLowerCase(), maxAge: 60 * 60 * 24 * 60, path: '/', sameSite: 'lax' });
+  }
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL as string,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,

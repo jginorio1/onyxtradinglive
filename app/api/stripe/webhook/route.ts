@@ -130,6 +130,20 @@ async function reverseCommission(invoiceId: string) {
   await clawbackCommission(invoiceId);
 }
 
+// Comisión de la RED DE VENTAS (vendedor + supervisores). Reparte por la cadena
+// en cada cobro mensual. Idempotente por (invoice_id, rep_id, level).
+async function creditSales(invoice: any) {
+  try {
+    if (!invoice?.customer || !invoice?.id) return;
+    const paid = Number(invoice.amount_paid || 0) / 100;
+    if (!(paid > 0)) return;
+    const { data: prof } = await supabaseAdmin.from('profiles').select('id').eq('stripe_customer_id', invoice.customer).maybeSingle() as any;
+    if (!prof?.id) return;
+    const { creditFromPayment } = await import('@/lib/sales');
+    await creditFromPayment({ clientUserId: prof.id, invoiceId: invoice.id, baseAmount: paid, currency: (invoice.currency || 'usd').toUpperCase() });
+  } catch { /* silencioso: no romper el webhook por la red de ventas */ }
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const sig = req.headers.get('stripe-signature') || '';
@@ -162,10 +176,12 @@ export async function POST(req: Request) {
     } else if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {
       await creditCommission(event.data.object as any);       // comisión de embajador (efectivo)
       await qualifyOnPaid(event.data.object as any);           // "Invita y gana" del miembro (crédito)
+      await creditSales(event.data.object as any);            // comisión de la red de VENTAS (3 niveles)
     } else if (event.type === 'charge.refunded') {
       const ch: any = event.data.object;
       await reverseCommission(ch.invoice);
       await reverseMemberRewards(ch.invoice);
+      try { const { reverseFromInvoice } = await import('@/lib/sales'); await reverseFromInvoice(ch.invoice); } catch {}
     } else if (event.type === 'charge.dispute.created') {
       // Un cliente reclamó a su banco. Armamos la evidencia (borrador en Stripe) y
       // te avisamos para que la revises y la envíes antes de la fecha límite.
