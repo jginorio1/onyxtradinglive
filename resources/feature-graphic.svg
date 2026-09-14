@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b0f1a"/>
+      <stop offset="1" stop-color="#141a2e"/>
+    </linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7c8cff"/>
+      <stop offset="1" stop-color="#a06bff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.8" cy="0.2" r="0.7">
+      <stop offset="0" stop-color="#7c8cff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#7c8cff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="500" fill="url(#bg)"/>
+  <rect width="1024" height="500" fill="url(#glow)"/>
+  <!-- linea tipo grafico -->
+  <polyline points="70,360 180,320 260,340 360,250 470,285 580,190 700,220 840,120 960,150"
+    fill="none" stroke="url(#brand)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+  <circle cx="840" cy="120" r="9" fill="#34e2a0"/>
+  <!-- diamante Onyx -->
+  <g transform="translate(96,150)">
+    <rect x="0" y="0" width="92" height="92" rx="22" fill="url(#brand)"/>
+    <path d="M46 20 L70 46 L46 72 L22 46 Z" fill="#0b0f1a" opacity="0.92"/>
+  </g>
+  <text x="214" y="196" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="800" fill="#ffffff">Onyx Trading Live</text>
+  <text x="216" y="238" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="600" fill="#aeb7ff">Diario · Guardián de riesgo · Copy trading</text>
+  <g font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#c9d3e0">
+    <text x="216" y="300">MT4</text>
+    <text x="286" y="300">·  MT5</text>
+    <text x="372" y="300">·  cTrader</text>
+  </g>
+  <text x="216" y="352" font-family="Arial, Helvetica, sans-serif" font-size="17" fill="#8b93ad">Conexión de solo lectura · Números reales · Tú mandas</text>
+</svg>
