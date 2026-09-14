@@ -29,6 +29,7 @@
     { "path": "/api/cron/social", "schedule": "*/15 * * * *" },
     { "path": "/api/cron/ambassador-payouts", "schedule": "0 9 * * *" },
     { "path": "/api/cron/sales-payouts", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/payroll", "schedule": "0 12 * * *" },
     { "path": "/api/cron/botlab-payouts", "schedule": "0 10 * * *" },
     { "path": "/api/cron/copy-score", "schedule": "0 6 * * *" },
     { "path": "/api/cron/copy-perf", "schedule": "0 7 1 * *" },
