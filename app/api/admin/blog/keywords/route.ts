@@ -17,9 +17,12 @@ export async function GET() {
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const settings = await blogKeywordsSettings();
 
-  // Cobertura: cuántos artículos ya contienen cada keyword (para rotar/reforzar).
+  // Cobertura: cuántos artículos PUBLICADOS ya contienen cada keyword (para
+  // rotar/reforzar). Solo 'published': los slots programados/borrador (que el
+  // autopiloto agenda a futuro con el tema como título y cuerpo vacío) NO cuentan;
+  // si no, la cifra se infla con cientos de artículos que aún no existen.
   let posts: any[] = [];
-  try { posts = await listAllPosts(); } catch {}
+  try { posts = (await listAllPosts()).filter((p: any) => p.status === 'published'); } catch {}
   const cov = (kw: string) => posts.filter((p) => (`${p.title_es || ''} ${p.body_es || ''} ${p.title_en || ''} ${p.body_en || ''}`).toLowerCase().includes(kw.toLowerCase())).length;
   const coverage: Record<string, number> = {};
   for (const k of [...(settings.es || []), ...(settings.en || [])]) coverage[k] = cov(k);
