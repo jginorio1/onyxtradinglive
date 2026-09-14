@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import TopBar from './TopBar';
 import SectionNav from './SectionNav';
 import SiteFooter from './SiteFooter';
@@ -73,12 +74,13 @@ export async function generateMetadata(): Promise<Metadata> {
       description: es
         ? 'MT4, MT5 y cTrader: sigue las reglas de tu prop firm, protégete con el Guardian y copia entre cuentas. Mucho más que un diario.'
         : 'MT4, MT5 and cTrader: track your prop-firm rules, protect yourself with Guardian and copy across accounts. Much more than a journal.',
-      url, siteName: 'Onyx Trading Live', type: 'website', images: ['/onyx-symbol.png'],
+      url, siteName: 'Onyx Trading Live', type: 'website',
+      images: [{ url: '/og.png', width: 1200, height: 630, alt: 'Onyx Trading Live' }],
     },
     twitter: {
       card: 'summary_large_image', title: 'Onyx Trading Live',
       description: es ? 'El sistema operativo del trader de fondeo: journal, Guardian, prop firms y copy.' : 'The operating system for funded traders: journal, Guardian, prop firms and copy.',
-      images: ['/onyx-symbol.png'],
+      images: ['/og.png'],
     },
   };
 }
@@ -136,11 +138,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         publisher: { '@id': `${url}/#org` }, inLanguage: ['es', 'en'],
       },
       {
-        '@type': 'SoftwareApplication', name: 'Onyx Trading Live',
+        '@type': 'SoftwareApplication', '@id': `${url}/#app`, name: 'Onyx Trading Live',
         applicationCategory: 'FinanceApplication', operatingSystem: 'Windows, macOS (MetaTrader 4/5, cTrader)',
         description: 'Diario de trading y gestor de riesgo (Onyx Guardian) para cuentas de MetaTrader (MT4/MT5) y cTrader: estadísticas automáticas, calendario, control de fondeo, copy trading, academia y protección del plan de trading.',
-        url,
-        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', description: 'Plan gratis para empezar' },
+        url, image: `${url}/og.png`, publisher: { '@id': `${url}/#org` },
+        // Catálogo de precios: habilita resultados enriquecidos con rango de precio.
+        offers: [
+          { '@type': 'Offer', name: 'Free', price: '0', priceCurrency: 'USD', description: 'Para empezar con 1 cuenta.', url: `${url}/pricing` },
+          { '@type': 'Offer', name: 'Pro', price: '19', priceCurrency: 'USD', description: 'Onyx Guardian, 5 cuentas e historial ilimitado.', url: `${url}/pricing` },
+          { '@type': 'Offer', name: 'Elite', price: '79', priceCurrency: 'USD', description: 'Copy trading, cierres parciales y alertas por Telegram.', url: `${url}/pricing` },
+          { '@type': 'Offer', name: 'Black Onyx', price: '199', priceCurrency: 'USD', description: 'Copy trading ilimitado y todo sin límites.', url: `${url}/pricing` },
+        ],
       },
     ],
   };
@@ -153,8 +161,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Google Analytics 4 (solo si hay NEXT_PUBLIC_GA_ID). Mide tráfico y conversión. */}
         {ga && (
           <>
-            <script async src={`https://www.googletagmanager.com/gtag/js?id=${ga}`} />
-            <script dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${ga}');` }} />
+            <Script src={`https://www.googletagmanager.com/gtag/js?id=${ga}`} strategy="lazyOnload" />
+            <Script id="ga-init" strategy="lazyOnload" dangerouslySetInnerHTML={{ __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${ga}');` }} />
           </>
         )}
         {/* Fuente CJK: solo se carga cuando el idioma es chino o japonés (pesan). */}

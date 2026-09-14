@@ -104,7 +104,7 @@ export default function SiteFooter() {
           {qrUrl && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '0 0 auto' }}>
               <span style={lbl}>{L('Contacto', 'Contact')}</span>
-              <img src={`/api/qr?data=${encodeURIComponent(qrUrl)}&size=200&fg=0b1020&bg=ffffff`} alt={L('Código QR', 'QR code')} width={92} height={92} style={{ borderRadius: 10, background: '#fff', padding: 6 }} />
+              <img src={`/api/qr?data=${encodeURIComponent(qrUrl)}&size=200&fg=0b1020&bg=ffffff`} alt={L('Código QR', 'QR code')} width={92} height={92} loading="lazy" decoding="async" style={{ borderRadius: 10, background: '#fff', padding: 6 }} />
               {qrHandle && <span className="muted" style={{ fontSize: 12 }}>{qrHandle}</span>}
             </div>
           )}

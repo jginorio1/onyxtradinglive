@@ -29,7 +29,7 @@ export async function GET(req: Request) {
       return new Response(new Uint8Array(buf), {
         headers: {
           'content-type': 'image/png',
-          'cache-control': 'public, max-age=86400',
+          'cache-control': 'public, max-age=86400, s-maxage=604800, immutable',
           ...(dl ? { 'content-disposition': 'attachment; filename="onyx-qr.png"' } : {}),
         },
       });

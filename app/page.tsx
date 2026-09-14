@@ -415,6 +415,20 @@ export default function Home() {
   const [firm, setFirm] = useState(0);
   const [pnl, setPnl] = useState(1800);
   const [vidErr, setVidErr] = useState(false);
+  // El video demo NO se autoreproduce al cargar (peso + LCP). Se reproduce solo
+  // cuando entra en pantalla (IntersectionObserver); preload='none' evita bajarlo antes.
+  const vidRef = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    const el = vidRef.current; if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) { el.play().catch(() => {}); }
+        else { try { el.pause(); } catch {} }
+      }
+    }, { rootMargin: '200px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [vidErr]);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
   // Arranca en el piso semilla (nunca 0): aunque el fetch falle o llegue una
   // respuesta vieja en caché, las cifras solo suben desde aquí — jamás muestran 0.
@@ -735,7 +749,7 @@ export default function Home() {
             <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>onyxtradinglive.vercel.app/dashboard</span>
           </div>
           {!vidErr ? (
-            <video autoPlay muted loop playsInline onError={() => setVidErr(true)} style={{ background: 'var(--bg2)' }}>
+            <video ref={vidRef} muted loop playsInline preload="none" poster="/dashboard-demo.jpg" onError={() => setVidErr(true)} style={{ background: 'var(--bg2)' }}>
               <source src="/dashboard-demo.mp4" type="video/mp4" />
             </video>
           ) : (
@@ -859,7 +873,7 @@ export default function Home() {
       </div>
 
       {/* GESTOR DE RIESGO — el EA que gestiona y frena, sin abrir nunca una operación */}
-      <div id="gestor" className="wrap section">
+      <div id="gestor" className="wrap section cv-auto">
         <div style={{ textAlign: 'center', marginBottom: 34 }}>
           <span className="pill green">{t.mgr.badge}</span>
           <h2 style={{ marginTop: 14 }}>{t.mgr.title}</h2>
@@ -890,7 +904,7 @@ export default function Home() {
       </div>
 
       {/* PRICING */}
-      <div id="pricing" className="wrap section">
+      <div id="pricing" className="wrap section cv-auto">
         <h2 style={{ textAlign: 'center' }}>{t.priceT}</h2>
         <p className="muted" style={{ textAlign: 'center', margin: '10px 0 20px' }}>{t.priceS}</p>
         <div className="row" style={{ justifyContent: 'center', marginBottom: 20 }}>
@@ -935,7 +949,7 @@ export default function Home() {
       </div>
 
       {/* Embajadores */}
-      <div id="embajadores" className="wrap section">
+      <div id="embajadores" className="wrap section cv-auto">
         <div className="card" style={{ border: '1px solid var(--brand)', background: 'linear-gradient(135deg,rgba(124,140,255,.14),rgba(160,107,255,.06))', textAlign: 'center', padding: '34px 22px' }}>
           <h2 style={{ marginBottom: 10 }}>{t.amb.t}</h2>
           <p className="muted" style={{ maxWidth: 620, margin: '0 auto 22px', fontSize: 16 }}>{t.amb.d}</p>
@@ -949,7 +963,15 @@ export default function Home() {
       </div>
 
       {/* FAQ */}
-      <div id="faq" className="wrap section" style={{ maxWidth: 760 }}>
+      {/* Datos estructurados FAQPage (SEO): las mismas preguntas visibles, en JSON-LD. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: lcFaqs.filter((f) => f[0] && f[1]).map((f) => ({
+          '@type': 'Question', name: f[0],
+          acceptedAnswer: { '@type': 'Answer', text: f[1] },
+        })),
+      }) }} />
+      <div id="faq" className="wrap section cv-auto" style={{ maxWidth: 760 }}>
         <h2 style={{ textAlign: 'center', marginBottom: 26 }}>{t.faqT}</h2>
         {lcFaqs.map((f, i) => (
           <details key={i} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
