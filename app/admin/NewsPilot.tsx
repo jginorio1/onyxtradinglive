@@ -202,9 +202,12 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
 
           {/* Límites */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
-            <div style={box}><div style={lbl}>{L('Máx por día', 'Max per day')}</div><input type="number" min={1} max={50} value={cfg.maxPerDay} onChange={(e) => upd('maxPerDay', Math.max(1, Math.min(50, parseInt(e.target.value, 10) || 1)))} style={{ margin: 0, width: '100%' }} /></div>
-            <div style={box}><div style={lbl}>{L('Separación mínima (min)', 'Min gap (min)')}</div><input type="number" min={0} max={720} value={cfg.minMinutesBetween} onChange={(e) => upd('minMinutesBetween', Math.max(0, Math.min(720, parseInt(e.target.value, 10) || 0)))} style={{ margin: 0, width: '100%' }} /></div>
-            <div style={box}><div style={lbl}>{L('Frescura máx (min)', 'Max age (min)')}</div><input type="number" min={5} max={720} value={cfg.maxAgeMin} onChange={(e) => upd('maxAgeMin', Math.max(5, Math.min(720, parseInt(e.target.value, 10) || 5)))} style={{ margin: 0, width: '100%' }} /></div>
+            {/* En onChange NO forzamos el mínimo (solo el máximo), para poder teclear
+                libremente (ej. 120: antes el "1" saltaba a 5). El mínimo se ajusta al
+                salir del campo (onBlur). */}
+            <div style={box}><div style={lbl}>{L('Máx por día', 'Max per day')}</div><input type="number" min={1} max={50} value={cfg.maxPerDay} onChange={(e) => upd('maxPerDay', Math.min(50, Math.max(0, parseInt(e.target.value, 10) || 0)))} onBlur={() => upd('maxPerDay', Math.max(1, cfg.maxPerDay || 1))} style={{ margin: 0, width: '100%' }} /></div>
+            <div style={box}><div style={lbl}>{L('Separación mínima (min)', 'Min gap (min)')}</div><input type="number" min={0} max={720} value={cfg.minMinutesBetween} onChange={(e) => upd('minMinutesBetween', Math.min(720, Math.max(0, parseInt(e.target.value, 10) || 0)))} style={{ margin: 0, width: '100%' }} /></div>
+            <div style={box}><div style={lbl}>{L('Frescura máx (min)', 'Max age (min)')}</div><input type="number" min={5} max={720} value={cfg.maxAgeMin} onChange={(e) => upd('maxAgeMin', Math.min(720, Math.max(0, parseInt(e.target.value, 10) || 0)))} onBlur={() => upd('maxAgeMin', Math.max(5, cfg.maxAgeMin || 45))} style={{ margin: 0, width: '100%' }} /></div>
             <div style={box}><div style={lbl}>{L('Email a', 'Email to')}</div><select value={cfg.emailSegment} onChange={(e) => upd('emailSegment', e.target.value)} style={{ margin: 0, width: '100%' }}>{SEGMENTS.map((s) => <option key={s.id} value={s.id}>{es ? s.es : s.en}</option>)}</select></div>
           </div>
 

@@ -200,21 +200,26 @@ export default function SetupGuide() {
         </div>
       )}
 
-      {/* Aviso: AutoTrading APAGADO en la plataforma con ejecución activada (Guardian/Copy/TV).
-          Solo cuentas que están reportando EN VIVO (connectorLive) para no avisar por un terminal
-          cerrado con un valor viejo. Además nombramos la(s) cuenta(s) afectada(s). */}
+      {/* Aviso: AutoTrading APAGADO. Se muestra SIEMPRE que el conector reporta EN VIVO
+          (connectorLive) y trade_allowed === false, tenga o no ejecución activa — así el
+          trader ve que el algo trading está apagado, como antes. Si además hay ejecución
+          (Guardian/Copy/TV) el texto avisa que NO se ejecutará; si no, es sólo informativo. */}
       {(() => {
-        const off = accounts.filter((a) => a.connectorLive && a.tradeAllowed === false && (a.guardianOn || a.copyKey || a.tvOn));
+        const off = accounts.filter((a) => a.connectorLive && a.tradeAllowed === false);
         if (!hasAcc || off.length === 0) return null;
         const names = off.map((a) => a.nickname || a.login).join(', ');
+        const anyExec = off.some((a) => a.guardianOn || a.copyKey || a.tvOn);
         return (
           <div className="card" style={{ padding: '11px 14px', marginBottom: 14, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.10)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
             <span style={{ color: 'var(--amber)', flex: 'none', display: 'inline-flex', marginTop: 1 }}><OnyxIcon emoji="⚠️" size={16} /></span>
             <div style={{ fontSize: 13, lineHeight: 1.5 }}>
               <b>{L('AutoTrading apagado', 'AutoTrading is off')} · <span style={{ color: 'var(--tx)' }}>{names}</span></b>
               <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
-                {L(`En ${off.length === 1 ? 'esta cuenta' : 'estas cuentas'} el conector reporta pero el AutoTrading está apagado: el Guardian, el Copy y las señales de TradingView NO ejecutarán. Enciende el botón AutoTrading (arriba en MetaTrader) en esa plataforma. Si ya lo encendiste, espera unos segundos a que reporte y este aviso se irá solo. (Las cuentas con el terminal cerrado no cuentan.)`,
-                   `On ${off.length === 1 ? 'this account' : 'these accounts'} the connector is reporting but AutoTrading is off: Guardian, Copy and TradingView signals will NOT execute. Turn on the AutoTrading button (top of MetaTrader) in that platform. If you already did, wait a few seconds for it to report and this notice clears by itself. (Accounts with a closed terminal don't count.)`)}
+                {anyExec
+                  ? L(`En ${off.length === 1 ? 'esta cuenta' : 'estas cuentas'} el conector reporta pero el AutoTrading está apagado: el Guardian, el Copy y las señales de TradingView NO ejecutarán. Enciende el botón AutoTrading (arriba en MetaTrader) en esa plataforma. Si ya lo encendiste, espera unos segundos a que reporte y este aviso se irá solo. (Las cuentas con el terminal cerrado no cuentan.)`,
+                       `On ${off.length === 1 ? 'this account' : 'these accounts'} the connector is reporting but AutoTrading is off: Guardian, Copy and TradingView signals will NOT execute. Turn on the AutoTrading button (top of MetaTrader) in that platform. If you already did, wait a few seconds for it to report and this notice clears by itself. (Accounts with a closed terminal don't count.)`)
+                  : L(`En ${off.length === 1 ? 'esta cuenta' : 'estas cuentas'} el conector reporta pero el AutoTrading está apagado en MetaTrader. Onyx sigue leyendo tus operaciones, pero cualquier ejecución (Guardian, Copy o señales) requerirá encender el botón AutoTrading. Si ya lo encendiste, espera unos segundos a que reporte y este aviso se irá solo.`,
+                       `On ${off.length === 1 ? 'this account' : 'these accounts'} the connector is reporting but AutoTrading is off in MetaTrader. Onyx still reads your trades, but any execution (Guardian, Copy or signals) will need the AutoTrading button on. If you already turned it on, wait a few seconds for it to report and this notice clears by itself.`)}
               </div>
             </div>
           </div>
