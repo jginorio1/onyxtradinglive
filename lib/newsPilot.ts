@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { newsPilotSettings, blogKeywordsSettings, type NewsPilot } from '@/lib/settings';
-import { NEWS_SOURCES, fetchFeed, type NewsItem, type NewsSource } from '@/lib/newsSources';
+import { NEWS_SOURCES, mergedSources, fetchFeed, type NewsItem, type NewsSource } from '@/lib/newsSources';
 import { generateNewsArticle } from '@/lib/blogAI';
 import { gscOpportunities } from '@/lib/seoSearchConsole';
 import { savePost } from '@/lib/blog';
@@ -83,8 +83,9 @@ export async function runNewsPilot(force = false): Promise<{ ran: boolean; reaso
   if (count >= (cfg.maxPerDay || 3)) return { ran: true, reason: 'cap_reached', posted: 0 };
   if (lastMs && Date.now() - lastMs < (cfg.minMinutesBetween || 20) * 60000) return { ran: true, reason: 'too_soon', posted: 0 };
 
-  // Fuentes activas (por toggle y por tema).
-  const active = NEWS_SOURCES.filter((s) => cfg.sources[s.id] !== false && topicOn(s.cat, cfg.topics));
+  // Fuentes activas (por toggle y por tema). Incluye las custom del dueño.
+  const all = mergedSources(cfg.custom_sources);
+  const active = all.filter((s) => cfg.sources[s.id] !== false && topicOn(s.cat, cfg.topics));
   if (!active.length) return { ran: true, reason: 'no_sources', posted: 0 };
 
   // Descarga feeds en paralelo y junta items frescos e importantes.

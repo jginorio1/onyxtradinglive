@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, requirePerm, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { ensureDefaultCampaigns, campaignStats, getWeeklyCap } from '@/lib/campaigns';
+import { ensureDefaultCampaigns, campaignStats, getWeeklyCap, capStats } from '@/lib/campaigns';
 import { SEGMENTS } from '@/lib/segments';
 import { getSetting, saveSetting } from '@/lib/settings';
 import { logError } from '@/lib/errlog';
@@ -17,8 +17,8 @@ export async function GET() {
     await ensureDefaultCampaigns();
     const { data: campaigns } = await supabaseAdmin.from('campaigns').select('*').order('kind').order('created_at');
     const stats = await campaignStats();
-    const weeklyCap = await getWeeklyCap();
-    return NextResponse.json({ campaigns: campaigns || [], segments: SEGMENTS, stats, weeklyCap });
+    const cap = await capStats();
+    return NextResponse.json({ campaigns: campaigns || [], segments: SEGMENTS, stats, weeklyCap: cap.cap, capStats: cap });
   } catch (e: any) {
     await logError('campaigns_get', e);
     return NextResponse.json({ error: e?.message || 'error', campaigns: [], segments: SEGMENTS }, { status: 500 });

@@ -29,6 +29,22 @@ export const NEWS_SOURCES: NewsSource[] = [
   { id: 'cointelegraph', name: 'Cointelegraph', url: 'https://cointelegraph.com/rss', tier: 'wire', cat: 'crypto' },
 ];
 
+// Combina las fuentes de por defecto con las que el dueño añadió a mano (custom_sources).
+// Las custom entran como tier 'wire' y con id prefijado 'x_' para no chocar con las de casa.
+export function mergedSources(custom?: { id: string; name: string; url: string; cat: string }[]): NewsSource[] {
+  const cats = new Set(['macro', 'markets', 'earnings', 'crypto']);
+  const extra: NewsSource[] = (custom || [])
+    .filter((c) => c && c.url && /^https?:\/\//i.test(c.url))
+    .map((c) => ({
+      id: c.id || ('x_' + Math.random().toString(36).slice(2, 8)),
+      name: (c.name || c.url).slice(0, 60),
+      url: c.url.trim(),
+      tier: 'wire' as const,
+      cat: (cats.has(c.cat) ? c.cat : 'markets') as NewsSource['cat'],
+    }));
+  return [...NEWS_SOURCES, ...extra];
+}
+
 export type NewsItem = { title: string; link: string; summary: string; published: number; sourceId: string; sourceName: string; cat: NewsSource['cat']; tier: NewsSource['tier'] };
 
 const strip = (s: string) => String(s || '')

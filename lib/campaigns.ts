@@ -285,6 +285,22 @@ async function weeklyCounts(): Promise<Map<string, number>> {
   return m;
 }
 
+// Panorama del tope semanal para el panel: correos enviados en 7 días, cuántos
+// usuarios recibieron algo, cuántos ya tocaron el tope y el promedio de uso.
+export async function capStats(): Promise<{ cap: number; sent7d: number; usersActive: number; usersAtCap: number; avg: number; pctAtCap: number }> {
+  const cap = await getWeeklyCap();
+  const wk = await weeklyCounts();
+  let sent7d = 0, usersAtCap = 0;
+  for (const n of wk.values()) {
+    sent7d += n;
+    if (cap && n >= cap) usersAtCap += 1;
+  }
+  const usersActive = wk.size;
+  const avg = usersActive ? Math.round((sent7d / usersActive) * 10) / 10 : 0;
+  const pctAtCap = usersActive ? Math.round((usersAtCap / usersActive) * 100) : 0;
+  return { cap, sent7d, usersActive, usersAtCap, avg, pctAtCap };
+}
+
 // --- CRON: recorre las campañas automáticas activas y envía lo que toca.
 export async function runCampaigns(dryRun = false): Promise<{ sent: number; detail: Array<{ campaign: string; sent: number }> }> {
   await ensureDefaultCampaigns();

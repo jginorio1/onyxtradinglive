@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { getSetting, saveSetting, newsPilotSettings, type NewsPilot } from '@/lib/settings';
-import { NEWS_SOURCES } from '@/lib/newsSources';
+import { NEWS_SOURCES, fetchFeed, type NewsSource } from '@/lib/newsSources';
 import { runNewsPilot } from '@/lib/newsPilot';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { logError } from '@/lib/errlog';
@@ -12,13 +12,30 @@ export const maxDuration = 60;
 
 const oneOf = <T extends string>(v: any, a: T[], fb: T): T => (a.includes(v) ? v : fb);
 const clampInt = (v: any, lo: number, hi: number, fb: number) => { const n = parseInt(v, 10); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fb; };
+const CATS = ['macro', 'markets', 'earnings', 'crypto'];
+// Limpia y valida la lista de fuentes personalizadas del dueño (id, name, url http, cat válida).
+function sanitizeCustom(v: any, fb: { id: string; name: string; url: string; cat: string }[]) {
+  if (!Array.isArray(v)) return fb;
+  const out: { id: string; name: string; url: string; cat: string }[] = [];
+  for (const c of v.slice(0, 40)) {
+    const url = String(c?.url || '').trim();
+    if (!/^https?:\/\//i.test(url)) continue;
+    out.push({
+      id: (c?.id && String(c.id)) || ('x_' + Math.random().toString(36).slice(2, 9)),
+      name: String(c?.name || url).slice(0, 60),
+      url: url.slice(0, 500),
+      cat: CATS.includes(c?.cat) ? c.cat : 'markets',
+    });
+  }
+  return out;
+}
 
 // GET · ajustes + catálogo de fuentes + últimos titulares vistos/publicados.
 export async function GET() {
   const { ok } = await requirePerm('modulos', 'view');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const settings = await newsPilotSettings();
-  const sources = NEWS_SOURCES.map((s) => ({ id: s.id, name: s.name, tier: s.tier, cat: s.cat }));
+  const sources = NEWS_SOURCES.map((s) => ({ id: s.id, name: s.name, url: s.url, tier: s.tier, cat: s.cat }));
   let recent: any[] = [];
   try {
     const { data } = await supabaseAdmin.from('news_seen').select('title,source,url,posted,created_at').order('created_at', { ascending: false }).limit(20);
@@ -47,6 +64,7 @@ export async function PATCH(req: Request) {
       crypto: t.crypto == null ? prev.topics.crypto : !!t.crypto,
     },
     sources: (b.sources && typeof b.sources === 'object') ? b.sources : prev.sources,
+    custom_sources: sanitizeCustom(b.custom_sources, prev.custom_sources),
     maxAgeMin: b.maxAgeMin == null ? prev.maxAgeMin : clampInt(b.maxAgeMin, 5, 720, prev.maxAgeMin),
     seo: b.seo == null ? (prev.seo ?? true) : !!b.seo,
   };
@@ -54,10 +72,26 @@ export async function PATCH(req: Request) {
   return NextResponse.json({ ok: true, ...value });
 }
 
-// POST · probar AHORA (fuerza un ciclo aunque esté apagado). Útil para verificar.
-export async function POST() {
+// POST · probar AHORA (fuerza un ciclo) o probar un feed (action='test').
+export async function POST(req: Request) {
   const { ok } = await requirePerm('modulos', 'manage');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  const b = await req.json().catch(() => ({} as any));
+
+  // Probar un feed RSS/Atom concreto: devuelve si responde y cuántos titulares trae.
+  if (b?.action === 'test') {
+    const url = String(b?.url || '').trim();
+    if (!/^https?:\/\//i.test(url)) return NextResponse.json({ ok: false, error: 'URL inválida' });
+    try {
+      const probe: NewsSource = { id: 'test', name: 'test', url, tier: 'wire', cat: 'markets' };
+      const items = await fetchFeed(probe, 8000);
+      const sample = items[0]?.title || '';
+      return NextResponse.json({ ok: items.length > 0, count: items.length, sample });
+    } catch (e: any) {
+      return NextResponse.json({ ok: false, error: e?.message || 'no responde' });
+    }
+  }
+
   try {
     const r = await runNewsPilot(true);
     return NextResponse.json({ ok: true, ...r });

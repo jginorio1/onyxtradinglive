@@ -13,8 +13,9 @@ function Switch({ on, accent = '#34e2a0' }: { on: boolean; accent?: string }) {
 }
 
 type Topics = { macro: boolean; markets: boolean; earnings: boolean; crypto: boolean };
-type Cfg = { enabled: boolean; mode: 'auto' | 'draft'; maxPerDay: number; minMinutesBetween: number; emailSegment: string; topics: Topics; sources: Record<string, boolean>; maxAgeMin: number; seo: boolean };
-type Src = { id: string; name: string; tier: 'primary' | 'wire'; cat: string };
+type Custom = { id: string; name: string; url: string; cat: string };
+type Cfg = { enabled: boolean; mode: 'auto' | 'draft'; maxPerDay: number; minMinutesBetween: number; emailSegment: string; topics: Topics; sources: Record<string, boolean>; custom_sources: Custom[]; maxAgeMin: number; seo: boolean };
+type Src = { id: string; name: string; url: string; tier: 'primary' | 'wire'; cat: string };
 
 const SEGMENTS = [
   { id: 'all', es: 'Todos (opt-in)', en: 'All (opted-in)' },
@@ -31,6 +32,9 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
   const [sources, setSources] = useState<Src[]>([]);
   const [recent, setRecent] = useState<any[]>([]);
   const [busy, setBusy] = useState('');
+  // Añadir fuente personalizada + resultado de la prueba de cada URL.
+  const [nf, setNf] = useState<{ name: string; url: string; cat: string }>({ name: '', url: '', cat: 'markets' });
+  const [tests, setTests] = useState<Record<string, { ok: boolean; count?: number; sample?: string; error?: string; loading?: boolean }>>({});
 
   async function load() {
     try {
@@ -43,6 +47,33 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
   function upd<K extends keyof Cfg>(k: K, v: Cfg[K]) { setCfg((c) => (c ? { ...c, [k]: v } : c)); }
   function updTopic(k: keyof Topics) { setCfg((c) => (c ? { ...c, topics: { ...c.topics, [k]: !c.topics[k] } } : c)); }
   function updSource(id: string, on: boolean) { setCfg((c) => (c ? { ...c, sources: { ...c.sources, [id]: on } } : c)); }
+
+  // Prueba una URL de feed contra el servidor (¿responde? ¿cuántos titulares?).
+  async function testFeed(url: string, key: string) {
+    if (!/^https?:\/\//i.test(url)) { setTests((t) => ({ ...t, [key]: { ok: false, error: L('URL inválida', 'Invalid URL') } })); return; }
+    setTests((t) => ({ ...t, [key]: { ok: false, loading: true } }));
+    try {
+      const r = await fetch('/api/admin/news', { method: 'POST', body: JSON.stringify({ action: 'test', url }) });
+      const j = await r.json();
+      setTests((t) => ({ ...t, [key]: { ok: !!j.ok, count: j.count, sample: j.sample, error: j.error } }));
+    } catch { setTests((t) => ({ ...t, [key]: { ok: false, error: L('Error de red', 'Network error') } })); }
+  }
+  // Añade la fuente personalizada al config (tras opcionalmente probarla).
+  function addCustom() {
+    const url = nf.url.trim();
+    if (!/^https?:\/\//i.test(url)) { toast(L('Pon una URL de feed válida (http…).', 'Enter a valid feed URL (http…).'), 'err'); return; }
+    const id = 'x_' + Math.random().toString(36).slice(2, 9);
+    const item: Custom = { id, name: (nf.name.trim() || url).slice(0, 60), url, cat: nf.cat };
+    setCfg((c) => (c ? { ...c, custom_sources: [...(c.custom_sources || []), item] } : c));
+    setNf({ name: '', url: '', cat: 'markets' });
+    toast(L('Fuente añadida. No olvides Guardar.', 'Source added. Remember to Save.'), 'ok');
+  }
+  function delCustom(id: string) {
+    setCfg((c) => (c ? { ...c, custom_sources: (c.custom_sources || []).filter((x) => x.id !== id) } : c));
+  }
+  function updCustomField(id: string, k: keyof Custom, v: string) {
+    setCfg((c) => (c ? { ...c, custom_sources: (c.custom_sources || []).map((x) => (x.id === id ? { ...x, [k]: v } : x)) } : c));
+  }
 
   async function save() {
     if (!cfg) return;
@@ -133,20 +164,74 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
             <Switch on={cfg.seo !== false} accent="#7c8cff" />
           </div>
 
-          {/* Fuentes */}
+          {/* Fuentes de casa */}
           <div style={box}>
-            <div style={lbl}>{L('Fuentes (RSS). Enciende/apaga cada una.', 'Sources (RSS). Toggle each one.')}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 6 }}>
+            <div style={lbl}>{L('Fuentes (RSS) — de dónde saca las noticias. Enciende/apaga, abre el enlace o pruébala.', 'Sources (RSS) — where news comes from. Toggle, open the link or test it.')}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {sources.map((s) => {
                 const on = cfg.sources[s.id] !== false;
+                const tr = tests['b_' + s.id];
                 return (
-                  <div key={s.id} onClick={() => updSource(s.id, !on)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, border: '1px solid var(--line)', borderRadius: 9, padding: '7px 9px', background: on ? 'color-mix(in srgb,#34e2a0 7%,transparent)' : 'transparent' }}>
-                    <span style={{ minWidth: 0 }}><span style={{ fontSize: 12.5, fontWeight: 600 }}>{s.name}</span> <span style={{ fontSize: 10, color: 'var(--mut)' }}>{s.tier === 'primary' ? '★' : ''} {(es ? CATLBL[s.cat]?.[0] : CATLBL[s.cat]?.[1]) || s.cat}</span></span>
-                    <Switch on={on} accent="#34e2a0" />
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--line)', borderRadius: 9, padding: '7px 9px', background: on ? 'color-mix(in srgb,#34e2a0 7%,transparent)' : 'transparent' }}>
+                    <span onClick={() => updSource(s.id, !on)} style={{ cursor: 'pointer', flex: 'none' }}><Switch on={on} accent="#34e2a0" /></span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 600 }}>{s.name}</span>
+                        <span style={{ fontSize: 10, color: 'var(--mut)' }}>{s.tier === 'primary' ? '★' : ''} {(es ? CATLBL[s.cat]?.[0] : CATLBL[s.cat]?.[1]) || s.cat}</span>
+                        {tr && !tr.loading && <span style={{ fontSize: 10.5, color: tr.ok ? 'var(--green)' : 'var(--red,#ef6262)' }}>{tr.ok ? `● ${tr.count} ${L('titulares', 'headlines')}` : `● ${L('sin respuesta', 'no response')}`}</span>}
+                      </div>
+                      <a href={s.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ fontSize: 10.5, color: '#7c8cff', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100%' }}>{s.url}</a>
+                    </div>
+                    <button type="button" className="btn btn-ghost" onClick={() => testFeed(s.url, 'b_' + s.id)} disabled={tr?.loading} style={{ fontSize: 11, padding: '4px 8px', flex: 'none' }}>{tr?.loading ? '…' : L('Probar', 'Test')}</button>
                   </div>
                 );
               })}
             </div>
+          </div>
+
+          {/* Fuentes personalizadas */}
+          <div style={box}>
+            <div style={lbl}>{L('Tus fuentes (añade cualquier RSS/Atom)', 'Your sources (add any RSS/Atom feed)')}</div>
+            {(cfg.custom_sources || []).length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                {(cfg.custom_sources || []).map((s) => {
+                  const on = cfg.sources[s.id] !== false;
+                  const tr = tests['c_' + s.id];
+                  return (
+                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--line)', borderRadius: 9, padding: '7px 9px', background: on ? 'color-mix(in srgb,#7c8cff 8%,transparent)' : 'transparent' }}>
+                      <span onClick={() => updSource(s.id, !on)} style={{ cursor: 'pointer', flex: 'none' }}><Switch on={on} accent="#7c8cff" /></span>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <input value={s.name} onChange={(e) => updCustomField(s.id, 'name', e.target.value)} style={{ margin: 0, fontSize: 12.5, fontWeight: 600, padding: '2px 6px', width: 130 }} />
+                          <select value={s.cat} onChange={(e) => updCustomField(s.id, 'cat', e.target.value)} style={{ margin: 0, fontSize: 11, padding: '2px 4px' }}>
+                            {Object.keys(CATLBL).map((k) => <option key={k} value={k}>{es ? CATLBL[k][0] : CATLBL[k][1]}</option>)}
+                          </select>
+                          {tr && !tr.loading && <span style={{ fontSize: 10.5, color: tr.ok ? 'var(--green)' : 'var(--red,#ef6262)' }}>{tr.ok ? `● ${tr.count} ${L('titulares', 'headlines')}` : `● ${tr.error || L('sin respuesta', 'no response')}`}</span>}
+                        </div>
+                        <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: '#7c8cff', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100%' }}>{s.url}</a>
+                      </div>
+                      <button type="button" className="btn btn-ghost" onClick={() => testFeed(s.url, 'c_' + s.id)} disabled={tr?.loading} style={{ fontSize: 11, padding: '4px 8px', flex: 'none' }}>{tr?.loading ? '…' : L('Probar', 'Test')}</button>
+                      <button type="button" className="btn btn-ghost" onClick={() => delCustom(s.id)} title={L('Quitar', 'Remove')} style={{ fontSize: 12, padding: '4px 8px', flex: 'none', color: 'var(--red,#ef6262)' }}>✕</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {/* Añadir */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} placeholder={L('Nombre (ej. Reuters)', 'Name (e.g. Reuters)')} style={{ margin: 0, fontSize: 12, padding: '6px 8px', width: 150 }} />
+              <input value={nf.url} onChange={(e) => setNf({ ...nf, url: e.target.value })} placeholder="https://…/rss" style={{ margin: 0, fontSize: 12, padding: '6px 8px', flex: 1, minWidth: 180 }} />
+              <select value={nf.cat} onChange={(e) => setNf({ ...nf, cat: e.target.value })} style={{ margin: 0, fontSize: 12, padding: '6px 6px' }}>
+                {Object.keys(CATLBL).map((k) => <option key={k} value={k}>{es ? CATLBL[k][0] : CATLBL[k][1]}</option>)}
+              </select>
+              <button type="button" className="btn btn-ghost" onClick={() => testFeed(nf.url, 'new')} disabled={tests['new']?.loading} style={{ fontSize: 12 }}>{tests['new']?.loading ? '…' : L('Probar', 'Test')}</button>
+              <button type="button" className="btn btn-primary" onClick={addCustom} style={{ fontSize: 12 }}>＋ {L('Añadir', 'Add')}</button>
+            </div>
+            {tests['new'] && !tests['new'].loading && (
+              <div style={{ fontSize: 11, marginTop: 6, color: tests['new'].ok ? 'var(--green)' : 'var(--red,#ef6262)' }}>
+                {tests['new'].ok ? L(`✓ Responde: ${tests['new'].count} titulares. Ej.: `, `✓ Works: ${tests['new'].count} headlines. E.g.: `) + (tests['new'].sample || '') : `✕ ${tests['new'].error || L('no responde', 'no response')}`}
+              </div>
+            )}
           </div>
 
           {/* Acciones */}

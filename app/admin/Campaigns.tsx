@@ -58,6 +58,7 @@ export default function Campaigns() {
   const [segs, setSegs] = useState<Seg[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [weeklyCap, setWeeklyCap] = useState<number>(4);
+  const [capStats, setCapStats] = useState<{ cap: number; sent7d: number; usersActive: number; usersAtCap: number; avg: number; pctAtCap: number } | null>(null);
   const [capBusy, setCapBusy] = useState(false);
   const [editing, setEditing] = useState<Campaign | null>(null);
   const [cf, setCf] = useState<any>(null);
@@ -68,6 +69,7 @@ export default function Campaigns() {
     const r = await fetch('/api/admin/campaigns'); const j = await r.json();
     setCamps(j.campaigns || []); setSegs(j.segments || []); setStats(j.stats || null);
     if (typeof j.weeklyCap === 'number') setWeeklyCap(j.weeklyCap);
+    if (j.capStats) setCapStats(j.capStats);
   }
 
   // Guarda el tope semanal de correos por persona (0 = sin tope).
@@ -163,20 +165,68 @@ export default function Campaigns() {
 
       {/* Tope de frecuencia por persona (anti-fatiga de correo) */}
       <div className="card" style={{ marginBottom: 14 }}>
-        <div className="row between" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="row between" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <div style={{ minWidth: 220, flex: 1 }}>
             <h3 style={{ marginBottom: 4 }}>🛡️ {L('Tope semanal de correos', 'Weekly email cap')}</h3>
             <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>{L('Nadie recibe más de este número de correos de marketing por semana (campañas + blog + noticias). Protege de la fatiga y del spam. 0 = sin tope.', 'No one gets more than this many marketing emails per week (campaigns + blog + news). Protects from fatigue and spam. 0 = no cap.')}</p>
           </div>
-          <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-            {[0, 2, 3, 4, 5, 7].map((n) => (
-              <button key={n} type="button" disabled={capBusy} onClick={() => saveCap(n)}
-                className="btn btn-ghost" style={{ padding: '7px 12px', fontSize: 13, fontWeight: 700, border: '1px solid ' + (weeklyCap === n ? 'var(--brand)' : 'var(--line)'), background: weeklyCap === n ? 'rgba(124,140,255,.16)' : 'transparent', color: weeklyCap === n ? 'var(--soft-brand)' : 'var(--tx)' }}>
-                {n === 0 ? '∞' : n}
-              </button>
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            {/* Presets rápidos */}
+            <div className="row" style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {[0, 2, 3, 4, 5, 7].map((n) => (
+                <button key={n} type="button" disabled={capBusy} onClick={() => saveCap(n)}
+                  className="btn btn-ghost" style={{ padding: '6px 11px', fontSize: 13, fontWeight: 700, border: '1px solid ' + (weeklyCap === n ? 'var(--brand)' : 'var(--line)'), background: weeklyCap === n ? 'rgba(124,140,255,.16)' : 'transparent', color: weeklyCap === n ? 'var(--soft-brand)' : 'var(--tx)' }}>
+                  {n === 0 ? '∞' : n}
+                </button>
+              ))}
+            </div>
+            {/* Stepper: cualquier número */}
+            <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: 12 }}>{L('O elige un número:', 'Or pick a number:')}</span>
+              <button type="button" disabled={capBusy || weeklyCap <= 0} onClick={() => saveCap(Math.max(0, weeklyCap - 1))} className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 16, fontWeight: 700, lineHeight: 1 }}>−</button>
+              <input type="number" min={0} max={50} value={weeklyCap} disabled={capBusy}
+                onChange={(e) => setWeeklyCap(Math.max(0, Math.min(50, parseInt(e.target.value, 10) || 0)))}
+                onBlur={(e) => saveCap(Math.max(0, Math.min(50, parseInt(e.target.value, 10) || 0)))}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                style={{ margin: 0, width: 64, textAlign: 'center', fontWeight: 700, fontSize: 14 }} />
+              <button type="button" disabled={capBusy || weeklyCap >= 50} onClick={() => saveCap(Math.min(50, weeklyCap + 1))} className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 16, fontWeight: 700, lineHeight: 1 }}>＋</button>
+              <span className="muted" style={{ fontSize: 12 }}>{weeklyCap === 0 ? L('sin tope', 'no cap') : L('/semana', '/week')}</span>
+            </div>
           </div>
         </div>
+
+        {/* Contadores en vivo (últimos 7 días) */}
+        {capStats && (
+          <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+            <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>{L('En vivo · últimos 7 días', 'Live · last 7 days')}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 8 }}>
+              {([
+                [String(capStats.sent7d), L('correos enviados', 'emails sent'), 'var(--soft-brand)'],
+                [String(capStats.usersActive), L('personas alcanzadas', 'people reached'), 'var(--tx)'],
+                [capStats.cap ? String(capStats.usersAtCap) : '—', L('llegaron al tope', 'hit the cap'), capStats.usersAtCap > 0 ? 'var(--amber,#f5b23e)' : 'var(--tx)'],
+                [String(capStats.avg), L('promedio por persona', 'avg per person'), 'var(--tx)'],
+              ] as const).map(([v, lab, col], i) => (
+                <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: col }}>{v}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>{lab}</div>
+                </div>
+              ))}
+            </div>
+            {/* Barra de uso: promedio vs tope */}
+            {capStats.cap > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div className="row between" style={{ fontSize: 11.5, marginBottom: 4 }}>
+                  <span className="muted">{L('Uso promedio del tope', 'Average cap usage')}</span>
+                  <span style={{ fontWeight: 700 }}>{Math.min(100, Math.round((capStats.avg / capStats.cap) * 100))}%</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 999, background: 'var(--line)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: Math.min(100, Math.round((capStats.avg / capStats.cap) * 100)) + '%', background: capStats.avg / capStats.cap > 0.85 ? 'var(--amber,#f5b23e)' : 'var(--brand)', transition: 'width .3s' }} />
+                </div>
+                {capStats.pctAtCap > 0 && <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L(`${capStats.pctAtCap}% de las personas alcanzadas ya tocó el tope esta semana.`, `${capStats.pctAtCap}% of reached people already hit the cap this week.`)}</div>}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Automáticas */}
