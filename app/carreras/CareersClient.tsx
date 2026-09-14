@@ -99,6 +99,17 @@ export default function CareersClient() {
           })}
         </div>}
 
+      {/* Enlace cruzado al reclutamiento de ventas */}
+      <a href="/unete-ventas" style={{ display: 'block', textDecoration: 'none', marginTop: 28 }}>
+        <div style={{ background: 'linear-gradient(90deg, rgba(201,139,255,.12), rgba(139,147,255,.12))', border: '1px solid rgba(201,139,255,.35)', borderRadius: 16, padding: '18px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--tx,#e8ecf5)' }}>{L('¿Quieres ser parte del equipo de ventas?', 'Want to join the sales team?')}</div>
+            <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginTop: 2 }}>{L('Programa por comisión recurrente, no es empleo de nómina.', 'Recurring-commission program, not payroll employment.')}</div>
+          </div>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#c98bff', color: '#1a1030', fontWeight: 700, fontSize: 14 }}>{L('Únete al equipo de ventas', 'Join the sales team')} <Ic n="arrow" s={16} c="#1a1030" /></span>
+        </div>
+      </a>
+
       {apply && <ApplyModal job={apply} settings={s} L={L} lang={lang} onClose={() => setApply(null)} />}
     </div>
   );

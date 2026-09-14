@@ -43,6 +43,7 @@ export default function SiteFooter() {
     ] },
     { title: L('Empresa', 'Company'), items: [
       ['/contacto', L('Contacto', 'Contact')],
+      ['/carreras', L('Carreras', 'Careers')],
       ['/terms', L('Términos', 'Terms')],
       ['/privacy', L('Privacidad', 'Privacy')],
       ['/cookies', 'Cookies'],

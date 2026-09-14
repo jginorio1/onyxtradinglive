@@ -51,6 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { p: '/copy', pr: 0.85, f: 'weekly' },
     { p: '/blog', pr: 0.8, f: 'weekly' },
     { p: '/embajadores', pr: 0.7, f: 'monthly' },
+    { p: '/carreras', pr: 0.6, f: 'weekly' },
     { p: '/invita', pr: 0.7, f: 'monthly' },
     { p: '/guia', pr: 0.8, f: 'weekly' },
     { p: '/contacto', pr: 0.6, f: 'monthly' },

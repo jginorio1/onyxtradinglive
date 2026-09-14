@@ -148,6 +148,11 @@ export default function ApplyForm() {
           {L('Al enviar aceptas que revisemos tu perfil. Este programa es por invitación.', 'By sending you agree we review your profile. This program is invite-only.')}
         </p>
       </form>
+
+      <p style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: 'var(--mut,#9aa6bd)' }}>
+        {L('¿Buscas un empleo (desarrollo, marketing, etc.)? ', 'Looking for a job (engineering, marketing, etc.)? ')}
+        <a href="/carreras" style={{ color: 'var(--accent,#8b93ff)', textDecoration: 'none', fontWeight: 600 }}>{L('Mira nuestras plazas →', 'See our openings →')}</a>
+      </p>
     </div>
   );
 }
