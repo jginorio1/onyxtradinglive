@@ -17,6 +17,7 @@ import QuantEdgeCard from './QuantEdgeCard';
 import Nudge from './Nudge';
 import { WeatherCard } from './WeatherBg';
 import TrackShare from './TrackShare';
+import ShareReport from './ShareReport';
 // Laterales SIEMPRE visibles en el hub → import normal (no diferido). Antes eran
 // dynamic(ssr:false) y su trozo a veces no se montaba, dejando Neto real / Coach
 // en blanco. Son 'use client' y el portal de Coach está protegido con `mounted`,
@@ -964,6 +965,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 {(['d1', 'd7', 'd30', 'mo', 'yr', 'all'] as const).map((r) => <button key={r} className={'btn ' + (range === r ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setRange(r)}>{L.ranges[r]}</button>)}
                 <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center' }} onClick={() => setRange('custom')} title={L.customRange}><OnyxIcon emoji="📅" size={15} /></button>
                 <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>
+                {/* Compartir: tarjeta profesional con marca de agua Onyx (redes / móvil / PC). */}
+                {!isFree && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
                 {/* Exportar: al lado de Demo, mismo tamaño (mismo padding de botón). */}
                 {!isFree && (
                   <details style={{ position: 'relative' }}>

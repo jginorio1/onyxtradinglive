@@ -57,6 +57,22 @@ export async function GET(req: Request) {
     ? { title: 'Reporte de rendimiento', pnl: 'Resultado neto', trades: 'Operaciones', win: 'Aciertos', pf: 'Factor de beneficio', avg: 'Media por operación', best: 'Mejor', worst: 'Peor', bySym: 'Por instrumento', sym: 'Instrumento', n: 'Ops', net: 'Neto', list: 'Operaciones', side: 'Tipo', vol: 'Vol', close: 'Cierre' }
     : { title: 'Performance report', pnl: 'Net result', trades: 'Trades', win: 'Win rate', pf: 'Profit factor', avg: 'Avg per trade', best: 'Best', worst: 'Worst', bySym: 'By instrument', sym: 'Instrument', n: 'Trades', net: 'Net', list: 'Trades', side: 'Side', vol: 'Vol', close: 'Close' };
 
+  // Resumen JSON ligero para la tarjeta compartible (dashboard → Compartir).
+  if (sp.get('export') === 'json') {
+    const chronoJ = [...trades].reverse();
+    let cumJ = 0; const equityJ = [0, ...chronoJ.map((t) => (cumJ += net(t)))];
+    const pct = totalBalance > 0 ? Math.round((netTotal / totalBalance) * 1000) / 10 : 0;
+    return NextResponse.json({
+      name: prof.full_name || '', avatar: prof.avatar_url || '',
+      style: styleMap[prof.trade_style] || prof.trade_style || '',
+      currency: cur, from, to,
+      net: Math.round(netTotal * 100) / 100, pct,
+      winRate, pf, trades: total,
+      best: total ? Math.round(best * 100) / 100 : 0, worst: total ? Math.round(worst * 100) / 100 : 0,
+      equity: equityJ,
+    });
+  }
+
   if (sp.get('export') === 'csv') {
     // CSV rico: cabecera + resumen + portafolio + perfil + por instrumento + lista
     // completa de operaciones (con apertura, cierre, duración y desglose de costes).

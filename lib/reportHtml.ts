@@ -121,7 +121,7 @@ export function reportPage(o: {
 
   return `<!doctype html><html lang="${es ? 'es' : 'en'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Onyx · ${es ? 'Reporte' : 'Report'}</title>
 <style>*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;padding:0;color:#0b1020;background:#f4f5fa}
-.wrap{max-width:840px;margin:0 auto;padding:20px}
+.wrap{max-width:840px;margin:0 auto;padding:20px;position:relative;z-index:1}
 .hero{background:linear-gradient(135deg,#4b3ff0,#7c8cff);color:#fff;border-radius:16px;padding:20px 22px;display:flex;align-items:center;gap:16px}
 .hn{font-size:20px;font-weight:800} .hs{font-size:12px;opacity:.85;margin-top:2px}
 .chips{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}.chip{background:rgba(255,255,255,.18);border-radius:20px;padding:3px 10px;font-size:11px}
@@ -134,7 +134,20 @@ h2{font-size:15px;margin:22px 0 8px;border-bottom:2px solid #e6e8ee;padding-bott
 .t{border-collapse:collapse;width:100%;font-size:11px;margin-top:4px}.t th,.t td{border:1px solid #eef;padding:4px 6px}.t th{background:#f7f8fc;color:#778}.mut{color:#aab}
 .print{margin:12px 0 0;padding:9px 16px;border:1px solid #6d5efc;background:#eceaff;color:#4b3ff0;border-radius:9px;font-weight:700;cursor:pointer}
 .foot{margin:26px 0 8px;color:#99a;font-size:11px;border-top:1px solid #e6e8ee;padding-top:10px}
-@media print{body{background:#fff}.print{display:none}.wrap{max-width:none;padding:0}}</style></head><body>
+.obar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;background:rgba(244,245,250,.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-bottom:1px solid #e6e8ee;padding:10px 16px}
+.obrand{display:flex;align-items:center;gap:7px;font-weight:800;font-size:14px;color:#0b1020;margin-right:auto}
+.obrand span.dot{width:16px;height:16px;border-radius:5px;background:linear-gradient(135deg,#4b3ff0,#7c8cff);display:inline-block}
+.obtn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;border:1px solid #d6d9e6;background:#fff;color:#0b1020;text-decoration:none}
+.obtn.pri{border-color:#6d5efc;background:#4b3ff0;color:#fff}
+.wmark{position:fixed;inset:0;pointer-events:none;z-index:0;display:flex;align-items:center;justify-content:center;opacity:.04;font-size:120px;font-weight:900;color:#4b3ff0;transform:rotate(-24deg);letter-spacing:8px}
+@media print{body{background:#fff}.print,.obar{display:none}.wrap{max-width:none;padding:0}.wmark{opacity:.05}}</style></head><body>
+<div class="obar">
+  <div class="obrand"><span class="dot"></span> Onyx Trading Live</div>
+  <a class="obtn" href="/dashboard">${es ? '← Volver a Onyx' : '← Back to Onyx'}</a>
+  <button class="obtn" onclick="window.print()">${es ? '🖨️ Imprimir / PDF' : '🖨️ Print / PDF'}</button>
+  <button class="obtn pri" onclick="onyxShare()">${es ? '📤 Compartir' : '📤 Share'}</button>
+</div>
+<div class="wmark">ONYX</div>
 <div class="wrap">
   <div class="hero">
     ${avatar}
@@ -146,7 +159,6 @@ h2{font-size:15px;margin:22px 0 8px;border-bottom:2px solid #e6e8ee;padding-bott
     <div style="text-align:right"><div style="font-size:11px;opacity:.8">${es ? 'Generado' : 'Generated'}</div><div style="font-size:12px;font-weight:700">${new Date().toLocaleDateString(es ? 'es-ES' : 'en-US')}</div></div>
   </div>
   ${portfolioStrip}
-  <button class="print" onclick="window.print()">${es ? '🖨️ Imprimir / Guardar como PDF' : '🖨️ Print / Save as PDF'}</button>
 
   <div class="grid">${kpis}</div>
 
@@ -156,6 +168,13 @@ h2{font-size:15px;margin:22px 0 8px;border-bottom:2px solid #e6e8ee;padding-bott
   ${tables}
   <div class="foot">Onyx Trading Live · ${es ? 'Reporte histórico. No garantiza resultados futuros. Valida en demo antes de operar en real.' : 'Historical report. Does not guarantee future results. Validate on demo before live trading.'}</div>
 </div>
+<script>
+function onyxShare(){
+  var d={title:'Onyx Trading Live',text:${JSON.stringify(es ? 'Mi reporte de rendimiento — Onyx Trading Live' : 'My performance report — Onyx Trading Live')},url:location.href};
+  if(navigator.share){navigator.share(d).catch(function(){});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(location.href).then(function(){alert(${JSON.stringify(es ? 'Enlace copiado' : 'Link copied')});}).catch(function(){});}
+}
+</script>
 </body></html>`;
 }
 
