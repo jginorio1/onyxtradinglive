@@ -40,7 +40,9 @@ export default function BlogKeywords() {
     const v = val.trim(); if (!v) return;
     const cur = s[list] || [];
     if (cur.some((x: string) => x.toLowerCase() === v.toLowerCase())) return;
-    if (cur.length >= 7) { toast(L('Máximo 7 recomendado (mantén el foco).', 'Max 7 recommended (keep focus).'), 'warn'); }
+    // Tope duro para no diluir el foco: 10. Aviso suave a partir de 7 (recomendado).
+    if (cur.length >= 10) { toast(L('Tope de 10 por idioma. Quita alguna con la ✕ para añadir otra.', 'Max 10 per language. Remove one with ✕ to add another.'), 'warn'); return; }
+    if (cur.length >= 7) { toast(L('Recomendado 5-7 por idioma para mantener el foco.', 'Recommended 5-7 per language to keep focus.'), 'warn'); }
     upd(list, [...cur, v]);
   }
   const rmKw = (list: 'es' | 'en', v: string) => upd(list, (s[list] || []).filter((x: string) => x !== v));
@@ -156,7 +158,12 @@ export default function BlogKeywords() {
                     </span>
                     <span className="row" style={{ gap: 10, alignItems: 'center', flex: 'none' }}>
                       <span className="muted" style={{ fontSize: 11 }}>{q.impressions} impr · pos {q.position}</span>
-                      <button className="btn btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => addKw(lang === 'en' ? 'en' : 'es', q.query)}>＋ {L('Añadir', 'Add')}</button>
+                      {/* Elige a qué lista va la idea: ES o EN (antes iba siempre al idioma del panel). */}
+                      <span className="row" style={{ gap: 4, alignItems: 'center', flex: 'none' }}>
+                        <span className="muted" style={{ fontSize: 10 }}>{L('Añadir a', 'Add to')}:</span>
+                        <button className="btn btn-ghost" title={(s.es || []).some((x: string) => x.toLowerCase() === q.query.toLowerCase()) ? L('Ya está en ES', 'Already in ES') : L('Añadir a español', 'Add to Spanish')} disabled={(s.es || []).some((x: string) => x.toLowerCase() === q.query.toLowerCase())} style={{ fontSize: 11, padding: '2px 8px', opacity: (s.es || []).some((x: string) => x.toLowerCase() === q.query.toLowerCase()) ? .4 : 1 }} onClick={() => addKw('es', q.query)}>ES</button>
+                        <button className="btn btn-ghost" title={(s.en || []).some((x: string) => x.toLowerCase() === q.query.toLowerCase()) ? L('Ya está en EN', 'Already in EN') : L('Añadir a inglés', 'Add to English')} disabled={(s.en || []).some((x: string) => x.toLowerCase() === q.query.toLowerCase())} style={{ fontSize: 11, padding: '2px 8px', opacity: (s.en || []).some((x: string) => x.toLowerCase() === q.query.toLowerCase()) ? .4 : 1 }} onClick={() => addKw('en', q.query)}>EN</button>
+                      </span>
                     </span>
                   </div>
                 ))}
