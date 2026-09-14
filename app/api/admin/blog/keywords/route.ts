@@ -32,11 +32,16 @@ export async function GET() {
   // puras. Así lo fácil de ganar —página 2, borde de página 1 y tu marca— sale
   // arriba, en vez de términos cabeza imposibles para un sitio nuevo.
   let ideas: any[] = [];
+  let gscRows: { q: string; impressions: number; position: number }[] = [];
   let gsc = gscConfigured();
   if (gsc) {
     try {
       const ov = await gscOverview(90);
       if (ov.ok) {
+        // Todas las consultas (para poder cruzar cualquier keyword guardada, no solo las 40 ideas).
+        gscRows = (ov.queries || []).map((q: any) => ({
+          q: String(q.keys?.[0] || '').toLowerCase(), impressions: Math.round(q.impressions || 0), position: q.position || 0,
+        })).filter((r: any) => r.q);
         ideas = (ov.queries || []).map((q: any) => {
           const impressions = Math.round(q.impressions || 0);
           const position = Math.round((q.position || 0) * 10) / 10;
@@ -51,7 +56,33 @@ export async function GET() {
     } catch (e) { await logError('blog_kw_gsc', e); }
   }
 
-  return NextResponse.json({ settings, coverage, ideas, gsc });
+  // Aporte por keyword: cruza cada una con Search Console (impresiones sumadas +
+  // mejor posición de las consultas que la contienen) y le pone un semáforo para
+  // que el dueño vea de un vistazo cuáles quitar. tier: green (ganable/tu marca),
+  // amber (asoma pero lejos), gray (sin tracción todavía), na (GSC sin conectar).
+  const statFor = (kw: string) => {
+    const k = kw.toLowerCase();
+    const matches = gscRows.filter((r) => r.q.includes(k));
+    const impressions = matches.reduce((a, r) => a + r.impressions, 0);
+    const pos = matches.filter((r) => r.position > 0).map((r) => r.position);
+    const position = pos.length ? Math.round(Math.min(...pos) * 10) / 10 : 0;
+    return { impressions, position };
+  };
+  const kwStats: Record<string, { coverage: number; impressions: number; position: number; tier: string }> = {};
+  for (const k of [...(settings.es || []), ...(settings.en || [])]) {
+    const isBrand = k.toLowerCase().includes('onyx');
+    const { impressions, position } = gsc ? statFor(k) : { impressions: 0, position: 0 };
+    let tier = 'na';
+    if (gsc) {
+      if (isBrand) tier = 'green';
+      else if (impressions >= 2 && position > 0 && position <= 25) tier = 'green';
+      else if (impressions >= 1 && position > 0) tier = 'amber';
+      else tier = 'gray';
+    }
+    kwStats[k] = { coverage: coverage[k] ?? 0, impressions, position, tier };
+  }
+
+  return NextResponse.json({ settings, coverage, kwStats, ideas, gsc });
 }
 
 // PATCH · guardar ajustes de keywords (owner/gestor de módulos).

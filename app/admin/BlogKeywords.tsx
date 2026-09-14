@@ -21,6 +21,15 @@ function ToggleRow({ on, onToggle, label, accent = '#7c8cff' }: { on: boolean; o
   );
 }
 
+// Semáforo de "aporte" por keyword (calculado en el backend con Search Console).
+const TIER_COLOR: Record<string, string> = { green: '#34e2a0', amber: '#f5b23e', gray: 'var(--mut)', na: 'var(--mut)' };
+const TIER_LABEL = (t: string, L: (a: string, b: string) => string) => (
+  t === 'green' ? L('Ganable / tu marca', 'Winnable / your brand')
+    : t === 'amber' ? L('Asoma pero lejos', 'Showing but far')
+    : t === 'gray' ? L('Sin tracción aún', 'No traction yet')
+    : L('Sin datos', 'No data')
+);
+
 // Palabras clave prioritarias del blog + ideas desde Search Console.
 export default function BlogKeywords() {
   const { lang } = useLang();
@@ -73,12 +82,20 @@ export default function BlogKeywords() {
           <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>· {(s[l] || []).length}/7</span>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 10 }}>
-          {(s[l] || []).map((k: string) => (
-            <span key={k} style={{ fontSize: 12.5, background: `${accent}22`, color: 'var(--tx)', border: `1px solid ${accent}55`, padding: '5px 10px', borderRadius: 999, display: 'inline-flex', gap: 7, alignItems: 'center' }}>
-              {k} <span className="muted" style={{ fontSize: 10 }}>({cov(k)})</span>
-              <span style={{ cursor: 'pointer', opacity: .7 }} onClick={() => rmKw(l, k)}>✕</span>
-            </span>
-          ))}
+          {(s[l] || []).map((k: string) => {
+            const st = d.kwStats?.[k] || { coverage: cov(k), impressions: 0, position: 0, tier: 'na' };
+            const dot = TIER_COLOR[st.tier] || 'var(--mut)';
+            const tip = st.tier === 'na'
+              ? L('Conecta Search Console para ver el aporte', 'Connect Search Console to see contribution')
+              : `${TIER_LABEL(st.tier, L)} · ${st.impressions} impr · ${st.position ? 'pos ' + st.position : L('sin posición', 'no position')} · ${st.coverage} ${L('art.', 'art.')}`;
+            return (
+              <span key={k} title={tip} style={{ fontSize: 12.5, background: `${accent}22`, color: 'var(--tx)', border: `1px solid ${accent}55`, padding: '5px 10px', borderRadius: 999, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flex: 'none', boxShadow: st.tier === 'green' ? `0 0 6px ${dot}` : 'none' }} />
+                {k} <span className="muted" style={{ fontSize: 10 }}>({st.coverage})</span>
+                <span style={{ cursor: 'pointer', opacity: .7 }} onClick={() => rmKw(l, k)}>✕</span>
+              </span>
+            );
+          })}
           {!(s[l] || []).length && <span className="muted" style={{ fontSize: 12 }}>{L('Aún ninguna.', 'None yet.')}</span>}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -141,6 +158,15 @@ export default function BlogKeywords() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 12 }}>
             <KwCard l="es" accent="#7c8cff" />
             <KwCard l="en" accent="#34e2a0" />
+          </div>
+
+          {/* Leyenda del semáforo de aporte (el punto de cada keyword). */}
+          <div className="muted" style={{ fontSize: 11, display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span>{L('Aporte', 'Contribution')}:</span>
+            <span style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: TIER_COLOR.green }} />{L('ganable / tu marca', 'winnable / brand')}</span>
+            <span style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: TIER_COLOR.amber }} />{L('asoma pero lejos', 'showing but far')}</span>
+            <span style={{ display: 'inline-flex', gap: 5, alignItems: 'center' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: TIER_COLOR.gray }} />{L('sin tracción (candidata a quitar)', 'no traction (candidate to drop)')}</span>
+            <span>· {L('el número entre () = artículos publicados que la usan', 'the number in () = published articles using it')}</span>
           </div>
 
           {/* Ideas desde Search Console */}
