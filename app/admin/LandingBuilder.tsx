@@ -394,7 +394,13 @@ export default function LandingBuilder() {
               <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 11, color: 'var(--red)' }} onClick={() => setFooter({ social: (footer.social || []).filter((_: any, j: number) => j !== i) })}>✕</button>
             </div>
           ))}
-          <button className="btn btn-ghost" style={{ marginTop: 2 }} onClick={() => setFooter({ social: [...(footer.social || []), { platform: 'instagram', url: '', on: true }] })}>＋ {L('Añadir red', 'Add social')}</button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+            <button className="btn btn-ghost" onClick={() => setFooter({ social: [...(footer.social || []), { platform: 'instagram', url: '', on: true }] })}>＋ {L('Añadir red', 'Add social')}</button>
+            {!(footer.social || []).length && (
+              <button className="btn btn-primary" onClick={() => setFooter({ social: ['instagram', 'telegram', 'youtube', 'x', 'tiktok'].map((p) => ({ platform: p, url: '', on: true })) })}>✨ {L('Cargar redes comunes', 'Load common socials')}</button>
+            )}
+          </div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{L('Pega la URL de cada red y guarda; aparecerán como iconos en el footer. Sin URL no se muestran.', 'Paste each network URL and save; they appear as icons in the footer. Without a URL they stay hidden.')}</div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button className="btn btn-ghost" onClick={() => setFooter({ links: [...(footer.links || []), { es: '', en: '', href: '/' }] })}>＋ {L('Añadir enlace', 'Add link')}</button>

@@ -164,30 +164,34 @@ export default function SeoPanel() {
 
         {env.gsc && search.ok && (
           <>
-            <div className="grid g4" style={{ marginTop: 12 }}>
+            <div style={{ marginTop: 14, marginBottom: 4, fontSize: 13.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
+              🏅 {L('Tu ranking en Google', 'Your Google ranking')}
+              <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {L('posición media en los resultados de búsqueda (menor = mejor; #1 es el primer lugar)', 'average position in search results (lower = better; #1 is the top spot)')}</span>
+            </div>
+            <div className="grid g4" style={{ marginTop: 6 }}>
+              <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Ranking medio en Google', 'Avg Google ranking')}</div><div style={{ fontSize: 22, fontWeight: 800, color: 'var(--soft-brand)' }}>#{(search.totals?.position ?? 0).toFixed(1)}</div></div>
               <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Clics', 'Clicks')}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{(search.totals?.clicks ?? 0).toLocaleString()}</div></div>
               <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Impresiones', 'Impressions')}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{(search.totals?.impressions ?? 0).toLocaleString()}</div></div>
               <div className="tile"><div className="muted" style={{ fontSize: 12 }}>CTR</div><div style={{ fontSize: 22, fontWeight: 800 }}>{pct(search.totals?.ctr ?? 0)}</div></div>
-              <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Posición media', 'Avg position')}</div><div style={{ fontSize: 22, fontWeight: 800, color: 'var(--soft-brand)' }}>{(search.totals?.position ?? 0).toFixed(1)}</div></div>
             </div>
 
             <div className="grid g2" style={{ gap: 14, marginTop: 14 }}>
               <div>
-                <div className="muted" style={{ fontSize: 12, marginBottom: 6, fontWeight: 700 }}>{L('Consultas top (tus keywords)', 'Top queries (your keywords)')}</div>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 6, fontWeight: 700 }}>{L('Ranking por keyword (tus búsquedas)', 'Ranking by keyword (your searches)')} <span style={{ fontWeight: 400 }}>· {L('# = posición en Google', '# = Google position')}</span></div>
                 {(search.queries || []).slice(0, 15).map((q: any, i: number) => (
                   <div key={i} className="row between" style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '6px 0', gap: 8, fontSize: 12.5 }}>
                     <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.keys?.[0]}</span>
-                    <span className="muted" style={{ whiteSpace: 'nowrap' }}>#{q.position?.toFixed(0)} · {q.clicks} clic · {q.impressions} imp</span>
+                    <span style={{ whiteSpace: 'nowrap' }}><b style={{ color: (q.position ?? 99) <= 10 ? 'var(--green)' : (q.position ?? 99) <= 20 ? 'var(--amber)' : 'var(--mut)' }}>#{q.position?.toFixed(0)}</b> <span className="muted">· {q.clicks} clic · {q.impressions} imp</span></span>
                   </div>
                 ))}
                 {!(search.queries || []).length && <div className="muted" style={{ fontSize: 12 }}>{L('Aún sin datos (Google tarda unos días).', 'No data yet (Google takes a few days).')}</div>}
               </div>
               <div>
-                <div className="muted" style={{ fontSize: 12, marginBottom: 6, fontWeight: 700 }}>{L('Páginas top', 'Top pages')}</div>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 6, fontWeight: 700 }}>{L('Ranking por página', 'Ranking by page')} <span style={{ fontWeight: 400 }}>· {L('# = posición en Google', '# = Google position')}</span></div>
                 {(search.pages || []).slice(0, 15).map((q: any, i: number) => (
                   <div key={i} className="row between" style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '6px 0', gap: 8, fontSize: 12.5 }}>
                     <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(q.keys?.[0] || '').replace(site, '') || '/'}</span>
-                    <span className="muted" style={{ whiteSpace: 'nowrap' }}>{q.clicks} clic · {q.impressions} imp</span>
+                    <span style={{ whiteSpace: 'nowrap' }}><b style={{ color: (q.position ?? 99) <= 10 ? 'var(--green)' : (q.position ?? 99) <= 20 ? 'var(--amber)' : 'var(--mut)' }}>#{q.position?.toFixed(0)}</b> <span className="muted">· {q.clicks} clic · {q.impressions} imp</span></span>
                   </div>
                 ))}
               </div>
