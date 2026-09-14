@@ -19,6 +19,7 @@ export type SalesSettings = {
   auto_payout: boolean;       // paga solo cuando el saldo madura
   review_before_pay: boolean; // freno global: encola pero apruebas tú
   allow_recruit: boolean;     // los supervisores pueden reclutar su equipo
+  level_names: { l2: string; l1: string; vendedor: string };  // nombres personalizados de las posiciones
 };
 
 const DEFAULTS: SalesSettings = {
@@ -26,6 +27,7 @@ const DEFAULTS: SalesSettings = {
   commission_months: 0, hold_days: 30, min_payout: 50,
   trial_max_days: 14, discount_max_pct: 20,
   auto_payout: true, review_before_pay: false, allow_recruit: true,
+  level_names: { l2: 'Supervisor N2', l1: 'Supervisor N1', vendedor: 'Vendedor' },
 };
 
 export async function salesSettings(): Promise<SalesSettings> {

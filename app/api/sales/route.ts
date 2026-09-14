@@ -43,6 +43,7 @@ export async function GET() {
     isRep: true,
     rep: { id: rep.id, level: rep.level, code: rep.code, display_name: rep.display_name, from_name: rep.from_name, reply_to: rep.reply_to, payout_method: (rep as any).payout_method || 'stripe', on_hold: rep.on_hold, status: rep.status },
     link, balances: bal, caps, clients, team, tickets, connect,
+    level_names: s.level_names || { l2: 'Supervisor N2', l1: 'Supervisor N1', vendedor: 'Vendedor' },
     wallets: { trc20: (prof as any)?.payout_usdt_trc20 || '', erc20: (prof as any)?.payout_usdt_erc20 || '', network: (prof as any)?.payout_usdt_network || 'trc20' },
     payouts: payouts || [],
     activeClients: clients.filter((c) => c.active).length,

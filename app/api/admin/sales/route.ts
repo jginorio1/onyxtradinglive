@@ -14,7 +14,14 @@ export async function GET() {
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
   const settings = await salesSettings();
-  const { data: apps } = await supabaseAdmin.from('sales_applications').select('*').order('created_at', { ascending: false }).limit(200);
+  const { data: appsRaw } = await supabaseAdmin.from('sales_applications').select('*').order('created_at', { ascending: false }).limit(200);
+  // Enlace firmado (1 h) para abrir el CV desde el panel (bucket privado).
+  const apps: any[] = [];
+  for (const a of (appsRaw || []) as any[]) {
+    let cv = null;
+    if (a.resume_url) { try { const { data: sig } = await supabaseAdmin.storage.from('sales-cv').createSignedUrl(a.resume_url, 3600); cv = (sig as any)?.signedUrl || null; } catch {} }
+    apps.push({ ...a, resume_signed: cv });
+  }
   const { data: reps } = await supabaseAdmin.from('sales_reps').select('*').order('created_at', { ascending: true });
 
   // Enriquecer cada rep con correo, nº de clientes y saldos.

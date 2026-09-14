@@ -1,217 +1,285 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-// Panel ADMIN de la red de ventas: solicitudes, árbol de la red, ajustes de %/topes,
-// y pagos. Control total para el dueño.
+// Panel ADMIN de la red de ventas · rediseño moderno:
+// tarjetas de color por nivel, arrastrar y soltar para mover vendedores en el
+// árbol, nombres de posición personalizados, CV adjunto y pagos.
+
+const LV = {
+  l2: { bg: 'rgba(229,181,103,.14)', bd: 'rgba(229,181,103,.45)', fg: '#e5b567' },
+  l1: { bg: 'rgba(139,147,255,.15)', bd: 'rgba(139,147,255,.5)', fg: '#a9b0ff' },
+  vendedor: { bg: 'rgba(94,214,160,.13)', bd: 'rgba(94,214,160,.5)', fg: '#5ed6a0' },
+} as const;
+
 export default function SalesAdmin({ canManage = true }: { canManage?: boolean }) {
   const [d, setD] = useState<any>(null);
-  const [sub, setSub] = useState<'solicitudes' | 'red' | 'ajustes' | 'pagos'>('solicitudes');
+  const [sub, setSub] = useState<'solicitudes' | 'red' | 'ajustes' | 'pagos'>('red');
   const [msg, setMsg] = useState('');
-  const [busy, setBusy] = useState('');
+  const [dragId, setDragId] = useState<string>('');
 
   useEffect(() => { load(); }, []);
   async function load() { try { const r = await fetch('/api/admin/sales', { cache: 'no-store' }); setD(await r.json()); } catch {} }
   async function act(body: any) {
-    setMsg(''); setBusy(body.action + (body.app_id || body.rep_id || ''));
+    setMsg('');
     const r = await fetch('/api/admin/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    const j = await r.json(); setBusy('');
-    if (j.error) setMsg(j.error); else if (j.code) setMsg('OK'); await load(); return j;
+    const j = await r.json();
+    if (j.error) setMsg('⚠ ' + j.error); else setMsg('Hecho ✓');
+    await load(); return j;
   }
 
-  const card: React.CSSProperties = { background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: 14, marginBottom: 10 };
   const inp: React.CSSProperties = { padding: '7px 10px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13 };
   const btn: React.CSSProperties = { padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--panel,#161c2e)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 12.5 };
   const btnP: React.CSSProperties = { ...btn, background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none', fontWeight: 600 };
 
   if (!d) return <div className="muted">Cargando…</div>;
   const s = d.settings || {};
+  const names = s.level_names || { l2: 'Supervisor N2', l1: 'Supervisor N1', vendedor: 'Vendedor' };
   const reps: any[] = d.reps || [];
   const apps: any[] = (d.applications || []).filter((a: any) => a.status === 'pending');
   const recruitLink = (typeof window !== 'undefined' ? window.location.origin : 'https://www.onyxtradinglive.com') + '/unete-ventas';
+  const lvName = (l: string) => (l === 'l2' ? names.l2 : l === 'l1' ? names.l1 : names.vendedor);
 
   const subBtn = (id: any, label: string, n?: number) => (
-    <button onClick={() => setSub(id)} style={{ ...btn, background: sub === id ? 'var(--accent,#8b93ff)' : btn.background, color: sub === id ? '#fff' : btn.color, border: sub === id ? 'none' : btn.border }}>{label}{n ? ` (${n})` : ''}</button>
+    <button onClick={() => setSub(id)} style={{ ...btn, background: sub === id ? 'var(--accent,#8b93ff)' : btn.background, color: sub === id ? '#fff' : btn.color, border: sub === id ? 'none' : btn.border }}>{label}{n ? ` · ${n}` : ''}</button>
   );
+
+  async function drop(targetParentId: string | null) {
+    if (!dragId) return;
+    if (targetParentId === dragId) { setDragId(''); return; }
+    await act({ action: 'set_rep', rep_id: dragId, parent_id: targetParentId });
+    setDragId('');
+  }
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 20 }}>🧑‍💼 Red de ventas</h2>
+        <h2 style={{ margin: 0, fontSize: 20, display: 'flex', alignItems: 'center', gap: 8 }}>{ic('users-group', 22, 'var(--accent,#8b93ff)')} Red de ventas</h2>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span className="muted" style={{ fontSize: 12 }}>Landing de reclutamiento:</span>
-          <input readOnly value={recruitLink} style={{ ...inp, width: 240 }} />
-          <button style={btn} onClick={() => { navigator.clipboard.writeText(recruitLink); setMsg('Enlace copiado ✓'); }}>⧉</button>
+          <span className="muted" style={{ fontSize: 12 }}>Reclutamiento:</span>
+          <input readOnly value={recruitLink} style={{ ...inp, width: 230 }} />
+          <button style={btn} onClick={() => { navigator.clipboard.writeText(recruitLink); setMsg('Enlace copiado ✓'); }}>{ic('copy', 15)}</button>
         </div>
       </div>
 
-      {msg && <div style={{ ...card, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)' }}>{msg}</div>}
+      {msg && <div style={{ border: '1px solid var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', borderRadius: 10, padding: '8px 12px', marginBottom: 12, fontSize: 13 }}>{msg}</div>}
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        {subBtn('solicitudes', 'Solicitudes', apps.length)}
         {subBtn('red', 'La red', reps.length)}
+        {subBtn('solicitudes', 'Solicitudes', apps.length)}
         {subBtn('ajustes', 'Ajustes')}
         {subBtn('pagos', 'Pagos')}
       </div>
 
+      {/* ===== LA RED (árbol con drag & drop) ===== */}
+      {sub === 'red' && <div>
+        {canManage && <div style={{ background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: 14, marginBottom: 12 }}>
+          <b style={{ fontSize: 14 }}>Añadir representante manualmente</b>
+          <CreateRep reps={reps} act={act} inp={inp} btnP={btnP} lvName={lvName} />
+        </div>}
+
+        {reps.length === 0 ? <div className="muted">Aún no hay representantes. Aprueba una solicitud o añade uno manualmente.</div> : <>
+          <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>{ic('drag-drop', 15)} Arrastra un vendedor y suéltalo sobre un supervisor para moverlo de rama.</div>
+          {/* Zona: hacer tope (sin supervisor) */}
+          {dragId && <div onDragOver={(e) => e.preventDefault()} onDrop={() => drop(null)}
+            style={{ border: '1.5px dashed var(--accent,#8b93ff)', borderRadius: 10, padding: 10, textAlign: 'center', color: 'var(--accent,#8b93ff)', marginBottom: 10, fontSize: 12.5 }}>
+            ⬆ Soltar aquí = quitar supervisor (dejar en el tope)
+          </div>}
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            {(['l2', 'l1', 'vendedor'] as const).map((lvl) => {
+              const group = reps.filter((r) => r.level === lvl);
+              const c = LV[lvl];
+              return (
+                <div key={lvl}>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.05em', color: c.fg, fontWeight: 700, marginBottom: 8 }}>{lvName(lvl)} <span style={{ opacity: .55 }}>({group.length})</span></div>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {group.map((r) => (
+                      <RepCard key={r.id} r={r} c={c} names={names} reps={reps} act={act} canManage={canManage}
+                        dragId={dragId} setDragId={setDragId} onDropOn={drop} inp={inp} btn={btn} btnP={btnP} lvName={lvName} />
+                    ))}
+                    {group.length === 0 && <div className="muted" style={{ fontSize: 12, padding: '6px 2px' }}>—</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>}
+      </div>}
+
+      {/* ===== SOLICITUDES ===== */}
       {sub === 'solicitudes' && <div>
         {apps.length === 0 && <div className="muted">No hay solicitudes pendientes.</div>}
-        {apps.map((a) => <AppRow key={a.id} a={a} reps={reps} act={act} busy={busy} card={card} inp={inp} btn={btn} btnP={btnP} canManage={canManage} />)}
+        {apps.map((a) => <AppRow key={a.id} a={a} reps={reps} act={act} inp={inp} btn={btn} btnP={btnP} canManage={canManage} lvName={lvName} />)}
       </div>}
 
-      {sub === 'red' && <div>
-        {canManage && <div style={{ ...card }}>
-          <b>Añadir representante manualmente</b>
-          <CreateRep reps={reps} act={act} inp={inp} btnP={btnP} />
-        </div>}
-        {['l2', 'l1', 'vendedor'].map((lvl) => {
-          const group = reps.filter((r) => r.level === lvl);
-          if (!group.length) return null;
-          const title = lvl === 'l2' ? 'Supervisores Nivel 2' : lvl === 'l1' ? 'Supervisores Nivel 1' : 'Vendedores';
-          return <div key={lvl} style={{ marginBottom: 10 }}>
-            <div className="muted" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.05em', margin: '6px 0' }}>{title}</div>
-            {group.map((r) => <RepRow key={r.id} r={r} reps={reps} act={act} busy={busy} card={card} inp={inp} btn={btn} btnP={btnP} canManage={canManage} />)}
-          </div>;
-        })}
-        {reps.length === 0 && <div className="muted">Aún no hay representantes. Aprueba una solicitud o añade uno manualmente.</div>}
-      </div>}
+      {/* ===== AJUSTES ===== */}
+      {sub === 'ajustes' && <SettingsBox s={s} names={names} act={act} inp={inp} btnP={btnP} canManage={canManage} />}
 
-      {sub === 'ajustes' && <SettingsBox s={s} act={act} inp={inp} btnP={btnP} card={card} canManage={canManage} />}
-
+      {/* ===== PAGOS ===== */}
       {sub === 'pagos' && <div>
-        <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>Paga a cada representante su saldo disponible (madurado). Stripe = automático · USDT/manual = marcas con referencia.</div>
+        <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>Paga el saldo disponible (madurado). Stripe = automático · USDT/manual = marcas con referencia.</div>
         {reps.filter((r) => (r.balances?.available || 0) > 0).length === 0 && <div className="muted">Nadie tiene saldo disponible ahora mismo.</div>}
-        {reps.filter((r) => (r.balances?.available || 0) > 0).map((r) => <PayRow key={r.id} r={r} act={act} busy={busy} card={card} inp={inp} btn={btn} btnP={btnP} canManage={canManage} />)}
+        {reps.filter((r) => (r.balances?.available || 0) > 0).map((r) => <PayRow key={r.id} r={r} act={act} inp={inp} btn={btn} btnP={btnP} canManage={canManage} />)}
       </div>}
     </div>
   );
 }
 
-function AppRow({ a, reps, act, busy, card, inp, btn, btnP, canManage }: any) {
-  const [level, setLevel] = useState(a.desired_role === 'supervisor' ? 'l1' : 'vendedor');
-  const [parent, setParent] = useState('');
-  return (
-    <div style={card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <div><b>{a.name}</b> <span className="muted" style={{ fontSize: 12 }}>· {a.email} · {a.country || '—'} · pide: {a.desired_role}</span></div>
-        <span className="muted" style={{ fontSize: 11 }}>{new Date(a.created_at).toLocaleDateString()}</span>
-      </div>
-      {(a.experience || a.audience || a.note) && <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>{[a.experience, a.audience, a.note].filter(Boolean).join(' · ')}</div>}
-      {canManage && <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <select value={level} onChange={(e) => setLevel(e.target.value)} style={inp}><option value="vendedor">Vendedor</option><option value="l1">Supervisor N1</option><option value="l2">Supervisor N2</option></select>
-        <select value={parent} onChange={(e) => setParent(e.target.value)} style={inp}>
-          <option value="">Sin supervisor (tope)</option>
-          {reps.filter((r: any) => r.level !== 'vendedor').map((r: any) => <option key={r.id} value={r.id}>{r.email || r.display_name} ({r.level === 'l2' ? 'N2' : 'N1'})</option>)}
-        </select>
-        <button style={btnP} disabled={busy.startsWith('approve')} onClick={() => act({ action: 'approve', app_id: a.id, email: a.email, level, parent_id: parent || null, display_name: a.name })}>Aprobar</button>
-        <button style={btn} onClick={() => act({ action: 'reject', app_id: a.id })}>Rechazar</button>
-      </div>}
-    </div>
-  );
+// Icono de línea inline (moderno, sin dependencias). Set reducido.
+function ic(name: string, size = 16, color = 'currentColor') {
+  const p: Record<string, string> = {
+    'users-group': 'M10 13a4 4 0 100-8 4 4 0 000 8zM2 21v-1a5 5 0 015-5h6a5 5 0 015 5v1M17 11a3 3 0 100-6M22 21v-1a4 4 0 00-3-3.8',
+    'copy': 'M9 9h10v10H9zM5 15H4V5a1 1 0 011-1h10v1',
+    'drag-drop': 'M8 6h.01M8 12h.01M8 18h.01M14 6h.01M14 12h.01M14 18h.01',
+    'grip': 'M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01',
+    'file': 'M14 3v5h5M8 3h6l5 5v11a1 1 0 01-1 1H8a1 1 0 01-1-1V4a1 1 0 011-1z',
+    'cash': 'M3 6h18v12H3zM12 15a3 3 0 100-6 3 3 0 000 6z',
+    'pencil': 'M4 20h4L18 10l-4-4L4 16v4zM13 5l4 4',
+    'plus': 'M12 5v14M5 12h14',
+  };
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', flex: 'none' }}><path d={p[name] || ''} /></svg>;
 }
 
-function CreateRep({ reps, act, inp, btnP }: any) {
-  const [email, setEmail] = useState(''); const [level, setLevel] = useState('vendedor'); const [parent, setParent] = useState('');
-  return (
-    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-      <input placeholder="correo del candidato (ya con cuenta)" value={email} onChange={(e) => setEmail(e.target.value)} style={{ ...inp, minWidth: 240 }} />
-      <select value={level} onChange={(e) => setLevel(e.target.value)} style={inp}><option value="vendedor">Vendedor</option><option value="l1">Supervisor N1</option><option value="l2">Supervisor N2</option></select>
-      <select value={parent} onChange={(e) => setParent(e.target.value)} style={inp}><option value="">Sin supervisor</option>{reps.filter((r: any) => r.level !== 'vendedor').map((r: any) => <option key={r.id} value={r.id}>{r.email} ({r.level === 'l2' ? 'N2' : 'N1'})</option>)}</select>
-      <button style={btnP} onClick={() => email && act({ action: 'create_rep', email, level, parent_id: parent || null })}>Añadir</button>
-    </div>
-  );
-}
-
-function RepRow({ r, reps, act, busy, card, inp, btn, btnP, canManage }: any) {
+function RepCard({ r, c, names, reps, act, canManage, dragId, setDragId, onDropOn, inp, btn, btnP, lvName }: any) {
   const [open, setOpen] = useState(false);
   const [level, setLevel] = useState(r.level);
   const [parent, setParent] = useState(r.parent_id || '');
   const [rate, setRate] = useState(r.rate_override ?? '');
   const [assign, setAssign] = useState('');
   const b = r.balances || {};
+  const isDragging = dragId === r.id;
   return (
-    <div style={card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <div>
-          <b>{r.display_name || r.email || r.code}</b>
-          <span className="muted" style={{ fontSize: 12 }}> · {r.email} · código {r.code} · {r.clients} clientes</span>
-          {r.on_hold && <span style={{ marginLeft: 6, color: 'var(--amber,#f0b74e)', fontSize: 12 }}>⏸ pausado</span>}
-          {r.status !== 'active' && <span style={{ marginLeft: 6, color: 'var(--red,#f0736f)', fontSize: 12 }}>{r.status}</span>}
-        </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span className="muted" style={{ fontSize: 12 }}>disp <b style={{ color: 'var(--green,#5ed6a0)' }}>${b.available || 0}</b> · esp ${b.pending || 0}</span>
-          {canManage && <button style={btn} onClick={() => setOpen(!open)}>{open ? 'Cerrar' : 'Editar'}</button>}
-        </div>
+    <div
+      draggable={canManage}
+      onDragStart={() => setDragId(r.id)}
+      onDragEnd={() => setDragId('')}
+      onDragOver={(e) => { if (dragId && dragId !== r.id) e.preventDefault(); }}
+      onDrop={() => onDropOn(r.id)}
+      style={{ background: c.bg, border: `1px solid ${dragId && dragId !== r.id ? 'var(--accent,#8b93ff)' : c.bd}`, borderRadius: 12, padding: '10px 12px', opacity: isDragging ? .5 : 1, cursor: canManage ? 'grab' : 'default' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {canManage && <span style={{ color: c.fg, cursor: 'grab' }}>{ic('grip', 16, c.fg)}</span>}
+        <b style={{ color: c.fg, fontSize: 13.5, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.display_name || r.email || r.code}</b>
+        {r.on_hold && <span title="pagos pausados" style={{ color: 'var(--amber,#f0b74e)', fontSize: 12 }}>⏸</span>}
       </div>
-      {open && canManage && <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <label className="muted" style={{ fontSize: 12 }}>Nivel <select value={level} onChange={(e) => setLevel(e.target.value)} style={inp}><option value="vendedor">Vendedor</option><option value="l1">N1</option><option value="l2">N2</option></select></label>
-          <label className="muted" style={{ fontSize: 12 }}>Supervisor <select value={parent} onChange={(e) => setParent(e.target.value)} style={inp}><option value="">— (tope)</option>{reps.filter((x: any) => x.id !== r.id && x.level !== 'vendedor').map((x: any) => <option key={x.id} value={x.id}>{x.email} ({x.level === 'l2' ? 'N2' : 'N1'})</option>)}</select></label>
-          <label className="muted" style={{ fontSize: 12 }}>% propio <input type="number" placeholder="auto" value={rate} onChange={(e) => setRate(e.target.value)} style={{ ...inp, width: 80 }} /></label>
-          <button style={btnP} onClick={() => act({ action: 'set_rep', rep_id: r.id, level, parent_id: parent || null, rate_override: rate })}>Guardar</button>
+      <div style={{ fontSize: 11.5, color: c.fg, opacity: .85, marginTop: 3 }}>{r.clients} clientes · disp ${b.available || 0}</div>
+      {r.email && <div style={{ fontSize: 10.5, color: 'var(--mut,#9aa6bd)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.email}</div>}
+      {canManage && <button onClick={() => setOpen(!open)} style={{ ...btn, marginTop: 8, padding: '4px 10px', fontSize: 11.5 }}>{open ? 'Cerrar' : 'Editar'}</button>}
+      {open && canManage && <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+        <select value={level} onChange={(e) => setLevel(e.target.value)} style={inp}><option value="vendedor">{lvName('vendedor')}</option><option value="l1">{lvName('l1')}</option><option value="l2">{lvName('l2')}</option></select>
+        <select value={parent} onChange={(e) => setParent(e.target.value)} style={inp}><option value="">— sin supervisor —</option>{reps.filter((x: any) => x.id !== r.id && x.level !== 'vendedor').map((x: any) => <option key={x.id} value={x.id}>{x.display_name || x.email}</option>)}</select>
+        <input type="number" placeholder="% propio (auto)" value={rate} onChange={(e) => setRate(e.target.value)} style={inp} />
+        <button style={btnP} onClick={() => act({ action: 'set_rep', rep_id: r.id, level, parent_id: parent || null, rate_override: rate })}>Guardar</button>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button style={{ ...btn, flex: 1 }} onClick={() => act({ action: 'set_rep', rep_id: r.id, on_hold: !r.on_hold })}>{r.on_hold ? '▶ Reanudar' : '⏸ Pausar'}</button>
+          <button style={{ ...btn, flex: 1 }} onClick={() => act({ action: 'set_rep', rep_id: r.id, status: r.status === 'active' ? 'paused' : 'active' })}>{r.status === 'active' ? 'Desactivar' : 'Activar'}</button>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button style={btn} onClick={() => act({ action: 'set_rep', rep_id: r.id, on_hold: !r.on_hold })}>{r.on_hold ? '▶ Reanudar pagos' : '⏸ Pausar pagos'}</button>
-          <button style={btn} onClick={() => act({ action: 'set_rep', rep_id: r.id, status: r.status === 'active' ? 'paused' : 'active' })}>{r.status === 'active' ? 'Desactivar' : 'Activar'}</button>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input placeholder="asignar cliente por correo" value={assign} onChange={(e) => setAssign(e.target.value)} style={{ ...inp, minWidth: 220 }} />
-          <button style={btn} onClick={() => assign && act({ action: 'assign_client', rep_id: r.id, email: assign })}>Asignar cliente</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input placeholder="asignar cliente (correo)" value={assign} onChange={(e) => setAssign(e.target.value)} style={{ ...inp, flex: 1 }} />
+          <button style={btn} onClick={() => assign && act({ action: 'assign_client', rep_id: r.id, email: assign })}>+</button>
         </div>
       </div>}
     </div>
   );
 }
 
-function PayRow({ r, act, busy, card, inp, btn, btnP, canManage }: any) {
+function CreateRep({ reps, act, inp, btnP, lvName }: any) {
+  const [email, setEmail] = useState(''); const [level, setLevel] = useState('vendedor'); const [parent, setParent] = useState('');
+  return (
+    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+      <input placeholder="correo (ya con cuenta en la app)" value={email} onChange={(e) => setEmail(e.target.value)} style={{ ...inp, minWidth: 240 }} />
+      <select value={level} onChange={(e) => setLevel(e.target.value)} style={inp}><option value="vendedor">{lvName('vendedor')}</option><option value="l1">{lvName('l1')}</option><option value="l2">{lvName('l2')}</option></select>
+      <select value={parent} onChange={(e) => setParent(e.target.value)} style={inp}><option value="">sin supervisor</option>{reps.filter((r: any) => r.level !== 'vendedor').map((r: any) => <option key={r.id} value={r.id}>{r.display_name || r.email}</option>)}</select>
+      <button style={btnP} onClick={() => email && act({ action: 'create_rep', email, level, parent_id: parent || null })}>Añadir</button>
+    </div>
+  );
+}
+
+function AppRow({ a, reps, act, inp, btn, btnP, canManage, lvName }: any) {
+  const [level, setLevel] = useState(a.desired_role === 'supervisor' ? 'l1' : 'vendedor');
+  const [parent, setParent] = useState('');
+  return (
+    <div style={{ background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: 14, marginBottom: 10 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        <div><b>{a.name}</b> <span className="muted" style={{ fontSize: 12 }}>· {a.email} · {a.country || '—'} · pide: {a.desired_role}</span></div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {a.resume_signed ? <a href={a.resume_signed} target="_blank" rel="noopener" style={{ ...btn, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}>{ic('file', 14)} Ver CV</a> : <span className="muted" style={{ fontSize: 11 }}>sin CV</span>}
+          <span className="muted" style={{ fontSize: 11 }}>{new Date(a.created_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+      {(a.experience || a.audience || a.note) && <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>{[a.experience, a.audience, a.note].filter(Boolean).join(' · ')}</div>}
+      {canManage && <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <select value={level} onChange={(e) => setLevel(e.target.value)} style={inp}><option value="vendedor">{lvName('vendedor')}</option><option value="l1">{lvName('l1')}</option><option value="l2">{lvName('l2')}</option></select>
+        <select value={parent} onChange={(e) => setParent(e.target.value)} style={inp}><option value="">Sin supervisor</option>{reps.filter((r: any) => r.level !== 'vendedor').map((r: any) => <option key={r.id} value={r.id}>{r.display_name || r.email}</option>)}</select>
+        <button style={btnP} onClick={() => act({ action: 'approve', app_id: a.id, email: a.email, level, parent_id: parent || null, display_name: a.name })}>Aprobar</button>
+        <button style={btn} onClick={() => act({ action: 'reject', app_id: a.id })}>Rechazar</button>
+      </div>}
+    </div>
+  );
+}
+
+function PayRow({ r, act, inp, btn, btnP, canManage }: any) {
   const [ref, setRef] = useState('');
   const b = r.balances || {};
   return (
-    <div style={card}>
+    <div style={{ background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: 14, marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <div><b>{r.display_name || r.email}</b> <span className="muted" style={{ fontSize: 12 }}>· disponible <b style={{ color: 'var(--green,#5ed6a0)' }}>${b.available}</b> · método {r.payout_method || 'stripe'}</span></div>
+        <div><b>{r.display_name || r.email}</b> <span className="muted" style={{ fontSize: 12 }}>· disponible <b style={{ color: 'var(--green,#5ed6a0)' }}>${b.available}</b> · {r.payout_method || 'stripe'}</span></div>
         {canManage && <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button style={btnP} disabled={busy.startsWith('pay_stripe')} onClick={() => act({ action: 'pay_stripe', rep_id: r.id })}>Pagar por Stripe</button>
-          <input placeholder="ref/txid (USDT)" value={ref} onChange={(e) => setRef(e.target.value)} style={{ ...inp, width: 150 }} />
-          <button style={btn} onClick={() => act({ action: 'pay_manual', rep_id: r.id, method: 'usdt', ref })}>Marcar pagado (USDT)</button>
+          <button style={btnP} onClick={() => act({ action: 'pay_stripe', rep_id: r.id })}>Pagar por Stripe</button>
+          <input placeholder="txid (USDT)" value={ref} onChange={(e) => setRef(e.target.value)} style={{ ...inp, width: 150 }} />
+          <button style={btn} onClick={() => act({ action: 'pay_manual', rep_id: r.id, method: 'usdt', ref })}>Marcar pagado</button>
         </div>}
       </div>
     </div>
   );
 }
 
-function SettingsBox({ s, act, inp, btnP, card, canManage }: any) {
-  const [f, setF] = useState(s);
-  useEffect(() => { setF(s); }, [s]);
+function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
+  const [f, setF] = useState({ ...s, level_names: names });
+  useEffect(() => { setF({ ...s, level_names: names }); }, [s]);
   const u = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
-  const num = (k: string, label: string, suffix = '') => (
-    <label className="muted" style={{ fontSize: 12.5, display: 'block' }}>{label}<div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><input type="number" value={f[k] ?? 0} onChange={(e) => u(k, Number(e.target.value))} style={{ ...inp, width: 100 }} />{suffix && <span className="muted">{suffix}</span>}</div></label>
+  const un = (k: string, v: any) => setF((x: any) => ({ ...x, level_names: { ...x.level_names, [k]: v } }));
+  const card: React.CSSProperties = { background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: 16, marginBottom: 12 };
+  const num = (k: string, label: string, suf = '') => (
+    <label style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', display: 'block' }}>{label}<div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}><input type="number" value={f[k] ?? 0} onChange={(e) => u(k, Number(e.target.value))} style={{ ...inp, width: 90 }} />{suf && <span className="muted">{suf}</span>}</div></label>
   );
   const tog = (k: string, label: string) => (
-    <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, cursor: 'pointer' }}><input type="checkbox" checked={!!f[k]} onChange={(e) => u(k, e.target.checked)} />{label}</label>
+    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 10, fontSize: 13.5, cursor: 'pointer', color: 'var(--tx,#e8ecf5)', padding: '2px 0' }}>
+      <input type="checkbox" checked={!!f[k]} onChange={(e) => u(k, e.target.checked)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} />
+      <span>{label}</span>
+    </label>
   );
   return (
     <div>
       <div style={card}>
-        <b>Comisiones (% del pago mensual)</b>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>
-          {num('direct_rate', 'Vendedor directo', '%')}
-          {num('override1_rate', 'Override Supervisor N1', '%')}
-          {num('override2_rate', 'Override Supervisor N2', '%')}
-          {num('commission_months', 'Meses de comisión (0 = ∞)')}
+        <b style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{ic('pencil', 15)} Nombres de las posiciones</b>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
+          <label style={{ fontSize: 12.5, color: LV.l2.fg }}>Nivel 2 (arriba)<input value={f.level_names?.l2 || ''} onChange={(e) => un('l2', e.target.value)} placeholder="Director" style={{ ...inp, display: 'block', marginTop: 4, width: 160 }} /></label>
+          <label style={{ fontSize: 12.5, color: LV.l1.fg }}>Nivel 1<input value={f.level_names?.l1 || ''} onChange={(e) => un('l1', e.target.value)} placeholder="Líder" style={{ ...inp, display: 'block', marginTop: 4, width: 160 }} /></label>
+          <label style={{ fontSize: 12.5, color: LV.vendedor.fg }}>Vendedor<input value={f.level_names?.vendedor || ''} onChange={(e) => un('vendedor', e.target.value)} placeholder="Asesor" style={{ ...inp, display: 'block', marginTop: 4, width: 160 }} /></label>
         </div>
       </div>
       <div style={card}>
-        <b>Topes y pagos</b>
+        <b>Comisiones (% del pago mensual)</b>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>
+          {num('direct_rate', 'Vendedor directo', '%')}
+          {num('override1_rate', 'Override Nivel 1', '%')}
+          {num('override2_rate', 'Override Nivel 2', '%')}
+          {num('commission_months', 'Meses (0 = ∞)')}
+        </div>
+      </div>
+      <div style={card}>
+        <b>Topes, pagos y frenos</b>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>
           {num('trial_max_days', 'Máx. días de prueba')}
           {num('discount_max_pct', 'Máx. descuento', '%')}
           {num('hold_days', 'Retención (días)')}
           {num('min_payout', 'Mínimo para pagar', '$')}
         </div>
-        <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+        <div style={{ display: 'grid', gap: 6, marginTop: 14, maxWidth: 460 }}>
           {tog('enabled', 'Programa activo')}
           {tog('auto_payout', 'Pago automático cuando el saldo madura')}
-          {tog('review_before_pay', 'Freno global: revisar antes de pagar (encola)')}
+          {tog('review_before_pay', 'Freno global: revisar antes de pagar')}
           {tog('allow_recruit', 'Los supervisores pueden reclutar su equipo')}
         </div>
       </div>

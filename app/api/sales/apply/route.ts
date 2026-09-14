@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       experience: clean(b.experience, 800) || null,
       audience: clean(b.audience, 400) || null,
       note: clean(b.note, 1000) || null,
+      resume_url: clean(b.resume_path, 300) || null,
       status: 'pending',
     });
 
