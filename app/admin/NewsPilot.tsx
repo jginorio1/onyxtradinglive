@@ -5,7 +5,7 @@ import { toast } from '@/lib/toast';
 // Interruptor moderno (mismo estilo que el piloto del blog).
 function Switch({ on, accent = '#34e2a0' }: { on: boolean; accent?: string }) {
   return (
-    <span style={{ width: 42, height: 24, borderRadius: 999, flex: 'none', position: 'relative', transition: 'all .18s',
+    <span style={{ display: 'inline-block', verticalAlign: 'middle', width: 42, height: 24, borderRadius: 999, flex: 'none', position: 'relative', transition: 'all .18s',
       background: on ? accent : 'var(--line)', boxShadow: on ? `0 0 14px -2px ${accent}` : 'none' }}>
       <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left .18s', boxShadow: '0 2px 5px rgba(0,0,0,.35)' }} />
     </span>
@@ -31,6 +31,7 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
   const [cfg, setCfg] = useState<Cfg | null>(null);
   const [sources, setSources] = useState<Src[]>([]);
   const [recent, setRecent] = useState<any[]>([]);
+  const [lastRun, setLastRun] = useState<{ at: string; via: string; reason: string; posted: number; candidate: string } | null>(null);
   const [busy, setBusy] = useState('');
   // Añadir fuente personalizada + resultado de la prueba de cada URL.
   const [nf, setNf] = useState<{ name: string; url: string; cat: string }>({ name: '', url: '', cat: 'markets' });
@@ -39,7 +40,7 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
   async function load() {
     try {
       const r = await fetch('/api/admin/news'); const j = await r.json();
-      if (j.settings) { setCfg(j.settings); setSources(j.sources || []); setRecent(j.recent || []); }
+      if (j.settings) { setCfg(j.settings); setSources(j.sources || []); setRecent(j.recent || []); setLastRun(j.lastRun || null); }
     } catch {}
   }
   useEffect(() => { load(); }, []);
@@ -106,6 +107,35 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
   const box: any = { background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' };
   const lbl: any = { fontSize: 11.5, color: 'var(--mut)', marginBottom: 5 };
 
+  // "hace X" legible a partir de una fecha ISO.
+  const ago = (iso: string) => {
+    const ms = Date.now() - new Date(iso).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return '';
+    const m = Math.floor(ms / 60000), h = Math.floor(m / 60);
+    if (m < 1) return L('hace segundos', 'seconds ago');
+    if (m < 60) return L(`hace ${m} min`, `${m} min ago`);
+    if (h < 24) return L(`hace ${h} h`, `${h} h ago`);
+    return L(`hace ${Math.floor(h / 24)} días`, `${Math.floor(h / 24)} days ago`);
+  };
+  // Motivo del último ciclo en lenguaje claro.
+  const reasonLbl = (r: string) => {
+    const m: Record<string, [string, string]> = {
+      posted: ['Publicó un artículo ✅', 'Posted an article ✅'],
+      drafted: ['Dejó un borrador', 'Left a draft'],
+      no_fresh: ['Sin noticias frescas importantes', 'No fresh important news'],
+      all_seen: ['Todo lo reciente ya se había visto', 'Everything recent already seen'],
+      cap_reached: ['Ya llegó al tope diario', 'Daily cap reached'],
+      too_soon: ['Muy pronto tras la última', 'Too soon after the last'],
+      disabled: ['Vigilante apagado', 'Watcher off'],
+      no_sources: ['Sin fuentes activas', 'No active sources'],
+      gen_failed: ['La IA no pudo redactar', 'AI could not write'],
+    };
+    if (r?.startsWith('error')) return [`Error: ${r.slice(7)}`, `Error: ${r.slice(7)}`][es ? 0 : 1];
+    return (m[r] ? (es ? m[r][0] : m[r][1]) : r) || (es ? 'sin datos' : 'no data');
+  };
+  // ¿El cron parece vivo? última corrida vía cron hace ≤ 10 min.
+  const cronHealthy = lastRun && lastRun.via === 'cron' && (Date.now() - new Date(lastRun.at).getTime()) < 10 * 60000;
+
   return (
     <div className="card" style={{ border: '1px solid ' + (cfg.enabled ? 'color-mix(in srgb,#f5b23e 45%,var(--line))' : 'var(--line)') }}>
       {/* Cabecera plegable */}
@@ -129,6 +159,25 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
           <div onClick={() => upd('enabled', !cfg.enabled)} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...box, borderColor: cfg.enabled ? A + '66' : 'var(--line)' }}>
             <div><div style={{ fontSize: 13.5, fontWeight: 700 }}>{L('Vigilante activo', 'Watcher on')}</div><div className="muted" style={{ fontSize: 12 }}>{L('Corre cada ~3 min y actúa solo cuando detecta algo importante.', 'Runs every ~3 min and acts only on important news.')}</div></div>
             <Switch on={cfg.enabled} accent={A} />
+          </div>
+
+          {/* Estado del cron: última corrida real (para saber si dispara solo) */}
+          <div style={{ ...box, borderColor: lastRun ? (cronHealthy ? 'color-mix(in srgb,#34e2a0 40%,var(--line))' : 'color-mix(in srgb,#f5b23e 40%,var(--line))') : 'var(--line)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', flex: 'none', background: !lastRun ? 'var(--mut)' : cronHealthy ? '#34e2a0' : '#f5b23e', boxShadow: lastRun && cronHealthy ? '0 0 8px #34e2a0' : 'none' }} />
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{L('Última corrida', 'Last run')}</span>
+              </div>
+              {lastRun ? (
+                <span className="muted" style={{ fontSize: 12 }}>{ago(lastRun.at)} · {lastRun.via === 'cron' ? L('automática', 'automatic') : L('prueba manual', 'manual test')}</span>
+              ) : <span className="muted" style={{ fontSize: 12 }}>{L('Aún sin corridas registradas', 'No runs recorded yet')}</span>}
+            </div>
+            {lastRun && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{reasonLbl(lastRun.reason)}{lastRun.candidate ? ` — “${lastRun.candidate.slice(0, 70)}”` : ''}</div>}
+            {lastRun && lastRun.via === 'test' && (
+              <div style={{ fontSize: 11.5, marginTop: 6, color: '#f5b23e' }}>
+                {L('Solo hay corridas de prueba. Si nunca ves “automática” aquí, el cron de Vercel no está disparando (revisa que el proyecto esté desplegado con vercel.json y que CRON_SECRET coincida).', 'Only test runs so far. If you never see “automatic” here, Vercel cron isn’t firing (check the project is deployed with vercel.json and CRON_SECRET matches).')}
+              </div>
+            )}
           </div>
 
           <div style={box}>

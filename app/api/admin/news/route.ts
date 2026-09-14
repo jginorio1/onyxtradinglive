@@ -36,12 +36,13 @@ export async function GET() {
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const settings = await newsPilotSettings();
   const sources = NEWS_SOURCES.map((s) => ({ id: s.id, name: s.name, url: s.url, tier: s.tier, cat: s.cat }));
+  const lastRun = await getSetting<any>('news_pilot_last', null);
   let recent: any[] = [];
   try {
     const { data } = await supabaseAdmin.from('news_seen').select('title,source,url,posted,created_at').order('created_at', { ascending: false }).limit(20);
     recent = data || [];
   } catch {}
-  return NextResponse.json({ settings, sources, recent });
+  return NextResponse.json({ settings, sources, recent, lastRun });
 }
 
 // PATCH · guardar ajustes del piloto (owner/gestor de módulos).
@@ -93,7 +94,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const r = await runNewsPilot(true);
+    const r = await runNewsPilot(true, 'test');
     return NextResponse.json({ ok: true, ...r });
   } catch (e: any) {
     await logError('news_pilot_run', e);

@@ -74,8 +74,23 @@ async function todayStats(): Promise<{ count: number; lastMs: number }> {
   } catch { return { count: 0, lastMs: 0 }; }
 }
 
+export type PilotResult = { ran: boolean; reason?: string; posted?: number; seen?: number; candidate?: string };
+
+// Envoltorio público: corre el ciclo y DEJA CONSTANCIA de la última corrida
+// (hora + motivo + si publicó) para que el panel muestre si el cron está vivo.
+export async function runNewsPilot(force = false, via: 'cron' | 'test' = 'cron'): Promise<PilotResult> {
+  let res: PilotResult;
+  try { res = await runCycle(force); }
+  catch (e: any) { res = { ran: false, reason: 'error: ' + (e?.message || 'error') }; }
+  try {
+    const { saveSetting } = await import('@/lib/settings');
+    await saveSetting('news_pilot_last', { at: new Date().toISOString(), via, reason: res.reason || '', posted: res.posted || 0, candidate: res.candidate || '' });
+  } catch {}
+  return res;
+}
+
 // Ejecuta un ciclo del piloto. Devuelve un resumen para logs/panel.
-export async function runNewsPilot(force = false): Promise<{ ran: boolean; reason?: string; posted?: number; seen?: number; candidate?: string }> {
+async function runCycle(force = false): Promise<PilotResult> {
   const cfg = await newsPilotSettings();
   if (!cfg.enabled && !force) return { ran: false, reason: 'disabled' };
 
