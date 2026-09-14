@@ -74,7 +74,7 @@ async function todayStats(): Promise<{ count: number; lastMs: number }> {
   } catch { return { count: 0, lastMs: 0 }; }
 }
 
-export type PilotResult = { ran: boolean; reason?: string; posted?: number; seen?: number; candidate?: string };
+export type PilotResult = { ran: boolean; reason?: string; posted?: number; seen?: number; candidate?: string; feeds?: number; feedsOk?: number; fetched?: number; important?: number };
 
 // Envoltorio público: corre el ciclo y DEJA CONSTANCIA de la última corrida
 // (hora + motivo + si publicó) para que el panel muestre si el cron está vivo.
@@ -115,8 +115,15 @@ async function runCycle(force = false): Promise<PilotResult> {
   // Descarga feeds en paralelo y junta items frescos e importantes.
   const results = await Promise.all(active.map((s) => fetchFeed(s)));
   const maxAge = (cfg.maxAgeMin || 45) * 60000;
-  const fresh = results.flat().filter((it) => Date.now() - it.published <= maxAge && important(it));
-  if (!fresh.length) return { ran: true, reason: 'no_fresh', posted: 0, seen: 0 };
+  const flat = results.flat();
+  // Diagnóstico (se ve en la respuesta del cron): cuántos feeds respondieron con
+  // items, cuántos items en total, cuántos importantes y cuántos frescos. Así
+  // sabemos si el problema es que las fuentes vienen vacías (bloqueadas) o el filtro.
+  const feedsOk = results.filter((r) => r.length > 0).length;
+  const importantCount = flat.filter((it) => important(it)).length;
+  const diag = { feeds: active.length, feedsOk, fetched: flat.length, important: importantCount };
+  const fresh = flat.filter((it) => Date.now() - it.published <= maxAge && important(it));
+  if (!fresh.length) return { ran: true, reason: 'no_fresh', posted: 0, seen: 0, ...diag };
 
   // Ordena por importancia y frescura.
   fresh.sort((a, b) => (score(b) - score(a)) || (b.published - a.published));

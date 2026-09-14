@@ -5,17 +5,15 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 // ============================================================
-// SECCIÓN TEMPORAL — respaldo de variables/claves. SOLO EL DUEÑO.
+// Bóveda de claves — API keys, webhook secrets y todas las variables. SOLO EL DUEÑO.
 //
-// Seguridad en capas:
-//   1) Solo el rol 'owner' puede acceder (403 para el resto).
-//   2) El listado de estado va SIEMPRE enmascarado (solo se ve si está puesta
-//      y una pista de 4 caracteres). Nunca el valor completo.
-//   3) La DESCARGA con valores completos (?mode=export) solo funciona si en
-//      Vercel existe la variable ENABLE_SECRETS_EXPORT=1. Apagado por defecto.
+// Acceso: solo el rol 'owner' (403 para el resto). Es el único candado; el dueño
+// se hace cargo del resto de la seguridad.
+//   • ?mode=status  → listado enmascarado (vista por defecto).
+//   • ?mode=reveal  → valores COMPLETOS en JSON (para revelar/copiar en la UI).
+//   • ?mode=export  → descarga .env con valores completos.
 //
-// Para borrar esta función después: elimina este archivo y app/admin/secrets/,
-// y quita la variable ENABLE_SECRETS_EXPORT de Vercel.
+// Para borrar esta función después: elimina este archivo y app/admin/secrets/.
 // ============================================================
 
 // Variables que usa la app (para el listado de estado y el backup).
@@ -51,10 +49,7 @@ export async function GET(req: Request) {
   const mode = new URL(req.url).searchParams.get('mode') || 'status';
 
   if (mode === 'export') {
-    // Descarga con valores completos: solo si el interruptor está encendido en Vercel.
-    if (process.env.ENABLE_SECRETS_EXPORT !== '1') {
-      return NextResponse.json({ error: 'Descarga deshabilitada. Pon ENABLE_SECRETS_EXPORT=1 en Vercel y vuelve a desplegar.' }, { status: 403 });
-    }
+    // Descarga con valores completos. Solo el dueño (ya validado arriba).
     const lines = KEYS.map((k) => { const v = process.env[k]; return v == null || v === '' ? null : `${k}=${v}`; }).filter(Boolean) as string[];
     const body = `# Onyx Trading Live — respaldo de variables\n# Generado: ${new Date().toISOString()}\n# GUÁRDALO EN UN LUGAR SEGURO (gestor de contraseñas). NUNCA lo subas a GitHub.\n\n${lines.join('\n')}\n`;
     return new NextResponse(body, {
@@ -67,7 +62,13 @@ export async function GET(req: Request) {
     });
   }
 
-  // Estado (enmascarado) — seguro de ver.
+  if (mode === 'reveal') {
+    // Valores COMPLETOS en JSON. Solo el dueño (ya validado arriba).
+    const items = KEYS.map((k) => { const v = process.env[k]; return { name: k, set: v != null && v !== '', value: v != null ? String(v) : '' }; });
+    return NextResponse.json({ items }, { headers: { 'cache-control': 'no-store' } });
+  }
+
+  // Estado (enmascarado) — vista por defecto.
   const items = KEYS.map((k) => { const v = process.env[k]; return { name: k, set: v != null && v !== '', hint: mask(v) }; });
-  return NextResponse.json({ items, exportEnabled: process.env.ENABLE_SECRETS_EXPORT === '1' });
+  return NextResponse.json({ items });
 }
