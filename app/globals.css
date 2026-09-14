@@ -20,18 +20,21 @@ html[data-theme="light"]{
      borde visible y texto secundario un punto más oscuro → más contraste. */
   --bg:#e7ebf3; --bg2:#eff2f8; --card:#ffffff; --card2:#e9eef6; --line:#d2d9e6;
   --tx:#101725; --mut:#56617a;
-  --brand:#5b6cff; --brand2:#8b5cff;
+  /* --brand de tema claro oscurecido de #5b6cff a #5261e6: el botón primario usa
+     texto blanco sobre var(--brand) y #5b6cff solo daba 4.17:1 (WCAG pide 4.5).
+     #5261e6 da 4.72:1 y es visualmente casi idéntico. El modo oscuro no cambia. */
+  --brand:#5261e6; --brand2:#8b5cff;
   --green:#12a97a; --green2:#0e9268; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
-  --grad:linear-gradient(120deg,#6b7bff,#8b5cff);
+  --grad:linear-gradient(120deg,#5261e6,#8b5cff);
   --soft-brand:#4a57c9; --soft-brand2:#4550b0; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]):not([data-theme="light"]){
     --bg:#e7ebf3; --bg2:#eff2f8; --card:#ffffff; --card2:#e9eef6; --line:#d2d9e6;
     --tx:#101725; --mut:#56617a;
-    --brand:#5b6cff; --brand2:#8b5cff;
+    --brand:#5261e6; --brand2:#8b5cff;  /* mismo fix de contraste que arriba (btn primario) */
     --green:#12a97a; --green2:#0e9268; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
-    --grad:linear-gradient(120deg,#6b7bff,#8b5cff);
+    --grad:linear-gradient(120deg,#5261e6,#8b5cff);
     --soft-brand:#4a57c9; --soft-brand2:#4550b0; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
   }
 }

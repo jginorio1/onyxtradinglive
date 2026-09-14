@@ -203,7 +203,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               ];
               return <SectionNav items={items} hrefBase={en ? '/en' : '/'} />;
             })()}
-            {children}
+            {/* Landmark de contenido principal ÚNICO para toda la app (accesibilidad —
+                Lighthouse/axe lo exigen). Antes solo lo tenía el landing y bot-lab; ahora
+                lo hereda cada página pública y privada por igual. Las páginas NO deben
+                envolver su contenido en otro <main> (dos landmarks = falta a11y). */}
+            <main id="main">{children}</main>
             {(() => {
               // El footer de marketing NO se muestra dentro de la app (dashboard, admin,
               // cuenta, onboarding, login), en español ni en /en. Solo en páginas públicas.

@@ -121,7 +121,7 @@ export default async function BotLabLanding() {
   const secHead: any = { maxWidth: 640, margin: '0 auto 30px', textAlign: 'center' };
 
   return (
-    <main style={{ paddingBottom: 40 }}>
+    <div style={{ paddingBottom: 40 }}>
       {/* HERO */}
       <section style={{ ...wrap, paddingTop: 56, paddingBottom: 30 }}>
         <div style={{ display: 'grid', gap: 36, alignItems: 'center' }} className="g2">
@@ -416,6 +416,6 @@ export default async function BotLabLanding() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

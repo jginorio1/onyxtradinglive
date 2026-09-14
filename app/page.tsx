@@ -572,8 +572,9 @@ export default function Home() {
   ];
 
   return (
-    // <main>: landmark de contenido principal (accesibilidad — Lighthouse lo exige).
-    <main>
+    // El landmark <main> ahora es global (en el layout raíz), así que aquí solo
+    // devolvemos un fragmento para no duplicarlo.
+    <>
       {/* La barra de secciones ahora es global (en el layout), visible en todas las páginas. */}
 
       {/* HERO */}
@@ -995,6 +996,6 @@ export default function Home() {
       </div>
 
       {/* El footer ahora es global (app/SiteFooter.tsx), en todas las páginas. */}
-    </main>
+    </>
   );
 }
