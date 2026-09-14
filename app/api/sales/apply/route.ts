@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     // Aviso al admin (email + Telegram si están disponibles). Silencioso si falla.
     try {
       const mail: any = await import('@/lib/mail');
-      const mr: any = await import('@/lib/mailRoutes');
+      const mr: any = await import('@/lib/settings');
       const routes: any = (mr.mailRoutes ? await mr.mailRoutes().catch(() => ({})) : {}) || {};
       const to = String(routes.sales || routes.support || process.env.SUPPORT_EMAIL || 'support@onyxtradinglive.com').trim();
       await mail.sendEmail(to, `🧑‍💼 Nueva solicitud de vendedor · ${name}`,
