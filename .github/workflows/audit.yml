@@ -1,5 +1,11 @@
 name: Audit
 
+# Auditoría automática: velocidad (Lighthouse), botones/flujos (Playwright),
+# type-check y dependencias inseguras. Corre en cada push a main y a mano.
+# Secretos necesarios (GitHub → Settings → Secrets → Actions):
+#   APP_URL      https://www.onyxtradinglive.com
+#   CRON_SECRET  el mismo valor que en Vercel
+
 on:
   push:
     branches: [main]
@@ -63,4 +69,15 @@ jobs:
               -H "x-cron-secret: $CRON_SECRET" \
               -H "content-type: application/json" \
               --data-binary @payload.json || true
+          fi
+
+      - name: Presupuesto de rendimiento
+        run: |
+          PERF=$(node -e "try{console.log(require('./payload.json').lighthouse?.performance ?? 100)}catch{console.log(100)}")
+          echo "Rendimiento: $PERF (aviso <80 · bloquea <55)"
+          if [ "$PERF" -lt 55 ]; then
+            echo "::error::El rendimiento cayó a $PERF (por debajo de 55). Revisa qué se ralentizó."
+            exit 1
+          elif [ "$PERF" -lt 80 ]; then
+            echo "::warning::Rendimiento $PERF por debajo del objetivo (80). Conviene optimizar."
           fi

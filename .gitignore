@@ -1,6 +1,17 @@
-*.tsx
-capacitor.config.ts
-*.ts
-/node_modules/.bin
-/node_modules
-/mobile
+# Dependencias (Vercel las reinstala solas). NUNCA subir a GitHub.
+node_modules/
+# Build de Next.js
+.next/
+out/
+# App nativa (se genera en tu Mac con "npx cap add android")
+android/
+ios/
+# Sistema / logs
+.DS_Store
+*.log
+npm-debug.log*
+# Variables de entorno (secretas)
+.env
+.env.local
+.env*.local
+tsconfig.tsbuildinfo

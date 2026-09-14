@@ -1,8 +1,16 @@
 name: Trader reports
 
+# Envía a cada trader (con Telegram vinculado y plan que lo incluya) su reporte
+# de rendimiento: resumen + gráfico + PDF + CSV. Corre CADA HORA; el sistema
+# decide a quién le toca según SU hora local (día y hora configurables en
+# Admin → Módulos → Reporte de rendimiento). Así todos lo reciben, por ejemplo,
+# el sábado a las 5pm de su reloj, y nadie de madrugada.
+#
+# Secretos: APP_URL, CRON_SECRET (los mismos de las otras tareas).
+
 on:
   schedule:
-    - cron: '30 6 * * *'
+    - cron: '30 * * * *'   # cada hora, en el minuto :30
   workflow_dispatch: {}
 
 jobs:

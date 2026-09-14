@@ -1,0 +1,15 @@
+# Dependabot: abre PRs automáticos cuando salen actualizaciones de dependencias
+# (incluidas las de seguridad) y de las propias GitHub Actions.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencias"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["ci"]
