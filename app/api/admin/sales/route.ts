@@ -141,6 +141,7 @@ export async function POST(req: Request) {
       if (b.from_name !== undefined) patch.from_name = String(b.from_name || '').slice(0, 80) || null;
       if (b.from_alias !== undefined) patch.from_alias = String(b.from_alias || '').slice(0, 120) || null;
       if (b.reply_to !== undefined) patch.reply_to = String(b.reply_to || '').slice(0, 160) || null;
+      if (b.work_email !== undefined) patch.work_email = String(b.work_email || '').trim().slice(0, 160) || null;
       if (b.note !== undefined) patch.note = String(b.note || '').slice(0, 500) || null;
       await supabaseAdmin.from('sales_reps').update(patch).eq('id', b.rep_id);
       return NextResponse.json({ ok: true });

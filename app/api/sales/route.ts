@@ -115,6 +115,7 @@ export async function POST(req: Request) {
       if (['stripe', 'usdt'].includes(b.payout_method)) patch.payout_method = b.payout_method;
       if (b.from_name !== undefined) patch.from_name = String(b.from_name || '').slice(0, 80) || null;
       if (b.reply_to !== undefined) patch.reply_to = String(b.reply_to || '').slice(0, 160) || null;
+      if (b.work_email !== undefined) patch.work_email = String(b.work_email || '').trim().slice(0, 160) || null;
       await supabaseAdmin.from('sales_reps').update(patch).eq('id', rep.id);
       // Billetera USDT (se guarda en el perfil, validada).
       if (b.payout_method === 'usdt' && b.wallet && b.network) {
@@ -140,12 +141,28 @@ export async function POST(req: Request) {
       const ticketId = String(b.ticket_id || '');
       const body = String(b.body || '').trim().slice(0, 4000);
       if (!ticketId || !body) return NextResponse.json({ ok: false, error: 'faltan datos' }, { status: 400 });
-      const { data: t } = await supabaseAdmin.from('support_tickets').select('user_id').eq('id', ticketId).maybeSingle();
+      const { data: t } = await supabaseAdmin.from('support_tickets').select('user_id,email,subject').eq('id', ticketId).maybeSingle();
       if (!t) return NextResponse.json({ ok: false, error: 'ticket no existe' }, { status: 404 });
       const { data: own } = await supabaseAdmin.from('sales_clients').select('id').eq('rep_id', rep.id).eq('user_id', (t as any).user_id).maybeSingle();
       if (!own) return NextResponse.json({ ok: false, error: 'no es tu cliente' }, { status: 403 });
       await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'agent', sender_id: user.id, body });
       await supabaseAdmin.from('support_tickets').update({ status: 'answered', updated_at: new Date().toISOString() }).eq('id', ticketId);
+      // Correo al cliente con el remitente del vendedor (buzón de tu dominio si lo
+      // tiene; reply-to a su correo). Silencioso si falla.
+      try {
+        const clientEmail = (t as any).email;
+        if (clientEmail) {
+          const senderName = rep.from_name || rep.display_name || 'Tu asesor Onyx';
+          const workEmail = (rep as any).work_email || null;
+          const replyTo = workEmail || rep.reply_to || undefined;
+          const { sendEmail, fromWithAddr } = await import('@/lib/mail');
+          await sendEmail(clientEmail, `Re: ${(t as any).subject || 'Tu consulta en Onyx'}`,
+            `${body}\n\n—\n${senderName} · Onyx Trading Live\nResponde a este correo o entra a tu Centro de soporte para seguir la conversación.`,
+            { from: fromWithAddr(senderName, workEmail), replyTo });
+        }
+        const { emitNotif } = await import('@/lib/emitNotif');
+        await emitNotif((t as any).user_id, 'support_reply', { vars: { body: `${(t as any).subject ? (t as any).subject + ': ' : ''}${body.slice(0, 90)}` }, url: `/dashboard/soporte?ticket=${ticketId}` }).catch(() => {});
+      } catch {}
       return NextResponse.json({ ok: true });
     }
 

@@ -150,6 +150,7 @@ function RepCard({ r, c, names, reps, act, canManage, dragId, setDragId, onDropO
   const [level, setLevel] = useState(r.level);
   const [parent, setParent] = useState(r.parent_id || '');
   const [rate, setRate] = useState(r.rate_override ?? '');
+  const [workEmail, setWorkEmail] = useState(r.work_email || '');
   const [assign, setAssign] = useState('');
   const dfl = r.level === 'vendedor'
     ? { can_trial: true, can_discount: true, can_clients: true, can_tickets: true, can_recruit: false, can_team: false }
@@ -179,7 +180,8 @@ function RepCard({ r, c, names, reps, act, canManage, dragId, setDragId, onDropO
         <select value={level} onChange={(e) => setLevel(e.target.value)} style={inp}><option value="vendedor">{lvName('vendedor')}</option><option value="l1">{lvName('l1')}</option><option value="l2">{lvName('l2')}</option></select>
         <select value={parent} onChange={(e) => setParent(e.target.value)} style={inp}><option value="">— sin supervisor —</option>{reps.filter((x: any) => x.id !== r.id && x.level !== 'vendedor').map((x: any) => <option key={x.id} value={x.id}>{x.display_name || x.email}</option>)}</select>
         <input type="number" placeholder="% propio (auto)" value={rate} onChange={(e) => setRate(e.target.value)} style={inp} />
-        <button style={btnP} onClick={() => act({ action: 'set_rep', rep_id: r.id, level, parent_id: parent || null, rate_override: rate })}>Guardar</button>
+        <input placeholder="correo de trabajo (ej. juan@onyxtradinglive.com)" value={workEmail} onChange={(e) => setWorkEmail(e.target.value)} style={inp} />
+        <button style={btnP} onClick={() => act({ action: 'set_rep', rep_id: r.id, level, parent_id: parent || null, rate_override: rate, work_email: workEmail })}>Guardar</button>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <button style={{ ...btn, flex: 1 }} onClick={() => act({ action: 'set_rep', rep_id: r.id, on_hold: !r.on_hold })}>{r.on_hold ? '▶ Reanudar' : '⏸ Pausar'}</button>
           <button style={{ ...btn, flex: 1 }} onClick={() => act({ action: 'set_rep', rep_id: r.id, status: r.status === 'active' ? 'paused' : 'active' })}>{r.status === 'active' ? 'Desactivar' : 'Activar'}</button>

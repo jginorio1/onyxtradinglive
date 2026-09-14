@@ -31,6 +31,17 @@ export function fromWithName(name: string): string {
   return `${clean} <${addr}>`;
 }
 
+// Remitente con NOMBRE y DIRECCIÓN propios (p. ej. el buzón del vendedor con tu
+// dominio: "Juan Pérez <juan@onyxtradinglive.com>"). La dirección debe estar en
+// el dominio verificado en Resend para que pase DKIM; si no es un correo válido,
+// cae al remitente por defecto con el nombre puesto.
+export function fromWithAddr(name: string, addr?: string | null): string {
+  const clean = String(name || '').replace(/[<>"]/g, '').trim().slice(0, 60) || 'Onyx Trading Live';
+  const a = String(addr || '').trim();
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a)) return `${clean} <${a}>`;
+  return fromWithName(clean);
+}
+
 // --- Formato de correo: convierte el texto (con markdown básico) a HTML
 // limpio y profesional, con la marca Onyx. Compatible con clientes de correo
 // (estilos en línea, tablas). Devuelve { html, text } listos para enviar.
