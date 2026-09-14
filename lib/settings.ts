@@ -386,7 +386,7 @@ export type NewsPilot = {
 };
 const NEWS: NewsPilot = {
   enabled: false, mode: 'auto', maxPerDay: 3, minMinutesBetween: 20, emailSegment: 'all',
-  topics: { macro: true, markets: true, earnings: true, crypto: true }, sources: {}, custom_sources: [], maxAgeMin: 720, seo: true,
+  topics: { macro: true, markets: true, earnings: true, crypto: true }, sources: {}, custom_sources: [], maxAgeMin: 2880, seo: true,
 };
 export const newsPilotSettings = () => getSetting<NewsPilot>('news_pilot', NEWS);
 
