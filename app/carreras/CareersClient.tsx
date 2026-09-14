@@ -39,6 +39,10 @@ export default function CareersClient() {
 
   useEffect(() => { (async () => { try { const r = await fetch('/api/careers', { cache: 'no-store' }); setD(await r.json()); } catch { setD({ enabled: false }); } })(); }, []);
 
+  // Toma el campo en el idioma actual; si falta, cae al que exista.
+  const T = (o: any, f: string) => (lang === 'en' ? (o[f + '_en'] || o[f]) : (o[f] || o[f + '_en']));
+  const TG = (o: any) => (lang === 'en' ? ((o.tags_en && o.tags_en.length) ? o.tags_en : o.tags) : (o.tags && o.tags.length ? o.tags : o.tags_en)) || [];
+
   const positions: any[] = d?.positions || [];
   const depts = useMemo(() => Array.from(new Set(positions.map((p) => p.department))), [positions]);
   const shown = filter === 'all' ? positions : positions.filter((p) => p.department === filter);
@@ -83,15 +87,15 @@ export default function CareersClient() {
             return (
               <div key={p.id} style={{ background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', borderTop: `3px solid ${dp.c}` }}>
                 <span style={{ alignSelf: 'flex-start', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', color: dp.c, background: dp.c + '1e', padding: '3px 10px', borderRadius: 20 }}>{lang === 'es' ? dp.es : dp.en}</span>
-                <h3 style={{ fontSize: 19, margin: '12px 0 6px', color: 'var(--tx,#e8ecf5)' }}>{p.title}</h3>
-                {p.summary && <p style={{ fontSize: 13.5, color: 'var(--mut,#9aa6bd)', margin: '0 0 12px', lineHeight: 1.55, flex: 1 }}>{p.summary}</p>}
+                <h3 style={{ fontSize: 19, margin: '12px 0 6px', color: 'var(--tx,#e8ecf5)' }}>{T(p, 'title')}</h3>
+                {T(p, 'summary') && <p style={{ fontSize: 13.5, color: 'var(--mut,#9aa6bd)', margin: '0 0 12px', lineHeight: 1.55, flex: 1 }}>{T(p, 'summary')}</p>}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 12 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="pin" s={14} /> {p.location || 'Remoto'}</span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="clock" s={14} /> {(TYPE[p.type] || TYPE.full)[lang]}</span>
                   {p.salary_range && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="cash" s={14} /> {p.salary_range}</span>}
                 </div>
-                {!!(p.tags || []).length && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-                  {(p.tags || []).slice(0, 6).map((t: string, i: number) => <span key={i} style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)', border: '1px solid var(--line,#2a3350)', borderRadius: 6, padding: '2px 8px' }}>{t}</span>)}
+                {!!TG(p).length && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                  {TG(p).slice(0, 6).map((t: string, i: number) => <span key={i} style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)', border: '1px solid var(--line,#2a3350)', borderRadius: 6, padding: '2px 8px' }}>{t}</span>)}
                 </div>}
                 <button onClick={() => setApply(p)} style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, border: 'none', background: 'var(--accent,#8b93ff)', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>{L('Ver y postularme', 'View & apply')} <Ic n="arrow" s={16} c="#fff" /></button>
               </div>
@@ -124,6 +128,7 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
   const inp: React.CSSProperties = { width: '100%', padding: '11px 13px', borderRadius: 10, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 14, marginTop: 6 };
   const lbl: React.CSSProperties = { fontSize: 12.5, color: 'var(--mut,#9aa6bd)', fontWeight: 600 };
   const mode = settings.apply_mode || 'form';
+  const T = (f: string) => (lang === 'en' ? (job[f + '_en'] || job[f]) : (job[f] || job[f + '_en']));
 
   async function onCv(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file) return; setErr('');
@@ -155,7 +160,7 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 90, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: 20, overflowY: 'auto' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(600px,100%)', background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 16, padding: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-          <h2 style={{ fontSize: 22, margin: 0, color: 'var(--tx,#e8ecf5)' }}>{job.title}</h2>
+          <h2 style={{ fontSize: 22, margin: 0, color: 'var(--tx,#e8ecf5)' }}>{T('title')}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--mut,#9aa6bd)', fontSize: 22, cursor: 'pointer' }}>✕</button>
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--mut,#9aa6bd)', margin: '8px 0 16px' }}>
@@ -165,7 +170,7 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
         </div>
 
         {tab === 'detail' && <>
-          {job.description ? <div style={{ fontSize: 14, color: 'var(--tx,#e8ecf5)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{job.description}</div> : <p style={{ color: 'var(--mut,#9aa6bd)' }}>{job.summary}</p>}
+          {T('description') ? <div style={{ fontSize: 14, color: 'var(--tx,#e8ecf5)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{T('description')}</div> : <p style={{ color: 'var(--mut,#9aa6bd)' }}>{T('summary')}</p>}
           <button onClick={applyBtn} style={{ marginTop: 20, width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: 'var(--accent,#8b93ff)', color: '#fff', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>{L('Postularme a esta plaza', 'Apply to this position')}</button>
         </>}
 

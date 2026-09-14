@@ -54,6 +54,9 @@ export async function savePosition(p: any): Promise<{ ok: boolean; id?: string; 
     tags: Array.isArray(p.tags) ? p.tags.map((t: any) => String(t).slice(0, 30)).slice(0, 12) : [],
     status: ['open', 'closed', 'draft'].includes(p.status) ? p.status : 'draft',
     sort: Number(p.sort) || 0,
+    // Versión en inglés (bilingüe).
+    title_en: clean(p.title_en, 120), summary_en: clean(p.summary_en, 300), description_en: clean(p.description_en, 6000),
+    tags_en: Array.isArray(p.tags_en) ? p.tags_en.map((t: any) => String(t).slice(0, 30)).slice(0, 12) : [],
   };
   if (!patch.title) return { ok: false, error: 'falta el título' };
   if (p.id) { await supabaseAdmin.from('job_openings').update(patch).eq('id', p.id); return { ok: true, id: p.id }; }

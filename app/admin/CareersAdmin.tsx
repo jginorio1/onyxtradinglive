@@ -97,26 +97,97 @@ export default function CareersAdmin({ canManage = true }: { canManage?: boolean
 }
 
 function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
-  const [f, setF] = useState<any>({ ...p, tags: (p.tags || []).join(', ') });
+  const [f, setF] = useState<any>({ ...p, tags: (p.tags || []).join(', '), tags_en: (p.tags_en || []).join(', ') });
+  const [lang, setLang] = useState<'es' | 'en'>('es');
+  const [busyT, setBusyT] = useState(false);
+  const [audit, setAudit] = useState<any>(null);
+  const [busyA, setBusyA] = useState(false);
   const u = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
   const lbl: React.CSSProperties = { fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'block', marginBottom: 4 };
-  async function save() { const r = await act({ action: 'save_position', position: { ...f, tags: String(f.tags || '').split(',').map((t: string) => t.trim()).filter(Boolean) } }); if (r?.ok) onClose(); }
+  // Sufijo de campo según idioma que se edita.
+  const F = (base: string) => (lang === 'en' ? base + '_en' : base);
+  const other = lang === 'es' ? 'en' : 'es';
+
+  async function translate() {
+    setBusyT(true);
+    const r = await act({ action: 'translate', to: other, src: {
+      title: f[F('title')] || '', summary: f[F('summary')] || '', description: f[F('description')] || '',
+      tags: String((lang === 'en' ? f.tags_en : f.tags) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
+    } });
+    if (r?.translated) {
+      const t = r.translated;
+      setF((x: any) => ({ ...x,
+        [other === 'en' ? 'title_en' : 'title']: t.title,
+        [other === 'en' ? 'summary_en' : 'summary']: t.summary,
+        [other === 'en' ? 'description_en' : 'description']: t.description,
+        [other === 'en' ? 'tags_en' : 'tags']: (t.tags || []).join(', '),
+      }));
+      setLang(other);
+    }
+    setBusyT(false);
+  }
+  async function runAudit() {
+    setBusyA(true);
+    const r = await act({ action: 'audit', lang, job: {
+      title: f[F('title')], department: f.department, type: f.type, location: f.location, salary_range: f.salary_range,
+      summary: f[F('summary')], description: f[F('description')], tags: String((lang === 'en' ? f.tags_en : f.tags) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
+    } });
+    setAudit(r?.audit || null); setBusyA(false);
+  }
+  async function save() {
+    const r = await act({ action: 'save_position', position: { ...f,
+      tags: String(f.tags || '').split(',').map((t: string) => t.trim()).filter(Boolean),
+      tags_en: String(f.tags_en || '').split(',').map((t: string) => t.trim()).filter(Boolean),
+    } });
+    if (r?.ok) onClose();
+  }
+  const AC: Record<string, string> = { good: '#5ed6a0', warn: '#f0b74e', info: '#8b93ff' };
+  const AI: Record<string, string> = { good: '✓', warn: '⚠', info: 'ℹ' };
+
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 90, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: 24, overflowY: 'auto' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px,100%)', background: 'var(--bg,#0e1220)', border: '1px solid var(--line,#2a3350)', borderRadius: 14, padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(580px,100%)', background: 'var(--bg,#0e1220)', border: '1px solid var(--line,#2a3350)', borderRadius: 14, padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}><h3 style={{ margin: 0, fontSize: 18 }}>{f.id ? 'Editar plaza' : 'Nueva plaza'}</h3><button onClick={onClose} style={btn}>✕</button></div>
+
+        {/* Idioma + traducir con IA */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: 'var(--card,#1b2338)', borderRadius: 8, padding: '6px 8px', marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button onClick={() => setLang('es')} style={{ ...btn, padding: '5px 12px', ...(lang === 'es' ? { background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none' } : {}) }}>Español</button>
+            <button onClick={() => setLang('en')} style={{ ...btn, padding: '5px 12px', ...(lang === 'en' ? { background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none' } : {}) }}>English</button>
+          </div>
+          <button onClick={translate} disabled={busyT} style={{ ...btn, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', padding: '5px 12px' }}>{busyT ? 'Traduciendo…' : `Traducir al ${other === 'en' ? 'inglés' : 'español'} con IA`}</button>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Título *</span><input style={{ ...inp, width: '100%' }} value={f.title || ''} onChange={(e) => u('title', e.target.value)} placeholder="Desarrollador Backend Sr." /></label>
+          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Título {lang === 'es' ? '*' : '(EN)'}</span><input style={{ ...inp, width: '100%' }} value={f[F('title')] || ''} onChange={(e) => u(F('title'), e.target.value)} placeholder={lang === 'es' ? 'Desarrollador Backend Sr.' : 'Sr. Backend Developer'} /></label>
           <label><span style={lbl}>Área</span><select style={{ ...inp, width: '100%' }} value={f.department} onChange={(e) => u('department', e.target.value)}>{DEPTS.map((k) => <option key={k} value={k}>{DL[k]}</option>)}</select></label>
           <label><span style={lbl}>Tipo</span><select style={{ ...inp, width: '100%' }} value={f.type} onChange={(e) => u('type', e.target.value)}><option value="full">Tiempo completo</option><option value="part">Medio tiempo</option><option value="contract">Por contrato</option><option value="intern">Prácticas</option></select></label>
           <label><span style={lbl}>Ubicación</span><input style={{ ...inp, width: '100%' }} value={f.location || ''} onChange={(e) => u('location', e.target.value)} placeholder="Remoto / México…" /></label>
           <label><span style={lbl}>Rango salarial (opcional)</span><input style={{ ...inp, width: '100%' }} value={f.salary_range || ''} onChange={(e) => u('salary_range', e.target.value)} placeholder="$1500 - $2500" /></label>
-          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Resumen (1-2 líneas, sale en la tarjeta)</span><textarea style={{ ...inp, width: '100%', minHeight: 50, resize: 'vertical' }} value={f.summary || ''} onChange={(e) => u('summary', e.target.value)} /></label>
-          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Descripción completa</span><textarea style={{ ...inp, width: '100%', minHeight: 120, resize: 'vertical' }} value={f.description || ''} onChange={(e) => u('description', e.target.value)} placeholder="Responsabilidades, requisitos, beneficios…" /></label>
-          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Etiquetas (separadas por coma)</span><input style={{ ...inp, width: '100%' }} value={f.tags || ''} onChange={(e) => u('tags', e.target.value)} placeholder="React, Node, Remoto" /></label>
+          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Resumen {lang === 'en' ? '(EN)' : ''} (sale en la tarjeta)</span><textarea style={{ ...inp, width: '100%', minHeight: 50, resize: 'vertical' }} value={f[F('summary')] || ''} onChange={(e) => u(F('summary'), e.target.value)} /></label>
+          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Descripción completa {lang === 'en' ? '(EN)' : ''}</span><textarea style={{ ...inp, width: '100%', minHeight: 120, resize: 'vertical' }} value={f[F('description')] || ''} onChange={(e) => u(F('description'), e.target.value)} placeholder="Responsabilidades, requisitos, beneficios…" /></label>
+          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Etiquetas {lang === 'en' ? '(EN)' : ''} (separadas por coma)</span><input style={{ ...inp, width: '100%' }} value={(lang === 'en' ? f.tags_en : f.tags) || ''} onChange={(e) => u(lang === 'en' ? 'tags_en' : 'tags', e.target.value)} placeholder="React, Node, Remoto" /></label>
           <label><span style={lbl}>Estado</span><select style={{ ...inp, width: '100%' }} value={f.status} onChange={(e) => u('status', e.target.value)}><option value="open">Publicada</option><option value="draft">Borrador</option><option value="closed">Cerrada</option></select></label>
           <label><span style={lbl}>Orden (menor = arriba)</span><input type="number" style={{ ...inp, width: '100%' }} value={f.sort ?? 0} onChange={(e) => u('sort', Number(e.target.value))} /></label>
         </div>
+
+        {/* Auditoría IA */}
+        <div style={{ background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: 12, marginTop: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <b style={{ fontSize: 13.5 }}>Onyx AI · auditoría de la plaza</b>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {audit && <span style={{ fontSize: 20, fontWeight: 700, color: audit.score >= 75 ? '#5ed6a0' : audit.score >= 50 ? '#f0b74e' : '#f0736f' }}>{audit.score}<span style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)', fontWeight: 400 }}>/100</span></span>}
+              <button onClick={runAudit} disabled={busyA} style={{ ...btn, padding: '5px 12px', borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)' }}>{busyA ? 'Analizando…' : audit ? 'Re-auditar' : 'Auditar'}</button>
+            </div>
+          </div>
+          {audit && <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+            {(audit.items || []).map((it: any, i: number) => (
+              <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12.5, alignItems: 'flex-start' }}><span style={{ color: AC[it.level] || AC.info }}>{AI[it.level] || AI.info}</span><span>{it.text}</span></div>
+            ))}
+            <div style={{ fontSize: 10.5, color: 'var(--mut,#9aa6bd)', marginTop: 2 }}>{audit.ai ? 'Sugerencias de IA según el rol.' : 'Sugerencias por reglas (IA no disponible).'}</div>
+          </div>}
+        </div>
+
         <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end' }}><button style={btn} onClick={onClose}>Cancelar</button><button style={btnP} onClick={save}>Guardar</button></div>
       </div>
     </div>

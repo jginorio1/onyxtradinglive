@@ -29,6 +29,19 @@ export async function POST(req: Request) {
     if (action === 'set_status' && b.id) { await supabaseAdmin.from('job_openings').update({ status: ['open', 'closed', 'draft'].includes(b.status) ? b.status : 'draft' }).eq('id', b.id); return NextResponse.json({ ok: true }); }
     if (action === 'delete_position' && b.id) { await deletePosition(b.id); return NextResponse.json({ ok: true }); }
     if (action === 'set_app_status' && b.app_id) { await supabaseAdmin.from('job_applications').update({ status: ['new', 'review', 'interview', 'hired', 'rejected'].includes(b.status) ? b.status : 'new' }).eq('id', b.app_id); return NextResponse.json({ ok: true }); }
+    // Traducir con IA al idioma destino ('en' o 'es').
+    if (action === 'translate') {
+      const { translateJob } = await import('@/lib/careersAI');
+      const r = await translateJob(b.src || {}, b.to === 'es' ? 'es' : 'en');
+      if (!r) return NextResponse.json({ ok: false, error: 'IA no disponible (falta ANTHROPIC_API_KEY)' }, { status: 400 });
+      return NextResponse.json({ ok: true, translated: r });
+    }
+    // Auditar la plaza con IA (puntaje + sugerencias).
+    if (action === 'audit') {
+      const { auditJob } = await import('@/lib/careersAI');
+      const r = await auditJob(b.job || {}, b.lang === 'en' ? 'en' : 'es');
+      return NextResponse.json({ ok: true, audit: r });
+    }
     return NextResponse.json({ ok: false, error: 'acción desconocida' }, { status: 400 });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || 'error' }, { status: 500 });
