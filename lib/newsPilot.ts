@@ -82,9 +82,18 @@ export async function runNewsPilot(force = false, via: 'cron' | 'test' = 'cron')
   let res: PilotResult;
   try { res = await runCycle(force); }
   catch (e: any) { res = { ran: false, reason: 'error: ' + (e?.message || 'error') }; }
+  const now = Date.now();
   try {
-    const { saveSetting } = await import('@/lib/settings');
-    await saveSetting('news_pilot_last', { at: new Date().toISOString(), via, reason: res.reason || '', posted: res.posted || 0, candidate: res.candidate || '' });
+    const { saveSetting, getSetting } = await import('@/lib/settings');
+    await saveSetting('news_pilot_last', { at: new Date(now).toISOString(), via, reason: res.reason || '', posted: res.posted || 0, candidate: res.candidate || '' });
+    // Contador de LATIDOS del cron: guardamos la marca de cada corrida automática
+    // (via='cron') de las últimas 3 h. Así el panel puede decir cuántas veces disparó
+    // Vercel de verdad (esperado ~20/h con */3) y saber si el cron está vivo o no.
+    if (via === 'cron') {
+      const prev = await getSetting<{ hits: number[] }>('news_pilot_cron', { hits: [] });
+      const hits = [...(prev.hits || []), now].filter((t) => now - t <= 3 * 3600 * 1000).slice(-240);
+      await saveSetting('news_pilot_cron', { hits });
+    }
   } catch {}
   return res;
 }
