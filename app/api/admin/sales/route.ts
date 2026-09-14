@@ -88,6 +88,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
+    // Pagar a un rep por Stripe Connect (automático).
+    if (action === 'pay_stripe' && b.rep_id) {
+      const { paySalesRep } = await import('@/lib/salesPayout');
+      const r = await paySalesRep(b.rep_id);
+      return NextResponse.json(r);
+    }
+    // Marcar pago manual/USDT con referencia.
+    if (action === 'pay_manual' && b.rep_id) {
+      const { markSalesPaidManual } = await import('@/lib/salesPayout');
+      const r = await markSalesPaidManual(b.rep_id, String(b.method || 'manual'), String(b.ref || ''));
+      return NextResponse.json(r);
+    }
+
     // Asignar un cliente (por correo) a un rep.
     if (action === 'assign_client' && b.rep_id && b.email) {
       const { data: prof } = await supabaseAdmin.from('profiles').select('id').eq('email', String(b.email).toLowerCase()).maybeSingle();
