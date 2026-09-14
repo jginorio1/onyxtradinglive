@@ -49,7 +49,7 @@ const STATS = [
 /* Marcas para el carrusel (broker/prop firm + plataformas) */
 const LOGOS = [
   { n: 'FTMO', c: '#2f6bff' }, { n: 'FundedNext', c: '#16c98d' },
-  { n: 'FundingPips', c: '#8b5cff' }, { n: 'The5%ers', c: '#ffce00' },
+  { n: 'FundingPips', c: '#9b82ff' }, { n: 'The5%ers', c: '#ffce00' },
   { n: 'MetaTrader 4', c: '#f0a020' }, { n: 'MetaTrader 5', c: '#2f6bff' },
   { n: 'cTrader', c: '#e0533d' }, { n: 'MatchTrader', c: '#16c98d' },
   { n: 'TradingView', c: '#111' },
@@ -404,7 +404,7 @@ const FIRMS = [
     es: 'Reparto de hasta 95% y modelos flexibles. Cuentas MT4 y MT5.', en: 'Up to 95% profit split and flexible models. MT4 and MT5 accounts.' },
   { name: 'The5ers', mono: '5', color: '#ff8a3d', logo: '/logos/the5ers.png', plats: ['MT5', 'cTrader'], sizes: ['5K', '20K', '60K', '100K'],
     es: 'Programas de bajo drawdown y escalado rápido de capital.', en: 'Low-drawdown programs with fast capital scaling.' },
-  { name: 'FundingPips', mono: 'P', color: '#8b5cff', logo: '/logos/fundingpips.png', plats: ['MT5', 'cTrader', 'MatchTrader'], sizes: ['5K', '10K', '25K', '50K', '100K', '200K'],
+  { name: 'FundingPips', mono: 'P', color: '#9b82ff', logo: '/logos/fundingpips.png', plats: ['MT5', 'cTrader', 'MatchTrader'], sizes: ['5K', '10K', '25K', '50K', '100K', '200K'],
     es: 'Precios agresivos y evaluación flexible de una o dos fases.', en: 'Aggressive pricing and flexible one- or two-step evaluations.' },
 ];
 
@@ -572,7 +572,8 @@ export default function Home() {
   ];
 
   return (
-    <>
+    // <main>: landmark de contenido principal (accesibilidad — Lighthouse lo exige).
+    <main>
       {/* La barra de secciones ahora es global (en el layout), visible en todas las páginas. */}
 
       {/* HERO */}
@@ -994,6 +995,6 @@ export default function Home() {
       </div>
 
       {/* El footer ahora es global (app/SiteFooter.tsx), en todas las páginas. */}
-    </>
+    </main>
   );
 }
