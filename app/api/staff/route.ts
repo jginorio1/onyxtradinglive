@@ -17,7 +17,7 @@ export async function GET() {
   let connect = { connected: false, payoutsEnabled: false };
   try { const { staffConnectStatus } = await import('@/lib/payrollPayout'); connect = await staffConnectStatus(st.id); } catch {}
   const { data: payments } = await supabaseAdmin.from('staff_payments')
-    .select('period,amount,currency,method,status,ref,paid_at,created_at').eq('staff_id', st.id).order('created_at', { ascending: false }).limit(60);
+    .select('id,period,amount,gross,net,currency,method,status,ref,paid_at,created_at').eq('staff_id', st.id).order('created_at', { ascending: false }).limit(60);
 
   return NextResponse.json({
     isStaff: true,

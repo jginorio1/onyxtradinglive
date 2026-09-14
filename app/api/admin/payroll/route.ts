@@ -25,7 +25,17 @@ export async function GET(req: Request) {
   }
   const payments = await paymentsForPeriod(period);
   const summary = await payrollSummary(period);
-  return NextResponse.json({ settings, staff, payments, summary, period });
+
+  // Integración Team↔Nómina: miembros del panel (is_admin) que AÚN no están en
+  // nómina, para importarlos de un clic. Y marca qué empleados tienen panel.
+  const { data: admins } = await supabaseAdmin.from('profiles').select('id,email,name,role').eq('is_admin', true);
+  const staffUserIds = new Set(staff.map((s: any) => s.user_id).filter(Boolean));
+  const teamNotInPayroll = (admins || []).filter((a: any) => !staffUserIds.has(a.id))
+    .map((a: any) => ({ email: a.email, name: a.name || (a.email || '').split('@')[0], role: a.role }));
+  const adminIds = new Set((admins || []).map((a: any) => a.id));
+  staff.forEach((s: any) => { s.is_admin = s.user_id ? adminIds.has(s.user_id) : false; });
+
+  return NextResponse.json({ settings, staff, payments, summary, period, teamNotInPayroll });
 }
 
 // POST · acciones de gestión.

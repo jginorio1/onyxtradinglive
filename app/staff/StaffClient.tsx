@@ -81,9 +81,10 @@ export default function StaffClient() {
             {(d.payments || []).map((p: any, i: number) => (
               <tr key={i} style={{ borderTop: '1px solid var(--line,#2a3350)' }}>
                 <td style={{ padding: '8px 4px' }}>{p.period}</td>
-                <td style={{ padding: '8px 4px', fontWeight: 600 }}>{money(p.amount, p.currency)}</td>
+                <td style={{ padding: '8px 4px', fontWeight: 600 }}>{money(p.net ?? p.amount, p.currency)}<span className="muted" style={{ fontWeight: 400, fontSize: 11 }}> neto</span></td>
                 <td style={{ padding: '8px 4px', color: 'var(--mut,#9aa6bd)' }}>{p.method}</td>
-                <td style={{ padding: '8px 4px', textAlign: 'right', color: p.status === 'paid' ? 'var(--green,#5ed6a0)' : 'var(--mut,#9aa6bd)' }}>{p.status === 'paid' ? 'pagado' : p.status}</td>
+                <td style={{ padding: '8px 4px', color: p.status === 'paid' ? 'var(--green,#5ed6a0)' : 'var(--mut,#9aa6bd)' }}>{p.status === 'paid' ? 'pagado' : p.status}</td>
+                <td style={{ padding: '8px 4px', textAlign: 'right' }}><a href={`/api/staff/payslip?payment_id=${p.id}`} target="_blank" rel="noopener" style={{ color: 'var(--accent,#8b93ff)', fontSize: 12 }}>recibo</a></td>
               </tr>
             ))}
           </tbody></table>}

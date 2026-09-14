@@ -76,6 +76,14 @@ export default function Payroll({ canManage = true }: { canManage?: boolean }) {
       {/* ===== EQUIPO ===== */}
       {sub === 'equipo' && <div>
         {canManage && <button style={{ ...btnP, marginBottom: 12 }} onClick={() => setEdit({ department: 'dev', payout_method: 'stripe', status: 'active', currency: s.currency || 'USD' })}>+ Añadir empleado</button>}
+        {canManage && (d.teamNotInPayroll || []).length > 0 && <div style={{ ...card, marginBottom: 12 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 8 }}>Miembros del <b style={{ color: 'var(--tx,#e8ecf5)' }}>Equipo</b> que aún no están en nómina. Impórtalos para ponerles sueldo:</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {(d.teamNotInPayroll || []).map((m: any) => (
+              <button key={m.email} style={{ ...btn, padding: '5px 10px' }} onClick={() => setEdit({ name: m.name, email: m.email, department: m.role === 'marketing' ? 'marketing' : 'management', payout_method: 'stripe', status: 'active', currency: s.currency || 'USD' })}>+ {m.name} <span className="muted" style={{ fontSize: 11 }}>({m.role || 'equipo'})</span></button>
+            ))}
+          </div>
+        </div>}
         {staff.length === 0 ? <div className="muted">Aún no hay empleados. Añade el primero.</div> :
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 12 }}>
             {staff.map((e) => {
@@ -94,6 +102,7 @@ export default function Payroll({ canManage = true }: { canManage?: boolean }) {
                     {e.payout_method === 'stripe' ? (e.payouts_enabled ? 'Stripe ✓' : 'Stripe (sin conectar)') : e.payout_method === 'usdt' ? 'USDT' : 'Manual'}
                     {' · '}pagado {new Date().getFullYear()}: {money(e.paid_ytd || 0)}
                   </div>
+                  {e.is_admin && <div style={{ fontSize: 10.5, color: '#a9b0ff', marginTop: 3 }}>🛡️ Con acceso al panel (Equipo)</div>}
                   {!e.user_id && <div style={{ fontSize: 10.5, color: 'var(--amber,#f0b74e)', marginTop: 3 }}>Sin cuenta ligada · solo pago manual</div>}
                   {e.on_hold && <div style={{ fontSize: 10.5, color: '#f0b74e', marginTop: 3 }}>⏸ Pagos en pausa</div>}
                   {canManage && <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
@@ -119,8 +128,11 @@ export default function Payroll({ canManage = true }: { canManage?: boolean }) {
               <div key={p.id} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 <div>
                   <b style={{ color: 'var(--tx,#e8ecf5)' }}>{p.staff?.name || '—'}</b>
-                  <span className="muted" style={{ fontSize: 12 }}> · {money(p.amount, p.currency)} · {p.method}</span>
-                  <div style={{ fontSize: 11, color: p.status === 'paid' ? '#5ed6a0' : p.status === 'skipped' ? '#9aa6bd' : '#f0b74e' }}>{p.status === 'paid' ? `pagado · ${p.ref || ''}` : p.status === 'skipped' ? 'saltado' : 'pendiente'}</div>
+                  <span className="muted" style={{ fontSize: 12 }}> · neto {money(p.net ?? p.amount, p.currency)}{p.gross && p.gross !== (p.net ?? p.amount) ? ` (bruto ${money(p.gross, p.currency)})` : ''} · {p.method}</span>
+                  <div style={{ fontSize: 11, color: p.status === 'paid' ? '#5ed6a0' : p.status === 'skipped' ? '#9aa6bd' : '#f0b74e' }}>
+                    {p.status === 'paid' ? `pagado · ${p.ref || ''}` : p.status === 'skipped' ? 'saltado' : 'pendiente'}
+                    {' · '}<a href={`/api/staff/payslip?payment_id=${p.id}`} target="_blank" rel="noopener" style={{ color: 'var(--accent,#8b93ff)' }}>recibo PDF</a>
+                  </div>
                 </div>
                 {canManage && p.status !== 'paid' && p.status !== 'skipped' && <PayRow p={p} act={act} btn={btn} btnP={btnP} inp={inp} />}
               </div>
@@ -173,6 +185,14 @@ function StaffModal({ e, act, onClose, inp, btn, btnP, depts }: any) {
           <label><span style={lbl}>Fecha de inicio</span><input type="date" style={{ ...inp, width: '100%' }} value={f.start_date || ''} onChange={(ev) => u('start_date', ev.target.value)} /></label>
           <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Nota (opcional)</span><textarea style={{ ...inp, width: '100%', minHeight: 50, resize: 'vertical' }} value={f.note || ''} onChange={(ev) => u('note', ev.target.value)} /></label>
         </div>
+        {/* Conceptos propios (percepciones/deducciones). Si no, hereda los globales. */}
+        <div style={{ borderTop: '1px solid var(--line,#2a3350)', marginTop: 14, paddingTop: 12 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', color: 'var(--tx,#e8ecf5)' }}>
+            <input type="checkbox" checked={Array.isArray(f.deductions)} onChange={(ev) => u('deductions', ev.target.checked ? (Array.isArray(f.deductions) ? f.deductions : []) : null)} style={{ width: 15, height: 15, flex: 'none', margin: 0 }} />
+            <span>Conceptos propios de este empleado (si no, usa los globales de Ajustes)</span>
+          </label>
+          {Array.isArray(f.deductions) && <DeductionsEditor items={f.deductions} onChange={(v) => u('deductions', v)} inp={inp} btn={btn} />}
+        </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
           <button style={btn} onClick={onClose}>Cancelar</button>
           <button style={btnP} onClick={save}>Guardar</button>
@@ -204,9 +224,37 @@ function SettingsBox({ s, act, inp, btnP, card, canManage }: any) {
         <div style={{ marginTop: 12, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <label style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)' }}>Día de pago del mes<input type="number" min={1} max={28} value={f.pay_day ?? 1} onChange={(e) => u('pay_day', Number(e.target.value))} style={{ ...inp, display: 'block', marginTop: 4, width: 90 }} /></label>
           <label style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)' }}>Moneda base<input value={f.currency || 'USD'} onChange={(e) => u('currency', e.target.value)} style={{ ...inp, display: 'block', marginTop: 4, width: 90 }} /></label>
+          <label style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)' }}>Nombre en el recibo<input value={f.company_name || ''} onChange={(e) => u('company_name', e.target.value)} style={{ ...inp, display: 'block', marginTop: 4, width: 200 }} /></label>
         </div>
       </div>
+      <div style={card}>
+        <b>Conceptos por defecto (percepciones y deducciones)</b>
+        <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Aplican a todos los empleados que no tengan conceptos propios. Ej: impuesto (%), seguro social (%), retiro (monto). Percepción = suma; deducción = resta.</div>
+        <DeductionsEditor items={Array.isArray(f.deductions) ? f.deductions : []} onChange={(v) => u('deductions', v)} inp={inp} btn={{ padding: '6px 10px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--panel,#161c2e)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 12.5 }} />
+      </div>
       {canManage && <button style={btnP} onClick={() => act({ action: 'save_settings', settings: f })}>Guardar ajustes</button>}
+    </div>
+  );
+}
+
+// Editor de conceptos: percepción (suma) o deducción (resta), % o monto fijo.
+function DeductionsEditor({ items, onChange, inp, btn }: { items: any[]; onChange: (v: any[]) => void; inp: React.CSSProperties; btn: React.CSSProperties }) {
+  const upd = (i: number, k: string, v: any) => { const n = items.slice(); n[i] = { ...n[i], [k]: v }; onChange(n); };
+  const add = () => onChange([...(items || []), { label: '', kind: 'deduction', mode: 'percent', value: 0 }]);
+  const del = (i: number) => onChange(items.filter((_, x) => x !== i));
+  const small: React.CSSProperties = { ...inp, padding: '6px 8px', fontSize: 12.5 };
+  return (
+    <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+      {(items || []).map((it, i) => (
+        <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input placeholder="Concepto (ej. ISR, Seguro social)" value={it.label} onChange={(e) => upd(i, 'label', e.target.value)} style={{ ...small, flex: 1, minWidth: 150 }} />
+          <select value={it.kind} onChange={(e) => upd(i, 'kind', e.target.value)} style={small}><option value="deduction">Deducción (-)</option><option value="earning">Percepción (+)</option></select>
+          <select value={it.mode} onChange={(e) => upd(i, 'mode', e.target.value)} style={small}><option value="percent">%</option><option value="fixed">Monto</option></select>
+          <input type="number" value={it.value} onChange={(e) => upd(i, 'value', Number(e.target.value))} style={{ ...small, width: 80 }} />
+          <button onClick={() => del(i)} style={{ ...btn, padding: '5px 9px' }}>✕</button>
+        </div>
+      ))}
+      <button onClick={add} style={{ ...btn, alignSelf: 'flex-start' }}>+ Añadir concepto</button>
     </div>
   );
 }

@@ -6,6 +6,10 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 // pago manual/USDT. Vive sobre el área Equipo del panel.
 // ============================================================
 
+// Un concepto de nómina. kind 'earning' SUMA al bruto (bono), 'deduction' RESTA
+// (impuesto, seguro, préstamo…). mode: porcentaje del sueldo o monto fijo.
+export type PayItem = { label: string; kind: 'earning' | 'deduction'; mode: 'percent' | 'fixed'; value: number };
+
 export type PayrollSettings = {
   enabled: boolean;
   pay_day: number;            // día del mes para el pago (1-28)
@@ -13,12 +17,31 @@ export type PayrollSettings = {
   review_before_pay: boolean; // freno global: arma la nómina pero apruebas tú
   currency: string;
   departments: string[];
+  deductions: PayItem[];      // conceptos por defecto (aplican a todos si el empleado no tiene propios)
+  company_name: string;       // nombre para el recibo
 };
 
 const DEFAULTS: PayrollSettings = {
   enabled: true, pay_day: 1, auto_pay: false, review_before_pay: true,
   currency: 'USD', departments: ['dev', 'management', 'marketing', 'design', 'ops', 'other'],
+  deductions: [], company_name: 'Onyx Trading Live',
 };
+
+// Calcula bruto → conceptos → neto. Los % se calculan sobre el SUELDO base.
+export function computePay(salary: number, items: PayItem[]): { gross: number; net: number; applied: { label: string; kind: string; amount: number }[] } {
+  const base = Math.max(0, Number(salary) || 0);
+  const applied: { label: string; kind: string; amount: number }[] = [];
+  let gross = base, net = base;
+  for (const it of (items || [])) {
+    if (!it || !it.label) continue;
+    const amt = it.mode === 'percent' ? Math.round(base * (Number(it.value) || 0)) / 100 : (Number(it.value) || 0);
+    if (!(amt > 0)) continue;
+    if (it.kind === 'earning') { gross += amt; net += amt; applied.push({ label: it.label, kind: 'earning', amount: amt }); }
+    else { net -= amt; applied.push({ label: it.label, kind: 'deduction', amount: amt }); }
+  }
+  const r = (n: number) => Math.round(n * 100) / 100;
+  return { gross: r(gross), net: r(Math.max(0, net)), applied: applied.map((a) => ({ ...a, amount: r(a.amount) })) };
+}
 
 export async function payrollSettings(): Promise<PayrollSettings> {
   try {
@@ -39,7 +62,7 @@ export type Staff = {
   payout_method: 'stripe' | 'usdt' | 'manual'; status: 'active' | 'paused' | 'ended';
   start_date: string | null; stripe_account_id: string | null; payouts_enabled: boolean;
   on_hold: boolean; payout_usdt_trc20: string | null; payout_usdt_erc20: string | null;
-  payout_usdt_network: string | null; note: string | null;
+  payout_usdt_network: string | null; note: string | null; deductions?: PayItem[] | null;
 };
 
 export const thisPeriod = () => new Date().toISOString().slice(0, 7); // 'YYYY-MM'
@@ -70,6 +93,12 @@ export async function upsertStaff(p: any): Promise<{ ok: boolean; id?: string; e
     status: ['active', 'paused', 'ended'].includes(p.status) ? p.status : 'active',
     start_date: p.start_date || null, note: clean(p.note, 500),
   };
+  if (Array.isArray(p.deductions)) {
+    patch.deductions = p.deductions.filter((d: any) => d && d.label).slice(0, 20).map((d: any) => ({
+      label: String(d.label).slice(0, 60), kind: d.kind === 'earning' ? 'earning' : 'deduction',
+      mode: d.mode === 'fixed' ? 'fixed' : 'percent', value: Math.max(0, Number(d.value) || 0),
+    }));
+  } else if (p.deductions === null) patch.deductions = null;
   if (!patch.name) return { ok: false, error: 'falta el nombre' };
   // Ligar a cuenta por correo (opcional).
   if (patch.email) {
@@ -101,13 +130,18 @@ export async function staffPaidTotals(staffId: string): Promise<{ total: number;
 // con sueldo > 0 que aún no lo tenga. Idempotente por (staff_id, period).
 export async function buildPayrun(period?: string): Promise<{ created: number; period: string }> {
   const p = period || thisPeriod();
+  const s0 = await payrollSettings();
   const staff = (await listStaff()).filter((s) => s.status === 'active' && Number(s.salary) > 0);
   let created = 0;
   for (const s of staff) {
     const { data: exists } = await supabaseAdmin.from('staff_payments').select('id').eq('staff_id', s.id).eq('period', p).maybeSingle();
     if (exists) continue;
+    // Conceptos: los del empleado si tiene; si no, los globales.
+    const items = (s.deductions && s.deductions.length) ? s.deductions : (s0.deductions || []);
+    const calc = computePay(s.salary, items);
     await supabaseAdmin.from('staff_payments').insert({
-      staff_id: s.id, period: p, amount: s.salary, currency: s.currency, method: s.payout_method, status: 'pending',
+      staff_id: s.id, period: p, gross: calc.gross, net: calc.net, amount: calc.net,
+      deductions: calc.applied, currency: s.currency, method: s.payout_method, status: 'pending',
     });
     created++;
   }
