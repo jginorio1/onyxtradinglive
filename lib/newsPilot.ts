@@ -128,7 +128,14 @@ async function runCycle(force = false): Promise<PilotResult> {
   const keyword = cfg.seo ? await pickSeoKeyword() : undefined;
   // Escribe el artículo con la IA.
   const gen = await generateNewsArticle({ headline: pick.title, summary: pick.summary, sourceName: pick.sourceName, sourceUrl: pick.link, category: pick.cat, keyword });
-  if (!gen.ok || !gen.article) { await logError('news_pilot_gen', new Error(gen.reason || 'gen_failed')); return { ran: true, reason: 'gen_failed', posted: 0, candidate: pick.title }; }
+  if (!gen.ok || !gen.article) {
+    // IMPORTANTE: si la IA falla (429/timeout transitorio), LIBERAMOS la noticia
+    // (borramos el registro "visto") para que el siguiente ciclo del cron la
+    // reintente y llegue a publicarse sola. Antes se quedaba "quemada" para siempre.
+    try { await supabaseAdmin.from('news_seen').delete().eq('hash', pickHash); } catch {}
+    await logError('news_pilot_gen', new Error(gen.reason || 'gen_failed'));
+    return { ran: true, reason: 'gen_failed', posted: 0, candidate: pick.title };
+  }
 
   const auto = cfg.mode !== 'draft';
   // Publica (auto) o deja borrador. En auto, activa el email inmediato (inglés).

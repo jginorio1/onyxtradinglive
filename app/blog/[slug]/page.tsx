@@ -36,7 +36,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 function fmtDate(iso: string, es: boolean) {
-  try { return new Date(iso).toLocaleDateString(es ? 'es-ES' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' }); } catch { return ''; }
+  // Zona fija (mercado US / AST) para que la fecha no salte a UTC en el servidor.
+  try { return new Date(iso).toLocaleDateString(es ? 'es-ES' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/New_York' }); } catch { return ''; }
 }
 
 export default async function BlogArticle({ params }: { params: { slug: string } }) {
