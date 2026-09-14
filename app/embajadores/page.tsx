@@ -241,6 +241,11 @@ export default function Embajadores() {
         </div>
 
         <h2 style={{ textAlign: 'center', marginBottom: 22 }}>{t.faqT}</h2>
+        {/* Datos estructurados FAQPage (SEO): mismas preguntas visibles, en JSON-LD. */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org', '@type': 'FAQPage',
+          mainEntity: faqRows.filter(([q, a]) => q && a).map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+        }) }} />
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
           {faqRows.map(([q, a]: [string, string]) => (
             <details key={q} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>

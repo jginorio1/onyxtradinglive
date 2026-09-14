@@ -190,6 +190,11 @@ export default function Pricing() {
         {/* Mini-FAQ de precios: resuelve objeciones de compra ahí mismo */}
         <div style={{ maxWidth: 720, margin: '44px auto 0', textAlign: 'left' }}>
           <h2 style={{ fontSize: 20, textAlign: 'center', marginBottom: 16 }}>{t.faqT}</h2>
+          {/* Datos estructurados FAQPage (SEO): mismas preguntas visibles, en JSON-LD. */}
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+            '@context': 'https://schema.org', '@type': 'FAQPage',
+            mainEntity: dynFaqs.filter(([q, a]) => q && a).map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+          }) }} />
           <div style={{ display: 'grid', gap: 10 }}>
             {dynFaqs.map(([qq, aa], i) => (
               <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px' }}>

@@ -234,6 +234,11 @@ export default async function CopyLanding() {
       </div>
 
       {/* FAQ */}
+      {/* Datos estructurados FAQPage (SEO): mismas preguntas visibles, en JSON-LD. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: (L.faq as [string, string][]).filter(([q, a]) => q && a).map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })),
+      }) }} />
       <div style={{ textAlign: 'center', marginBottom: 16 }}><h2 style={{ fontSize: 24 }}>{L.faqT}</h2></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 30 }}>
         {L.faq.map(([q, a], i) => (
