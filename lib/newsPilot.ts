@@ -114,7 +114,11 @@ async function runCycle(force = false): Promise<PilotResult> {
 
   // Descarga feeds en paralelo y junta items frescos e importantes.
   const results = await Promise.all(active.map((s) => fetchFeed(s)));
-  const maxAge = (cfg.maxAgeMin || 45) * 60000;
+  // Ventana de frescura. Piso de 12 h: con anti-duplicados (news_seen) + tope diario
+  // + separación mínima, una ventana amplia NO satura; solo garantiza que SIEMPRE
+  // haya noticias candidatas y el piloto pueda publicar solo. (Antes el default de
+  // 45 min descartaba todo y por eso solo publicaba con el botón Test.)
+  const maxAge = Math.max(cfg.maxAgeMin || 720, 720) * 60000;
   const flat = results.flat();
   // Diagnóstico (se ve en la respuesta del cron): cuántos feeds respondieron con
   // items, cuántos items en total, cuántos importantes y cuántos frescos. Así
