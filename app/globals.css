@@ -128,7 +128,7 @@ a{color:inherit;text-decoration:none;}
 .btn-primary{background:var(--brand);color:#111726;}
 .btn-primary:hover:not(:disabled){background:#8f9dff;}
 .btn-ghost{color:var(--tx);border-color:var(--line);background:transparent;}
-.btn-ghost:hover:not(:disabled){background:var(--card2);border-color:#3a4560;}
+.btn-ghost:hover:not(:disabled){background:var(--card2);border-color:color-mix(in srgb,var(--line) 55%,var(--tx));}
 .btn-danger{color:#fff;background:#b8384a;}
 .btn-danger:hover:not(:disabled){background:#c94259;}
 .btn-lg{padding:12px 20px;font-size:15px;}
@@ -552,6 +552,16 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .sk-hero-logo{width:64px;height:64px;border-radius:16px;background:var(--grad);display:grid;place-items:center;color:#fff;border:3px solid var(--card);box-shadow:0 6px 18px rgba(0,0,0,.3);flex:none;margin-top:-40px;overflow:hidden;}
 .sk-hero-logo img{width:100%;height:100%;object-fit:cover;}
 .sk-hero-body h2{color:var(--tx);}
+/* Acciones de la cabecera de la academia: idioma + moderación + configurar +
+   salir. Todas a la MISMA altura (36px) para que queden alineadas (antes el
+   botón de idioma medía 36 y los ghost ~34) y envuelven en pantallas chicas
+   en vez de desbordarse. */
+.sk-hero-actions{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+.sk-hero-actions .btn{height:36px;padding:0 12px;}
+@media(max-width:560px){
+  .sk-hero-actions{gap:5px!important;}
+  .sk-hero-actions .btn{height:32px;padding:0 9px;font-size:12px!important;}
+}
 .sk-social{display:flex;gap:8px;flex-wrap:wrap;}
 .sk-social a{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--bg2);border:1px solid var(--line);color:var(--tx);transition:.15s;}
 .sk-social a:hover{background:var(--card2);transform:translateY(-1px);}
@@ -629,6 +639,10 @@ body.onb-ai-active .ai-btn{border-color:var(--brand)!important;color:var(--soft-
 .sk-online{position:absolute;right:-1px;bottom:-1px;width:12px;height:12px;border-radius:50%;background:#1fd18a;border:2px solid var(--card);box-shadow:0 0 8px rgba(31,209,138,.9);}
 /* Precios centrados y "encendidos" en las tarjetas de nivel */
 .sk-price{text-align:center;font-size:24px;font-weight:900;color:var(--gold);text-shadow:0 0 16px color-mix(in srgb,var(--gold) 55%,transparent);letter-spacing:-.5px;}
+/* En tema claro el "glow" dorado sobre fondo blanco se ve turbio: lo quitamos y
+   dejamos el precio en dorado sólido (ya oscurecido) para que lea nítido. */
+html[data-theme="light"] .sk-price{text-shadow:none;}
+@media(prefers-color-scheme:light){:root:not([data-theme="dark"]) .sk-price{text-shadow:none;}}
 .sk-tier-card{transition:transform .15s, box-shadow .15s, border-color .15s;}
 .sk-tier-card:hover{transform:translateY(-3px);box-shadow:0 12px 34px color-mix(in srgb,var(--gold) 22%,transparent);border-color:color-mix(in srgb,var(--gold) 55%,transparent);}
 /* Tarjeta destacada (ej. Plan audit) — resalta y palpita suave */
@@ -706,9 +720,12 @@ html[data-theme="dark"] .sk-code, :root:not([data-theme="light"]) .sk-code{text-
 /* Barra inferior de la comunidad: se pinta INVERTIDA al tema (clara en oscuro,
    oscura en claro). Base = app oscura → barra CLARA. Abajo, en tema claro, la
    volvemos OSCURA. Los iconos van sin resplandor aquí para que se vean limpios. */
-.sk-bottom{position:fixed;left:0;right:0;bottom:0;z-index:50;display:none;justify-content:space-around;align-items:center;background:#ffffff;background:color-mix(in srgb,#ffffff 92%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid #e3e7f0;padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));margin:0;border-radius:0;}
-.sk-bnav{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:#56617a;font-size:10.5px;cursor:pointer;position:relative;padding:4px 14px;}
-.sk-bnav.on{color:#4a57c9;}
+/* Barra inferior de la academia (móvil): SIEMPRE oscura, en tema claro y oscuro
+   (como una tab bar de app nativa). Antes la base era BLANCA, así que en tema
+   oscuro salía una barra blanca chillona; ahora es oscura y congruente en ambos. */
+.sk-bottom{position:fixed;left:0;right:0;bottom:0;z-index:50;display:none;justify-content:space-around;align-items:center;background:#1a2133;background:color-mix(in srgb,#1a2133 92%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid rgba(255,255,255,.10);padding:8px 4px calc(8px + env(safe-area-inset-bottom,0px));margin:0;border-radius:0;}
+.sk-bnav{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:#9aa6bd;font-size:10.5px;cursor:pointer;position:relative;padding:4px 14px;}
+.sk-bnav.on{color:#8b93ff;}
 .sk-bottom .onyx-ic{filter:none !important;}
 .sk-bdot{position:absolute;top:2px;right:10px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:var(--red);color:#fff;font-size:9px;font-weight:800;display:grid;place-items:center;}
 /* Tema claro → barra oscura */

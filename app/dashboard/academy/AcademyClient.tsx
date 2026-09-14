@@ -785,7 +785,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="row between" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
               <div style={{ minWidth: 0 }}><h2 style={{ margin: 0, fontSize: 21 }}>{active.academy_name}</h2>{active.tagline && <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{active.tagline}</div>}</div>
-              <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+              <div className="sk-hero-actions" style={{ gap: 6 }}>
                 <LangToggle compact />
                 {!active.isMentorHere && <button className="btn btn-ghost" style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setBillingOpen(true)}><OnyxIcon name="card" size={14} /> {L('Mi membresía', 'My membership')}</button>}
                 {canModerateHere && <button className="btn btn-ghost" style={{ fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={() => setModOpen(true)}><OnyxIcon name="shield" size={14} /> {L('Moderación', 'Moderation')}{modBadge > 0 && <span className="sk-chip" style={{ padding: '0 6px', background: 'var(--red)', color: '#fff', fontSize: 11 }}>{modBadge}</span>}</button>}
