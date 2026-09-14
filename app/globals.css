@@ -76,6 +76,7 @@ html[data-theme="light"] .card{box-shadow:0 4px 14px rgba(30,41,70,.10);}
 html[data-theme="light"] .onyx-ic{filter:none !important;}
 html[data-theme="light"] .btn-primary{color:#fff;}
 html[data-theme="light"] .topbar{background:rgba(255,255,255,.78);}
+html[data-theme="light"] .secnav{background:rgba(255,255,255,.95);}
 html[data-theme="light"] .code{background:#eef2f9;color:#274690;}
 html[data-theme="light"] .adminnav-item:hover{color:var(--tx);background:var(--card2);}
 html[data-theme="light"] .adminnav-item.on{color:#3b46b8;background:rgba(91,108,255,.12);}
@@ -84,6 +85,7 @@ html[data-theme="light"] .adminnav-item.on{color:#3b46b8;background:rgba(91,108,
   :root:not([data-theme="dark"]) .onyx-ic{filter:none !important;}
   :root:not([data-theme="dark"]) .btn-primary{color:#fff;}
   :root:not([data-theme="dark"]) .topbar{background:rgba(255,255,255,.78);}
+  :root:not([data-theme="dark"]) .secnav{background:rgba(255,255,255,.95);}
   :root:not([data-theme="dark"]) .code{background:#eef2f9;color:#274690;}
   :root:not([data-theme="dark"]) .adminnav-item:hover{color:var(--tx);background:var(--card2);}
   :root:not([data-theme="dark"]) .adminnav-item.on{color:#3b46b8;background:rgba(91,108,255,.12);}
@@ -233,7 +235,7 @@ html[data-theme="dark"] .botlab-headwrap{background:#0a0e17;}
 .promo-on .secnav{top:calc(64px + var(--promo-h,0));}
 .secnav-items{display:flex;gap:2px;padding:8px 0;overflow-x:auto;}
 .secnav-item{font-size:14px;color:var(--mut);padding:6px 12px;border-radius:8px;white-space:nowrap;transition:.15s;}
-.secnav-item:hover{color:#fff;}
+.secnav-item:hover{color:var(--tx);}
 .secnav-item.on{color:var(--tx);background:var(--card2);}
 /* Home: centrar las dos filas SOLO en escritorio (móvil se queda igual). */
 @media(min-width:901px){ .secnav-items{justify-content:center;} }

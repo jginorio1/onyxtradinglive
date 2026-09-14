@@ -154,7 +154,10 @@ export default function OnlineNow({
           <span style={{ fontWeight: 400, opacity: .72 }}>{label}</span>
         </div>
       </div>
-      <button onClick={close} aria-label="Cerrar" style={{ position: 'absolute', right: 8, top: 7, background: 'transparent', border: 'none', color: 'inherit', opacity: .55, cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 4 }}>✕</button>
+      {/* tabIndex=-1: la píldora es decorativa (aria-hidden), así que su botón NO
+          debe estar en el orden de tabulación (regla a11y aria-hidden-focus). El
+          ratón lo sigue cerrando; el teclado no lo necesita porque no lo percibe. */}
+      <button onClick={close} tabIndex={-1} aria-label="Cerrar" style={{ position: 'absolute', right: 8, top: 7, background: 'transparent', border: 'none', color: 'inherit', opacity: .55, cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 4 }}>✕</button>
     </div>
   );
 }
