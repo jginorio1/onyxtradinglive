@@ -2,6 +2,7 @@
 import { dictFor } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { getStripe, onyxAppearance } from '@/lib/stripeClient';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Cambiar tarjeta DENTRO de Onyx, con el Payment Element de Stripe.
@@ -64,7 +65,7 @@ export default function BillingCard({ lang }: { lang: 'es' | 'en' }) {
     <div>
       {!open ? (
         <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost" onClick={() => setOpen(true)}>💳 {t.open}</button>
+          <button className="btn btn-ghost" onClick={() => setOpen(true)}><OnyxIcon emoji="💳" size={15} /> {t.open}</button>
           {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
         </div>
       ) : (

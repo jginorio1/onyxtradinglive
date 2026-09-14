@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import React from 'react';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // VPS recomendado (afiliado). Una sola fuente: el admin lo edita en Bot Lab y aquí
 // se lee vía /api/botlab/vps. Si no hay URL, seguimos recomendando VPS pero sin enlace.
@@ -66,7 +67,7 @@ export default function VpsCallout({ variant = 'callout', gold = false }: { vari
   if (variant === 'inline') {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: acc, marginTop: 8 }}>
-        <span aria-hidden>🖥️</span>
+        <span aria-hidden><OnyxIcon emoji="🖥" size={15} />️</span>
         <span>{es ? '24/7 con VPS' : '24/7 on a VPS'}</span>
         {v.url && <><span aria-hidden style={{ opacity: .6 }}>·</span><a href={v.url} target="_blank" rel={REL} style={{ color: acc, fontWeight: 800, textDecoration: 'underline' }}>{cta}</a></>}
       </div>
@@ -77,7 +78,7 @@ export default function VpsCallout({ variant = 'callout', gold = false }: { vari
     const title = es ? 'Funciona 24/7 con un VPS' : 'Runs 24/7 on a VPS';
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--tx)', background: 'var(--card2, rgba(255,255,255,.04))', border: '1px solid var(--line)', borderRadius: 8, padding: '6px 10px' }}>
-        <span aria-hidden style={{ color: acc }}>🖥️</span>
+        <span aria-hidden style={{ color: acc }}><OnyxIcon emoji="🖥" size={15} />️</span>
         <span style={{ flex: 1 }}>{title}</span>
         {v.url && <a href={v.url} target="_blank" rel={REL} style={{ color: acc, fontWeight: 700, textDecoration: 'underline', whiteSpace: 'nowrap' }}>{cta}</a>}
       </div>
@@ -85,7 +86,7 @@ export default function VpsCallout({ variant = 'callout', gold = false }: { vari
   }
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'var(--card2, rgba(255,255,255,.04))', border: '1px solid var(--line)', borderRadius: 12, padding: '11px 13px' }}>
-      <span aria-hidden style={{ fontSize: 18, color: acc, flex: 'none', lineHeight: 1.3 }}>🖥️</span>
+      <span aria-hidden style={{ fontSize: 18, color: acc, flex: 'none', lineHeight: 1.3 }}><OnyxIcon emoji="🖥" size={15} />️</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 700, fontSize: 13.5 }}>{es ? `Recomendado: un VPS${provider}` : `Recommended: a VPS${provider}`}</div>
         <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{note}</div>

@@ -113,7 +113,7 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
           {backupCodes.map((c) => <div key={c} className="code" style={{ textAlign: 'center', letterSpacing: 2, fontSize: 14 }}>{c}</div>)}
         </div>
-        <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 13 }} onClick={() => { try { navigator.clipboard.writeText(backupCodes.join('\n')); } catch {} }}>📋 {L.bkCopy}</button>
+        <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 13 }} onClick={() => { try { navigator.clipboard.writeText(backupCodes.join('\n')); } catch {} }}><OnyxIcon emoji="📋" size={15} /> {L.bkCopy}</button>
         <button className="btn btn-primary" style={{ width: '100%', marginTop: 10 }} onClick={onDone}>{L.bkContinue}</button>
       </div>
     );
@@ -122,7 +122,7 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
   if (mode === 'enroll') {
     return (
       <div style={box}>
-        <h3 style={{ marginBottom: 4 }}>🔐 {L.setupT}</h3>
+        <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🔐" size={15} /> {L.setupT}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{L.setupH}</p>
         {!ready && <div className="muted">{L.loading}</div>}
         {ready && (
@@ -130,7 +130,7 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
             <div title={L.enlarge} onClick={() => setZoom(true)} style={{ background: '#fff', borderRadius: 12, padding: 12, width: 200, height: 200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-in' }}>
               {qr.startsWith('<svg') ? <span style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: qr }} /> : <img src={qr} alt="QR" style={{ width: '100%', height: '100%' }} />}
             </div>
-            <div className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 6 }}>🔍 {L.enlarge}</div>
+            <div className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 6 }}><OnyxIcon emoji="🔍" size={15} /> {L.enlarge}</div>
             {secret && (
               <div style={{ marginTop: 12, fontSize: 12 }}>
                 <span className="muted">{L.manual}</span>
@@ -158,7 +158,7 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
 
   return (
     <div style={box}>
-      <h3 style={{ marginBottom: 4 }}>🔐 {L.challT}</h3>
+      <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🔐" size={15} /> {L.challT}</h3>
       {!useBackup ? (
         <>
           <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{L.challH}</p>

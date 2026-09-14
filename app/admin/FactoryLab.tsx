@@ -9,6 +9,7 @@ import { runBacktest, type Costs, type Spec } from '@/lib/backtest';
 import { buildReport, type FullReport } from '@/lib/report';
 import { reportHTML, type ReportMeta } from '@/lib/reportHtml';
 import { makeZip } from '@/lib/zip';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 const gradeOf = (s?: number | null) => s == null ? null : s >= 80 ? 'A' : s >= 65 ? 'B' : s >= 50 ? 'C' : s >= 35 ? 'D' : 'F';
 
@@ -465,10 +466,10 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
               })()}
             </div>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>⬇ {es ? 'Descargar' : 'Download'} <span className="muted" style={{ fontWeight: 500 }}>· {es ? 'código, reportes y Pack Onyx' : 'code, reports & Onyx Pack'}</span></div>
+              <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}><OnyxIcon emoji="⬇" size={15} /> {es ? 'Descargar' : 'Download'} <span className="muted" style={{ fontWeight: 500 }}>· {es ? 'código, reportes y Pack Onyx' : 'code, reports & Onyx Pack'}</span></div>
               {bot.strategy?.gen && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'color-mix(in srgb,var(--brand) 8%,var(--bg2))', border: '1px solid color-mix(in srgb,var(--brand) 28%,var(--line))', borderRadius: 10, padding: '9px 11px', fontSize: 11.5, marginBottom: 10 }}>
-                  <span style={{ fontSize: 15, lineHeight: 1 }}>🔌</span>
+                  <span style={{ fontSize: 15, lineHeight: 1 }}><OnyxIcon emoji="🔌" size={15} /></span>
                   <div>{es
                     ? <>Este EA es <b>solo la lógica</b> (sin panel ni API — es normal). Para verlo en Onyx: pon también el <b>EA Onyx Connect</b> en la misma cuenta con tu <b>API key</b>. El magic <b style={{ fontFamily: 'monospace' }}>{magicOf()}</b> enlaza este robot; luego conéctalo desde el <b>Pipeline</b>.</>
                     : <>This EA is <b>logic only</b> (no panel, no API — that's expected). To see it in Onyx: also run the <b>Onyx Connect EA</b> on the same account with your <b>API key</b>. Magic <b style={{ fontFamily: 'monospace' }}>{magicOf()}</b> links this robot; then connect it from the <b>Pipeline</b>.</>}</div>
@@ -664,7 +665,7 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
                 </div>
                 {canManage && (
                   <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <button onClick={advance} disabled={busy || !cmp.similar || r.verdict === 'fragil'} style={{ ...btn(GREEN), padding: '11px 20px', fontSize: 14, opacity: (!cmp.similar || r.verdict === 'fragil') ? 0.5 : 1 }}>{es ? '🚀 Pasar a demo (pipeline)' : '🚀 Advance to demo (pipeline)'}</button>
+                    <button onClick={advance} disabled={busy || !cmp.similar || r.verdict === 'fragil'} style={{ ...btn(GREEN), padding: '11px 20px', fontSize: 14, opacity: (!cmp.similar || r.verdict === 'fragil') ? 0.5 : 1 }}>{es ? '<OnyxIcon emoji="🚀" size={15} /> Pasar a demo (pipeline)' : '<OnyxIcon emoji="🚀" size={15} /> Advance to demo (pipeline)'}</button>
                     {(r.verdict === 'fragil') && <span style={{ fontSize: 12, color: RED }}>{es ? 'Frágil: no puede pasar.' : 'Fragile: cannot advance.'}</span>}
                     {r.verdict !== 'fragil' && !cmp.similar && <span style={{ fontSize: 12, color: AMBER }}>{es ? 'El backtest debe parecerse antes de pasar.' : 'Backtest must match before advancing.'}</span>}
                   </div>

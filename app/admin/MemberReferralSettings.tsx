@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Ajustes del programa "Invita y gana" (referidos del usuario común, en crédito).
 export default function MemberReferralSettings() {
@@ -30,7 +31,7 @@ export default function MemberReferralSettings() {
   return (
     <div className="card" style={{ marginBottom: 16 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
-        <b style={{ fontSize: 15 }}>🎁 {es ? 'Invita y gana (usuarios comunes)' : 'Invite & earn (regular users)'}</b>
+        <b style={{ fontSize: 15 }}><OnyxIcon emoji="🎁" size={15} /> {es ? 'Invita y gana (usuarios comunes)' : 'Invite & earn (regular users)'}</b>
         {stats && <span className="pill" style={{ fontSize: 12, color: 'var(--mut)', background: 'var(--bg2)' }}>${stats.credited} {es ? 'acreditado' : 'credited'} · ${stats.pending} {es ? 'en camino' : 'pending'}</span>}
       </div>
       <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>

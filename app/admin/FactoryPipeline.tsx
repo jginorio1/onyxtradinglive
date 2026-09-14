@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Onyx Bot Factory · Pipeline de 6 meses en demo (Fase 3)
@@ -148,7 +149,7 @@ export default function FactoryPipeline({ es, canManage, post }: any) {
             </div>
             {/* Aviso (A): el robot es solo la lógica; Onyx Connect es el puente */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: 'color-mix(in srgb,var(--brand) 8%,var(--bg2))', border: '1px solid color-mix(in srgb,var(--brand) 28%,var(--line))', borderRadius: 10, padding: '10px 12px', fontSize: 12, marginBottom: 12 }}>
-              <span style={{ fontSize: 16, lineHeight: 1 }}>🔌</span>
+              <span style={{ fontSize: 16, lineHeight: 1 }}><OnyxIcon emoji="🔌" size={15} /></span>
               <div>{es
                 ? <>El EA de la fábrica es <b>solo la lógica</b> (sin panel ni API). Para que Onyx lo vea, instala también el <b>EA Onyx Connect</b> en esa misma cuenta demo y pega tu <b>API key</b> — reporta todos los robots por su <b>magic</b>. El panel y los KPIs viven en Connect.</>
                 : <>The factory EA is <b>logic only</b> (no panel, no API). For Onyx to see it, also install the <b>Onyx Connect EA</b> on that demo account and paste your <b>API key</b> — it reports every robot by its <b>magic</b>. The panel and KPIs live in Connect.</>}</div>
@@ -196,7 +197,7 @@ export default function FactoryPipeline({ es, canManage, post }: any) {
                   </div>
                 ))}
               </div>
-              {bot.corr_with && bot.max_corr != null && Math.abs(bot.max_corr) > 0.7 && <div style={{ fontSize: 12, color: AMBER, marginTop: 8 }}>⚠ {es ? 'Muy correlacionado con' : 'Highly correlated with'} {bot.corr_with} — {es ? 'exposición reducida automáticamente.' : 'exposure auto-reduced.'}</div>}
+              {bot.corr_with && bot.max_corr != null && Math.abs(bot.max_corr) > 0.7 && <div style={{ fontSize: 12, color: AMBER, marginTop: 8 }}><OnyxIcon emoji="⚠" size={15} /> {es ? 'Muy correlacionado con' : 'Highly correlated with'} {bot.corr_with} — {es ? 'exposición reducida automáticamente.' : 'exposure auto-reduced.'}</div>}
             </div>
           </div>
 

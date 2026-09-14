@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Editor total del chat de soporte (Onyx AI): marca, colores, textos, pestañas,
 // temas rápidos, mensaje proactivo y ajustes por dispositivo. Vista previa en vivo.
@@ -80,7 +81,7 @@ export default function ChatWidgetEditor() {
   return (
     <div className="card" style={{ gridColumn: '1 / -1' }}>
       <div className="row between" style={{ marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
-        <div className="row" style={{ gap: 10 }}><span style={{ fontSize: 20 }}>💬</span><h3>{L('Chat de soporte (widget)', 'Support chat (widget)')}</h3></div>
+        <div className="row" style={{ gap: 10 }}><span style={{ fontSize: 20 }}><OnyxIcon emoji="💬" size={15} /></span><h3>{L('Chat de soporte (widget)', 'Support chat (widget)')}</h3></div>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           <span style={{ fontSize: 13 }}>{L('Mostrar', 'Show')}</span><Tog on={c.enabled} set={(v) => u('enabled', v)} />
         </div>

@@ -2,6 +2,7 @@
 import { toast, confirmDialog } from '@/lib/toast';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import GuideBody from '../guia/GuideBody';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Editor de guías (solo dueño): IA para redactar, subir imágenes con visor/zoom,
 // SEO (meta título/descr + keywords), y lista agrupada por categoría.
@@ -168,7 +169,7 @@ export default function GuideEditor({ lang }: { lang: 'es' | 'en' }) {
     <div>
       <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
       <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 18, fontWeight: 800 }}>📚 {t.title}</div>
+        <div style={{ fontSize: 18, fontWeight: 800 }}><OnyxIcon emoji="📚" size={15} /> {t.title}</div>
         <div className="muted" style={{ fontSize: 13 }}>{t.sub}</div>
       </div>
 
@@ -221,7 +222,7 @@ export default function GuideEditor({ lang }: { lang: 'es' | 'en' }) {
           <div className="card">
             {/* Barra IA */}
             <div style={{ background: 'var(--bg2)', border: '1px solid var(--brand)', borderRadius: 10, padding: 10, marginBottom: 12 }}>
-              <div className="row" style={{ gap: 7, marginBottom: 7, alignItems: 'center' }}><span style={{ color: 'var(--brand)' }}>✨</span><b style={{ fontSize: 13 }}>{t.aiT}</b></div>
+              <div className="row" style={{ gap: 7, marginBottom: 7, alignItems: 'center' }}><span style={{ color: 'var(--brand)' }}><OnyxIcon emoji="✨" size={15} /></span><b style={{ fontSize: 13 }}>{t.aiT}</b></div>
               <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
                 <input value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} placeholder={t.aiTopic} style={{ ...inp, flex: 2, minWidth: 160 }} />
                 <input value={aiKw} onChange={(e) => setAiKw(e.target.value)} placeholder={t.aiKw} style={{ ...inp, flex: 1, minWidth: 110 }} />
@@ -277,7 +278,7 @@ export default function GuideEditor({ lang }: { lang: 'es' | 'en' }) {
                         {b.img && <img src={b.img} alt="" style={{ maxWidth: 220, borderRadius: 8, border: '1px solid var(--line)' }} />}
                         <div className="row" style={{ gap: 6 }}>
                           <input value={b.alt || ''} onChange={(e) => setBlk(i, { ...b, alt: e.target.value })} placeholder={t.imgAlt} style={inp} />
-                          <button className="btn btn-ghost" style={{ fontSize: 12, whiteSpace: 'nowrap' }} onClick={() => altAI((form.title[ed] || '') + ' — ' + (b.caption || b.img || ''), i)}>✨ {t.altAI}</button>
+                          <button className="btn btn-ghost" style={{ fontSize: 12, whiteSpace: 'nowrap' }} onClick={() => altAI((form.title[ed] || '') + ' — ' + (b.caption || b.img || ''), i)}><OnyxIcon emoji="✨" size={15} /> {t.altAI}</button>
                         </div>
                         <input value={b.caption || ''} onChange={(e) => setBlk(i, { ...b, caption: e.target.value })} placeholder={t.imgCap} style={inp} />
                       </div>
@@ -331,7 +332,7 @@ export default function GuideEditor({ lang }: { lang: 'es' | 'en' }) {
           {/* Vista previa en vivo (render exacto de la guía) */}
           {view !== 'edit' && (
             <div className="card" style={{ maxWidth: view === 'preview' ? 700 : 'none', margin: view === 'preview' ? '0 auto' : 0 }}>
-              <div className="muted" style={{ fontSize: 11.5, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.04em' }}>👁️ {lang === 'en' ? 'Live preview' : 'Vista previa'}</div>
+              <div className="muted" style={{ fontSize: 11.5, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.04em' }}><OnyxIcon emoji="👁" size={15} />️ {lang === 'en' ? 'Live preview' : 'Vista previa'}</div>
               <GuideBody article={form} lang={ed} />
             </div>
           )}

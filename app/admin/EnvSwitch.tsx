@@ -3,6 +3,7 @@ import { mkL } from '@/lib/i18n';
 import { useState } from 'react';
 import { toast } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Cambio de entorno (Producción ⇄ Beta). El aislamiento real vive en la
 // infraestructura (otra URL + otra base de datos); esto es solo el atajo con
@@ -50,14 +51,14 @@ export default function EnvSwitch() {
         <button className="btn btn-primary" onClick={goProd}>← {L('Volver a Producción', 'Back to Production')}</button>
       ) : (
         <button className="btn btn-ghost" style={{ borderColor: '#7a3cff', color: '#a06bff' }} onClick={() => { setPin(''); setAsk(true); }}>
-          🧪 {L('Ir a Beta (pruebas)', 'Go to Beta (testing)')}
+          <OnyxIcon emoji="🧪" size={15} /> {L('Ir a Beta (pruebas)', 'Go to Beta (testing)')}
         </button>
       )}
 
       {ask && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setAsk(false)}>
           <div className="card" style={{ maxWidth: 420, width: '100%' }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, marginBottom: 8 }}>⚠️ {L('Vas a entrar al entorno de PRUEBAS', 'You are entering the TESTING environment')}</h3>
+            <h3 style={{ marginTop: 0, marginBottom: 8 }}><OnyxIcon emoji="⚠️" size={15} /> {L('Vas a entrar al entorno de PRUEBAS', 'You are entering the TESTING environment')}</h3>
             <p className="muted" style={{ fontSize: 13.5, marginBottom: 12 }}>
               {L('En Beta los datos y los pagos NO son reales. Los cambios que hagas ahí no afectan a tus clientes. Confirma con tu PIN.', 'In Beta, data and payments are NOT real. Changes there do not affect your customers. Confirm with your PIN.')}
             </p>

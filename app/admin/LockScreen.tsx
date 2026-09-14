@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/lib/lang';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Pantalla de bloqueo del panel admin. La renderiza el servidor cuando la
 // sesión está bloqueada por inactividad; sin PIN correcto no se ven los datos.
@@ -37,7 +38,7 @@ export default function LockScreen({ email }: { email: string }) {
   return (
     <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
-        <div style={{ width: 54, height: 54, borderRadius: 14, margin: '0 auto 14px', background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🔒</div>
+        <div style={{ width: 54, height: 54, borderRadius: 14, margin: '0 auto 14px', background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}><OnyxIcon emoji="🔒" size={15} /></div>
         <h1 style={{ fontSize: 20, marginBottom: 4 }}>{es ? 'Panel bloqueado' : 'Panel locked'}</h1>
         <p className="muted" style={{ fontSize: 13.5, marginBottom: 4 }}>
           {es ? 'Se bloqueó por inactividad. Ingresa tu PIN de 6 dígitos para continuar.' : 'Locked due to inactivity. Enter your 6-digit PIN to continue.'}

@@ -1,6 +1,7 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 type Ev = { title: string; currency: string; impact: string; date: string; forecast: string; previous: string };
@@ -66,7 +67,7 @@ export default function News({ lang }: { lang: Lang }) {
           <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 2 }}>{t.prev}: {featured.previous || '—'} · {t.fcst}: {featured.forecast || '—'}</div>
         </div>
 
-        {warnSoon && <div style={{ background: 'rgba(255,107,125,.14)', border: '1px solid var(--red)', color: 'var(--red)', borderRadius: 10, padding: '8px 10px', fontSize: 12, fontWeight: 600, marginTop: 10 }}>⚠ {featured.title} {t.warn}</div>}
+        {warnSoon && <div style={{ background: 'rgba(255,107,125,.14)', border: '1px solid var(--red)', color: 'var(--red)', borderRadius: 10, padding: '8px 10px', fontSize: 12, fontWeight: 600, marginTop: 10 }}><OnyxIcon emoji="⚠" size={15} /> {featured.title} {t.warn}</div>}
 
         {rest.length > 0 && (
           <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 12 }} onClick={() => setOpen(!open)}>{open ? t.hide + ' ▲' : `${t.all} (${rest.length}) ▼`}</button>

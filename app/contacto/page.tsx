@@ -3,6 +3,7 @@ import { dictFor } from '@/lib/i18n';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 
@@ -64,7 +65,7 @@ export default function Contacto() {
       </div>
 
       <div className="card" style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <span style={{ fontSize: 24 }}>🤖</span>
+        <span style={{ fontSize: 24 }}><OnyxIcon emoji="🤖" size={15} /></span>
         <div>
           <div style={{ fontWeight: 700 }}>{t.aiT}</div>
           <p className="muted" style={{ fontSize: 14, marginTop: 4 }}>{t.aiD}</p>

@@ -4,6 +4,7 @@ import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 import { checkWallet, lastChars } from '@/lib/walletChecksum';
 import VpsCallout from '@/app/components/VpsCallout';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type View = 'market' | 'licencias' | 'vender' | 'ganancias' | 'referidos';
 const GOLD = 'var(--gold, #ffd45e)';
@@ -618,7 +619,7 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
               : <div style={{ ...inp, display: 'flex', alignItems: 'center', color: 'var(--mut)' }}>{es ? 'Pago único' : 'One-time'}</div>}
             {/* La plataforma la define el robot del constructor; el comprador recibe los 3 formatos. */}
             <div style={{ ...inp, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--mut)' }}>
-              <span>MT5 · MT4 · cTrader</span><span style={{ fontSize: 12 }}>🔒</span>
+              <span>MT5 · MT4 · cTrader</span><span style={{ fontSize: 12 }}><OnyxIcon emoji="🔒" size={15} /></span>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -706,7 +707,7 @@ function ProductModal({ es, product, pay, onClose, onSaved }: any) {
             }}>
               <option value="">{es ? 'Elige tu robot del constructor…' : 'Pick your constructor robot…'}</option>
               {builds.map((b) => (
-                <option key={b.id} value={b.id}>{b.name} · {b.platform === 'ctrader' ? 'cTrader' : String(b.platform || 'mt5').toUpperCase()} · 🔒{b.magic}</option>
+                <option key={b.id} value={b.id}>{b.name} · {b.platform === 'ctrader' ? 'cTrader' : String(b.platform || 'mt5').toUpperCase()} · <OnyxIcon emoji="🔒" size={15} />{b.magic}</option>
               ))}
             </select>
             <span className="muted" style={{ fontSize: 11 }}>{es
@@ -784,7 +785,7 @@ function NetworkPicker({ es, pick, onClose, onPick }: any) {
           })}
         </div>
         <div style={{ marginTop: 12, fontSize: 11.5, color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 35%,transparent)', borderRadius: 10, padding: '9px 11px' }}>
-          ⚠ {es ? 'Enviar por la red equivocada pierde tus fondos. Verifica la red en tu wallet antes de enviar.' : 'Sending on the wrong network loses your funds. Check the network in your wallet before sending.'}
+          <OnyxIcon emoji="⚠" size={15} /> {es ? 'Enviar por la red equivocada pierde tus fondos. Verifica la red en tu wallet antes de enviar.' : 'Sending on the wrong network loses your funds. Check the network in your wallet before sending.'}
         </div>
       </div>
     </div>
@@ -826,7 +827,7 @@ function CryptoModal({ es, crypto, onClose, onDone }: any) {
           <>
             {/* Aviso de red BIEN visible: enviar por otra red pierde los fondos */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 40%,transparent)', borderRadius: 12, padding: '9px 12px', margin: '8px 0' }}>
-              <span style={{ fontSize: 15 }}>⚠</span>
+              <span style={{ fontSize: 15 }}><OnyxIcon emoji="⚠" size={15} /></span>
               <span style={{ fontSize: 12.5, color: 'var(--tx)' }}>{es ? 'Envía USDT SOLO por la red' : 'Send USDT ONLY on'} <b style={{ color: 'var(--amber)' }}>{(NET_INFO[crypto.network]?.name) || net}</b>. {es ? 'Otra red pierde tus fondos.' : 'Another network loses your funds.'}</span>
             </div>
             {/* Monto */}

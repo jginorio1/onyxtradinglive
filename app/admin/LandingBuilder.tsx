@@ -134,7 +134,7 @@ export default function LandingBuilder() {
     <>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
         <div>
-          <h3 style={{ marginBottom: 2 }}>🧩 Landing Builder</h3>
+          <h3 style={{ marginBottom: 2 }}><OnyxIcon emoji="🧩" size={15} /> Landing Builder</h3>
           <p className="muted" style={{ fontSize: 12.5 }}>{L('Edita el contenido público. Si dejas un campo vacío, se usa el texto original.', 'Edit public content. Leave a field empty to keep the original text.')}</p>
         </div>
         {saved && <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>{L('✓ Guardado', '✓ Saved')}</span>}
@@ -397,7 +397,7 @@ export default function LandingBuilder() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
             <button className="btn btn-ghost" onClick={() => setFooter({ social: [...(footer.social || []), { platform: 'instagram', url: '', on: true }] })}>＋ {L('Añadir red', 'Add social')}</button>
             {!(footer.social || []).length && (
-              <button className="btn btn-primary" onClick={() => setFooter({ social: ['instagram', 'telegram', 'youtube', 'x', 'tiktok'].map((p) => ({ platform: p, url: '', on: true })) })}>✨ {L('Cargar redes comunes', 'Load common socials')}</button>
+              <button className="btn btn-primary" onClick={() => setFooter({ social: ['instagram', 'telegram', 'youtube', 'x', 'tiktok'].map((p) => ({ platform: p, url: '', on: true })) })}><OnyxIcon emoji="✨" size={15} /> {L('Cargar redes comunes', 'Load common socials')}</button>
             )}
           </div>
           <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{L('Pega la URL de cada red y guarda; aparecerán como iconos en el footer. Sin URL no se muestran.', 'Paste each network URL and save; they appear as icons in the footer. Without a URL they stay hidden.')}</div>

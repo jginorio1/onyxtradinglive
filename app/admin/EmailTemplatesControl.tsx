@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import EmailPreview from './previews/EmailPreview';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Editor de plantillas de correo transaccional (dueño). Cambia asunto y cuerpo
 // en ES/EN; deja un campo vacío para volver al texto por defecto. Variables
@@ -41,7 +42,7 @@ export default function EmailTemplatesControl() {
 
   return (
     <div className="card" style={{ marginBottom: 12 }}>
-      <h3 style={{ marginBottom: 4 }}>✉️ {L('Plantillas de correo', 'Email templates')}</h3>
+      <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="✉" size={15} />️ {L('Plantillas de correo', 'Email templates')}</h3>
       <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
         {L('Edita el asunto y el cuerpo de los correos automáticos (ES/EN). Deja un campo vacío para usar el texto por defecto. Variables: {academia}, {enlace}, {dias}.',
            'Edit the subject and body of automated emails (ES/EN). Leave a field empty to use the default text. Variables: {academia}, {enlace}, {dias}.')}
@@ -49,7 +50,7 @@ export default function EmailTemplatesControl() {
 
       {/* Ajuste de la prueba de pago: días de antelación del aviso (email + popup). */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12, padding: 10, border: '1px dashed var(--line)', borderRadius: 10 }}>
-        <span style={{ fontSize: 12.5 }}>🎁 {L('Prueba de pago: avisar', 'Paid trial: notify')}</span>
+        <span style={{ fontSize: 12.5 }}><OnyxIcon emoji="🎁" size={15} /> {L('Prueba de pago: avisar', 'Paid trial: notify')}</span>
         <input type="number" min={1} max={60} value={warnDays} onChange={(e) => setWarnDays(Math.max(1, Math.min(60, Number(e.target.value) || 5)))} style={{ width: 70, margin: 0 }} />
         <span style={{ fontSize: 12.5 }}>{L('día(s) antes (email y popup)', 'day(s) before (email & popup)')}</span>
         <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={saveWarnDays}>{L('Guardar', 'Save')}</button>

@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Panel admin de Onyx Bot Lab — centro de mando visual.
@@ -672,7 +673,7 @@ function Broadcast({ es, audience, mail, canManage }: any) {
   return (
     <div style={card}>
       <SectionHead icon="spark" color={VIOLET} title={es ? 'Promociones y campañas de Bot Lab' : 'Bot Lab promos & campaigns'} desc={es ? 'Un correo a un grupo. Usa {nombre} para personalizar.' : 'One email to a group. Use {name} to personalize.'} />
-      {mail.checked && mail.verified === false && <div style={{ fontSize: 12, color: 'var(--amber)', marginBottom: 10 }}>⚠ {es ? 'Verifica tu dominio en Resend antes de enviar campañas.' : 'Verify your Resend domain before sending campaigns.'}</div>}
+      {mail.checked && mail.verified === false && <div style={{ fontSize: 12, color: 'var(--amber)', marginBottom: 10 }}><OnyxIcon emoji="⚠" size={15} /> {es ? 'Verifica tu dominio en Resend antes de enviar campañas.' : 'Verify your Resend domain before sending campaigns.'}</div>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
         {segs.map(([k, lbl, n]) => {
           const on = seg === k;
@@ -1056,7 +1057,7 @@ function ReviewCard({ p, es, canManage, act }: any) {
         </div>
       ) : (
         <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 35%,transparent)', borderRadius: 10, padding: '9px 11px' }}>
-          ⚠ {es ? 'Este robot no está ligado a operaciones reales en la plataforma (o aún no ha operado). Revísalo manualmente o pídele al creador que lo corra en una cuenta conectada.' : 'This robot is not linked to real trades on the platform (or has not traded yet). Review manually or ask the creator to run it on a connected account.'}
+          <OnyxIcon emoji="⚠" size={15} /> {es ? 'Este robot no está ligado a operaciones reales en la plataforma (o aún no ha operado). Revísalo manualmente o pídele al creador que lo corra en una cuenta conectada.' : 'This robot is not linked to real trades on the platform (or has not traded yet). Review manually or ask the creator to run it on a connected account.'}
           {p.proof_url && <> · <a href={p.proof_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 700 }}>{es ? 'Ver prueba externa' : 'View external proof'}</a></>}
         </div>
       )}
@@ -1073,7 +1074,7 @@ function ReviewCard({ p, es, canManage, act }: any) {
                   <span style={{ width: 66, textAlign: 'right' }}>{pt.v}/{pt.max} <span className="muted">· {pt.note}</span></span>
                 </div>
               ))}
-              {s.flags?.length > 0 && <div style={{ fontSize: 12, color: 'var(--red)', marginTop: 2 }}>⚠ {s.flags.join(' · ')}</div>}
+              {s.flags?.length > 0 && <div style={{ fontSize: 12, color: 'var(--red)', marginTop: 2 }}><OnyxIcon emoji="⚠" size={15} /> {s.flags.join(' · ')}</div>}
             </div>
           )}
         </div>

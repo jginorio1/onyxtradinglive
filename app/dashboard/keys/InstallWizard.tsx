@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Asistente de instalación (multiplataforma).
@@ -315,7 +316,7 @@ function StepVisual({ viz, origin, lang, dlButtons }: any) {
         </div>
         <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
           {(dlButtons || []).map((b: any, i: number) => (
-            <span key={i} style={{ ...chip, borderColor: b.primary ? 'var(--brand)' : 'var(--line)', color: 'var(--tx)' }}>⬇️ {b.label}</span>
+            <span key={i} style={{ ...chip, borderColor: b.primary ? 'var(--brand)' : 'var(--line)', color: 'var(--tx)' }}><OnyxIcon emoji="⬇" size={15} />️ {b.label}</span>
           ))}
         </div>
       </div>;
@@ -323,7 +324,7 @@ function StepVisual({ viz, origin, lang, dlButtons }: any) {
       return <div style={box}>
         <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{p('En MetaTrader:', 'In MetaTrader:')}</div>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={chip}>{p('Archivo', 'File')}</span>{arrow}<span style={chip}>{p('Abrir carpeta de datos', 'Open Data Folder')}</span>{arrow}<span style={chip}>📁 MQL5</span>{arrow}<span style={chip}>📁 Experts</span>
+          <span style={chip}>{p('Archivo', 'File')}</span>{arrow}<span style={chip}>{p('Abrir carpeta de datos', 'Open Data Folder')}</span>{arrow}<span style={chip}><OnyxIcon emoji="📁" size={15} /> MQL5</span>{arrow}<span style={chip}><OnyxIcon emoji="📁" size={15} /> Experts</span>
         </div>
         <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{p('Pega ahí el archivo Onyx que descargaste.', 'Paste the Onyx file you downloaded there.')}</div>
       </div>;
@@ -344,11 +345,11 @@ function StepVisual({ viz, origin, lang, dlButtons }: any) {
         <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ flex: 1, minWidth: 130, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
             <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{p('Navegador', 'Navigator')}</div>
-            <div style={{ fontSize: 12 }}>📁 {p('Asesores Expertos', 'Expert Advisors')}</div>
-            <div style={{ fontSize: 12, color: 'var(--brand)', paddingLeft: 14 }}>🤖 Onyx Connect</div>
+            <div style={{ fontSize: 12 }}><OnyxIcon emoji="📁" size={15} /> {p('Asesores Expertos', 'Expert Advisors')}</div>
+            <div style={{ fontSize: 12, color: 'var(--brand)', paddingLeft: 14 }}><OnyxIcon emoji="🤖" size={15} /> Onyx Connect</div>
           </div>
           {arrow}
-          <div style={{ flex: 1, minWidth: 130, border: '1px dashed var(--line)', borderRadius: 8, padding: 8, textAlign: 'center', color: 'var(--mut)', fontSize: 12 }}>📈 {p('Suéltalo en un gráfico', 'Drop it on a chart')}</div>
+          <div style={{ flex: 1, minWidth: 130, border: '1px dashed var(--line)', borderRadius: 8, padding: 8, textAlign: 'center', color: 'var(--mut)', fontSize: 12 }}><OnyxIcon emoji="📈" size={15} /> {p('Suéltalo en un gráfico', 'Drop it on a chart')}</div>
         </div>
       </div>;
     case 'fields':
@@ -376,7 +377,7 @@ function StepVisual({ viz, origin, lang, dlButtons }: any) {
           </div>
           <div style={{ flex: 1, minWidth: 140, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
             <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{p('Esquina del gráfico', 'Chart corner')}</div>
-            <div style={{ fontSize: 12 }}><span style={{ color: 'var(--green)' }}>☺</span> = {p('activo', 'active')}</div>
+            <div style={{ fontSize: 12 }}><span style={{ color: 'var(--green)' }}><OnyxIcon emoji="☺" size={15} /></span> = {p('activo', 'active')}</div>
             <div style={{ fontSize: 11, color: 'var(--red)' }}>✕ {p('triste = revisa Algo Trading', 'sad = check Algo Trading')}</div>
           </div>
         </div>
@@ -391,7 +392,7 @@ function StepVisual({ viz, origin, lang, dlButtons }: any) {
         </div>
         <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
           {(dlButtons || []).map((b: any, i: number) => (
-            <span key={i} style={{ ...chip, borderColor: b.primary ? 'var(--brand)' : 'var(--line)' }}>⬇️ {b.label}</span>
+            <span key={i} style={{ ...chip, borderColor: b.primary ? 'var(--brand)' : 'var(--line)' }}><OnyxIcon emoji="⬇" size={15} />️ {b.label}</span>
           ))}
         </div>
         <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>{p('Es un archivo de texto (.cs) con el código del cBot.', 'It is a text file (.cs) with the cBot code.')}</div>
@@ -467,7 +468,7 @@ function StepExtras({ s, t, w, origin, apiKey, copy, copied, onDownload, first, 
         {apiKey
           ? <Row label={s.viz === 'ct-fields' ? 'API key' : 'ApiKey'} value={apiKey} tag="wizkey" />
           : <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{w.needKey}</div>}
-        <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>ℹ️ {w.srvNote}</div>
+        <div className="muted" style={{ fontSize: 12, marginTop: 6 }}><OnyxIcon emoji="ℹ" size={15} />️ {w.srvNote}</div>
       </>
     );
   }

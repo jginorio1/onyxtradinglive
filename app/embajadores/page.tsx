@@ -6,6 +6,7 @@ import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import EarningsCalc from '@/app/EarningsCalc';
 import { errMsg } from '@/lib/i18nErrors';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 
@@ -201,7 +202,7 @@ export default function Embajadores() {
 
           {state === 'sent' && (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 34, marginBottom: 8 }}>🎉</div>
+              <div style={{ fontSize: 34, marginBottom: 8 }}><OnyxIcon emoji="🎉" size={15} /></div>
               <h3 style={{ marginBottom: 8 }}>{t.okT}</h3>
               <p className="muted" style={{ fontSize: 14, marginBottom: 14 }}>{t.okD}</p>
               <Link className="btn btn-primary" href="/account">{t.goPanel}</Link>

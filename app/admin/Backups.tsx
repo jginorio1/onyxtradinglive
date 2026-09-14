@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useLang } from '@/lib/lang';
 import { useT } from '@/lib/adminText';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 const T: any = {
   es: {
@@ -150,14 +151,14 @@ export default function Backups() {
 
   return (
     <>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">🗄️</span><span className="th-t">{gt.h_backups_t}</span></div><div className="th-s">{gt.h_backups_s}</div></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic"><OnyxIcon emoji="🗄" size={15} />️</span><span className="th-t">{gt.h_backups_t}</span></div><div className="th-s">{gt.h_backups_s}</div></div>
 
       {/* Exportar ahora */}
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
           <div><b style={{ fontSize: 14 }}>{t.exportNow}</b><div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{t.exportDesc}</div></div>
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" onClick={() => download('json')} disabled={busy === 'json'}>⬇ {t.exportAll}</button>
+            <button className="btn btn-primary" onClick={() => download('json')} disabled={busy === 'json'}><OnyxIcon emoji="⬇" size={15} /> {t.exportAll}</button>
             <button className="btn btn-ghost" onClick={() => download('csv')} disabled={busy === 'csv'}>📄 {t.exportCsv}</button>
           </div>
         </div>
@@ -253,7 +254,7 @@ export default function Backups() {
                   {t.restoreSteps.map((s: string, k: number) => <li key={k} style={{ marginBottom: 4 }}>{s}</li>)}
                 </ol>
                 <pre style={{ background: '#0a0d14', border: '1px solid var(--line)', borderRadius: 8, padding: '9px 11px', fontSize: 11.5, overflowX: 'auto', margin: '0 0 8px', color: '#bcd6ff' }}>{`gunzip -c "${c.file || 'onyx-backup-XXXX.sql.gz'}" | psql "TU_CONEXION_DE_PRUEBA"`}</pre>
-                <div style={{ fontSize: 11.5, color: 'var(--amber)' }}>⚠ {t.restoreWarn}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={15} /> {t.restoreWarn}</div>
               </div>
             )}
           </div>
@@ -281,7 +282,7 @@ export default function Backups() {
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 11.5, color: 'var(--amber)', marginTop: 10 }}>⚠ {t.restoreWarn}</div>
+        <div style={{ fontSize: 11.5, color: 'var(--amber)', marginTop: 10 }}><OnyxIcon emoji="⚠" size={15} /> {t.restoreWarn}</div>
       </div>
 
       {/* Datos ahora */}

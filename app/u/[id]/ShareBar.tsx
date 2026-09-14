@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Barra de compartir del trackrecord público: copiar enlace + compartir nativo.
 export default function ShareBar({ url, es }: { url: string; es: boolean }) {
@@ -12,8 +13,8 @@ export default function ShareBar({ url, es }: { url: string; es: boolean }) {
   };
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <button className="btn btn-ghost" onClick={copy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>🔗 {copied ? (es ? '¡Copiado!' : 'Copied!') : (es ? 'Copiar enlace' : 'Copy link')}</button>
-      <button className="btn btn-ghost" onClick={share} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>📤 {es ? 'Compartir' : 'Share'}</button>
+      <button className="btn btn-ghost" onClick={copy} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🔗" size={15} /> {copied ? (es ? '¡Copiado!' : 'Copied!') : (es ? 'Copiar enlace' : 'Copy link')}</button>
+      <button className="btn btn-ghost" onClick={share} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir' : 'Share'}</button>
     </div>
   );
 }

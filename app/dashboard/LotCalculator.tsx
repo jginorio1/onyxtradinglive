@@ -150,7 +150,7 @@ export default function LotCalculator({ lang, balance }: { lang: Lang; balance?:
         {hiLot && <div style={{ color: 'var(--amber)', fontSize: 12.5, marginTop: 8 }}>{L.hiLot}</div>}
       </div>
 
-      <p className="muted" style={{ fontSize: 11.5, marginTop: 12, lineHeight: 1.5 }}>ℹ️ {L.note}</p>
+      <p className="muted" style={{ fontSize: 11.5, marginTop: 12, lineHeight: 1.5 }}><OnyxIcon emoji="ℹ" size={15} />️ {L.note}</p>
     </div>
   );
 }

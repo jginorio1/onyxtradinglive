@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import { mkL } from '@/lib/i18n';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Acc = {
   id: string; login: string; nickname: string | null; broker: string | null;
@@ -58,7 +59,7 @@ export default function TradingViewClient() {
   if (!data.allowed) {
     return (
       <div className="wrap" style={{ padding: '40px 22px', maxWidth: 640 }}>
-        <h1 style={{ fontSize: 26 }}>📈 TradingView → Onyx</h1>
+        <h1 style={{ fontSize: 26 }}><OnyxIcon emoji="📈" size={15} /> TradingView → Onyx</h1>
         <div className="card" style={{ marginTop: 18, padding: 24 }}>
           <p style={{ marginBottom: 12 }}>{L('Ejecuta tus alertas de TradingView directamente en tu cuenta real, a través de tu EA de Onyx.', 'Run your TradingView alerts straight into your real account through your Onyx EA.')}</p>
           <p className="muted" style={{ marginBottom: 18 }}>{L('Esta función está incluida en los planes de pago.', 'This feature is included in the paid plans.')}</p>
@@ -70,7 +71,7 @@ export default function TradingViewClient() {
   if (!data.accounts.length) {
     return (
       <div className="wrap" style={{ padding: '40px 22px', maxWidth: 640 }}>
-        <h1 style={{ fontSize: 26 }}>📈 TradingView → Onyx</h1>
+        <h1 style={{ fontSize: 26 }}><OnyxIcon emoji="📈" size={15} /> TradingView → Onyx</h1>
         <div className="card" style={{ marginTop: 18, padding: 24 }}>
           <p>{L('Primero conecta una cuenta y ten el EA de Copy corriendo en ella.', 'First connect an account and have the Copy EA running on it.')}</p>
           <Link className="btn btn-primary" href="/dashboard/keys" style={{ marginTop: 14 }}>{L('Conectar cuenta', 'Connect account')}</Link>
@@ -109,7 +110,7 @@ export default function TradingViewClient() {
 
   return (
     <div className="wrap" style={{ padding: '32px 26px', maxWidth: 1180, fontSize: 15 }}>
-      <h1 style={{ fontSize: 26, marginBottom: 4 }}>📈 TradingView → Onyx</h1>
+      <h1 style={{ fontSize: 26, marginBottom: 4 }}><OnyxIcon emoji="📈" size={15} /> TradingView → Onyx</h1>
       <p className="muted" style={{ marginBottom: 20 }}>{L('Conéctalo en 4 pasos. Cada paso se confirma solo.', 'Connect it in 4 steps. Each step confirms itself.')}</p>
 
       {data.accounts.length > 1 && (
@@ -181,7 +182,7 @@ export default function TradingViewClient() {
               {busy === 'test' ? L('Enviando…', 'Sending…') : L('Enviar señal de prueba (0.01)', 'Send test signal (0.01)')}
             </button>
             {testMsg && <p className="muted" style={{ fontSize: 12.5, marginTop: 8 }}>{testMsg}</p>}
-            {!s2 && <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>⚠️ {L('El EA de Copy debe estar corriendo para probar.', 'The Copy EA must be running to test.')}</p>}
+            {!s2 && <p className="muted" style={{ fontSize: 12, marginTop: 8 }}><OnyxIcon emoji="⚠️" size={15} /> {L('El EA de Copy debe estar corriendo para probar.', 'The Copy EA must be running to test.')}</p>}
           </div>
         </Step>
 
@@ -203,7 +204,7 @@ export default function TradingViewClient() {
           </div>
         )}
 
-        <p className="muted" style={{ fontSize: 12, marginTop: 14 }}>🛡️ {L('Onyx Guardian (opcional) sigue vigilando: si tu pérdida diaria está alcanzada, el EA no abrirá aunque llegue la señal.', 'Onyx Guardian (optional) still watches: if your daily loss is hit, the EA won\'t open even if a signal arrives.')}</p>
+        <p className="muted" style={{ fontSize: 12, marginTop: 14 }}><OnyxIcon emoji="🛡" size={15} />️ {L('Onyx Guardian (opcional) sigue vigilando: si tu pérdida diaria está alcanzada, el EA no abrirá aunque llegue la señal.', 'Onyx Guardian (optional) still watches: if your daily loss is hit, the EA won\'t open even if a signal arrives.')}</p>
       </>)}
     </div>
   );

@@ -1056,7 +1056,7 @@ export default function BotBuilder() {
                     <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 10.5, color: '#c9d2ea', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 7, padding: '2px 8px' }}>{platLbl}</span>
                       {b.spec?.symbol && <span style={{ fontSize: 10.5, color: '#c9d2ea', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 7, padding: '2px 8px' }}>{b.spec.symbol}</span>}
-                      <span style={{ fontSize: 10.5, fontFamily: 'monospace', color: '#ffd45e', background: 'rgba(255,212,94,.1)', border: '1px solid rgba(255,212,94,.3)', borderRadius: 7, padding: '2px 8px' }}>🔒 {b.magic}</span>
+                      <span style={{ fontSize: 10.5, fontFamily: 'monospace', color: '#ffd45e', background: 'rgba(255,212,94,.1)', border: '1px solid rgba(255,212,94,.3)', borderRadius: 7, padding: '2px 8px' }}><OnyxIcon emoji="🔒" size={15} /> {b.magic}</span>
                     </div>
                     {(b.created_at || b.updated_at) && <div style={{ fontSize: 11, color: 'var(--mut)', marginTop: 5 }}>{L('Creado', 'Created')} {fmtDate(b.created_at || b.updated_at)}</div>}
                   </div>

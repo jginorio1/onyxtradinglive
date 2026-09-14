@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import VisitorsLive from './VisitorsLive';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Admin → SEO. Todo el SEO en un sitio:
@@ -109,7 +110,7 @@ export default function SeoPanel() {
       {/* Rendimiento en Google */}
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <h3 style={{ margin: 0 }}>📈 {L('Rendimiento en Google', 'Google performance')}</h3>
+          <h3 style={{ margin: 0 }}><OnyxIcon emoji="📈" size={15} /> {L('Rendimiento en Google', 'Google performance')}</h3>
           <select value={days} onChange={(e) => { const d = Number(e.target.value); setDays(d); load(d); }} style={{ ...inp, width: 'auto', marginTop: 0 }}>
             <option value={7}>{L('7 días', '7 days')}</option>
             <option value={14}>{L('14 días', '14 days')}</option>
@@ -165,7 +166,7 @@ export default function SeoPanel() {
         {env.gsc && search.ok && (
           <>
             <div style={{ marginTop: 14, marginBottom: 4, fontSize: 13.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
-              🏅 {L('Tu ranking en Google', 'Your Google ranking')}
+              <OnyxIcon emoji="🏅" size={15} /> {L('Tu ranking en Google', 'Your Google ranking')}
               <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {L('posición media en los resultados de búsqueda (menor = mejor; #1 es el primer lugar)', 'average position in search results (lower = better; #1 is the top spot)')}</span>
             </div>
             <div className="grid g4" style={{ marginTop: 6 }}>
@@ -202,7 +203,7 @@ export default function SeoPanel() {
 
       {/* Keyword research con IA */}
       <div className="card" style={{ marginBottom: 14 }}>
-        <h3 style={{ marginBottom: 4 }}>💡 {L('Keywords con IA', 'AI keywords')}</h3>
+        <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="💡" size={15} /> {L('Keywords con IA', 'AI keywords')}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L('Da un tema y Onyx AI propone keywords de intención, títulos SEO y clusters para el blog.', 'Give a topic and Onyx AI proposes intent keywords, SEO titles and clusters for the blog.')}</p>
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
           <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={L('Ej: pasar el reto de una prop firm', 'e.g. passing a prop-firm challenge')} style={{ ...inp, marginTop: 0, flex: 1, minWidth: 200 }} />
@@ -221,7 +222,7 @@ export default function SeoPanel() {
                   <b style={{ fontSize: 13.5 }}>{k.keyword}</b>
                   <span className="pill gray" style={{ fontSize: 11 }}>{k.intent}</span>
                 </div>
-                <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>📝 {k.title}</div>
+                <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}><OnyxIcon emoji="📝" size={15} /> {k.title}</div>
               </div>
             ))}
             <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{L('Usa un título en Admin → Blog para escribir el artículo con la IA.', 'Use a title in Admin → Blog to write the article with AI.')}</div>

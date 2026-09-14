@@ -10,6 +10,7 @@ import { useLang } from '@/lib/lang';
 import ChatThread, { type ChatMsg, type Att, type MentionItem } from '@/app/components/ChatThread';
 import Icon from '@/app/components/Icons';
 import { useChatRealtime, type Presence } from '@/lib/chatRealtime';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Channel = { id: string; name: string; kind: string; topic?: string; unread: number; last: any; members: string[] };
 type Member = { id: string; name: string; email: string; role: string; available: boolean; last_active: string };
@@ -68,7 +69,7 @@ class ChatBoundary extends Component<{ children: ReactNode }, { err: string }> {
   render() {
     if (this.state.err) return (
       <div className="card" style={{ padding: 20 }}>
-        <b>💬 {'Chat del equipo'}</b>
+        <b><OnyxIcon emoji="💬" size={15} /> {'Chat del equipo'}</b>
         <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>No se pudo cargar el chat en este momento. Recarga la página. Si sigue, avísanos con este detalle:</p>
         <pre style={{ fontSize: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: 10, overflowX: 'auto' }}>{this.state.err}</pre>
       </div>

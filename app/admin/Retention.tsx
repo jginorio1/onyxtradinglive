@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 export default function Retention() {
   const t = useT();
@@ -45,7 +46,7 @@ export default function Retention() {
 
   return (
     <>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">🛟</span><span className="th-t">{t.h_retencion_t}</span></div><div className="th-s">{t.h_retencion_s}</div></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic"><OnyxIcon emoji="🛟" size={15} /></span><span className="th-t">{t.h_retencion_t}</span></div><div className="th-s">{t.h_retencion_s}</div></div>
       <RangeBar value={range} onChange={setRange}
         pdfUrl={(f, tt) => `/api/admin/retention/report?from=${f}&to=${tt}&lang=${lang}`}
         csvUrl={(f, tt) => `/api/admin/retention/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
@@ -82,7 +83,7 @@ export default function Retention() {
         </div>
         {/* Anti-abuso: evita que cancelen cada 3 meses para farmear el descuento */}
         <div style={{ borderTop: '1px solid var(--line)', marginTop: 14, paddingTop: 12 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>🛡️ {lang === 'en' ? 'Anti-abuse' : 'Anti-abuso'}</div>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}><OnyxIcon emoji="🛡" size={15} />️ {lang === 'en' ? 'Anti-abuse' : 'Anti-abuso'}</div>
           <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{lang === 'en' ? 'Stops users (or coordinated communities) from cancelling repeatedly just to farm the discount.' : 'Evita que usuarios (o comunidades coordinadas) cancelen una y otra vez solo para farmear el descuento.'}</div>
           <div className="grid g4" style={{ gap: 12 }}>
             <div><span style={lbl}>{lang === 'en' ? 'Repeat %' : '% repetido'}</span><input type="number" value={r.repeat_percent ?? 20} onChange={(e) => setR({ ...r, repeat_percent: Number(e.target.value) })} style={num} /></div>

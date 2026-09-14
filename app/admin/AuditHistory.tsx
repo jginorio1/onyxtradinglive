@@ -3,6 +3,7 @@ import { dictFor } from '@/lib/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { fmtDate } from '@/lib/fmtDate';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 const T: any = {
@@ -64,7 +65,7 @@ export default function AuditHistory() {
   return (
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-        <b style={{ fontSize: 14 }}>📅 {t.title}</b>
+        <b style={{ fontSize: 14 }}><OnyxIcon emoji="📅" size={15} /> {t.title}</b>
         <span className="muted" style={{ fontSize: 12 }}>{av.count || 0} {t.runs}</span>
       </div>
 

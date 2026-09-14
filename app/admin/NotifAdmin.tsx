@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
 import NotifPreview from './previews/NotifPreview';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Admin → Notificaciones. El dueño edite, por cada tipo de aviso: on/off, canales
 // (campana / push / Telegram) y los textos ES/EN. Los "extra" nacen apagados.
@@ -66,7 +67,7 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
     <div style={{ maxWidth: 900 }}>
       <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h2 style={{ fontSize: 18, margin: 0 }}>🔔 {es ? 'Notificaciones' : 'Notifications'}</h2>
+          <h2 style={{ fontSize: 18, margin: 0 }}><OnyxIcon emoji="🔔" size={15} /> {es ? 'Notificaciones' : 'Notifications'}</h2>
           <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>{es ? 'Prende/apaga cada aviso, elige sus canales y edita el texto. Usa {llaves} como variables.' : 'Turn each alert on/off, pick its channels and edit the text. Use {braces} as variables.'}</p>
         </div>
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : (es ? 'Guardar cambios' : 'Save changes')}</button>
@@ -98,7 +99,7 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
                         <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setAiKey('')}>✕</button>
                       </div>
                     ) : (
-                      <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setAiKey(d.key)}>✨ {es ? 'Redactar con IA' : 'Write with AI'}</button>
+                      <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setAiKey(d.key)}><OnyxIcon emoji="✨" size={15} /> {es ? 'Redactar con IA' : 'Write with AI'}</button>
                     )}
                   </div>
                   <div className="grid g2" style={{ gap: 8, marginTop: 8 }}>

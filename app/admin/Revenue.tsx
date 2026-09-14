@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useLang } from '@/lib/lang';
 import { useT } from '@/lib/adminText';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 const T: any = {
   es: {
@@ -78,7 +79,7 @@ export default function Revenue() {
   return (
     <>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <div className="tabhead"><div className="th-row"><span className="th-ic">💰</span><span className="th-t">{gt.nav_ingresos}</span></div><div className="th-s">{gt.h_ingresos_s}</div></div>
+        <div className="tabhead"><div className="th-row"><span className="th-ic"><OnyxIcon emoji="💰" size={15} /></span><span className="th-t">{gt.nav_ingresos}</span></div><div className="th-s">{gt.h_ingresos_s}</div></div>
         {d?.configured && !d?.error && <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}><span className="livedot" />{t.live}</span>}
       </div>
 
@@ -87,7 +88,7 @@ export default function Revenue() {
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
           {chip('month', t.thisMonth)}{chip('d7', t.d7)}{chip('d30', t.d30)}{chip('quarter', t.quarter)}{chip('custom', t.custom)}
           <span className="row" style={{ gap: 8, marginLeft: 'auto' }}>
-            <a className="btn btn-ghost" href={`/api/admin/revenue/report?${qs}`} target="_blank" rel="noreferrer" style={{ padding: '6px 12px', fontSize: 12 }}>🖨️ {t.pdf}</a>
+            <a className="btn btn-ghost" href={`/api/admin/revenue/report?${qs}`} target="_blank" rel="noreferrer" style={{ padding: '6px 12px', fontSize: 12 }}><OnyxIcon emoji="🖨️" size={15} /> {t.pdf}</a>
             <a className="btn btn-ghost" href={`/api/admin/revenue?export=csv&${qs}`} style={{ padding: '6px 12px', fontSize: 12 }}>⤓ {t.csv}</a>
           </span>
         </div>

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { fmtDateTime } from '@/lib/fmtDate';
 import { describeLog, CAT_STYLE } from '@/lib/logFormat';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 const T: any = {
@@ -139,7 +140,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
             </div>
 
             <div className="card">
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>✉️ {t.write}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}><OnyxIcon emoji="✉" size={15} />️ {t.write}</div>
               <input placeholder={t.subj} value={subj} onChange={(e) => setSubj(e.target.value)} style={{ margin: 0 }} />
               <textarea placeholder={t.body} value={body} onChange={(e) => setBody(e.target.value)} rows={5} style={{ width: '100%', marginTop: 8, padding: '10px 12px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, color: 'var(--tx)', fontSize: 14, fontFamily: 'inherit' }} />
               <button className="btn btn-primary" style={{ marginTop: 10 }} onClick={send} disabled={busy || !subj.trim() || !body.trim()}>{busy ? '…' : t.send}</button>
@@ -149,7 +150,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
 
         {tab === 2 && (
           <div className="card">
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>🎁 {t.crT}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}><OnyxIcon emoji="🎁" size={15} /> {t.crT}</div>
             {!credit && <div className="muted">…</div>}
             {credit && !credit.hasCustomer && <div className="muted" style={{ fontSize: 13, lineHeight: 1.6 }}>{t.crNoCust}</div>}
             {credit && credit.hasCustomer && (
@@ -172,7 +173,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
 
         {tab === 3 && (
           <div className="card">
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>🧾 {t.tabs[3]}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}><OnyxIcon emoji="🧾" size={15} /> {t.tabs[3]}</div>
             {!purchases && <div className="muted">…</div>}
             {purchases && purchases.length === 0 && <div className="muted" style={{ fontSize: 13 }}>{t.puNone}</div>}
             {(purchases || []).map((p: any) => {
@@ -187,7 +188,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
                       </div>
                     </div>
                     <div className="row" style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                      {disputed && p.dueBy && (() => { const n = Math.ceil((new Date(p.dueBy).getTime() - Date.now()) / 864e5); const u = n <= 3; return <span className="pill" style={{ fontSize: 10.5, fontWeight: 700, background: u ? 'rgba(255,69,58,.16)' : 'rgba(255,159,10,.16)', color: u ? '#c62f26' : '#b26a00' }}>⏳ {n < 0 ? (lang === 'en' ? 'Overdue' : 'Vencido') : n === 0 ? (lang === 'en' ? 'Today' : 'Hoy') : (lang === 'en' ? `${n}d` : `${n}d`)}</span>; })()}
+                      {disputed && p.dueBy && (() => { const n = Math.ceil((new Date(p.dueBy).getTime() - Date.now()) / 864e5); const u = n <= 3; return <span className="pill" style={{ fontSize: 10.5, fontWeight: 700, background: u ? 'rgba(255,69,58,.16)' : 'rgba(255,159,10,.16)', color: u ? '#c62f26' : '#b26a00' }}><OnyxIcon emoji="⏳" size={15} /> {n < 0 ? (lang === 'en' ? 'Overdue' : 'Vencido') : n === 0 ? (lang === 'en' ? 'Today' : 'Hoy') : (lang === 'en' ? `${n}d` : `${n}d`)}</span>; })()}
                       <span className="pill" style={{ fontSize: 11, fontWeight: 700, background: disputed ? 'rgba(255,69,58,.16)' : 'rgba(52,199,120,.14)', color: disputed ? '#c62f26' : '#1f9d57' }}>
                         {disputed ? t.puDisputed : t.puPaid}
                       </span>
@@ -216,7 +217,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
         {crConfirm && (
           <div onClick={() => setCrConfirm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 340, width: '100%' }}>
-              <div style={{ fontWeight: 700, marginBottom: 12 }}>🎁 {t.crConfT}</div>
+              <div style={{ fontWeight: 700, marginBottom: 12 }}><OnyxIcon emoji="🎁" size={15} /> {t.crConfT}</div>
               <div style={{ background: 'rgba(52,226,160,.12)', borderRadius: 10, padding: 12, textAlign: 'center', marginBottom: 12 }}>
                 <div style={{ fontSize: 12, color: 'var(--green)' }}>{t.crYouCredit} {email}</div>
                 <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--green)' }}>{Number(crAmt) >= 0 ? '+' : ''}${Number(crAmt)}</div>

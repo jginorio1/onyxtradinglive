@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { CATALOG_KINDS, CATALOG_LABEL, type CatalogKind } from '@/lib/catalogDefaults';
 import ConfirmNote from './ConfirmNote';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Catálogos editables: países, plataformas, tipos de trader y prop firms / brokers.
 // Cada uno es una lista simple (código + nombre ES/EN) que alimenta los selectores
@@ -64,7 +65,7 @@ export default function CatalogAdmin() {
     <>
       <ConfirmNote act={cf} onClose={() => setCf(null)} />
       <div className="tabhead">
-        <div className="th-row"><span className="th-ic">🗂️</span><span className="th-t">{L('Catálogos', 'Catalogs')}</span></div>
+        <div className="th-row"><span className="th-ic"><OnyxIcon emoji="🗂" size={15} />️</span><span className="th-t">{L('Catálogos', 'Catalogs')}</span></div>
         <div className="th-s">{L('Añade o quita países, plataformas, tipos de trader y prop firms/brokers. Alimentan los selectores del app.', 'Add or remove countries, platforms, trader types and prop firms/brokers. They feed the app selectors.')}</div>
       </div>
 

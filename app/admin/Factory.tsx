@@ -10,6 +10,7 @@ import { subscribeAnalysis, getAnalysis, startAnalysis, resetAnalysis, patchAnal
 import { BLOCKS } from '@/lib/stratgen';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { ProgressBar, ProgressBarIndeterminate, LIME } from './ProgressBar';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Suscribe el componente al store global del análisis (sobrevive a navegar).
 function useAnalysis() {
@@ -283,7 +284,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
 
         {gate.interrupted && !gate.busy && (
           <div style={{ border: `1px solid ${AMBER}`, background: `color-mix(in srgb,${AMBER} 12%,var(--bg2))`, borderRadius: 12, padding: 14, marginBottom: 12 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 800, color: AMBER, marginBottom: 4 }}>⚠ {es ? 'El análisis anterior se interrumpió' : 'The previous analysis was interrupted'}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 800, color: AMBER, marginBottom: 4 }}><OnyxIcon emoji="⚠" size={15} /> {es ? 'El análisis anterior se interrumpió' : 'The previous analysis was interrupted'}</div>
             <div className="muted" style={{ fontSize: 12.5 }}>{es ? `Se detuvo por una recarga de la página (entraste con el PIN o refrescaste). Iba en ${Math.round(gate.prog * 100)}% con ${gate.fileName}. El archivo local no se guarda al recargar — vuelve a seleccionarlo para reanalizar. Abajo tienes el registro con los tiempos.` : `It stopped due to a page reload (PIN entry or refresh). It was at ${Math.round(gate.prog * 100)}% with ${gate.fileName}. The local file isn't kept on reload — pick it again to re-analyze. The log with times is below.`}</div>
             <AnalysisLog gate={gate} es={es} />
           </div>
@@ -291,7 +292,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
 
         {!gate.busy && (
           <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1.5px dashed color-mix(in srgb,var(--brand) 40%,var(--line))', borderRadius: 12, padding: '26px 14px', cursor: 'pointer', background: 'var(--bg2)', textAlign: 'center' }}>
-            <span style={{ fontSize: 26 }}>📈</span>
+            <span style={{ fontSize: 26 }}><OnyxIcon emoji="📈" size={15} /></span>
             <div style={{ fontSize: 14, fontWeight: 700 }}>{gate.fileName && !q ? gate.fileName : (es ? 'Arrastra o elige tu archivo de datos' : 'Drop or choose your data file')}</div>
             <div className="muted" style={{ fontSize: 12 }}>CSV · TXT · TSV — Dukascopy, MetaTrader…</div>
             <input ref={inputRef} type="file" accept=".csv,.txt,.tsv,.hst" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0] || null; pick(f); }} />
@@ -301,7 +302,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
         {gate.busy && (
           <div style={{ border: '1px solid color-mix(in srgb,' + LIME + ' 35%,var(--line))', borderRadius: 12, padding: 16, background: 'var(--bg2)' }}>
             <ProgressBar p={gate.prog} label={(es ? 'Analizando ' : 'Analyzing ') + (gate.symbol || gate.fileName)} />
-            {gate.fileSize > 2e9 && <div style={{ fontSize: 12.5, color: RED, fontWeight: 700, marginTop: 8 }}>⚠ {es ? `Archivo muy grande (${(gate.fileSize / 1073741824).toFixed(1)} GB). El navegador puede quedarse sin memoria y recargar la pestaña. Si se corta, divide el archivo por años o usa un rango más corto.` : `Very large file (${(gate.fileSize / 1073741824).toFixed(1)} GB). The browser may run out of memory and reload the tab. If it stops, split the file by year or use a shorter range.`}</div>}
+            {gate.fileSize > 2e9 && <div style={{ fontSize: 12.5, color: RED, fontWeight: 700, marginTop: 8 }}><OnyxIcon emoji="⚠" size={15} /> {es ? `Archivo muy grande (${(gate.fileSize / 1073741824).toFixed(1)} GB). El navegador puede quedarse sin memoria y recargar la pestaña. Si se corta, divide el archivo por años o usa un rango más corto.` : `Very large file (${(gate.fileSize / 1073741824).toFixed(1)} GB). The browser may run out of memory and reload the tab. If it stops, split the file by year or use a shorter range.`}</div>}
             {gate.stalled &&<div style={{ fontSize: 12.5, color: AMBER, fontWeight: 700, marginTop: 8 }}>⏸ {es ? 'Sin avance — ¿dejaste la pestaña en segundo plano? Vuelve a esta pestaña para que continúe.' : 'No progress — did you leave the tab in the background? Return to this tab to continue.'}</div>}
             <AnalysisTelemetry gate={gate} es={es} />
             <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>{es ? 'Se lee el archivo completo en segundo plano. Puedes cambiar de sección del panel sin detenerlo. Mantén esta pestaña en primer plano y NO recargues (ni entres con el PIN) hasta que termine.' : 'Reading the whole file in the background. Switch panel sections freely. Keep this tab in the foreground and do NOT reload (or enter the PIN) until it finishes.'}</div>
@@ -322,7 +323,7 @@ function DataGate({ es, canManage, post, reload, datasets }: any) {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 <span style={chip(VIOLET)}>🏷 {gate.symbol || (es ? 'símbolo ?' : 'symbol ?')} <span style={{ opacity: .7 }}>({es ? 'auto' : 'auto'})</span></span>
                 <span style={chip(metrics.hasTicks ? GREEN : AMBER)}>{metrics.hasTicks ? (es ? '⚡ ticks reales' : '⚡ real ticks') : (es ? '▦ barras' : '▦ bars')}</span>
-                <span style={chip('var(--brand)')}>📅 {fromD || '—'} → {toD || '—'} · {q.years} {es ? 'años' : 'yrs'}</span>
+                <span style={chip('var(--brand)')}><OnyxIcon emoji="📅" size={15} /> {fromD || '—'} → {toD || '—'} · {q.years} {es ? 'años' : 'yrs'}</span>
                 <span style={chip('var(--brand)')}>{(metrics.rows || 0).toLocaleString('en-US')} {es ? 'filas' : 'rows'}</span>
                 {source && <span style={chip('var(--tx)')}>{source === 'dukascopy' ? 'Dukascopy' : source === 'metatrader' ? ('MetaTrader' + (broker ? ' · ' + broker : '')) : (es ? 'Otro' : 'Other')}</span>}
               </div>
@@ -404,7 +405,7 @@ function DatasetCard({ ds, es, post, canManage, onDelete }: any) {
         {!sum && <button onClick={summarize} disabled={busy} style={{ ...btn(VIOLET), padding: '6px 12px' }}>{busy ? (es ? 'Analizando…' : 'Analyzing…') : '🧠 ' + (es ? 'Resumen IA de la data' : 'AI data summary')}</button>}
         {sum && (
           <div style={{ background: `color-mix(in srgb,${VIOLET} 8%,var(--bg2))`, border: `1px solid color-mix(in srgb,${VIOLET} 30%,var(--line))`, borderRadius: 10, padding: '9px 11px' }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: VIOLET, marginBottom: 3 }}>🧠 {es ? 'Resumen de la data' : 'Data summary'} {!sum.byAi && <span className="muted" style={{ fontWeight: 400 }}>({es ? 'sin IA — conecta ANTHROPIC_API_KEY' : 'no AI — set ANTHROPIC_API_KEY'})</span>}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: VIOLET, marginBottom: 3 }}><OnyxIcon emoji="🧠" size={15} /> {es ? 'Resumen de la data' : 'Data summary'} {!sum.byAi && <span className="muted" style={{ fontWeight: 400 }}>({es ? 'sin IA — conecta ANTHROPIC_API_KEY' : 'no AI — set ANTHROPIC_API_KEY'})</span>}</div>
             <div style={{ fontSize: 12.5, lineHeight: 1.55 }}>{sum.summary}</div>
             <button onClick={summarize} disabled={busy} style={{ ...btn('var(--brand)'), padding: '4px 9px', marginTop: 7, fontSize: 11 }}>↻ {es ? 'regenerar' : 'regenerate'}</button>
           </div>
@@ -451,7 +452,7 @@ function Builder({ es, canManage, post, reload, nextName, datasets, templates = 
           eliges los datos y arrancas. Todo pasa solo: Motor → Lab → Pipeline. */}
       <div style={{ ...card, background: `linear-gradient(150deg, color-mix(in srgb,${LIME} 12%,var(--card)), color-mix(in srgb,${TEAL} 8%,var(--card)) 70%, var(--card))`, borderColor: `color-mix(in srgb,${LIME} 34%,var(--line))` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${LIME},${TEAL})`, color: '#04201d', fontSize: 18 }}>⚡</span>
+          <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${LIME},${TEAL})`, color: '#04201d', fontSize: 18 }}><OnyxIcon emoji="⚡" size={15} /></span>
           <div style={{ flex: 1, minWidth: 200 }}>
             <h3 style={{ margin: 0 }}>{es ? 'Fábrica automática' : 'Automatic factory'}</h3>
             <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'Elige los datos y arranca. El Motor genera y evoluciona miles, aplica el filtro anti-sobreajuste Onyx + auditoría IA, y valida en M1 — sin saltar entre pestañas.' : 'Pick the data and start. The Engine generates and evolves thousands, applies the Onyx anti-overfit gate + AI audit, and validates on M1 — no tab hopping.'}</div>
@@ -462,7 +463,7 @@ function Builder({ es, canManage, post, reload, nextName, datasets, templates = 
           <span style={chip(TEAL)}>{usable.length} {es ? 'datasets listos' : 'datasets ready'}</span>
           <span style={chip(SKY)}>{es ? 'evolución genética' : 'genetic evolution'}</span>
           <span style={chip(VIOLET)}>Onyx {es ? 'anti-sobreajuste' : 'anti-overfit'}</span>
-          <span style={chip(CORAL)}>✨ {es ? 'auditoría IA' : 'AI audit'}</span>
+          <span style={chip(CORAL)}><OnyxIcon emoji="✨" size={15} /> {es ? 'auditoría IA' : 'AI audit'}</span>
           <span style={chip(GREEN)}>{es ? '📰 filtro noticias en todos los EA' : '📰 news filter in every EA'}</span>
         </div>
       </div>
@@ -470,7 +471,7 @@ function Builder({ es, canManage, post, reload, nextName, datasets, templates = 
       {/* Constructor: plantillas + constructor manual de 1 robot (plegado) */}
       <div style={{ ...card, background: `linear-gradient(150deg, color-mix(in srgb,${TEAL} 10%,var(--card)), color-mix(in srgb,${SKY} 8%,var(--card)) 70%, var(--card))`, borderColor: `color-mix(in srgb,${TEAL} 32%,var(--line))` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${TEAL},${AQUA})`, color: '#04201d', fontSize: 18 }}>🛠</span>
+          <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${TEAL},${AQUA})`, color: '#04201d', fontSize: 18 }}><OnyxIcon emoji="🛠" size={15} /></span>
           <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Plantillas y constructor manual' : 'Templates & manual builder'}</h3>
           {canManage && <button onClick={() => setAdvanced((v) => !v)} style={{ ...btn(SKY), padding: '8px 13px' }}>{advanced ? (es ? 'Ocultar manual' : 'Hide manual') : (es ? '＋ Crear 1 robot a mano' : '＋ Build 1 robot by hand')}</button>}
         </div>
@@ -485,7 +486,7 @@ function Builder({ es, canManage, post, reload, nextName, datasets, templates = 
                 <div className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre + magic automáticos (no editables, nunca se repiten)' : 'Automatic name + magic (locked, never repeat)'}</div>
                 <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'monospace', color: TEAL, marginTop: 2 }}>{nextName || '—'}</div>
               </div>
-              <span style={{ fontSize: 22 }}>🔒</span>
+              <span style={{ fontSize: 22 }}><OnyxIcon emoji="🔒" size={15} /></span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
@@ -555,9 +556,9 @@ function TemplateLibrary({ es, canManage, post, reload, templates, datasets, onU
   return (
     <div style={{ marginTop: 16, background: 'var(--bg2)', borderRadius: 12, padding: 14, border: `1px solid color-mix(in srgb,${TEAL} 22%,var(--line))` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-        <b style={{ fontSize: 14, flex: 1 }}>📚 {es ? 'Biblioteca de plantillas' : 'Template library'} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {es ? 'nombre · instrumento · temporalidad' : 'name · instrument · timeframe'}</span></b>
+        <b style={{ fontSize: 14, flex: 1 }}><OnyxIcon emoji="📚" size={15} /> {es ? 'Biblioteca de plantillas' : 'Template library'} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {es ? 'nombre · instrumento · temporalidad' : 'name · instrument · timeframe'}</span></b>
         {canManage && <button onClick={() => onUse({ config: {}, symbol: '', timeframe: tfDefault, family: '' })} style={{ ...btn(TEAL), padding: '7px 12px' }}>＋ {es ? 'Nueva' : 'New'}</button>}
-        {canManage && <button onClick={() => { setAiOpen((v) => !v); setAiRes(null); }} style={{ ...btn(CORAL), padding: '7px 12px' }}>✨ {es ? 'Claude, arma una' : 'Ask Claude'}</button>}
+        {canManage && <button onClick={() => { setAiOpen((v) => !v); setAiRes(null); }} style={{ ...btn(CORAL), padding: '7px 12px' }}><OnyxIcon emoji="✨" size={15} /> {es ? 'Claude, arma una' : 'Ask Claude'}</button>}
       </div>
 
       {aiOpen && (
@@ -762,7 +763,7 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
           {activeBatch && (
             <div style={{ background: 'color-mix(in srgb,#38bdf8 8%,var(--bg2))', border: '1px solid color-mix(in srgb,#38bdf8 30%,var(--line))', borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 12 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <b style={{ color: '#38bdf8' }}>🧪 {es ? 'Lote' : 'Batch'} #{activeBatch.batch_no}</b>
+                <b style={{ color: '#38bdf8' }}><OnyxIcon emoji="🧪" size={15} /> {es ? 'Lote' : 'Batch'} #{activeBatch.batch_no}</b>
                 <span className="muted" style={{ fontSize: 11 }}>{activeBatch.created_at ? new Date(activeBatch.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</span>
                 <button onClick={() => setBatchFilter(null)} style={{ marginLeft: 'auto', fontSize: 11.5, background: 'transparent', border: 'none', color: 'var(--brand)', cursor: 'pointer' }}>{es ? '✕ ver todos' : '✕ show all'}</button>
               </div>
@@ -777,7 +778,7 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
             </label>
             {sel.size > 0 && canManage && <>
               <select value="" disabled={bulkBusy} onChange={(e) => { const v = e.target.value; if (v === '__new') newFolder(); else if (v === '__none') moveTo([...sel], null); else if (v) moveTo([...sel], v); e.currentTarget.value = ''; }} style={{ padding: '5px 9px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                <option value="">📁 {es ? 'Mover a carpeta…' : 'Move to folder…'}</option>
+                <option value=""><OnyxIcon emoji="📁" size={15} /> {es ? 'Mover a carpeta…' : 'Move to folder…'}</option>
                 {(folders as any[]).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                 <option value="__none">— {es ? 'Sin carpeta' : 'No folder'} —</option>
                 <option value="__new">＋ {es ? 'Nueva carpeta…' : 'New folder…'}</option>
@@ -787,10 +788,10 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
                 {STAGE_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
               <button disabled={bulkBusy} onClick={() => bulkDelete([...sel])} style={{ ...btn(RED), padding: '5px 11px', fontSize: 12 }}>🗑 {es ? 'Borrar' : 'Delete'}</button>
-              <button disabled={bulkBusy} onClick={() => exportCsv((bots as any[]).filter((b) => sel.has(b.id)), 'seleccion')} style={{ ...btn('var(--brand)'), padding: '5px 11px', fontSize: 12 }}>⬇ CSV</button>
+              <button disabled={bulkBusy} onClick={() => exportCsv((bots as any[]).filter((b) => sel.has(b.id)), 'seleccion')} style={{ ...btn('var(--brand)'), padding: '5px 11px', fontSize: 12 }}><OnyxIcon emoji="⬇" size={15} /> CSV</button>
               <button onClick={clearSel} style={{ fontSize: 12, background: 'transparent', border: 'none', color: 'var(--tx)', cursor: 'pointer', marginLeft: 'auto' }}>{es ? '✕ Quitar' : '✕ Clear'}</button>
             </>}
-            {!sel.size && <button onClick={() => exportCsv(shown.map((s) => s.b), folderFilter ? folderName(folderFilter) : batchFilter != null ? 'lote' + batchFilter : filter)} style={{ ...btn(GREEN), padding: '5px 11px', fontSize: 12, marginLeft: 'auto' }}>⬇ {es ? 'Exportar CSV' : 'Export CSV'}</button>}
+            {!sel.size && <button onClick={() => exportCsv(shown.map((s) => s.b), folderFilter ? folderName(folderFilter) : batchFilter != null ? 'lote' + batchFilter : filter)} style={{ ...btn(GREEN), padding: '5px 11px', fontSize: 12, marginLeft: 'auto' }}><OnyxIcon emoji="⬇" size={15} /> {es ? 'Exportar CSV' : 'Export CSV'}</button>}
           </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(215px,1fr))', gap: 10 }}>
         {shown.map(({ b, st }) => {
@@ -807,8 +808,8 @@ function RobotGrid({ bots = [], folders = [], batches = [], es, post, canManage,
               <div className="muted" style={{ fontSize: 11.5 }}>{String(b.platform || '').toUpperCase()} · {b.symbol || '—'} · {tfLabel(b.timeframe) || '—'}{score != null ? ' · ' : ''}{score != null && <span style={{ color: gradeColor(grade), fontWeight: 800 }}>{grade || ''} {score}</span>}</div>
               {b.created_at && <div className="muted" style={{ fontSize: 10.5 }}>🕒 {es ? 'creado' : 'created'} {new Date(b.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>}
               {(b.batch_no || b.folder_id) && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 10.5 }}>
-                {b.batch_no && <span onClick={() => { setBatchFilter(Number(b.batch_no)); setFolderFilter(''); }} title={es ? 'Ver este lote' : 'View this batch'} style={{ cursor: 'pointer', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: 'color-mix(in srgb,#38bdf8 14%,transparent)', color: '#38bdf8' }}>🧪 {es ? 'lote' : 'batch'} #{b.batch_no}</span>}
-                {b.folder_id && <span style={{ fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: `color-mix(in srgb,${VIOLET} 14%,transparent)`, color: VIOLET }}>📁 {folderName(b.folder_id)}</span>}
+                {b.batch_no && <span onClick={() => { setBatchFilter(Number(b.batch_no)); setFolderFilter(''); }} title={es ? 'Ver este lote' : 'View this batch'} style={{ cursor: 'pointer', fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: 'color-mix(in srgb,#38bdf8 14%,transparent)', color: '#38bdf8' }}><OnyxIcon emoji="🧪" size={15} /> {es ? 'lote' : 'batch'} #{b.batch_no}</span>}
+                {b.folder_id && <span style={{ fontWeight: 700, padding: '1px 7px', borderRadius: 20, background: `color-mix(in srgb,${VIOLET} 14%,transparent)`, color: VIOLET }}><OnyxIcon emoji="📁" size={15} /> {folderName(b.folder_id)}</span>}
               </div>}
               {b.fine_score != null && (() => {
                 // Validado en el dato más fino (M1/ticks). La divergencia = cuánto cayó

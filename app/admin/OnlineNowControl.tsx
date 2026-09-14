@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Control de la burbuja "en línea ahora" (prueba social simulada, abajo-izq).
 type Cfg = {
@@ -33,7 +34,7 @@ export default function OnlineNowControl() {
 
   return (
     <div className="card" style={{ marginBottom: 12 }}>
-      <h3 style={{ marginBottom: 4 }}>🟢 {L('Usuarios en línea (burbuja)', 'Users online (bubble)')}</h3>
+      <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🟢" size={15} /> {L('Usuarios en línea (burbuja)', 'Users online (bubble)')}</h3>
       <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
         {L('Burbuja de "prueba social" abajo a la izquierda. El número es simulado: se mantiene entre la base y el máximo y sube/baja solo. Oculta en móvil.',
            'Bottom-left "social proof" bubble. The number is simulated: it stays between base and max and drifts on its own. Hidden on mobile.')}

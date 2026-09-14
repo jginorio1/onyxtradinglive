@@ -272,7 +272,7 @@ export default function SetupGuide() {
       {celebrate && mounted && createPortal(
         <div onClick={dismissCelebrate} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6vh 16px' }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 380, padding: 26, textAlign: 'center', border: '2px solid var(--green)', boxShadow: '0 0 40px rgba(52,226,160,.3)' }}>
-            <div style={{ fontSize: 40, marginBottom: 6 }}>🎉</div>
+            <div style={{ fontSize: 40, marginBottom: 6 }}><OnyxIcon emoji="🎉" size={15} /></div>
             <h3 style={{ marginBottom: 8 }}>{L('¡Todo listo!', 'All set!')}</h3>
             <p className="muted" style={{ fontSize: 14, marginBottom: 18 }}>{accounts.length > 1 ? L('Tus cuentas están conectadas y configuradas. Onyx ya está trabajando por ti.', 'Your accounts are connected and configured. Onyx is now working for you.') : L('Tu cuenta está conectada y configurada. Onyx ya está trabajando por ti.', 'Your account is connected and configured. Onyx is now working for you.')}</p>
             <button className="btn btn-primary" onClick={dismissCelebrate}>{L('Entendido', 'Got it')}</button>

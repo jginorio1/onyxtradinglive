@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Barra de anuncios/descuentos configurable desde Admin → Barra de descuentos.
 // Moderna y responsiva: degradado con brillo, CTA píldora, cupón copiable, punto
@@ -123,7 +124,7 @@ export default function PromoBar({
   const onClick = () => { try { fetch('/api/promo/track', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, ev: 'click' }), keepalive: true }).catch(() => {}); } catch {} };
 
   const countdownEl = left ? (
-    <span style={{ flex: 'none', fontWeight: 700, fontVariantNumeric: 'tabular-nums', background: 'rgba(0,0,0,.16)', borderRadius: 6, padding: '2px 8px', ...(urgent ? { animation: 'onyxUrg 1s ease-in-out infinite' } : {}) }}>⏳ {left}</span>
+    <span style={{ flex: 'none', fontWeight: 700, fontVariantNumeric: 'tabular-nums', background: 'rgba(0,0,0,.16)', borderRadius: 6, padding: '2px 8px', ...(urgent ? { animation: 'onyxUrg 1s ease-in-out infinite' } : {}) }}><OnyxIcon emoji="⏳" size={15} /> {left}</span>
   ) : null;
 
   // Una copia del mensaje (emoji/punto + texto + contador).

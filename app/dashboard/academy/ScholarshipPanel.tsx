@@ -1,6 +1,7 @@
 'use client';
 import { toast, confirmDialog } from '@/lib/toast';
 import { useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Panel de becas del mentor (Fase 1): conceder directa o por código, ver activas
 // con su cuenta atrás, y revocar. Cobertura completa; la parcial llega después.
@@ -82,7 +83,7 @@ export default function ScholarshipPanel({ L }: { L: L }) {
 
   return (
     <div>
-      <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>🎓 {L('Becas', 'Scholarships')}</h3>
+      <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}><OnyxIcon emoji="🎓" size={15} /> {L('Becas', 'Scholarships')}</h3>
       <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Concede acceso gratis a alumnos con pocos recursos o por sorteo. Al vencer, pierden el acceso y se les invita a suscribirse.', 'Grant free access to students with few resources or via raffle. When it ends, they lose access and are invited to subscribe.')}</p>
 
       {/* Resumen */}
@@ -106,7 +107,7 @@ export default function ScholarshipPanel({ L }: { L: L }) {
       {(d.apps || []).length > 0 && (
         <div className="card" style={{ marginBottom: 14, border: '1px solid var(--amber)' }}>
           <div className="row between" style={{ alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700 }}>📝 {L('Solicitudes de beca', 'Scholarship requests')} · {(d.apps || []).length}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 700 }}><OnyxIcon emoji="📝" size={15} /> {L('Solicitudes de beca', 'Scholarship requests')} · {(d.apps || []).length}</div>
             <div className="row" style={{ gap: 8, alignItems: 'center' }}>
               <label style={{ fontSize: 12, color: 'var(--mut)', display: 'inline-flex', gap: 6, alignItems: 'center' }}>{L('Al aprobar, dar', 'On approve, grant')}
                 <input type="number" min={1} value={appDays} onChange={(e) => setAppDays(Number(e.target.value))} style={{ ...inp, width: 70, padding: '5px 7px' }} /> {L('días', 'days')}
@@ -209,7 +210,7 @@ export default function ScholarshipPanel({ L }: { L: L }) {
               <div style={{ fontSize: 13, fontWeight: 500 }}>{s.kind === 'code' ? s.code : (s.email || L('Alumno', 'Student'))} · <span style={{ color: 'var(--green)' }}>{L('Completa', 'Full')}</span></div>
               <div className="muted" style={{ fontSize: 11.5 }}>{scopeLabel(s)}{s.kind === 'code' ? ` · ${s.used}/${s.seats} ${L('usadas', 'used')}` : ''}</div>
             </div>
-            <span className="pill" style={{ color: 'var(--amber)' }}>⏳ {daysLeft(s.ends_at)}</span>
+            <span className="pill" style={{ color: 'var(--amber)' }}><OnyxIcon emoji="⏳" size={15} /> {daysLeft(s.ends_at)}</span>
             {s.kind === 'code' && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => copy(s.code)}>{L('Copiar', 'Copy')}</button>}
             <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--red)' }} onClick={() => revoke(s.id)}>{L('Revocar', 'Revoke')}</button>
           </div>

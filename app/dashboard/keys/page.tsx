@@ -10,6 +10,7 @@ import { errMsg } from '@/lib/i18nErrors';
 import InstallWizard, { WIZ } from './InstallWizard';
 import QrPop from '@/app/components/QrPop';
 import { useCatalog } from '@/lib/useCatalog';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
 
@@ -377,7 +378,7 @@ export default function KeysPage() {
 
           {atLimit ? (
             <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10, padding: 14 }}>
-              <div style={{ fontWeight: 800, marginBottom: 6 }}>🔒 {t.limitT}</div>
+              <div style={{ fontWeight: 800, marginBottom: 6 }}><OnyxIcon emoji="🔒" size={15} /> {t.limitT}</div>
               <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.limitD}</p>
               {addon?.enabled ? (
                 <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

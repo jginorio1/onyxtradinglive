@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
 import ConfirmNote from './ConfirmNote';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Base de conocimiento editable: lo que escribas aquí lo lee Onyx AI.
 export default function KbEditor() {
@@ -60,7 +61,7 @@ export default function KbEditor() {
     <>
     <ConfirmNote act={cf} onClose={() => setCf(null)} />
     <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">🧠</span><span className="th-t">{t.h_kb_t}</span></div><div className="th-s">{t.h_kb_s}</div></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic"><OnyxIcon emoji="🧠" size={15} /></span><span className="th-t">{t.h_kb_t}</span></div><div className="th-s">{t.h_kb_s}</div></div>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <button className="btn btn-ghost" onClick={importGuide} disabled={importing}>{importing ? '…' : (es ? '📥 Importar Guía' : '📥 Import Guide')}</button>
         <button className="btn btn-primary" onClick={() => setEdit({ title: '', body: '', tags: '', published: true })}>{t.kb_new}</button>
@@ -70,7 +71,7 @@ export default function KbEditor() {
     <div className="card" style={{ borderColor: 'var(--brand)' }}>
       <div className="row between" style={{ alignItems: 'center', cursor: 'pointer', flexWrap: 'wrap', gap: 8 }} onClick={() => setPfOpen(!pfOpen)}>
         <div>
-          <b style={{ fontSize: 15 }}>🧩 {es ? 'Instrucciones de Onyx AI (prompt)' : 'Onyx AI instructions (prompt)'}</b>
+          <b style={{ fontSize: 15 }}><OnyxIcon emoji="🧩" size={15} /> {es ? 'Instrucciones de Onyx AI (prompt)' : 'Onyx AI instructions (prompt)'}</b>
           <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'Ajusta cómo responde el chat y qué sabe de Onyx, sin tocar código. Se aplica al instante.' : 'Tune how the chat replies and what it knows about Onyx, no code needed. Applies instantly.'}</div>
         </div>
         <button className="btn btn-ghost" style={{ fontSize: 12 }}>{pfOpen ? (es ? 'Ocultar' : 'Hide') : (es ? 'Editar' : 'Edit')}</button>

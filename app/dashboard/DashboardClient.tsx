@@ -436,7 +436,7 @@ function ProLock({ L, plan = 'Pro', desc, price, preview }: { L: any; plan?: str
         </div>
       )}
       <div style={{ textAlign: 'center', paddingTop: preview ? 6 : 16, paddingBottom: preview ? 6 : 16 }}>
-        <div style={{ fontSize: 28, marginBottom: 6 }}>🔒</div>
+        <div style={{ fontSize: 28, marginBottom: 6 }}><OnyxIcon emoji="🔒" size={15} /></div>
         <h3 style={{ marginBottom: 6 }}>{L.available} <span style={{ color: col }}>{plan}</span></h3>
         <p className="muted" style={{ marginBottom: 16 }}>{desc || L.proLockD}</p>
         <Link className="btn btn-primary" href="/pricing">{L.upgradeTo} {plan}{price ? ` · $${price}/${L.perMo}` : ''} →</Link>
@@ -484,7 +484,7 @@ function PreviewFunding() {
 }
 function PlanBadge({ plan }: { plan: string }) {
   const elite = plan === 'Elite';
-  return <span style={{ fontSize: 10, fontWeight: 800, background: elite ? 'rgba(52,226,160,.15)' : 'rgba(160,107,255,.2)', color: elite ? 'var(--soft-green)' : 'var(--soft-purple)', border: '1px solid ' + (elite ? 'var(--green)' : 'var(--brand2)'), borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}>🔒 {plan.toUpperCase()}</span>;
+  return <span style={{ fontSize: 10, fontWeight: 800, background: elite ? 'rgba(52,226,160,.15)' : 'rgba(160,107,255,.2)', color: elite ? 'var(--soft-green)' : 'var(--soft-purple)', border: '1px solid ' + (elite ? 'var(--green)' : 'var(--brand2)'), borderRadius: 20, padding: '2px 8px', whiteSpace: 'nowrap' }}><OnyxIcon emoji="🔒" size={15} /> {plan.toUpperCase()}</span>;
 }
 
 // Fusiona la lista nueva de cuentas con la anterior SIN cambiar el orden ya visible:
@@ -816,7 +816,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
     { key: 'operaciones', icon: '📋', label: L.secOps, sub: L.secOpsSub, color: PURPLE, metric: String(a.n), mc: 'var(--tx)', viz: <MiniDonut size={46} segs={[{ v: a.catWin, c: GREEN }, { v: a.catLoss, c: RED }, { v: a.catBE, c: GOLD }]} />, pro: true },
     { key: 'costes', icon: '💸', label: L.secCost, sub: L.secCostSub, color: GOLD, metric: money2(costAll), mc: costAll >= 0 ? GREEN : RED, viz: <Ring size={46} pct={eaten / 100} color={GOLD} value={eaten + '%'} /> },
     { key: 'cuentas', icon: '🗂️', label: L.secAcc, sub: L.secAccSub, color: CYAN, metric: String(accounts.length), mc: 'var(--tx)', viz: <div style={{ width: 100 }}><MiniBars vals={accounts.length ? accounts.map((x) => accStats(x.id).net) : [1, 1]} colors={accounts.length ? accounts.map((x) => (accStats(x.id).net >= 0 ? GREEN : RED)) : [BLUE]} h={44} /></div> },
-    { key: 'reto', icon: '🏁', label: L.secReto, sub: L.secRetoSub, color: GOLD, metric: '', mc: 'var(--tx)', viz: <div style={{ fontSize: 30, lineHeight: 1 }}>🏁</div> },
+    { key: 'reto', icon: '🏁', label: L.secReto, sub: L.secRetoSub, color: GOLD, metric: '', mc: 'var(--tx)', viz: <div style={{ fontSize: 30, lineHeight: 1 }}><OnyxIcon emoji="🏁" size={15} /></div> },
   ];
 
   const kpi = (lbl: string, val: string, cls = '') => <div className="card kpi"><div className="lbl">{lbl}</div><div className={'val ' + cls}>{val}</div></div>;

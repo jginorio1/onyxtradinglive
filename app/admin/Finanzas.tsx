@@ -223,7 +223,7 @@ export default function Finanzas({ canManage = false }: { canManage?: boolean })
           {/* Caja */}
           {canManage && (
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-              <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}>💰 {L('Tu caja actual (para el runway)', 'Your current cash (for runway)')}</div>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 5 }}><OnyxIcon emoji="💰" size={15} /> {L('Tu caja actual (para el runway)', 'Your current cash (for runway)')}</div>
               <div className="row" style={{ gap: 8 }}>
                 <input type="number" value={cashInput} onChange={(e) => setCashInput(e.target.value)} placeholder="0" style={{ margin: 0, flex: 1 }} />
                 <button className="btn btn-ghost" onClick={saveCash}>{L('Guardar', 'Save')}</button>

@@ -8,6 +8,7 @@ import NewsPilot from './NewsPilot';
 import BlogAudit from './BlogAudit';
 import BlogPreview from './previews/BlogPreview';
 import SocialShare from './SocialShare';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Calendario de un solo día, mismo estilo que el de la academia (mes grande,
 // día sombreado, navegación de mes, días pasados deshabilitados).
@@ -103,11 +104,11 @@ function Countdown({ iso, es, compact = false }: { iso: string; es: boolean; com
   useEffect(() => { const i = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(i); }, []);
   const ms = new Date(iso).getTime() - now;
   const pad = (n: number) => String(n).padStart(2, '0');
-  if (ms <= 0) return <span style={{ color: 'var(--red)', fontWeight: 700, whiteSpace: 'nowrap' }}>⚠ {es ? 'vencido' : 'overdue'}</span>;
+  if (ms <= 0) return <span style={{ color: 'var(--red)', fontWeight: 700, whiteSpace: 'nowrap' }}><OnyxIcon emoji="⚠" size={15} /> {es ? 'vencido' : 'overdue'}</span>;
   const d = Math.floor(ms / 864e5), h = Math.floor((ms % 864e5) / 36e5), m = Math.floor((ms % 36e5) / 6e4), s = Math.floor((ms % 6e4) / 1e3);
   const txt = ms > 864e5 ? `${d}d ${h}h ${m}m` : ms > 36e5 ? `${h}h ${pad(m)}m` : `${pad(m)}:${pad(s)}`;
   const urgent = ms <= 6e5; // últimos 10 min
-  return <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: urgent ? 800 : 600, ...(urgent ? { color: 'var(--red)' } : {}) }}>⏳ {compact ? '' : (es ? 'en ' : '')}{txt}</span>;
+  return <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: urgent ? 800 : 600, ...(urgent ? { color: 'var(--red)' } : {}) }}><OnyxIcon emoji="⏳" size={15} /> {compact ? '' : (es ? 'en ' : '')}{txt}</span>;
 }
 
 // Plantel de AUTORES del blog (varios). Cada uno con perfil: nombre, tipo de trader,
@@ -133,7 +134,7 @@ function BlogAuthorCard({ es, roster, reload }: { es: boolean; roster: any; relo
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row between" style={{ alignItems: 'center', cursor: 'pointer' }} onClick={() => setOpen((o) => !o)}>
         <div>
-          <b style={{ fontSize: 14 }}>✍️ {es ? 'Autores del blog (E-E-A-T)' : 'Blog authors (E-E-A-T)'}</b>
+          <b style={{ fontSize: 14 }}><OnyxIcon emoji="✍" size={15} />️ {es ? 'Autores del blog (E-E-A-T)' : 'Blog authors (E-E-A-T)'}</b>
           <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{es ? 'Varios autores con perfil (tipo de trader, experiencia, bio, foto). Cada artículo guarda su autor.' : 'Multiple authors with profile (trader type, experience, bio, photo). Each article keeps its author.'} · {list.length} {es ? 'autores' : 'authors'}</div>
         </div>
         <span className="btn btn-ghost" style={{ fontSize: 12 }}>{open ? (es ? 'Ocultar' : 'Hide') : (es ? 'Gestionar' : 'Manage')}</span>
@@ -590,11 +591,11 @@ export default function BlogEditor() {
           onClick={(e) => { e.stopPropagation(); edit(p); }}
           title={p.title_es || p.title_en}
           style={{ fontSize: 10.5, lineHeight: 1.3, background: chipCol[p.status][0], color: chipCol[p.status][1], borderRadius: 5, padding: '2px 5px', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4, cursor: drag ? 'grab' : 'pointer', border: '1px solid color-mix(in srgb,' + chipCol[p.status][1] + ' 30%,transparent)' }}>
-          {missingLangs(p).length > 0 && <span style={{ flex: 'none', color: 'var(--amber)' }} title={(es ? 'Falta: ' : 'Missing: ') + missingLangs(p).join(', ')}>⚠</span>}
+          {missingLangs(p).length > 0 && <span style={{ flex: 'none', color: 'var(--amber)' }} title={(es ? 'Falta: ' : 'Missing: ') + missingLangs(p).join(', ')}><OnyxIcon emoji="⚠" size={15} /></span>}
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: '1 1 auto', minWidth: 0 }}>{timeLbl}{p.title_es || p.title_en}</span>
           {sched && <span style={{ flex: 'none', fontSize: 9.5 }}><Countdown iso={p.publish_at} es={es} compact /></span>}
           {p.status === 'published' && p.slug && origin && (
-            <a href={postUrl(p)} onClick={(e) => { e.preventDefault(); e.stopPropagation(); openPost(postUrl(p)); }} title={es ? 'Ver en la web' : 'View on the web'} style={{ flex: 'none', textDecoration: 'none', color: 'inherit', opacity: .8, cursor: 'pointer' }}>👁</a>
+            <a href={postUrl(p)} onClick={(e) => { e.preventDefault(); e.stopPropagation(); openPost(postUrl(p)); }} title={es ? 'Ver en la web' : 'View on the web'} style={{ flex: 'none', textDecoration: 'none', color: 'inherit', opacity: .8, cursor: 'pointer' }}><OnyxIcon emoji="👁" size={15} /></a>
           )}
         </div>
       );
@@ -628,7 +629,7 @@ export default function BlogEditor() {
       <div>
         <div className="row between" style={{ alignItems: 'flex-start', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
           <div>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>📝 Blog</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="📝" size={15} /> Blog</h3>
             <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{es ? 'Artículos públicos indexables por Google. Genera con Onyx AI (ES/EN) y programa la publicación.' : 'Public, Google-indexable articles. Generate with Onyx AI (ES/EN) and schedule publishing.'}</p>
           </div>
           <div className="row" style={{ gap: 8, alignItems: 'center' }}>
@@ -637,7 +638,7 @@ export default function BlogEditor() {
                 <button key={v} type="button" onClick={() => setView(v)} className="btn" style={{ padding: '4px 12px', fontSize: 12.5, border: 'none', borderRadius: 15, background: view === v ? 'var(--brand)' : 'transparent', color: view === v ? '#0a0d14' : 'var(--mut)' }}>{l}</button>
               ))}
             </div>
-            <a className="btn btn-ghost" href={`${origin}${es ? '/blog' : '/en/blog'}`} onClick={(e) => { e.preventDefault(); openPost(`${origin}${es ? '/blog' : '/en/blog'}`); }} title={es ? 'Abrir el blog público en la web' : 'Open the public blog on the web'}>👁 {es ? 'Ver blog' : 'View blog'}</a>
+            <a className="btn btn-ghost" href={`${origin}${es ? '/blog' : '/en/blog'}`} onClick={(e) => { e.preventDefault(); openPost(`${origin}${es ? '/blog' : '/en/blog'}`); }} title={es ? 'Abrir el blog público en la web' : 'Open the public blog on the web'}><OnyxIcon emoji="👁" size={15} /> {es ? 'Ver blog' : 'View blog'}</a>
             <button className="btn btn-ghost" style={{ color: 'var(--brand)' }} onClick={bulkComplete} disabled={bulk.running} title={es ? 'Completa el idioma que falte (traduce ES↔EN) en los artículos incompletos' : 'Fill the missing language (translate ES↔EN) on incomplete articles'}>{bulk.running ? `⏳ ${bulk.done}/${bulk.total}` : (es ? '🌐 Completar idiomas' : '🌐 Complete languages')}</button>
             <button className="btn btn-ghost" style={{ color: 'var(--brand)' }} onClick={bulkEnhance} disabled={bulk.running} title={es ? 'Mejora SEO de todos los publicados: enlaces internos, FAQ, imagen y slug corto ES/EN' : 'Improve SEO of all published: internal links, FAQ, image and short ES/EN slug'}>{bulk.running ? `⏳ ${bulk.done}/${bulk.total}` : (es ? '✨ Mejorar SEO de todos' : '✨ Improve SEO of all')}</button>
             <button className="btn btn-primary" onClick={() => { setTitles([]); setTopic(''); setF({ ...blank }); }}>＋ {es ? 'Nuevo' : 'New'}</button>
@@ -686,7 +687,7 @@ export default function BlogEditor() {
                   {backlog.map((p) => (
                     <div key={p.id} draggable onDragStart={(e) => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', p.id); } catch {} }} onDragEnd={() => { setDragId(''); setOverDay(''); }}
                       onClick={() => edit(p)} title={p.title_es || p.title_en}
-                      style={{ fontSize: 11.5, background: 'var(--card2)', color: 'var(--tx)', borderRadius: 7, padding: '7px 9px', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid var(--line)' }}>✍️ {p.title_es || p.title_en || (es ? '(sin título)' : '(untitled)')}</div>
+                      style={{ fontSize: 11.5, background: 'var(--card2)', color: 'var(--tx)', borderRadius: 7, padding: '7px 9px', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid var(--line)' }}><OnyxIcon emoji="✍" size={15} />️ {p.title_es || p.title_en || (es ? '(sin título)' : '(untitled)')}</div>
                   ))}
                 </div>
                 {backlog.length > 0 && <div style={{ borderTop: '1px dashed var(--line)', marginTop: 11, paddingTop: 9, fontSize: 11, color: 'var(--mut)' }}>{es ? 'Arrastra al calendario para ponerle fecha.' : 'Drag onto the calendar to schedule.'}</div>}
@@ -703,7 +704,7 @@ export default function BlogEditor() {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <b>{p.title_es || p.title_en}</b> {statusChip(p.status)}
-                    {missingLangs(p).length > 0 && <span className="sk-chip" style={{ color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 45%,transparent)', fontWeight: 700 }} title={missingLangs(p).join(', ')}>⚠ {es ? 'Falta ' : 'Missing ' }{missingLangs(p).join(', ')}</span>}
+                    {missingLangs(p).length > 0 && <span className="sk-chip" style={{ color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 45%,transparent)', fontWeight: 700 }} title={missingLangs(p).join(', ')}><OnyxIcon emoji="⚠" size={15} /> {es ? 'Falta ' : 'Missing ' }{missingLangs(p).join(', ')}</span>}
                     {p.status === 'scheduled' && p.publish_at && (
                       <span className="sk-chip" style={{ color: 'var(--amber)', background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 40%,transparent)', fontWeight: 700 }}><Countdown iso={p.publish_at} es={es} /></span>
                     )}
@@ -711,8 +712,8 @@ export default function BlogEditor() {
                   <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>/blog/{p.slug}{p.status === 'scheduled' && p.publish_at ? ` · ${new Date(p.publish_at).toLocaleString(es ? 'es-ES' : 'en-US')}` : ''}</div>
                 </div>
                 <div className="row" style={{ gap: 6 }}>
-                  {p.status === 'scheduled' && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--green)' }} onClick={() => publishNow(p)}>⚡ {es ? 'Publicar ahora' : 'Publish now'}</button>}
-                  {(p.status === 'published' || p.status === 'scheduled') && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--brand)' }} onClick={() => enhanceSeo(p)} disabled={ai} title={es ? 'Añadir enlaces internos, FAQ e imagen sin reescribir el texto' : 'Add internal links, FAQ and image without rewriting'}>✨ {es ? 'Mejorar SEO' : 'Improve SEO'}</button>}
+                  {p.status === 'scheduled' && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--green)' }} onClick={() => publishNow(p)}><OnyxIcon emoji="⚡" size={15} /> {es ? 'Publicar ahora' : 'Publish now'}</button>}
+                  {(p.status === 'published' || p.status === 'scheduled') && <button className="btn btn-ghost" style={{ fontSize: 12, color: 'var(--brand)' }} onClick={() => enhanceSeo(p)} disabled={ai} title={es ? 'Añadir enlaces internos, FAQ e imagen sin reescribir el texto' : 'Add internal links, FAQ and image without rewriting'}><OnyxIcon emoji="✨" size={15} /> {es ? 'Mejorar SEO' : 'Improve SEO'}</button>}
                   {(() => { const miss = (!!(p.body_es && String(p.body_es).trim())) !== (!!(p.body_en && String(p.body_en).trim())); return <button className="btn btn-ghost" style={{ fontSize: 12, color: miss ? 'var(--amber)' : 'var(--mut)' }} onClick={() => completeOne(p)} disabled={ai} title={es ? 'Traducir/completar ES y EN' : 'Translate/complete ES and EN'}>🌐 {miss ? (es ? 'Completar idioma' : 'Complete language') : (es ? 'Idiomas' : 'Languages')}</button>; })()}
                   {p.status === 'published' && <a className="btn btn-ghost" style={{ fontSize: 12 }} href={postUrl(p)} onClick={(e) => { e.preventDefault(); openPost(postUrl(p)); }}>{es ? 'Ver' : 'View'}</a>}
                   <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => edit(p)}>✎ {es ? 'Editar' : 'Edit'}</button>
@@ -737,7 +738,7 @@ export default function BlogEditor() {
       {/* Aviso: falta contenido en algún idioma (evita URLs que caen al otro idioma). */}
       {missingLangs(f).length > 0 && (
         <div style={{ border: '1px solid var(--amber)', background: 'color-mix(in srgb,var(--amber) 10%,transparent)', borderRadius: 10, padding: '10px 12px', marginBottom: 12, fontSize: 13 }}>
-          <b style={{ color: 'var(--amber)' }}>⚠ {es ? 'Falta contenido en un idioma:' : 'Missing content in a language:'}</b> {missingLangs(f).join(' · ')}.
+          <b style={{ color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={15} /> {es ? 'Falta contenido en un idioma:' : 'Missing content in a language:'}</b> {missingLangs(f).join(' · ')}.
           <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{es ? 'Si publicas así, esa URL mostrará el otro idioma. Rellénalo o genera con la IA (rellena ES y EN).' : 'If you publish like this, that URL will show the other language. Fill it in or generate with AI (fills ES and EN).'}</div>
         </div>
       )}
@@ -833,7 +834,7 @@ export default function BlogEditor() {
           </div>
           {f.id && f.status === 'published' && f._origSlug && f.slug !== f._origSlug && (
             <div className="muted" style={{ fontSize: 11.5, marginTop: 4, color: 'var(--amber)' }}>
-              ⚠ {es ? `Se creará una redirección 301 de /blog/${f._origSlug} a la nueva URL.` : `A 301 redirect will be created from /blog/${f._origSlug} to the new URL.`}
+              <OnyxIcon emoji="⚠" size={15} /> {es ? `Se creará una redirección 301 de /blog/${f._origSlug} a la nueva URL.` : `A 301 redirect will be created from /blog/${f._origSlug} to the new URL.`}
             </div>
           )}
           {/* Slug propio para inglés → /en/blog/… en inglés */}
@@ -877,7 +878,7 @@ export default function BlogEditor() {
 
         {/* Compartir en redes (solo con el artículo ya guardado) */}
         {f.id ? <SocialShare post={{ id: f.id, slug: f.slug, title_es: f.title_es, title_en: f.title_en }} es={es} />
-          : <div className="muted" style={{ fontSize: 12.5, border: '1px dashed var(--line)', borderRadius: 12, padding: '12px 14px' }}>🔗 {es ? 'Guarda el artículo para compartirlo en redes con copy por red y programación.' : 'Save the article to share it on social with per-network copy and scheduling.'}</div>}
+          : <div className="muted" style={{ fontSize: 12.5, border: '1px dashed var(--line)', borderRadius: 12, padding: '12px 14px' }}><OnyxIcon emoji="🔗" size={15} /> {es ? 'Guarda el artículo para compartirlo en redes con copy por red y programación.' : 'Save the article to share it on social with per-network copy and scheduling.'}</div>}
 
         {/* Autor del artículo */}
         <div className="card">
@@ -919,7 +920,7 @@ export default function BlogEditor() {
           <div style={{ marginTop: 14, border: '1px solid ' + (f.emailEnabled ? 'color-mix(in srgb,var(--amber) 55%,var(--line))' : 'var(--line)'), borderRadius: 12, padding: '12px 14px', background: f.emailEnabled ? 'color-mix(in srgb,var(--amber) 7%,transparent)' : 'transparent' }}>
             <div className="row between" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700 }}>
-                <span>📧</span>{es ? 'Enviar por email a mi base de datos' : 'Email this to my database'}
+                <span><OnyxIcon emoji="📧" size={15} /></span>{es ? 'Enviar por email a mi base de datos' : 'Email this to my database'}
               </div>
               <div onClick={() => set('emailEnabled', !f.emailEnabled)} style={{ cursor: 'pointer', width: 42, height: 23, borderRadius: 99, background: f.emailEnabled ? 'var(--amber)' : 'var(--line)', position: 'relative', flex: 'none', transition: 'background .15s' }}>
                 <span style={{ position: 'absolute', top: 2, left: f.emailEnabled ? 21 : 2, width: 19, height: 19, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />

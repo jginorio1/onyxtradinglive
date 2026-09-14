@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Panel del trader: qué avisos quiere en la campana (dentro de la app) y en el
 // push del móvil. Telegram se controla aparte en la tarjeta de Telegram.
@@ -34,7 +35,7 @@ export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
   return (
     <>
       <div className="row" style={{ gap: 8, marginBottom: 6 }}>
-        <h3 style={{ fontSize: 16 }}>🔔 {es ? 'Avisos en la app y el móvil' : 'App and mobile alerts'}</h3>
+        <h3 style={{ fontSize: 16 }}><OnyxIcon emoji="🔔" size={15} /> {es ? 'Avisos en la app y el móvil' : 'App and mobile alerts'}</h3>
         {saved && <span style={{ color: 'var(--green)', fontSize: 12 }}>{es ? 'Guardado' : 'Saved'}</span>}
       </div>
       <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{es ? 'Elige qué recibir en la campana (dentro de la app) y en el push del móvil.' : 'Choose what to get in the bell (in-app) and mobile push.'}</p>

@@ -5,6 +5,7 @@ import { useLang } from '@/lib/lang';
 import { useT } from '@/lib/adminText';
 import { fmtDateTime } from '@/lib/fmtDate';
 import AuditHistory from './AuditHistory';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 const T: any = {
   es: {
@@ -85,7 +86,7 @@ export default function Audit() {
   return (
     <>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <div className="tabhead"><div className="th-row"><span className="th-ic">📈</span><span className="th-t">{gt.h_audit_t}</span></div><div className="th-s">{gt.h_audit_s}</div></div>
+        <div className="tabhead"><div className="th-row"><span className="th-ic"><OnyxIcon emoji="📈" size={15} /></span><span className="th-t">{gt.h_audit_t}</span></div><div className="th-s">{gt.h_audit_s}</div></div>
         {a.at
           ? <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: recent ? 'var(--soft-green)' : 'var(--mut)', background: recent ? 'rgba(52,226,160,.15)' : 'var(--card2)' }}>{recent && <span className="livedot" />}{t.lastRun}: {fmtDateTime(a.at, lang)}</span>
           : <span className="pill amber">{t.notRun}</span>}
@@ -95,7 +96,7 @@ export default function Audit() {
       {sec?.items && (
         <div className="card" style={{ marginBottom: 12, borderLeft: '3px solid ' + secCol(sec.overall) }}>
           <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
-            <b style={{ fontSize: 14 }}>🔒 {t.sec}</b>
+            <b style={{ fontSize: 14 }}><OnyxIcon emoji="🔒" size={15} /> {t.sec}</b>
             <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: secCol(sec.overall), background: 'var(--card2)' }}>{t.lastRun}: {fmtDateTime(sec.at, lang)}</span>
           </div>
           <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>{t.secSub}</div>

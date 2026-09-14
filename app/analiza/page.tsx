@@ -3,6 +3,7 @@ import { mkL } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Stats = { winRate?: string | null; profitFactor?: string | null; expectancyR?: string | null; maxDrawdown?: string | null };
 type Result = { findings: string[]; quickWin?: string; score?: number | null; summary?: string; stats?: Stats };
@@ -88,9 +89,9 @@ export default function AnalizaPage() {
       <div className="card">
         {/* Pestañas de entrada */}
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          <span style={chip(tab === 'paste')} onClick={() => setTab('paste')}>📋 {L('Pegar texto', 'Paste text')}</span>
+          <span style={chip(tab === 'paste')} onClick={() => setTab('paste')}><OnyxIcon emoji="📋" size={15} /> {L('Pegar texto', 'Paste text')}</span>
           <span style={chip(tab === 'file')} onClick={() => { setTab('file'); fileRef.current?.click(); }}>⬆ {L('Subir archivo', 'Upload file')}</span>
-          <span style={{ ...chip(false), marginLeft: 'auto', borderColor: 'var(--brand)', color: 'var(--soft-brand)' }} onClick={tryExample}>✨ {L('Probar con un ejemplo', 'Try an example')}</span>
+          <span style={{ ...chip(false), marginLeft: 'auto', borderColor: 'var(--brand)', color: 'var(--soft-brand)' }} onClick={tryExample}><OnyxIcon emoji="✨" size={15} /> {L('Probar con un ejemplo', 'Try an example')}</span>
           <input ref={fileRef} type="file" accept=".csv,.txt,.tsv,.log,.htm,.html,text/*" onChange={onFile} style={{ display: 'none' }} />
         </div>
 
@@ -114,7 +115,7 @@ export default function AnalizaPage() {
           <button className="btn btn-primary" onClick={() => run()} disabled={busy || text.trim().length < 30}>{busy ? L('Analizando…', 'Analyzing…') : '✨ ' + L('Analizar', 'Analyze')}</button>
           <span className="muted" style={{ fontSize: 12 }}>{px('privacy', L('No guardamos lo que pegas.', "We don't store what you paste."))}</span>
         </div>
-        {err && <div style={{ marginTop: 12, color: 'var(--amber)', fontSize: 13 }}>⚠ {err}</div>}
+        {err && <div style={{ marginTop: 12, color: 'var(--amber)', fontSize: 13 }}><OnyxIcon emoji="⚠" size={15} /> {err}</div>}
       </div>
 
       {res && (
@@ -170,7 +171,7 @@ export default function AnalizaPage() {
           {/* Acción rápida */}
           {res.quickWin && (
             <div style={{ marginTop: 12, background: 'rgba(52,226,160,.10)', border: '1px solid var(--green)', borderRadius: 10, padding: '11px 13px' }}>
-              <div style={{ fontSize: 12, color: 'var(--green)', fontWeight: 700, marginBottom: 2 }}>🎯 {L('Acción rápida', 'Quick win')}</div>
+              <div style={{ fontSize: 12, color: 'var(--green)', fontWeight: 700, marginBottom: 2 }}><OnyxIcon emoji="🎯" size={15} /> {L('Acción rápida', 'Quick win')}</div>
               <div style={{ fontSize: 14, lineHeight: 1.5 }}>{res.quickWin}</div>
             </div>
           )}

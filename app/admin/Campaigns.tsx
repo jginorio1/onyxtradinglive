@@ -6,6 +6,7 @@ import { useLang } from '@/lib/lang';
 import ConfirmNote from './ConfirmNote';
 import DateTimePicker from '@/app/components/DateTimePicker';
 import EmailPreview from './previews/EmailPreview';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Admin → Campañas. Correos de seguimiento automáticos a la base de traders +
@@ -141,7 +142,7 @@ export default function Campaigns() {
 
   return (
     <>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">📣</span><span className="th-t">{L('Campañas', 'Campaigns')}</span></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic"><OnyxIcon emoji="📣" size={15} /></span><span className="th-t">{L('Campañas', 'Campaigns')}</span></div>
         <div className="th-s">{L('Correos de seguimiento automáticos a tus traders + envíos manuales de promos y noticias.', 'Automated follow-up emails to your traders + manual promos and news.')}</div></div>
 
       {/* Métricas 30 días (aperturas/clics reales del webhook de Resend) */}
@@ -157,7 +158,7 @@ export default function Campaigns() {
         <div className="row" style={{ gap: 8, marginBottom: 14, fontSize: 12.5, alignItems: 'center', flexWrap: 'wrap' }}>
           {stats.lastOpenAt
             ? <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>✓ {L('Webhook recibiendo aperturas', 'Webhook receiving opens')}</span>
-            : <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(255,192,77,.16)' }}>⚠ {L('Aún sin aperturas registradas', 'No opens recorded yet')}</span>}
+            : <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(255,192,77,.16)' }}><OnyxIcon emoji="⚠" size={15} /> {L('Aún sin aperturas registradas', 'No opens recorded yet')}</span>}
           <span className="muted">{stats.lastOpenAt ? `${L('última', 'last')}: ${fmtWhen(stats.lastOpenAt)}` : L('Manda una Prueba, ábrela y espera ~1 min. Si no sube, revisa el webhook de Resend + el open tracking.', 'Send a Test, open it and wait ~1 min. If it stays at zero, check the Resend webhook + open tracking.')}</span>
           <span className="muted" style={{ marginLeft: 'auto', opacity: .7 }}>↻ {L('auto', 'auto')}</span>
         </div>
@@ -167,7 +168,7 @@ export default function Campaigns() {
       <div className="card" style={{ marginBottom: 14 }}>
         <div className="row between" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <div style={{ minWidth: 220, flex: 1 }}>
-            <h3 style={{ marginBottom: 4 }}>🛡️ {L('Tope semanal de correos', 'Weekly email cap')}</h3>
+            <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🛡" size={15} />️ {L('Tope semanal de correos', 'Weekly email cap')}</h3>
             <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>{L('Nadie recibe más de este número de correos de marketing por semana (campañas + blog + noticias). Protege de la fatiga y del spam. 0 = sin tope.', 'No one gets more than this many marketing emails per week (campaigns + blog + news). Protects from fatigue and spam. 0 = no cap.')}</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
@@ -231,7 +232,7 @@ export default function Campaigns() {
 
       {/* Automáticas */}
       <div className="card" style={{ marginBottom: 14 }}>
-        <h3 style={{ marginBottom: 4 }}>🤖 {L('Campañas automáticas', 'Automatic campaigns')}</h3>
+        <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🤖" size={15} /> {L('Campañas automáticas', 'Automatic campaigns')}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L('El sistema las envía solo, a diario, al segmento correcto. Cada trader recibe cada campaña una sola vez y siempre se respeta la baja.', 'The system sends these on its own, daily, to the right segment. Each trader gets each campaign once and opt-out is always respected.')}</p>
         {autos.map((c, i) => (
           <div key={c.id} style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
@@ -239,7 +240,7 @@ export default function Campaigns() {
             <div style={{ minWidth: 200 }}>
               <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <b>{c.name}</b>{kindBadge(c.kind)}
-                {c.auto && <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.16)' }}>🤖 {L('IA automática', 'AI auto')}</span>}
+                {c.auto && <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.16)' }}><OnyxIcon emoji="🤖" size={15} /> {L('IA automática', 'AI auto')}</span>}
               </div>
               <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
                 {L('Segmento', 'Segment')}: {segLabel(c.segment)}
@@ -248,22 +249,22 @@ export default function Campaigns() {
               </div>
               {c.auto && <div className="muted" style={{ fontSize: 11.5, marginTop: 3, color: 'var(--soft-brand)' }}>{L('La IA la redacta y la envía sola. Apaga el 🤖 para escribirla tú.', 'AI writes and sends it on its own. Turn 🤖 off to write it yourself.')}</div>}
               {(() => { const k = stats?.byKey?.[c.key || '']; if (!k || !k.sent) return null; return (
-                <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>📬 {k.sent} · 👁 {pct(k.opened, k.sent)}% · 🖱 {pct(k.clicked, k.sent)}% <span style={{ opacity: .6 }}>({L('30d', '30d')})</span></div>
+                <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>📬 {k.sent} · <OnyxIcon emoji="👁" size={15} /> {pct(k.opened, k.sent)}% · 🖱 {pct(k.clicked, k.sent)}% <span style={{ opacity: .6 }}>({L('30d', '30d')})</span></div>
               ); })()}
             </div>
             <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               {/* Interruptor Automático (IA) */}
               <div className="row" style={{ gap: 6, alignItems: 'center' }} title={L('La IA redacta y programa esta campaña sola.', 'AI writes and schedules this campaign on its own.')}>
-                <span className="muted" style={{ fontSize: 11.5 }}>🤖 {L('IA', 'AI')}</span>
+                <span className="muted" style={{ fontSize: 11.5 }}><OnyxIcon emoji="🤖" size={15} /> {L('IA', 'AI')}</span>
                 <span className="toggle" onClick={() => toggleAuto(c)} style={{ background: c.auto ? 'var(--soft-brand)' : '#556080' }}><span className="knob" style={{ left: c.auto ? 21 : 3 }} /></span>
               </div>
               {/* Prueba a tu correo, en el idioma que elijas (verifica el idioma del envío) */}
               <div className="row" style={{ gap: 4, alignItems: 'center' }} title={L('Envía una prueba a tu correo en ese idioma.', 'Send a test to your email in that language.')}>
-                <span className="muted" style={{ fontSize: 11.5 }}>🧪</span>
+                <span className="muted" style={{ fontSize: 11.5 }}><OnyxIcon emoji="🧪" size={15} /></span>
                 <button className="btn btn-ghost" style={{ padding: '6px 9px', fontSize: 12 }} disabled={testing === c.id + 'es'} onClick={() => testCampaign(c, 'es')}>{testing === c.id + 'es' ? '…' : 'ES'}</button>
                 <button className="btn btn-ghost" style={{ padding: '6px 9px', fontSize: 12 }} disabled={testing === c.id + 'en'} onClick={() => testCampaign(c, 'en')}>{testing === c.id + 'en' ? '…' : 'EN'}</button>
               </div>
-              <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setHistOpen(histOpen === c.key ? null : (c.key || null))}>🗂 {L('Historial', 'History')}</button>
+              <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setHistOpen(histOpen === c.key ? null : (c.key || null))}><OnyxIcon emoji="🗂" size={15} /> {L('Historial', 'History')}</button>
               <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setEditing(c)} disabled={!!c.auto} title={c.auto ? L('Apaga el 🤖 para editar el texto a mano.', 'Turn 🤖 off to edit the copy by hand.') : ''}>✏️ {L('Editar', 'Edit')}</button>
               <span className="toggle" onClick={() => toggle(c)} title={L('Encender / apagar la campaña', 'Enable / disable the campaign')} style={{ background: c.enabled ? 'var(--green)' : '#556080' }}><span className="knob" style={{ left: c.enabled ? 21 : 3 }} /></span>
             </div>
@@ -386,7 +387,7 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit, ask 
 
   return (
     <div className="card">
-      <h3 style={{ marginBottom: 4 }}>✉️ {L('Envío manual (promos y noticias)', 'Manual send (promos & news)')}</h3>
+      <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="✉" size={15} />️ {L('Envío manual (promos y noticias)', 'Manual send (promos & news)')}</h3>
       <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Elige a quién, deja que la IA proponga títulos y escriba el copy en ambos idiomas con tus variables, prueba y envía.', 'Pick who, let AI suggest titles and write the copy in both languages with your variables, test and send.')}</p>
 
       <div className="grid g2" style={{ gap: 12, marginBottom: 12 }}>
@@ -438,7 +439,7 @@ function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit, ask 
       </div>
 
       <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
-        <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowPrev((v) => !v)}>👁 {showPrev ? L('Ocultar vista previa', 'Hide preview') : L('Vista previa', 'Preview')}</button>
+        <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowPrev((v) => !v)}><OnyxIcon emoji="👁" size={15} /> {showPrev ? L('Ocultar vista previa', 'Hide preview') : L('Vista previa', 'Preview')}</button>
         <span className="muted" style={{ fontSize: 11 }}>{L('El pie con enlace de baja se añade solo.', 'The unsubscribe footer is added automatically.')}</span>
       </div>
       {showPrev && (
@@ -487,7 +488,7 @@ function RunHistory({ campKey, L, lang }: { campKey: string; L: (a: string, b: s
 
   return (
     <div style={{ padding: '4px 0 12px', borderTop: '1px dashed var(--line)' }}>
-      <div className="muted" style={{ fontSize: 11.5, margin: '8px 0 6px' }}>🗂 {L('Envíos automáticos (lo que la IA escribió y envió)', 'Automatic sends (what AI wrote and sent)')}</div>
+      <div className="muted" style={{ fontSize: 11.5, margin: '8px 0 6px' }}><OnyxIcon emoji="🗂" size={15} /> {L('Envíos automáticos (lo que la IA escribió y envió)', 'Automatic sends (what AI wrote and sent)')}</div>
       {runs === null && <div className="muted" style={{ fontSize: 12 }}>…</div>}
       {runs !== null && runs.length === 0 && <div className="muted" style={{ fontSize: 12 }}>{L('Todavía no hay envíos automáticos. Cuando la IA envíe, aparecerán aquí con sus estadísticas.', 'No automatic sends yet. Once AI sends, they show here with stats.')}</div>}
       {runs !== null && runs.length > 0 && (
@@ -499,7 +500,7 @@ function RunHistory({ campKey, L, lang }: { campKey: string; L: (a: string, b: s
                 <div className="muted" style={{ fontSize: 11 }}>🕒 {fmt(r.created_at)} · 📬 {(r.sent || r.recipients || 0).toLocaleString()} {L('enviados', 'sent')}</div>
               </div>
               <div className="row" style={{ gap: 8, fontSize: 12 }}>
-                <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}>👁 {pct(r.opened, r.sent)}% <span style={{ opacity: .7 }}>({r.opened})</span></span>
+                <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}><OnyxIcon emoji="👁" size={15} /> {pct(r.opened, r.sent)}% <span style={{ opacity: .7 }}>({r.opened})</span></span>
                 <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>🖱 {pct(r.clicked, r.sent)}% <span style={{ opacity: .7 }}>({r.clicked})</span></span>
               </div>
             </div>
@@ -618,7 +619,7 @@ function Editor({ c, segs, L, lang, onClose, onSaved }: any) {
           </div>
         </div>
         <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
-          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowPrev((v) => !v)}>👁 {showPrev ? L('Ocultar vista previa', 'Hide preview') : L('Vista previa', 'Preview')}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowPrev((v) => !v)}><OnyxIcon emoji="👁" size={15} /> {showPrev ? L('Ocultar vista previa', 'Hide preview') : L('Vista previa', 'Preview')}</button>
           <span className="muted" style={{ fontSize: 11 }}>{L('Variables: {{nombre}} {{plan}} {{sitio}}', 'Variables: {{nombre}} {{plan}} {{sitio}}')}</span>
         </div>
         {showPrev && (

@@ -587,7 +587,7 @@ export default function Home() {
           <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr 160px', gap: 10, textAlign: 'left' }} className="heroPreview">
             {/* sesiones */}
             <div style={{ background: '#151a28', borderRadius: 12, padding: 12, fontSize: 11 }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>🕐 Sesiones</div>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}><OnyxIcon emoji="🕐" size={15} /> Sesiones</div>
               {[['🇬🇧 Londres', 'var(--green)', 'OPEN'], ['🇺🇸 N.York', 'var(--green)', 'OPEN'], ['🇯🇵 Tokio', 'var(--mut)', '3h'], ['🇦🇺 Sídney', 'var(--mut)', '6h']].map((s, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', margin: '6px 0', color: 'var(--mut)' }}><span>{s[0]}</span><b style={{ color: s[1] as string }}>{s[2]}</b></div>
               ))}
@@ -611,7 +611,7 @@ export default function Home() {
             </div>
             {/* noticias */}
             <div style={{ background: '#151a28', borderRadius: 12, padding: 12, fontSize: 11 }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>📰 Noticias</div>
+              <div style={{ fontWeight: 700, marginBottom: 8 }}><OnyxIcon emoji="📰" size={15} /> Noticias</div>
               <div style={{ background: 'rgba(124,140,255,.12)', border: '1px solid var(--brand)', borderRadius: 8, padding: 8 }}>
                 <div style={{ color: 'var(--soft-brand2)', fontWeight: 700, fontSize: 9 }}>🇺🇸 NFP <span style={{ color: 'var(--red)' }}>●●●</span></div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--soft-brand2)' }}>2h 14m</div>

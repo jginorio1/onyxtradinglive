@@ -2,6 +2,7 @@
 import { dictFor } from '@/lib/i18n';
 import { useEffect, type ReactNode } from 'react';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Barra reutilizable: presets de fecha + rango personalizado + PDF/CSV.
 // Se usa en Ingresos, Usuarios, Embajadores, etc. — misma apariencia en todos.
@@ -65,7 +66,7 @@ export default function RangeBar({
         {presets.map(chip)}
         {(pdfUrl || csvUrl) && (
           <span className="row" style={{ gap: 8, marginLeft: 'auto' }}>
-            {pdfUrl && <a className="btn btn-ghost" href={pdfUrl(value.from, value.to)} target="_blank" rel="noreferrer" style={{ padding: '6px 12px', fontSize: 12 }}>🖨️ {t.pdf}</a>}
+            {pdfUrl && <a className="btn btn-ghost" href={pdfUrl(value.from, value.to)} target="_blank" rel="noreferrer" style={{ padding: '6px 12px', fontSize: 12 }}><OnyxIcon emoji="🖨️" size={15} /> {t.pdf}</a>}
             {csvUrl && <a className="btn btn-ghost" href={csvUrl(value.from, value.to)} style={{ padding: '6px 12px', fontSize: 12 }}>⤓ {t.csv}</a>}
           </span>
         )}

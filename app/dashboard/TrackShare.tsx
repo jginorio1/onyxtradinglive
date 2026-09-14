@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Compartir tu trackrecord desde el saludo del dashboard: activar/desactivar la
 // página pública, copiar el enlace, abrir el QR (escanear/copiar/descargar con
@@ -92,14 +93,14 @@ export default function TrackShare({ lang = 'es', name = '' }: { lang?: string; 
     <>
       <button onClick={() => setOpen(true)} title={es ? 'Compartir mi trackrecord' : 'Share my trackrecord'}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.12)', border: '1px solid rgba(124,140,255,.35)', borderRadius: 999, padding: '4px 11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-        📈 {es ? 'Trackrecord' : 'Trackrecord'}
+        <OnyxIcon emoji="📈" size={15} /> {es ? 'Trackrecord' : 'Trackrecord'}
       </button>
 
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, padding: 18 }}>
             <div className="row between" style={{ marginBottom: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>📈 {es ? 'Mi trackrecord público' : 'My public trackrecord'}</div>
+              <div style={{ fontWeight: 700, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="📈" size={15} /> {es ? 'Mi trackrecord público' : 'My public trackrecord'}</div>
               <button className="btn btn-ghost" onClick={() => setOpen(false)} style={{ padding: '4px 10px' }}>✕</button>
             </div>
 
@@ -126,8 +127,8 @@ export default function TrackShare({ lang = 'es', name = '' }: { lang?: string; 
 
               <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
                 <button className="btn btn-ghost" onClick={copyQR}>🖼️ {es ? 'Copiar QR' : 'Copy QR'}</button>
-                <button className="btn btn-ghost" onClick={downloadQR}>⬇️ {es ? 'Descargar QR' : 'Download QR'}</button>
-                <button className="btn btn-primary" onClick={share}>📤 {es ? 'Compartir' : 'Share'}</button>
+                <button className="btn btn-ghost" onClick={downloadQR}><OnyxIcon emoji="⬇" size={15} />️ {es ? 'Descargar QR' : 'Download QR'}</button>
+                <button className="btn btn-primary" onClick={share}><OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir' : 'Share'}</button>
                 <a className="btn btn-ghost" href={url} target="_blank" rel="noopener noreferrer">{es ? 'Ver' : 'View'}</a>
               </div>
               {note && <div className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 8, color: 'var(--green)' }}>{note}</div>}

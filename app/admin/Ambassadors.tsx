@@ -7,6 +7,7 @@ import { useLang } from '@/lib/lang';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
 import MemberReferralSettings from './MemberReferralSettings';
 import QrPop from '@/app/components/QrPop';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 const METHOD: any = { stripe: 'Stripe', paypal: 'PayPal', usdt: 'USDT', credit: 'Credit' };
 
@@ -96,7 +97,7 @@ function Recruit({ lang }: { lang: 'es' | 'en' }) {
       {out && (
         <div style={{ border: '1px solid ' + (out.enabled ? 'color-mix(in srgb,var(--brand) 45%,var(--line))' : 'var(--line)'), borderRadius: 12, padding: '12px 14px', marginBottom: 14, background: out.enabled ? 'color-mix(in srgb,var(--brand) 6%,transparent)' : 'transparent' }}>
           <div className="row between" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700 }}>🤖 {L('Auto-enviar propuestas (con IA) + seguimiento', 'Auto-send invites (AI) + follow-up')}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}><OnyxIcon emoji="🤖" size={15} /> {L('Auto-enviar propuestas (con IA) + seguimiento', 'Auto-send invites (AI) + follow-up')}</div>
             <div onClick={() => saveOut({ enabled: !out.enabled })} style={{ cursor: 'pointer', width: 44, height: 24, borderRadius: 99, background: out.enabled ? 'var(--brand)' : 'var(--line)', position: 'relative', flex: 'none' }}>
               <span style={{ position: 'absolute', top: 2, left: out.enabled ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} />
             </div>
@@ -132,7 +133,7 @@ function Recruit({ lang }: { lang: 'es' | 'en' }) {
                   <select value={p.status} onChange={(e) => setStatus(p.id, e.target.value)} style={{ margin: 0, padding: '3px 6px', fontSize: 12, width: 'auto' }}>
                     {Object.keys(STAT).map((k) => <option key={k} value={k}>{STAT[k][0]}</option>)}
                   </select>
-                  <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11.5 }} onClick={() => pick(p)}>✨ {L('Invitar', 'Invite')}</button>
+                  <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11.5 }} onClick={() => pick(p)}><OnyxIcon emoji="✨" size={15} /> {L('Invitar', 'Invite')}</button>
                   <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11.5, marginLeft: 'auto' }} onClick={() => del(p.id)}>✕</button>
                 </div>
               </div>
@@ -152,7 +153,7 @@ function Recruit({ lang }: { lang: 'es' | 'en' }) {
 
         {/* Invitación AI */}
         <div>
-          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>✨ {L('Invitación con AI', 'AI invitation')} {sel && <b style={{ color: 'var(--tx)' }}>· {sel.name}</b>}</div>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}><OnyxIcon emoji="✨" size={15} /> {L('Invitación con AI', 'AI invitation')} {sel && <b style={{ color: 'var(--tx)' }}>· {sel.name}</b>}</div>
           <div className="row" style={{ gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
             <input value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} placeholder={L('Asunto', 'Subject')} style={{ ...inp, flex: 1, minWidth: 160 }} />
             <button className="btn btn-ghost" onClick={generate} disabled={busy === 'gen'}>{busy === 'gen' ? '…' : '✨ ' + L('Generar', 'Generate')}</button>
@@ -228,7 +229,7 @@ export default function Ambassadors() {
 
   return (
     <>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">🎁</span><span className="th-t">{t.h_embajadores_t}</span></div><div className="th-s">{t.h_embajadores_s}</div></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic"><OnyxIcon emoji="🎁" size={15} /></span><span className="th-t">{t.h_embajadores_t}</span></div><div className="th-s">{t.h_embajadores_s}</div></div>
       <RangeBar value={range} onChange={setRange}
         pdfUrl={(f, tt) => `/api/admin/ambassadors/report?from=${f}&to=${tt}&lang=${lang}`}
         csvUrl={(f, tt) => `/api/admin/ambassadors/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />

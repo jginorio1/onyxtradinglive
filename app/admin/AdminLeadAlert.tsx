@@ -2,6 +2,7 @@
 import { mkL } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Aviso sticky de consultas de clientes/leads: entra de derecha a izquierda,
 // pegado al borde derecho y centrado vertical. Solo a empleados "Disponible".
@@ -33,7 +34,7 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
   if (min) return (
     <button onClick={() => setMin(false)} title={L('Consultas nuevas', 'New consultations')}
       style={{ position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 2000, background: 'var(--card)', border: '1px solid var(--line)', borderRight: 'none', borderRadius: '20px 0 0 20px', borderLeft: '4px solid #EF9F27', padding: '9px 12px 9px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, boxShadow: '-6px 0 18px rgba(0,0,0,.25)' }}>
-      <span style={{ fontSize: 17 }}>💬</span>
+      <span style={{ fontSize: 17 }}><OnyxIcon emoji="💬" size={15} /></span>
       <span style={{ background: 'var(--red)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 20 }}>{unseen.length}</span>
     </button>
   );
@@ -43,7 +44,7 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
       <style>{`@keyframes onyxSlideR{from{transform:translate(110%,-50%)}to{transform:translate(0,-50%)}}`}</style>
       <div style={{ position: 'fixed', right: 0, top: '50%', transform: 'translate(0,-50%)', zIndex: 2000, width: 340, maxWidth: '88vw', background: 'var(--card)', border: '1px solid var(--line)', borderRight: 'none', borderLeft: '5px solid #EF9F27', borderRadius: '16px 0 0 16px', boxShadow: '-14px 0 40px rgba(0,0,0,.4)', overflow: 'hidden', animation: 'onyxSlideR .35s ease' }}>
         <div className="row between" style={{ padding: '11px 14px', borderBottom: '1px solid var(--line)' }}>
-          <b style={{ fontSize: 14 }}>💬 {L('Nueva consulta', 'New consultation')}</b>
+          <b style={{ fontSize: 14 }}><OnyxIcon emoji="💬" size={15} /> {L('Nueva consulta', 'New consultation')}</b>
           <span className="row" style={{ gap: 8, alignItems: 'center' }}>
             {unseen.length > 1 && <span className="pill" style={{ fontSize: 11, color: 'var(--amber)', background: 'rgba(255,192,77,.16)' }}>{unseen.length}</span>}
             <button onClick={() => setPinned((p) => !p)} title={L('Fijar', 'Pin')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 14, color: pinned ? 'var(--soft-brand)' : 'var(--mut)' }}>📌</button>
@@ -60,7 +61,7 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
           <div style={{ fontSize: 13.5, lineHeight: 1.5, background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', maxHeight: 110, overflow: 'auto' }}>{l.message}</div>
           {l.aiReply && (
             <div style={{ marginTop: 8, background: 'rgba(52,226,160,.08)', border: '1px solid rgba(52,226,160,.35)', borderRadius: 10, padding: '9px 11px' }}>
-              <div style={{ fontSize: 11.5, color: 'var(--soft-green)', fontWeight: 600, marginBottom: 3 }}>🤖 {L('Onyx AI ya respondió', 'Onyx AI already replied')}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--soft-green)', fontWeight: 600, marginBottom: 3 }}><OnyxIcon emoji="🤖" size={15} /> {L('Onyx AI ya respondió', 'Onyx AI already replied')}</div>
               <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, maxHeight: 66, overflow: 'hidden' }}>{l.aiReply}</div>
             </div>
           )}

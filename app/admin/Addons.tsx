@@ -2,6 +2,7 @@
 import { toast, toastErr } from '@/lib/toast';
 import { useEffect, useState } from 'react';
 import { useT } from '@/lib/adminText';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Complementos (add-ons) de precio: cuenta extra, slave extra, master extra.
@@ -33,7 +34,7 @@ export default function Addons() {
 
   return (
     <div className="card" style={{ marginTop: 18 }}>
-      <h3 style={{ marginBottom: 4 }}>🧩 {t.re_extra}</h3>
+      <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🧩" size={15} /> {t.re_extra}</h3>
       <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.re_extraDesc}</p>
       <div className="grid g2" style={{ gap: 12 }}>
         <div><span style={lbl}>{t.re_extraPrice}</span><input type="number" value={a.extra_account_price ?? 4} onChange={(e) => setA({ ...a, extra_account_price: Number(e.target.value) })} style={num} /></div>
@@ -44,7 +45,7 @@ export default function Addons() {
       </label>
 
       <div style={{ borderTop: '1px solid var(--line)', marginTop: 16, paddingTop: 14 }}>
-        <h3 style={{ marginBottom: 4, fontSize: 15 }}>🔁 {t.re_slaveTitle}</h3>
+        <h3 style={{ marginBottom: 4, fontSize: 15 }}><OnyxIcon emoji="🔁" size={15} /> {t.re_slaveTitle}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.re_slaveDesc}</p>
         <div className="grid g2" style={{ gap: 12 }}>
           <div><span style={lbl}>{t.re_extraPrice}</span><input type="number" value={a.extra_slave_price ?? 9} onChange={(e) => setA({ ...a, extra_slave_price: Number(e.target.value) })} style={num} /></div>
@@ -56,7 +57,7 @@ export default function Addons() {
       </div>
 
       <div style={{ borderTop: '1px solid var(--line)', marginTop: 16, paddingTop: 14 }}>
-        <h3 style={{ marginBottom: 4, fontSize: 15 }}>🔁 {t.re_masterTitle}</h3>
+        <h3 style={{ marginBottom: 4, fontSize: 15 }}><OnyxIcon emoji="🔁" size={15} /> {t.re_masterTitle}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.re_masterDesc}</p>
         <div className="grid g2" style={{ gap: 12 }}>
           <div><span style={lbl}>{t.re_extraPrice}</span><input type="number" value={a.extra_master_price ?? 15} onChange={(e) => setA({ ...a, extra_master_price: Number(e.target.value) })} style={num} /></div>
@@ -68,7 +69,7 @@ export default function Addons() {
       </div>
 
       <div style={{ borderTop: '1px solid var(--line)', marginTop: 16, paddingTop: 14 }}>
-        <h3 style={{ marginBottom: 4, fontSize: 15 }}>🤖 {(t as any).re_algoTitle || 'Módulo de bots'}</h3>
+        <h3 style={{ marginBottom: 4, fontSize: 15 }}><OnyxIcon emoji="🤖" size={15} /> {(t as any).re_algoTitle || 'Módulo de bots'}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{(t as any).re_algoDesc || 'Add-on de $/mes para traders algorítmicos. Va incluido en los planes con la capacidad "algo".'}</p>
         <div className="grid g2" style={{ gap: 12 }}>
           <div><span style={lbl}>{t.re_extraPrice}</span><input type="number" value={a.algo_price ?? 15} onChange={(e) => setA({ ...a, algo_price: Number(e.target.value) })} style={num} /></div>

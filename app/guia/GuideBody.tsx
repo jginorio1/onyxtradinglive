@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useVpsInfo, renderVps } from '@/app/components/VpsCallout';
 import { useTrialInfo, applyTrial, useMoneyTerms, applyMoney } from '@/app/components/trialInfo';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Render EXACTO de una guía (título, meta, portada y bloques) con visor/zoom.
 // Lo usan tanto la página pública del artículo como la vista previa del editor,
@@ -29,7 +30,7 @@ export default function GuideBody({ article, lang }: { article: Any; lang: 'es' 
 
       <div className="row" style={{ gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         <span className="pill" style={{ fontSize: 11.5, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--mut)' }}>🕒 {min} {lang === 'en' ? 'min read' : 'min de lectura'}</span>
-        {article.updated && <span className="pill" style={{ fontSize: 11.5, background: 'rgba(124,140,255,.15)', color: 'var(--soft-brand)' }}>✨ {lang === 'en' ? 'New' : 'Nuevo'}</span>}
+        {article.updated && <span className="pill" style={{ fontSize: 11.5, background: 'rgba(124,140,255,.15)', color: 'var(--soft-brand)' }}><OnyxIcon emoji="✨" size={15} /> {lang === 'en' ? 'New' : 'Nuevo'}</span>}
       </div>
 
       {article.cover && (
@@ -75,7 +76,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
   );
   if (any.tip) return (
     <div style={{ background: 'rgba(52,226,160,.08)', border: '1px solid var(--green)', padding: '13px 15px', marginBottom: 16, borderRadius: 10 }}>
-      <div style={{ color: 'var(--green)', fontSize: 12, marginBottom: 5 }}>💡 {any.title || 'Consejo'}</div>
+      <div style={{ color: 'var(--green)', fontSize: 12, marginBottom: 5 }}><OnyxIcon emoji="💡" size={15} /> {any.title || 'Consejo'}</div>
       <div style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--tx)' }}>{any.tip}</div>
     </div>
   );
@@ -104,7 +105,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
             <div style={{ fontSize: 15, fontWeight: 600, marginBottom: s.d ? 4 : 0 }}>{s.t}</div>
             {s.d && <div className="muted" style={{ fontSize: 14, lineHeight: 1.7 }}>{s.d}</div>}
             {s.img && <img src={s.img} alt={s.alt || ''} loading="lazy" onClick={() => onZoom?.(s.img, s.alt || '')} style={{ width: '100%', maxWidth: 440, height: 'auto', borderRadius: 10, border: '1px solid var(--line)', marginTop: 10, display: 'block', cursor: 'zoom-in' }} />}
-            {s.tip && <div style={{ marginTop: 10, background: 'rgba(52,226,160,.08)', border: '1px solid var(--green)', borderRadius: 10, padding: '9px 12px', fontSize: 13, lineHeight: 1.6, color: 'var(--tx)' }}><span style={{ color: 'var(--green)' }}>💡</span> {s.tip}</div>}
+            {s.tip && <div style={{ marginTop: 10, background: 'rgba(52,226,160,.08)', border: '1px solid var(--green)', borderRadius: 10, padding: '9px 12px', fontSize: 13, lineHeight: 1.6, color: 'var(--tx)' }}><span style={{ color: 'var(--green)' }}><OnyxIcon emoji="💡" size={15} /></span> {s.tip}</div>}
           </div>
         </div>
       ))}

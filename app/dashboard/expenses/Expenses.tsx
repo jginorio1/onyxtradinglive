@@ -158,7 +158,7 @@ export default function Expenses() {
         <div className="card kpi"><div className="lbl">{L('Gastos reales', 'Real cost')}</div><div className="val" style={{ color: 'var(--red)' }}>−${d.expenses.toLocaleString()}</div><div className="muted" style={{ fontSize: 12 }}>{L('menos reembolsos', 'minus refunds')}</div></div>
         <div className="card kpi" style={{ boxShadow: 'inset 0 0 0 2px var(--soft-brand)' }}><div className="lbl">{L('NETO REAL', 'TRUE NET')}</div><div className="val" style={{ color: d.net >= 0 ? 'var(--green)' : 'var(--red)' }}>{d.net >= 0 ? '' : '−'}${Math.abs(d.net).toLocaleString()}</div></div>
       </div>
-      {d.breakeven > 0 && <div style={{ background: 'rgba(255,192,77,.10)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '9px 13px', fontSize: 13, marginBottom: 16 }}>⚖️ {L('Te faltan', 'You still need')} <b>${d.breakeven.toLocaleString()}</b> {L('de ganancia para cubrir los gastos de este mes.', 'in profit to cover this month’s costs.')}</div>}
+      {d.breakeven > 0 && <div style={{ background: 'rgba(255,192,77,.10)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '9px 13px', fontSize: 13, marginBottom: 16 }}><OnyxIcon emoji="⚖" size={15} />️ {L('Te faltan', 'You still need')} <b>${d.breakeven.toLocaleString()}</b> {L('de ganancia para cubrir los gastos de este mes.', 'in profit to cover this month’s costs.')}</div>}
 
       {/* Añadir / editar gasto */}
       <div className="card" style={{ marginBottom: 16 }}>
@@ -167,7 +167,7 @@ export default function Expenses() {
         {/* Lector de recibos con AI */}
         {!f.id && (
           <div style={{ marginBottom: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12 }}>
-            <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>✨ {L('Adjunta el recibo (PDF o foto) o pega el texto — lo apunto con AI', 'Attach the receipt (PDF or photo) or paste the text — I log it with AI')}</div>
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}><OnyxIcon emoji="✨" size={15} /> {L('Adjunta el recibo (PDF o foto) o pega el texto — lo apunto con AI', 'Attach the receipt (PDF or photo) or paste the text — I log it with AI')}</div>
             <label className="btn btn-primary" style={{ display: 'inline-flex', cursor: 'pointer', marginBottom: 8 }}>
               📎 {L('Adjuntar recibo', 'Attach receipt')}
               <input type="file" accept="application/pdf,image/*" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) readReceipt(file); e.currentTarget.value = ''; }} disabled={busy} />

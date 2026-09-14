@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast, toastErr } from '@/lib/toast';
 import { BLOCKS, computeSpace, candidatesToCsv } from '@/lib/stratgen';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Onyx Bot Factory · Popup del generador de estrategias (Fase 4B)
@@ -118,7 +119,7 @@ export default function StratGenerator({ es, post, onClose, initialCfg, symbol =
           {/* Bloques personalizados de Claude */}
           <div style={{ borderTop: '1px dashed var(--line)', paddingTop: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 13.5, fontWeight: 800 }}>✨ {es ? 'Bloques de entrada de Claude' : 'Claude entry blocks'}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 800 }}><OnyxIcon emoji="✨" size={15} /> {es ? 'Bloques de entrada de Claude' : 'Claude entry blocks'}</div>
               <span className="muted" style={{ fontSize: 11 }}>· {es ? 'reglas nuevas ejecutables por el motor' : 'new engine-executable rules'}</span>
               <button onClick={() => setBOpen((v) => !v)} style={{ ...btn(CORAL), marginLeft: 'auto', padding: '6px 11px' }}>{bOpen ? (es ? 'Cerrar' : 'Close') : (es ? '✨ Crear bloque' : '✨ Create block')}</button>
             </div>

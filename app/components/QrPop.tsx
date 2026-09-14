@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Botón reutilizable de "QR": abre una ventanita con el código QR de un enlace,
 // permite descargar el QR y, para referido/embajador, un PÓSTER de marca listo
@@ -68,7 +69,7 @@ export default function QrPop({ data, title, handle, poster = 'generic', label }
             </div>
             <div className="muted" style={{ fontSize: 11.5, margin: '10px 0', wordBreak: 'break-all' }}>{data}</div>
             <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a className="btn btn-ghost" style={{ fontSize: 13 }} href={qrPng}>⬇ {es ? 'QR' : 'QR'}</a>
+              <a className="btn btn-ghost" style={{ fontSize: 13 }} href={qrPng}><OnyxIcon emoji="⬇" size={15} /> {es ? 'QR' : 'QR'}</a>
               {showPoster && <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={downloadPoster} disabled={busy}>{busy ? '…' : (es ? '⬇ Póster' : '⬇ Poster')}</button>}
             </div>
           </div>

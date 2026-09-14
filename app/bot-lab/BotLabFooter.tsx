@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Pie DEDICADO de Onyx Bot Lab. Mismo esqueleto que el pie global (marca + CTA,
 // columnas por categoría, aviso de riesgo, barra inferior) pero con la identidad
@@ -67,7 +68,7 @@ export default function BotLabFooter() {
           </div>
           <div className="blf-cta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 9 }}>
             <Link href="/bot-lab" className="btn btn-primary" style={{ background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', border: 'none' }}>{L('Explorar marketplace', 'Browse marketplace')}</Link>
-            <a href={`mailto:${email}`} className="muted" style={{ fontSize: 12.5, textDecoration: 'none' }}>✉ {email}</a>
+            <a href={`mailto:${email}`} className="muted" style={{ fontSize: 12.5, textDecoration: 'none' }}><OnyxIcon emoji="✉" size={15} /> {email}</a>
           </div>
         </div>
 
@@ -88,7 +89,7 @@ export default function BotLabFooter() {
 
         {/* Aviso de riesgo */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, padding: '11px 13px' }}>
-          <span aria-hidden style={{ color: 'var(--amber)', flex: 'none', marginTop: 1 }}>⚠️</span>
+          <span aria-hidden style={{ color: 'var(--amber)', flex: 'none', marginTop: 1 }}><OnyxIcon emoji="⚠️" size={15} /></span>
           <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.65 }}>
             {legal} <Link href="/terms" style={{ color: 'var(--tx)', textDecoration: 'underline' }}>{L('Ver términos', 'See terms')}</Link>
           </div>

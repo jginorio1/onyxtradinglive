@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import VpsCallout from '@/app/components/VpsCallout';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Marketplace público de Bot Lab. Barra de control moderna (buscador +
@@ -73,11 +74,11 @@ export default function BotLabMarket({ es, items }: { es: boolean; items: any[] 
       {items.length > 3 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ position: 'relative', flex: '1 1 260px', minWidth: 200 }}>
-            <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand)', fontSize: 15, pointerEvents: 'none' }}>🔍</span>
+            <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand)', fontSize: 15, pointerEvents: 'none' }}><OnyxIcon emoji="🔍" size={15} /></span>
             <input value={q} onChange={(e) => { setQ(e.target.value); reset(); }} placeholder={es ? 'Buscar por nombre, par, estilo…' : 'Search by name, pair, style…'} style={{ width: '100%', padding: '11px 14px 11px 38px', borderRadius: 11, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', fontSize: 14 }} />
           </div>
           {opts.plats.length > 1 && (
-            <span style={pill}><span style={{ color: 'var(--mut)', fontSize: 13 }}>🖥</span>
+            <span style={pill}><span style={{ color: 'var(--mut)', fontSize: 13 }}><OnyxIcon emoji="🖥" size={15} /></span>
               <select value={plat} onChange={(e) => { setPlat(e.target.value); reset(); }} style={bareSel} aria-label={es ? 'Plataforma' : 'Platform'}>
                 <option value="all">{es ? 'Plataforma' : 'Platform'}</option>
                 {opts.plats.map((p) => <option key={p} value={p.toLowerCase()}>{p}</option>)}

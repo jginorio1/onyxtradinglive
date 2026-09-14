@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { useT } from '@/lib/adminText';
 import { fmtDateTime } from '@/lib/fmtDate';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 export default function Emails() {
   const { lang } = useLang();
@@ -22,7 +23,7 @@ export default function Emails() {
 
   return (
     <>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">✉️</span><span className="th-t">{t.h_correos_t}</span></div><div className="th-s">{t.h_correos_s}</div></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic"><OnyxIcon emoji="✉" size={15} />️</span><span className="th-t">{t.h_correos_t}</span></div><div className="th-s">{t.h_correos_s}</div></div>
       <div className="card">
         <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
           <span className="muted" style={{ fontSize: 13 }}>{d ? `${d.total ?? 0} ${es ? 'enviados en total' : 'sent in total'}` : '…'}</span>

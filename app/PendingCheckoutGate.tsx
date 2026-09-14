@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { getPending, clearPending, pendingPricingUrl, type Pending } from '@/lib/pendingCheckout';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Red de seguridad de la COMPRA. Si un usuario recién registrado quería comprar un
 // plan (hay una intención guardada) y, tras confirmar el email o el onboarding,
@@ -45,7 +46,7 @@ export default function PendingCheckoutGate() {
   return (
     <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 90, display: 'flex', justifyContent: 'center', padding: 12, pointerEvents: 'none' }}>
       <div style={{ pointerEvents: 'auto', maxWidth: 560, width: '100%', display: 'flex', alignItems: 'center', gap: 12, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '12px 14px', boxShadow: '0 10px 30px rgba(0,0,0,.35)' }}>
-        <span style={{ fontSize: 20 }}>🛒</span>
+        <span style={{ fontSize: 20 }}><OnyxIcon emoji="🛒" size={15} /></span>
         <div style={{ flex: 1, fontSize: 13.5, lineHeight: 1.4 }}>
           <b>{lang === 'es' ? `Te faltó terminar tu plan ${label}` : `You didn't finish your ${label} plan`}</b>
           <div className="muted" style={{ fontSize: 12.5 }}>

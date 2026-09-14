@@ -167,7 +167,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
 
   if (!data) return <div className="card muted">…</div>;
   if (data.locked || data.code === 'no_plan') {
-    return <div style={{ maxWidth: 820, margin: '0 auto' }}><div className="card muted" style={{ textAlign: 'center', padding: 28 }}>🔒 {L.locked}</div></div>;
+    return <div style={{ maxWidth: 820, margin: '0 auto' }}><div className="card muted" style={{ textAlign: 'center', padding: 28 }}><OnyxIcon emoji="🔒" size={15} /> {L.locked}</div></div>;
   }
 
   const lbl = { fontSize: 12.5, color: 'var(--tx)', display: 'block', marginBottom: 3 } as any;
@@ -182,7 +182,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
   return (
     <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="row" style={{ gap: 12, alignItems: 'center' }}>
-        <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 9, background: 'rgba(124,140,255,.16)', alignItems: 'center', justifyContent: 'center', fontSize: 17, flex: 'none' }}>🏁</span>
+        <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 9, background: 'rgba(124,140,255,.16)', alignItems: 'center', justifyContent: 'center', fontSize: 17, flex: 'none' }}><OnyxIcon emoji="🏁" size={15} /></span>
         <div>
           <h2 style={{ fontSize: 18, margin: 0 }}>{L.title}</h2>
           <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>{L.sub}</p>
@@ -225,7 +225,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
                   </div>
                 ))}
                 {board.closest && board.verdict !== 'on_track' && (
-                  <div style={{ fontSize: 12.5, color: 'var(--amber)' }}>🔥 {L.closest}: {lang === 'es' ? board.closest.es : board.closest.en}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--amber)' }}><OnyxIcon emoji="🔥" size={15} /> {L.closest}: {lang === 'es' ? board.closest.es : board.closest.en}</div>
                 )}
               </div>
             )}
@@ -241,11 +241,11 @@ export default function Challenge({ lang }: { lang: Lang }) {
             {/* Editor de reglas (se abre con el botón) */}
             {d.on && edit[a.id] && (
               <div style={{ borderTop: '1px solid var(--line)', marginTop: 12, paddingTop: 12 }}>
-                <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid rgba(124,140,255,.25)', borderRadius: 8, padding: '9px 11px', fontSize: 12.5, color: 'var(--soft-brand)', lineHeight: 1.4 }}>ℹ️ {L.intro}</div>
+                <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid rgba(124,140,255,.25)', borderRadius: 8, padding: '9px 11px', fontSize: 12.5, color: 'var(--soft-brand)', lineHeight: 1.4 }}><OnyxIcon emoji="ℹ" size={15} />️ {L.intro}</div>
 
                 {/* Lector de reglas con AI */}
                 <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12 }}>
-                  <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>✨ {L.aiRead}</div>
+                  <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}><OnyxIcon emoji="✨" size={15} /> {L.aiRead}</div>
                   {/* Adjuntar contrato: foto o PDF. La IA lo lee igual que el texto. */}
                   <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1.5px dashed rgba(124,140,255,.5)', borderRadius: 10, padding: '13px', cursor: busy === 'ai' + a.id ? 'default' : 'pointer', fontSize: 12.5, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.06)', marginBottom: 8 }}>
                     <OnyxIcon emoji="📎" size={15} /> {busy === 'ai' + a.id ? (lang === 'es' ? 'Leyendo…' : 'Reading…') : (lang === 'es' ? 'Adjuntar contrato (foto o PDF)' : 'Attach contract (photo or PDF)')}
@@ -337,7 +337,7 @@ export default function Challenge({ lang }: { lang: Lang }) {
         );
       })}
 
-      <p className="muted" style={{ fontSize: 11.5, lineHeight: 1.5, textAlign: 'center' }}>ℹ️ {L.note}</p>
+      <p className="muted" style={{ fontSize: 11.5, lineHeight: 1.5, textAlign: 'center' }}><OnyxIcon emoji="ℹ" size={15} />️ {L.note}</p>
     </div>
   );
 }

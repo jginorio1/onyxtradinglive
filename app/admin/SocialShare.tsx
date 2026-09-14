@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Compartir un artículo en redes con copy optimizado por red (social SEO manager),
@@ -177,7 +178,7 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
             : <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', color: 'var(--brand)' }} disabled={!text} onClick={() => doCopy(text)}>{es ? 'Copiar caption' : 'Copy caption'}</button>}
           {n.link && <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} disabled={!text} onClick={() => doCopy(text)}>{es ? 'Copiar' : 'Copy'}</button>}
           {tags.length > 0 && <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px' }} onClick={() => doCopy(tags.join(' '))}>{es ? '# Hashtags' : '# Hashtags'}</button>}
-          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', marginLeft: 'auto' }} disabled={!text || !when} onClick={() => schedule(id)}>⏰ {es ? 'Programar' : 'Schedule'}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '5px 10px', marginLeft: 'auto' }} disabled={!text || !when} onClick={() => schedule(id)}><OnyxIcon emoji="⏰" size={15} /> {es ? 'Programar' : 'Schedule'}</button>
         </div>
       </div>
     );
@@ -187,7 +188,7 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
     <div className="card">
       <div className="row between" style={{ alignItems: 'center', cursor: 'pointer' }} onClick={() => setOpen((o) => !o)}>
         <div>
-          <b style={{ fontSize: 14 }}>🔗 {es ? 'Compartir en redes' : 'Share on social'}</b>
+          <b style={{ fontSize: 14 }}><OnyxIcon emoji="🔗" size={15} /> {es ? 'Compartir en redes' : 'Share on social'}</b>
           <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{es ? 'Copy por red pensado como social manager, con hashtags, en tu idioma, y programación con recordatorio.' : 'Per-network copy written like a social manager, with hashtags, in your language, plus reminder scheduling.'}{pending.length ? ` · ${pending.length} ${es ? 'programadas' : 'scheduled'}` : ''}</div>
         </div>
         <span className="btn btn-ghost" style={{ fontSize: 12 }}>{open ? (es ? 'Ocultar' : 'Hide') : (es ? 'Abrir' : 'Open')}</span>
@@ -195,7 +196,7 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
 
       {open && (
         <div style={{ marginTop: 14 }}>
-          {!post.slug && <div className="muted" style={{ fontSize: 12.5, marginBottom: 10, color: 'var(--amber)' }}>⚠ {es ? 'Guarda el artículo primero para tener su enlace.' : 'Save the article first to get its link.'}</div>}
+          {!post.slug && <div className="muted" style={{ fontSize: 12.5, marginBottom: 10, color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={15} /> {es ? 'Guarda el artículo primero para tener su enlace.' : 'Save the article first to get its link.'}</div>}
 
           {/* Barra: idioma + generar + programar */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between', padding: '11px 13px', border: '1px solid var(--line)', borderRadius: 12, background: 'var(--bg2)', marginBottom: 14 }}>
@@ -232,7 +233,7 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
           {/* Programadas */}
           {pending.length > 0 && (
             <div style={{ marginTop: 16 }}>
-              <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>📅 {es ? 'Programadas' : 'Scheduled'}</div>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}><OnyxIcon emoji="📅" size={15} /> {es ? 'Programadas' : 'Scheduled'}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {pending.map((it) => (
                   <div key={it.id} className="row between" style={{ alignItems: 'center', gap: 8, border: '1px solid var(--line)', borderRadius: 9, padding: '7px 10px' }}>
@@ -251,7 +252,7 @@ export default function SocialShare({ post, es }: { post: any; es: boolean }) {
           {rem && (
             <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
               <div className="row between" style={{ alignItems: 'center', cursor: 'pointer' }} onClick={() => setRemOpen((o) => !o)}>
-                <span className="muted" style={{ fontSize: 12 }}>⚙ {es ? '¿A dónde llega el recordatorio con el copy?' : 'Where do reminders arrive?'}</span>
+                <span className="muted" style={{ fontSize: 12 }}><OnyxIcon emoji="⚙" size={15} /> {es ? '¿A dónde llega el recordatorio con el copy?' : 'Where do reminders arrive?'}</span>
                 <span className="muted" style={{ fontSize: 11.5 }}>{remOpen ? (es ? 'Ocultar' : 'Hide') : (es ? 'Configurar' : 'Configure')}</span>
               </div>
               {remOpen && (

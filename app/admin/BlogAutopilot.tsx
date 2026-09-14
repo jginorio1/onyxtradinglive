@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Interruptor moderno (pastilla iluminada).
 function Switch({ on, accent = '#34e2a0' }: { on: boolean; accent?: string }) {
@@ -170,7 +171,7 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
     <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
       <div className="row between" style={{ padding: '12px 14px', cursor: 'pointer', flexWrap: 'wrap', gap: 8 }} onClick={() => setOpen((o) => !o)}>
         <div className="row" style={{ gap: 10, alignItems: 'center', minWidth: 0 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 10, flex: 'none', background: 'linear-gradient(135deg,#7c8cff,#34e2a0)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17', fontWeight: 800 }}>⚡</span>
+          <span style={{ width: 34, height: 34, borderRadius: 10, flex: 'none', background: 'linear-gradient(135deg,#7c8cff,#34e2a0)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17', fontWeight: 800 }}><OnyxIcon emoji="⚡" size={15} /></span>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>{lbl('Piloto automático del blog', 'Blog autopilot')}</div>
             <div className="muted" style={{ fontSize: 12 }}>{lbl('Llena el mes de artículos, un día sí y otro no, y se generan solos.', 'Fill the month with articles, every other day, generated automatically.')}</div>
@@ -201,7 +202,7 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
 
           {/* Ajustes de cadencia */}
           <div style={glow('#5ecfff')}>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}><span>🗓️</span>{lbl('Ritmo de publicación', 'Publishing rhythm')}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}><span><OnyxIcon emoji="🗓" size={15} />️</span>{lbl('Ritmo de publicación', 'Publishing rhythm')}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12 }}>
               <div><label style={fieldL}>{lbl('Cadencia', 'Cadence')}</label>
                 <select value={cfg.everyNDays} onChange={(e) => save({ everyNDays: Number(e.target.value) })} style={{ margin: 0, fontSize: 13, width: '100%' }}>
@@ -223,7 +224,7 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
           {/* Temas / fuente de contenido */}
           <div style={glow('#c584ff')}>
             <div className="row between" style={{ marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><span>🧠</span>{lbl('Temas de los artículos', 'Article topics')}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><span><OnyxIcon emoji="🧠" size={15} /></span>{lbl('Temas de los artículos', 'Article topics')}</div>
               <span style={{ fontSize: 11.5, color: runwayMonths >= 12 ? 'var(--soft-green)' : 'var(--amber)', background: runwayMonths >= 12 ? 'rgba(52,226,160,.14)' : 'rgba(255,192,77,.14)', border: '1px solid ' + (runwayMonths >= 12 ? 'rgba(52,226,160,.4)' : 'rgba(255,192,77,.4)'), padding: '3px 10px', borderRadius: 999, fontWeight: 600 }}>
                 {nTopics} {lbl('temas · ~', 'topics · ~')}{runwayMonths} {lbl('meses', 'months')}
               </span>
@@ -272,7 +273,7 @@ export default function BlogAutopilot({ es, onChanged }: { es: boolean; onChange
           {/* Calendario del mes lleno */}
           <div style={glow('#34e2a0')}>
             <div className="row between" style={{ marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><span>📅</span>{lbl('Calendario del mes', 'Month calendar')}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><span><OnyxIcon emoji="📅" size={15} /></span>{lbl('Calendario del mes', 'Month calendar')}</div>
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
                 <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 11.5, color: 'var(--mut)' }}><i style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--soft-green)' }} /> {lbl('Listo', 'Ready')}</span>
                 <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: 11.5, color: 'var(--mut)' }}><i style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--amber)' }} /> {lbl('Programado (se genera solo)', 'Scheduled (auto-generates)')}</span>

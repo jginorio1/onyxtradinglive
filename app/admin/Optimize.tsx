@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useLang } from '@/lib/lang';
 import { useT } from '@/lib/adminText';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 const T: any = {
   es: {
@@ -91,7 +92,7 @@ export default function Optimize() {
   return (
     <>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <div className="tabhead"><div className="th-row"><span className="th-ic">🚀</span><span className="th-t">{gt.h_optim_t}</span></div><div className="th-s">{t.intro}</div></div>
+        <div className="tabhead"><div className="th-row"><span className="th-ic"><OnyxIcon emoji="🚀" size={15} /></span><span className="th-t">{gt.h_optim_t}</span></div><div className="th-s">{t.intro}</div></div>
         <div className="row" style={{ gap: 8 }}>
           <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: o.enabled ? 'var(--soft-green)' : 'var(--mut)', background: o.enabled ? 'rgba(52,226,160,.15)' : 'var(--card2)' }}>{o.enabled && recent && <span className="livedot" />}{o.enabled ? t.on : t.off}</span>
           <button className="btn btn-primary" onClick={runNow} disabled={busy}>{busy ? t.running : '▶ ' + t.run}</button>

@@ -363,7 +363,7 @@ function InstallBanner({ L }: { L: (a: string, b: string) => string }) {
           <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={dismiss}>{L('Ahora no', 'Not now')}</button>
         </div>
       </div>
-      {iosInstall && <div className="muted" style={{ fontSize: 12, marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}>ℹ {L('En iPhone: toca «Compartir» en Safari → «Añadir a pantalla de inicio». Abre Onyx desde ahí y vuelve aquí para activar.', 'On iPhone: tap “Share” in Safari → “Add to Home Screen”. Open Onyx from there and come back to enable.')}</div>}
+      {iosInstall && <div className="muted" style={{ fontSize: 12, marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}><OnyxIcon emoji="ℹ" size={15} /> {L('En iPhone: toca «Compartir» en Safari → «Añadir a pantalla de inicio». Abre Onyx desde ahí y vuelve aquí para activar.', 'On iPhone: tap “Share” in Safari → “Add to Home Screen”. Open Onyx from there and come back to enable.')}</div>}
     </div>
   );
 }
@@ -1136,7 +1136,7 @@ function CalendarTab({ events, lang, L }: any) {
       <div className="sk-card" style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: 0 }}>
         {/* Buscador por texto */}
         <div style={{ position: 'relative' }}>
-          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand)', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand)', fontSize: 14, pointerEvents: 'none' }}><OnyxIcon emoji="🔍" size={15} /></span>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('Buscar clase por nombre o descripción…', 'Search class by name or description…')} style={{ margin: 0, paddingLeft: 34 }} />
         </div>
         {/* Estado + atajos de rango + fechas */}
@@ -1343,7 +1343,7 @@ function PdfViewer({ url, allowDownload = true, L }: { url: string; allowDownloa
         <span className="muted" style={{ fontSize: 12.5 }}>{L('Página', 'Page')} {page} / {pages || '…'}</span>
         {allowDownload
           ? <a className="sk-chip" href={url} target="_blank" rel="noreferrer">⤓ {L('Descargar', 'Download')}</a>
-          : <span className="sk-chip muted" style={{ opacity: .8 }}>🔒 {L('Solo lectura', 'View only')}</span>}
+          : <span className="sk-chip muted" style={{ opacity: .8 }}><OnyxIcon emoji="🔒" size={15} /> {L('Solo lectura', 'View only')}</span>}
       </div>
     </div>
   );
@@ -2506,7 +2506,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         {(d.feed || []).map((p: any) => (
           <div key={p.id} className={'sk-card' + (p.announcement ? ' sk-ann' : '')}>
             {p.announcement && <div className="sk-ann-tag"><OnyxIcon name="megaphone" size={13} glow={false} /> {L('Anuncio', 'Announcement')}</div>}
-            <div className="row between"><b style={{ fontSize: 13.5, display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{p.author_name}{p.pinned && ' 📌'} <PostTag kind={p.kind} winKind={p.win_kind} L={L} />{p.scheduled_at && new Date(p.scheduled_at).getTime() > Date.now() && <span className="sk-chip" style={{ marginLeft: 8, background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}>⏱ {L('programado', 'scheduled')} {new Date(p.scheduled_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}</b><button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar publicación?', 'Delete post?'), message: L('Se borrará para todos los alumnos.', 'It will be removed for all students.') })) api({ action: 'post_delete', id: p.id }); }}>✕</button></div>
+            <div className="row between"><b style={{ fontSize: 13.5, display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>{p.author_name}{p.pinned && ' 📌'} <PostTag kind={p.kind} winKind={p.win_kind} L={L} />{p.scheduled_at && new Date(p.scheduled_at).getTime() > Date.now() && <span className="sk-chip" style={{ marginLeft: 8, background: 'color-mix(in srgb,var(--gold) 16%,transparent)', color: 'var(--gold)' }}><OnyxIcon emoji="⏱" size={15} /> {L('programado', 'scheduled')} {new Date(p.scheduled_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>}</b><button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11, color: 'var(--red)' }} onClick={async () => { if (await confirmDelete({ title: L('¿Borrar publicación?', 'Delete post?'), message: L('Se borrará para todos los alumnos.', 'It will be removed for all students.') })) api({ action: 'post_delete', id: p.id }); }}>✕</button></div>
             {p.body && <div style={{ fontSize: 14, whiteSpace: 'pre-wrap', marginTop: 4 }}>{p.body}</div>}
             {p.image_url && <img src={p.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 10, marginTop: 6, display: 'block' }} />}
           </div>
@@ -2817,7 +2817,7 @@ function MentorEmails({ lang, L }: { lang: string; L: (a: string, b: string) => 
           </div>
           {/* IA opcional: personaliza ligeramente tus correos al enviarse, sin cambiar tu marca. */}
           <div onClick={() => setEmailAi((v) => !v)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, border: '1px solid ' + (emailAi ? 'color-mix(in srgb,var(--brand) 45%,var(--line))' : 'var(--line)'), borderRadius: 10, padding: '9px 12px', marginBottom: 10, background: emailAi ? 'color-mix(in srgb,var(--brand) 6%,transparent)' : 'transparent' }}>
-            <span style={{ fontSize: 12.5 }}>✨ {L('Deja que la IA personalice mis correos (mantiene mi marca y las variables)', 'Let AI personalize my emails (keeps my brand and variables)')}</span>
+            <span style={{ fontSize: 12.5 }}><OnyxIcon emoji="✨" size={15} /> {L('Deja que la IA personalice mis correos (mantiene mi marca y las variables)', 'Let AI personalize my emails (keeps my brand and variables)')}</span>
             <span style={{ width: 40, height: 22, borderRadius: 99, background: emailAi ? 'var(--brand)' : 'var(--line)', position: 'relative', flex: 'none' }}><span style={{ position: 'absolute', top: 2, left: emailAi ? 20 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff' }} /></span>
           </div>
           {([

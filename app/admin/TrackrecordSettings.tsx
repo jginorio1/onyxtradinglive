@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Control GLOBAL del trackrecord público: el admin decide qué campos se muestran
 // en la página /u/ID de CUALQUIER trader que la encienda. Guardado en app_settings.
@@ -44,7 +45,7 @@ export default function TrackrecordSettings() {
 
   return (
     <div>
-      <div className="tabhead"><div className="th-row"><span className="th-ic">🏆</span><span className="th-t">{es ? 'Trackrecord público' : 'Public trackrecord'}</span></div><div className="th-s">{es ? 'Controla qué se muestra en la página pública que cada trader puede encender (/u/ID).' : 'Control what shows on the public page each trader can enable (/u/ID).'}</div></div>
+      <div className="tabhead"><div className="th-row"><span className="th-ic"><OnyxIcon emoji="🏆" size={15} /></span><span className="th-t">{es ? 'Trackrecord público' : 'Public trackrecord'}</span></div><div className="th-s">{es ? 'Controla qué se muestra en la página pública que cada trader puede encender (/u/ID).' : 'Control what shows on the public page each trader can enable (/u/ID).'}</div></div>
 
       <div className="card">
         {/* Función global on/off */}

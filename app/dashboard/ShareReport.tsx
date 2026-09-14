@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Compartir el rendimiento del trader desde el dashboard, SIN salir de Onyx.
@@ -158,14 +159,14 @@ export default function ShareReport({
     <>
       <button onClick={() => setOpen(true)} title={es ? 'Compartir mi rendimiento' : 'Share my performance'}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#fff', background: 'linear-gradient(135deg,#4b3ff0,#7c8cff)', border: 'none', borderRadius: 9, padding: '7px 13px', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}>
-        📤 {es ? 'Compartir' : 'Share'}
+        <OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir' : 'Share'}
       </button>
 
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 400, padding: 16 }}>
             <div className="row between" style={{ marginBottom: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}>📤 {es ? 'Compartir mi rendimiento' : 'Share my performance'}</div>
+              <div style={{ fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir mi rendimiento' : 'Share my performance'}</div>
               <button className="btn btn-ghost" onClick={() => setOpen(false)} style={{ padding: '4px 10px' }}>✕</button>
             </div>
 
@@ -189,9 +190,9 @@ export default function ShareReport({
 
               {/* Acciones */}
               <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 12 }}>
-                <button className="btn btn-primary" onClick={share}>📤 {es ? 'Compartir' : 'Share'}</button>
-                <button className="btn btn-ghost" onClick={download}>⬇️ {es ? 'Imagen' : 'Image'}</button>
-                <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer">🖨️ {es ? 'Imprimir / PDF' : 'Print / PDF'}</a>
+                <button className="btn btn-primary" onClick={share}><OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir' : 'Share'}</button>
+                <button className="btn btn-ghost" onClick={download}><OnyxIcon emoji="⬇" size={15} />️ {es ? 'Imagen' : 'Image'}</button>
+                <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer"><OnyxIcon emoji="🖨️" size={15} /> {es ? 'Imprimir / PDF' : 'Print / PDF'}</a>
                 <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer">📄 {es ? 'Reporte completo' : 'Full report'}</a>
               </div>
               {note && <div className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 8, color: 'var(--green)' }}>{note}</div>}

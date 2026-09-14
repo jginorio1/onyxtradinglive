@@ -2,6 +2,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Interruptor moderno (pastilla iluminada) — mismo estilo que el piloto automático.
 function Sw({ on, accent = '#34e2a0' }: { on: boolean; accent?: string }) {
@@ -91,7 +92,7 @@ export default function BlogKeywords() {
     <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 12 }}>
       <div className="row between" style={{ padding: '12px 14px', cursor: 'pointer', flexWrap: 'wrap', gap: 8 }} onClick={() => setOpen((o) => !o)}>
         <div className="row" style={{ gap: 10, alignItems: 'center', minWidth: 0 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 10, flex: 'none', background: 'linear-gradient(135deg,#ffc04d,#ff8a97)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17', fontWeight: 800 }}>🎯</span>
+          <span style={{ width: 34, height: 34, borderRadius: 10, flex: 'none', background: 'linear-gradient(135deg,#ffc04d,#ff8a97)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17', fontWeight: 800 }}><OnyxIcon emoji="🎯" size={15} /></span>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 14 }}>{L('Palabras clave prioritarias', 'Priority keywords')}</div>
             <div className="muted" style={{ fontSize: 12 }}>{L('El AI apunta a una keyword por artículo y rota para cubrirlas todas.', 'The AI targets one keyword per article and rotates to cover them all.')}</div>
@@ -108,7 +109,7 @@ export default function BlogKeywords() {
           {/* Ajustes */}
           <div style={glow('#5ecfff')}>
             <div onClick={() => upd('enabled', !s.enabled)} style={{ cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'flex-start', paddingBottom: 10, marginBottom: 4, borderBottom: '1px solid var(--line)' }}>
-              <span style={{ width: 30, height: 30, borderRadius: 9, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, background: '#34e2a022', border: '1px solid #34e2a055' }}>🎯</span>
+              <span style={{ width: 30, height: 30, borderRadius: 9, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, background: '#34e2a022', border: '1px solid #34e2a055' }}><OnyxIcon emoji="🎯" size={15} /></span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700 }}>{L('Activar keywords en el generador', 'Enable keywords in the generator')}</div>
                 <div className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>{L('Recomendado: 5–7 por idioma, sin relleno.', 'Recommended: 5–7 per language, no stuffing.')}</div>
@@ -142,7 +143,7 @@ export default function BlogKeywords() {
 
           {/* Ideas desde Search Console */}
           <div style={glow('#ffc04d')}>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}><span>💡</span>{L('Ideas desde Search Console', 'Ideas from Search Console')}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}><span><OnyxIcon emoji="💡" size={15} /></span>{L('Ideas desde Search Console', 'Ideas from Search Console')}</div>
             {!d.gsc && <p className="muted" style={{ fontSize: 12, margin: 0 }}>{L('Conecta Search Console (Admin → SEO) para ver aquí tus consultas reales de Google y sus oportunidades.', 'Connect Search Console (Admin → SEO) to see your real Google queries and opportunities here.')}</p>}
             {d.gsc && !(d.ideas || []).length && <p className="muted" style={{ fontSize: 12, margin: 0 }}>{L('Aún sin datos de Google (tarda unos días).', 'No Google data yet (takes a few days).')}</p>}
             {(d.ideas || []).length > 0 && (

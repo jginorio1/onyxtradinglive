@@ -14,6 +14,7 @@ import { buildReport, type FullReport } from '@/lib/report';
 import { onyxScore, type OnyxScore } from '@/lib/score';
 import { ProgressBar, ProgressBarIndeterminate } from './ProgressBar';
 import { Help } from './HelpTip';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Explicación de cada campo (qué es + qué poner), bilingüe. Se muestra en el ⓘ.
 function tip(es: boolean, k: string): string {
@@ -140,7 +141,7 @@ function GenMonitor({ s, es, evo }: { s: any; es: boolean; evo: any }) {
         <div>
           <div style={{ fontSize: 12, fontWeight: 800, marginBottom: 8 }}>{es ? 'Mejor fitness (evolución)' : 'Best fitness (evolution)'}</div>
           {evo?.history?.length ? <EvoChart history={evo.history} /> : <div className="muted" style={{ fontSize: 11.5 }}>{es ? '(solo en modo evolución)' : '(evolution mode only)'}</div>}
-          {advice() && <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.5, background: `color-mix(in srgb,${VIOLET} 8%,var(--card))`, border: `1px solid color-mix(in srgb,${VIOLET} 30%,var(--line))`, borderRadius: 10, padding: '9px 11px' }}><b style={{ color: VIOLET }}>💡 {es ? '¿Por qué no salen buenas?' : 'Why no good ones?'}</b> {advice()}</div>}
+          {advice() && <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.5, background: `color-mix(in srgb,${VIOLET} 8%,var(--card))`, border: `1px solid color-mix(in srgb,${VIOLET} 30%,var(--line))`, borderRadius: 10, padding: '9px 11px' }}><b style={{ color: VIOLET }}><OnyxIcon emoji="💡" size={15} /> {es ? '¿Por qué no salen buenas?' : 'Why no good ones?'}</b> {advice()}</div>}
         </div>
       </div>
     </div>
@@ -600,7 +601,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       {/* ══════════ MODO AUTOMÁTICO · UN CLIC ══════════ */}
       <div style={{ ...card, borderColor: `color-mix(in srgb,${GREEN} 55%,var(--line))`, background: `linear-gradient(160deg, color-mix(in srgb,${GREEN} 12%,var(--card)), var(--card) 65%)` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: '#04201d', fontSize: 22 }}>🤖</span>
+          <span style={{ display: 'inline-flex', width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: '#04201d', fontSize: 22 }}><OnyxIcon emoji="🤖" size={15} /></span>
           <div style={{ flex: 1, minWidth: 200 }}>
             <h3 style={{ margin: 0, fontSize: 18 }}>{es ? 'Modo automático · un clic' : 'Automatic mode · one click'}</h3>
             <p className="muted" style={{ fontSize: 12.5, margin: '3px 0 0' }}>{es ? 'Elige tus datos y pulsa Ejecutar. El sistema genera miles de estrategias, las prueba, descarta las malas y deja en el Databank solo las robustas. No tocas nada más.' : 'Pick your data and press Run. The system generates thousands of strategies, tests them, discards the bad ones and leaves only the robust ones in the Databank.'}</p>
@@ -620,8 +621,8 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
           {bars && !reading && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
               <span style={autoChip(VIOLET)}>🏷 {es ? 'Instrumento' : 'Instrument'}: <b>{meta.symbol || '—'}</b></span>
-              <span style={autoChip('var(--brand)')}>⏱ {es ? 'Temporalidad' : 'Timeframe'}: <b>{meta.tf || '—'}</b></span>
-              <span style={autoChip('var(--brand)')}>📅 {new Date(bars[0].t).toISOString().slice(0, 10)} → {new Date(bars[bars.length - 1].t).toISOString().slice(0, 10)}</span>
+              <span style={autoChip('var(--brand)')}><OnyxIcon emoji="⏱" size={15} /> {es ? 'Temporalidad' : 'Timeframe'}: <b>{meta.tf || '—'}</b></span>
+              <span style={autoChip('var(--brand)')}><OnyxIcon emoji="📅" size={15} /> {new Date(bars[0].t).toISOString().slice(0, 10)} → {new Date(bars[bars.length - 1].t).toISOString().slice(0, 10)}</span>
               <span style={autoChip(LIME)}>{bars.length.toLocaleString('en-US')} {es ? 'barras' : 'bars'}</span>
             </div>
           )}
@@ -677,7 +678,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
               <span style={{ fontSize: 11, alignSelf: 'center', color: LIME, fontWeight: 700 }}>{es ? '· sin límite' : '· no cap'}</span>
             </div>
           </div>
-          {n > 30000 && <div style={{ fontSize: 11.5, marginTop: 6, color: AMBER, fontWeight: 700 }}>⚠ {es ? `${n.toLocaleString('en-US')} corre en tu navegador: puede tardar mucho o quedarse sin memoria. Deja la pestaña abierta y en primer plano; si se corta, baja la cantidad. (Para millones sin navegador hará falta el motor en la nube.)` : `${n.toLocaleString('en-US')} runs in your browser: may be slow or run out of memory. Keep the tab open and in front; if it stops, lower the amount. (Millions without a browser needs the cloud engine.)`}</div>}
+          {n > 30000 && <div style={{ fontSize: 11.5, marginTop: 6, color: AMBER, fontWeight: 700 }}><OnyxIcon emoji="⚠" size={15} /> {es ? `${n.toLocaleString('en-US')} corre en tu navegador: puede tardar mucho o quedarse sin memoria. Deja la pestaña abierta y en primer plano; si se corta, baja la cantidad. (Para millones sin navegador hará falta el motor en la nube.)` : `${n.toLocaleString('en-US')} runs in your browser: may be slow or run out of memory. Keep the tab open and in front; if it stops, lower the amount. (Millions without a browser needs the cloud engine.)`}</div>}
           <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{autoMode === 'evolve' ? (es ? '🧬 En evolución este número es el PRESUPUESTO: a más presupuesto, más generaciones y población, y más a fondo explora ese espacio de millones de combinaciones (haciendo solo unos miles de backtests). Corre en tu navegador; mantén la pestaña abierta.' : '🧬 In evolution this number is the BUDGET: more budget = more generations/population, exploring that space of millions of combos deeper (with only a few thousand backtests). Runs in your browser; keep the tab open.') : (es ? 'Más estrategias = más posibilidades pero tarda más (corre en tu navegador; mantén la pestaña abierta).' : 'More strategies = more chances but slower (runs in your browser; keep the tab open).')}</div>
         </div>
 
@@ -692,7 +693,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
             </div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, cursor: 'pointer' }}>
               <input type="checkbox" checked={useAi} onChange={(e) => setUseAi(e.target.checked)} />
-              <span style={{ fontSize: 13, fontWeight: 700 }}>🧠 {es ? 'La IA (Claude) audita cada robot final' : 'AI (Claude) audits each final robot'}</span>
+              <span style={{ fontSize: 13, fontWeight: 700 }}><OnyxIcon emoji="🧠" size={15} /> {es ? 'La IA (Claude) audita cada robot final' : 'AI (Claude) audits each final robot'}</span>
               <span className="muted" style={{ fontSize: 11.5 }}>{es ? '— interpreta su robustez y sugiere mejoras. Más lento pero es el sello de calidad.' : '— interprets robustness and suggests improvements. Slower but the quality seal.'}</span>
             </label>
           </div>
@@ -714,14 +715,14 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
 
       {/* Toggle: pliega TODO lo avanzado para ver solo el modo automático + resultados */}
       <button onClick={() => setAdvOpen((v) => !v)} style={{ ...btn(advOpen ? VIOLET : '#8a94a6'), padding: '11px 16px', justifyContent: 'center', fontSize: 13.5, fontWeight: 800 }}>
-        {advOpen ? '▴ ' : '▾ '}⚙️ {es ? 'Ajustes avanzados' : 'Advanced settings'} <span className="muted" style={{ fontWeight: 500, marginLeft: 6 }}>{es ? '· costes, gestión monetaria, reto, OOS, evolución manual, databank, portafolios' : '· costs, money mgmt, challenge, OOS, manual evolution, databank, portfolios'}</span>
+        {advOpen ? '▴ ' : '▾ '}<OnyxIcon emoji="⚙" size={15} />️ {es ? 'Ajustes avanzados' : 'Advanced settings'} <span className="muted" style={{ fontWeight: 500, marginLeft: 6 }}>{es ? '· costes, gestión monetaria, reto, OOS, evolución manual, databank, portafolios' : '· costs, money mgmt, challenge, OOS, manual evolution, databank, portfolios'}</span>
       </button>
 
       {advOpen && (<>
       {/* Asistente IA de configuración avanzada */}
       <div style={{ ...card, borderColor: `color-mix(in srgb,${CORAL} 40%,var(--line))`, background: `linear-gradient(150deg, color-mix(in srgb,${CORAL} 8%,var(--card)), var(--card) 65%)` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
-          <span style={{ fontSize: 20 }}>✨</span>
+          <span style={{ fontSize: 20 }}><OnyxIcon emoji="✨" size={15} /></span>
           <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Asistente IA · configura todo con tu objetivo' : 'AI assistant · configure everything from your goal'}</h3>
         </div>
         <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{es ? 'Escribe tu objetivo en lenguaje natural y Claude configura costes, gestión monetaria, reglas de reto (prop firm), OOS, evolución y la receta de bloques.' : 'Describe your goal in plain words and Claude sets costs, money management, prop-firm challenge rules, OOS, evolution and the block recipe.'}</p>
@@ -754,14 +755,14 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       {/* Datos + costes */}
       <div style={card}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + VIOLET + ',' + AQUA + ')', color: '#04201d', fontSize: 18 }}>⚙️</span>
+          <span style={{ display: 'inline-flex', width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + VIOLET + ',' + AQUA + ')', color: '#04201d', fontSize: 18 }}><OnyxIcon emoji="⚙" size={15} />️</span>
           <h3 style={{ margin: 0, flex: 1 }}>{es ? 'Motor de backtest + evolución' : 'Backtest + evolution engine'}</h3>
         </div>
         <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>{es ? 'Elige un dataset de tu biblioteca (ya validado en la Puerta 0, sin volver a subir nada) o sube uno nuevo. El motor simula miles de estrategias con costes reales, evoluciona las mejores y las envía al laboratorio.' : 'Pick a dataset from your library (already validated in Gate 0, no re-upload) or upload a new one. The engine simulates thousands of strategies with real costs, evolves the best and sends them to the lab.'}</p>
 
         {/* Biblioteca de datos: reutiliza lo subido en la Puerta 0 (sin resubir) */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10, background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', border: '1px solid color-mix(in srgb,#0fb8a6 25%,var(--line))' }}>
-          <span style={{ fontSize: 18 }}>🗄</span>
+          <span style={{ fontSize: 18 }}><OnyxIcon emoji="🗄" size={15} /></span>
           <span style={{ fontSize: 12.5, fontWeight: 700 }}>{es ? 'Desde la biblioteca' : 'From library'}</span>
           <select value={dsId} onChange={(e) => loadFromLibrary(e.target.value)} disabled={reading} style={{ ...inp, minWidth: 220 }}>
             <option value="">{usableDs.length ? (es ? '— elige un dataset guardado —' : '— pick a saved dataset —') : (es ? '— aún no hay datos guardados —' : '— no saved data yet —')}</option>
@@ -791,7 +792,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
 
         {/* Gestión monetaria + dirección (estilo StrategyQuant, mejorado) */}
         <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${VIOLET} 22%,var(--line))` }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}>💰 {es ? 'Gestión monetaria y dirección' : 'Money management & direction'}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}><OnyxIcon emoji="💰" size={15} /> {es ? 'Gestión monetaria y dirección' : 'Money management & direction'}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Dirección' : 'Direction'}<Help text={tip(es, 'dir')} /></span>
               <select value={dir} onChange={(e) => setDir(e.target.value as any)} style={{ ...inp, width: '100%', marginTop: 3 }}>
@@ -829,7 +830,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
 
         {/* Reto prop firm (opcional): objetivo + pérdida diaria + días mínimos */}
         <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${CORAL} 30%,var(--line))` }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}>🏁 {es ? 'Reto prop firm (opcional)' : 'Prop-firm challenge (optional)'}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}><OnyxIcon emoji="🏁" size={15} /> {es ? 'Reto prop firm (opcional)' : 'Prop-firm challenge (optional)'}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Objetivo de beneficio %' : 'Profit target %'}<Help text={tip(es, 'chTarget')} /></span><input type="number" step="1" value={costs.chTarget ?? 0} onChange={(e) => setCosts({ ...costs, chTarget: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Pérdida diaria máx %' : 'Max daily loss %'}<Help text={tip(es, 'chDailyLoss')} /></span><input type="number" step="0.5" value={costs.chDailyLoss ?? 0} onChange={(e) => setCosts({ ...costs, chDailyLoss: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
@@ -840,7 +841,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
 
         {/* Opciones de trading finas (estilo StrategyQuant) */}
         <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${BLUE} 26%,var(--line))` }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}>⏱️ {es ? 'Opciones de trading' : 'Trading options'}</div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 8 }}><OnyxIcon emoji="⏱" size={15} />️ {es ? 'Opciones de trading' : 'Trading options'}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Máx operaciones/día' : 'Max trades/day'}<Help text={tip(es, 'maxTradesDay')} /></span><input type="number" step="1" min={0} value={costs.maxTradesDay ?? 0} onChange={(e) => setCosts({ ...costs, maxTradesDay: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
             <label><span className="muted" style={{ fontSize: 11.5 }}>{es ? 'Hora desde (UTC)' : 'Hour from (UTC)'}<Help text={tip(es, 'hourRange')} /></span><input type="number" step="1" min={-1} max={23} value={costs.hourFrom ?? -1} onChange={(e) => setCosts({ ...costs, hourFrom: Number(e.target.value) })} style={{ ...inp, width: '100%', marginTop: 3 }} /></label>
@@ -860,7 +861,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
 
         {/* División dentro/fuera de muestra (IS/OOS) — con presets */}
         <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${CORAL} 28%,var(--line))` }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}>🧪 {es ? 'Fuera de muestra (OOS)' : 'Out-of-sample (OOS)'}<Help text={tip(es, 'oos')} /></div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 6 }}><OnyxIcon emoji="🧪" size={15} /> {es ? 'Fuera de muestra (OOS)' : 'Out-of-sample (OOS)'}<Help text={tip(es, 'oos')} /></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <input type="range" min={0} max={50} step={5} value={oosPct} onChange={(e) => setOosPct(Number(e.target.value))} style={{ flex: 1, minWidth: 140 }} />
             <span style={{ fontSize: 13, fontWeight: 800, color: CORAL, minWidth: 44 }}>{oosPct}%</span>
@@ -893,7 +894,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       {genMode === 'auto' && (
       <div style={{ ...card, borderColor: `color-mix(in srgb,${GREEN} 45%,var(--line))`, background: `linear-gradient(150deg, color-mix(in srgb,${GREEN} 8%,var(--card)), var(--card) 70%)` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: '#04201d', fontSize: 19 }}>🤖</span>
+          <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + GREEN + ',' + AQUA + ')', color: '#04201d', fontSize: 19 }}><OnyxIcon emoji="🤖" size={15} /></span>
           <div style={{ flex: 1, minWidth: 180 }}>
             <h3 style={{ margin: 0 }}>{es ? 'Autopiloto' : 'Autopilot'}</h3>
             <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>{es ? 'Un botón: genera → backtestea → filtra por robustez (IS/OOS) → crea solo los robots que sobreviven y los manda al laboratorio. Sin CSV.' : 'One button: generate → backtest → filter by robustness → create only surviving robots and send them to the lab. No CSV.'}</p>
@@ -918,7 +919,7 @@ export default function FactoryEngine({ es, canManage, post, reload, datasets = 
       {genMode === 'adv' && (
       <div style={{ ...card, borderColor: `color-mix(in srgb,${BLUE} 45%,var(--line))` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + LIME + ',' + AQUA + ')', color: '#04201d', fontSize: 19 }}>🧪</span>
+          <span style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 11, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,' + LIME + ',' + AQUA + ')', color: '#04201d', fontSize: 19 }}><OnyxIcon emoji="🧪" size={15} /></span>
           <div style={{ flex: 1, minWidth: 180 }}>
             <h3 style={{ margin: 0 }}>{es ? 'Receta encadenada' : 'Chained recipe'}</h3>
             <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>{es ? 'Generar → backtest → in/out-of-sample → Monte Carlo (8 tipos) → walk-forward matrix. Solo pasan los que superan TODAS las compuertas.' : 'Generate → backtest → in/out-of-sample → Monte Carlo (8 types) → walk-forward matrix. Only those passing ALL gates survive.'}</p>
@@ -1202,7 +1203,7 @@ function ScoreCard({ es, s }: { es: boolean; s: OnyxScore }) {
           </svg>
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ fontSize: 13, fontWeight: 800 }}>🛡️ Onyx Robustness Score · <span style={{ color: col }}>{es ? 'Grado' : 'Grade'} {s.grade}</span></div>
+          <div style={{ fontSize: 13, fontWeight: 800 }}><OnyxIcon emoji="🛡" size={15} />️ Onyx Robustness Score · <span style={{ color: col }}>{es ? 'Grado' : 'Grade'} {s.grade}</span></div>
           <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{es ? 'Qué tan robusta es (no sobre-ajustada). Penaliza la complejidad, la trampa nº1 del curve-fitting.' : 'How robust (not overfit) it is. Penalizes complexity, the #1 curve-fitting trap.'}</div>
           {s.parts.map((p, i) => (
             <div key={i} style={{ marginBottom: 4 }}>
@@ -1248,7 +1249,7 @@ function StratReport({ es, r, oosPct, setOosPct }: { es: boolean; r: FullReport;
   );
   return (
     <div style={{ marginTop: 14, background: 'var(--bg2)', borderRadius: 10, padding: 12, border: `1px solid color-mix(in srgb,${BLUE} 25%,var(--line))` }}>
-      <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 10 }}>📊 {es ? 'Reporte completo' : 'Full report'} <span className="muted" style={{ fontWeight: 500 }}>· {r.years} {es ? 'años' : 'yrs'} · {r.trades} {es ? 'ops' : 'trades'}</span></div>
+      <div style={{ fontSize: 12.5, fontWeight: 800, marginBottom: 10 }}><OnyxIcon emoji="📊" size={15} /> {es ? 'Reporte completo' : 'Full report'} <span className="muted" style={{ fontWeight: 500 }}>· {r.years} {es ? 'años' : 'yrs'} · {r.trades} {es ? 'ops' : 'trades'}</span></div>
 
       {/* KPIs principales */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(96px,1fr))', gap: 8, marginBottom: 12 }}>

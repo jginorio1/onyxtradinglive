@@ -786,13 +786,13 @@ export default function CopyClient() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1600, padding: 16 }} onClick={() => setDupWarn(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420, width: '100%', background: 'var(--card,#12151d)', border: '2px solid var(--amber,#fbbf24)', borderRadius: 16, padding: 22, boxShadow: '0 0 0 4px rgba(251,191,36,.18), 0 20px 60px rgba(0,0,0,.5)' }}>
             <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(251,191,36,.15)', fontSize: 20 }}>⚠</span>
+              <span style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(251,191,36,.15)', fontSize: 20 }}><OnyxIcon emoji="⚠" size={15} /></span>
               <b style={{ fontSize: 16 }}>{t.dupTitle}</b>
             </div>
             <p style={{ fontSize: 14, color: 'var(--muted,#9aa6b8)', margin: '0 0 10px', lineHeight: 1.6 }}>
               {t.dupBodyA} <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: dupWarn.role === 'master' ? 'rgba(138,125,255,.18)' : 'rgba(52,226,160,.18)', color: dupWarn.role === 'master' ? C_MASTER : C_SLAVE }}>{dupWarn.role === 'master' ? t.dupRoleM : t.dupRoleS}</span> {t.dupBodyB}.
             </p>
-            <div style={{ background: 'rgba(251,191,36,.10)', borderRadius: 8, padding: '9px 12px', fontSize: 12.5, color: 'var(--amber,#fbbf24)', marginBottom: 16 }}>⚠ {t.dupWarn}</div>
+            <div style={{ background: 'rgba(251,191,36,.10)', borderRadius: 8, padding: '9px 12px', fontSize: 12.5, color: 'var(--amber,#fbbf24)', marginBottom: 16 }}><OnyxIcon emoji="⚠" size={15} /> {t.dupWarn}</div>
             <div className="row" style={{ gap: 10 }}>
               <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setDupWarn(null)}>{t.dupCancel}</button>
               <button className="btn" style={{ flex: 1, background: 'rgba(251,191,36,.15)', color: 'var(--amber,#fbbf24)', borderColor: 'var(--amber,#fbbf24)' }} onClick={() => dupWarn.apply && dupWarn.apply()}>{t.dupGo}</button>

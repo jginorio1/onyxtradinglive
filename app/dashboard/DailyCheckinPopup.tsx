@@ -165,7 +165,7 @@ export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onSta
           ) : null
         ))}
 
-        {hasAuto && <p className="muted" style={{ fontSize: 11, margin: '0 0 10px' }}>✨ {t.autoHint}</p>}
+        {hasAuto && <p className="muted" style={{ fontSize: 11, margin: '0 0 10px' }}><OnyxIcon emoji="✨" size={15} /> {t.autoHint}</p>}
 
         <div style={{ position: 'relative', height: 8, marginBottom: 12 }}>
           {saved && <span style={{ position: 'absolute', right: 0, top: -2, color: 'var(--green)', fontSize: 11.5 }}>✓ {t.saved}</span>}

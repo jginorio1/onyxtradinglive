@@ -679,7 +679,7 @@ export default function AccountClient({ email }: { email: string }) {
                 <div style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', margin: '4px 0 16px', background: 'var(--bg2)' }}>
                   <div className="row between" style={{ gap: 10, flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 200 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 7 }}><span>🔗</span> {lang === 'en' ? 'Public trackrecord' : 'Trackrecord público'}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 7 }}><span><OnyxIcon emoji="🔗" size={15} /></span> {lang === 'en' ? 'Public trackrecord' : 'Trackrecord público'}</div>
                       <div className="muted" style={{ fontSize: 12.5, marginTop: 3, lineHeight: 1.55 }}>{lang === 'en' ? 'A shareable page with your real stats, verified. You control the on/off; the admin decides which fields are shown.' : 'Una página que puedes compartir con tus estadísticas reales, verificada. Tú lo enciendes/apagas; el admin decide qué campos se muestran.'}</div>
                     </div>
                     <Toggle on={!!p.public_track} onClick={() => togglePublicTrack(!p.public_track)} />

@@ -62,7 +62,7 @@ export default function InstallApp({ lang }: { lang: Lang }) {
     <div className="card" style={{ marginBottom: 14, border: '1px solid rgba(124,140,255,.35)', background: 'rgba(124,140,255,.06)' }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-          <span style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(124,140,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19 }}>📲</span>
+          <span style={{ width: 38, height: 38, borderRadius: 11, background: 'rgba(124,140,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19 }}><OnyxIcon emoji="📲" size={15} /></span>
           <div>
             <div style={{ fontSize: 14.5, fontWeight: 700 }}>{L.t}</div>
             <div className="muted" style={{ fontSize: 12.5 }}>{L.s}</div>

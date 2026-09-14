@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import BrandIcon from '@/app/components/BrandIcon';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Footer multi-columna para TODAS las páginas: fila de marca + CTA, columnas de
 // enlaces por categoría, contacto (QR + email + redes), aviso legal de riesgo y
@@ -94,7 +95,7 @@ export default function SiteFooter() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 9 }}>
             <Link className="btn btn-primary" href="/login?mode=signup">{L('Empieza gratis', 'Start free')}</Link>
-            {email && <a href={`mailto:${email}`} className="muted" style={{ fontSize: 12.5, textDecoration: 'none' }}>✉ {email}</a>}
+            {email && <a href={`mailto:${email}`} className="muted" style={{ fontSize: 12.5, textDecoration: 'none' }}><OnyxIcon emoji="✉" size={15} /> {email}</a>}
           </div>
         </div>
 
@@ -124,7 +125,7 @@ export default function SiteFooter() {
 
         {/* Aviso legal de riesgo */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
-          <span aria-hidden style={{ color: 'var(--amber)', flex: 'none', marginTop: 1 }}>⚠️</span>
+          <span aria-hidden style={{ color: 'var(--amber)', flex: 'none', marginTop: 1 }}><OnyxIcon emoji="⚠️" size={15} /></span>
           <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.65 }}>
             {legal} <Link href="/terms" style={{ color: 'var(--tx)', textDecoration: 'underline' }}>{L('Ver términos', 'See terms')}</Link>
           </div>

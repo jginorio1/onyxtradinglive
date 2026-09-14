@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Interruptor moderno (mismo estilo que el piloto del blog).
 function Switch({ on, accent = '#34e2a0' }: { on: boolean; accent?: string }) {
@@ -141,7 +142,7 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
       {/* Cabecera plegable */}
       <div onClick={() => setOpen((o) => !o)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', fontSize: 17, background: `${A}22`, border: `1px solid ${A}55` }}>📰</span>
+          <span style={{ width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', fontSize: 17, background: `${A}22`, border: `1px solid ${A}55` }}><OnyxIcon emoji="📰" size={15} /></span>
           <div>
             <div style={{ fontWeight: 800, fontSize: 14.5 }}>{L('Piloto de noticias económicas', 'Economic news pilot')}</div>
             <div className="muted" style={{ fontSize: 12 }}>{L('Detecta noticias importantes casi en vivo, escribe el artículo, lo publica y lo envía por email.', 'Detects important news near-live, writes the article, publishes and emails it.')}</div>

@@ -3,6 +3,7 @@
 // Se abre solo la primera vez (localStorage) y se queda abierto mientras el
 // usuario configura, sin sacarlo de la página. Bilingüe ES/EN.
 import { useEffect, useRef, useState, useCallback } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Props = { open: boolean; onClose: () => void; lang?: string };
 
@@ -206,7 +207,7 @@ export default function CopyGuide({ open, onClose, lang }: Props) {
 
           <Section title={g.secWarn} last>
             {g.warns.map((w: string, i: number) => (
-              <p key={i} style={warnStyle}>⚠ {w}</p>
+              <p key={i} style={warnStyle}><OnyxIcon emoji="⚠" size={15} /> {w}</p>
             ))}
           </Section>
         </div>

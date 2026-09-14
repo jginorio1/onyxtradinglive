@@ -176,9 +176,9 @@ function PromoControl() {
   return (
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
-        <h3 style={{ margin: 0 }}>📣 {t.pr_title}</h3>
+        <h3 style={{ margin: 0 }}><OnyxIcon emoji="📣" size={15} /> {t.pr_title}</h3>
         <span className="row" style={{ gap: 8 }}>
-          <a className="btn btn-ghost" href="/" target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>👁 {L('Ver en vivo', 'View live')}</a>
+          <a className="btn btn-ghost" href="/" target="_blank" rel="noreferrer" style={{ fontSize: 13 }}><OnyxIcon emoji="👁" size={15} /> {L('Ver en vivo', 'View live')}</a>
           <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => addBar({ on: true })}>＋ {L('Nueva barra', 'New bar')}</button>
         </span>
       </div>
@@ -229,7 +229,7 @@ function PromoControl() {
               {/* Fila de gestión */}
               <div className="row between" style={{ gap: 10, padding: '8px 12px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <span style={{ fontSize: 13, fontWeight: 600, minWidth: 90 }}>{b.name || L('Barra', 'Bar')}</span>
-                <span className="muted" style={{ fontSize: 12 }}>📅 {fmtDate(b.startsAt)} → {fmtDate(b.endsAt)}</span>
+                <span className="muted" style={{ fontSize: 12 }}><OnyxIcon emoji="📅" size={15} /> {fmtDate(b.startsAt)} → {fmtDate(b.endsAt)}</span>
                 <span className="pill" style={{ fontSize: 11, color: st.c, background: st.bg }}>{st.t}</span>
                 <span className="row" style={{ gap: 6, alignItems: 'center', marginLeft: 'auto' }}>
                   <Toggle on={!!b.on} onClick={() => upd(b.id, 'on', !b.on)} />
@@ -246,7 +246,7 @@ function PromoControl() {
                 <div style={{ padding: '0 12px 12px' }}>
                   {/* Contenido */}
                   <div style={sec}>
-                    <div style={secTitle}>💬 {L('Contenido', 'Content')}</div>
+                    <div style={secTitle}><OnyxIcon emoji="💬" size={15} /> {L('Contenido', 'Content')}</div>
                     <div style={grid}>
                       <label className="muted" style={{ fontSize: 12 }}>{L('Nombre interno', 'Internal name')}<input value={b.name || ''} onChange={(e) => upd(b.id, 'name', e.target.value)} placeholder="Halloween" style={inp} /></label>
                       <label className="muted" style={{ fontSize: 12 }}>{L('Emoji / icono', 'Emoji / icon')}<input value={b.emoji || ''} onChange={(e) => upd(b.id, 'emoji', e.target.value)} placeholder="🔥" style={inp} maxLength={8} /></label>
@@ -315,7 +315,7 @@ function PromoControl() {
 
                   {/* Programación */}
                   <div style={sec}>
-                    <div style={secTitle}>⏱ {L('Programación y contador', 'Schedule & countdown')}</div>
+                    <div style={secTitle}><OnyxIcon emoji="⏱" size={15} /> {L('Programación y contador', 'Schedule & countdown')}</div>
                     <div style={grid}>
                       <label className="muted" style={{ fontSize: 12 }}>{L('Empieza (opcional)', 'Starts (optional)')}<input type="datetime-local" value={b.startsAt ? b.startsAt.slice(0, 16) : ''} onChange={(e) => upd(b.id, 'startsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
                       <label className="muted" style={{ fontSize: 12 }}>{t.pr_ends}<input type="datetime-local" value={b.endsAt ? b.endsAt.slice(0, 16) : ''} onChange={(e) => upd(b.id, 'endsAt', e.target.value ? new Date(e.target.value).toISOString() : '')} style={inp} /></label>
@@ -347,7 +347,7 @@ function PromoControl() {
 
                   {/* Dónde y a quién */}
                   <div style={sec}>
-                    <div style={secTitle}>🎯 {L('Dónde y a quién', 'Where & who')}</div>
+                    <div style={secTitle}><OnyxIcon emoji="🎯" size={15} /> {L('Dónde y a quién', 'Where & who')}</div>
                     <div style={grid}>
                       <label className="muted" style={{ fontSize: 12 }}>{L('Páginas', 'Pages')}<select value={b.pages || 'all'} onChange={(e) => upd(b.id, 'pages', e.target.value)} style={inp}><option value="all">{L('Todas las públicas', 'All public pages')}</option><option value="landing">{L('Solo el landing', 'Landing only')}</option><option value="pricing">{L('Solo precios', 'Pricing only')}</option></select></label>
                       <label className="muted" style={{ fontSize: 12 }}>{L('Público', 'Audience')}<select value={b.audience || 'all'} onChange={(e) => upd(b.id, 'audience', e.target.value)} style={inp}><option value="all">{L('Todos', 'Everyone')}</option><option value="guests">{L('Solo sin cuenta', 'Logged-out only')}</option><option value="free">{L('Sin cuenta o plan Free', 'Logged-out or Free plan')}</option></select></label>
@@ -359,7 +359,7 @@ function PromoControl() {
 
                   {/* Rendimiento por barra */}
                   <div style={sec}>
-                    <div style={secTitle}>📊 {L('Rendimiento', 'Performance')}</div>
+                    <div style={secTitle}><OnyxIcon emoji="📊" size={15} /> {L('Rendimiento', 'Performance')}</div>
                     <div className="row" style={{ gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                       <div><div className="muted" style={{ fontSize: 12 }}>{L('Vistas', 'Views')}</div><div style={{ fontSize: 20, fontWeight: 800 }}>{Number(s.views || 0).toLocaleString()}</div></div>
                       <div><div className="muted" style={{ fontSize: 12 }}>{L('Clics', 'Clicks')}</div><div style={{ fontSize: 20, fontWeight: 800 }}>{Number(s.clicks || 0).toLocaleString()}</div></div>
@@ -406,7 +406,7 @@ function SecurityControl({ idleMin }: { idleMin: number }) {
   return (
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
-        <h3 style={{ margin: 0 }}>🔒 {t.sec_title}</h3>
+        <h3 style={{ margin: 0 }}><OnyxIcon emoji="🔒" size={15} /> {t.sec_title}</h3>
         <span className="pill" style={hasPin ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--amber)', background: 'rgba(255,192,77,.16)' }}>
           {hasPin === null ? '…' : hasPin ? t.sec_on : t.sec_off}
         </span>
@@ -453,14 +453,14 @@ function AlertsControl() {
   return (
     <div className="card" style={{ marginBottom: 12 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
-        <h3 style={{ margin: 0 }}>🔔 {t.al_title}</h3>
+        <h3 style={{ margin: 0 }}><OnyxIcon emoji="🔔" size={15} /> {t.al_title}</h3>
         <span className="row" style={{ gap: 8 }}>
           <span className="pill" style={d.enabled ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{d.enabled ? t.al_on : t.al_off}</span>
           <Toggle on={!!d.enabled} onClick={() => setD((o: any) => ({ ...o, enabled: !o.enabled }))} />
         </span>
       </div>
       <p className="muted" style={{ fontSize: 13, marginBottom: 4 }}>{t.al_body}</p>
-      {!d.telegram && <p style={{ fontSize: 12, color: 'var(--amber)', marginBottom: 8 }}>⚠ {t.al_noTg}</p>}
+      {!d.telegram && <p style={{ fontSize: 12, color: 'var(--amber)', marginBottom: 8 }}><OnyxIcon emoji="⚠" size={15} /> {t.al_noTg}</p>}
 
       <div style={{ marginTop: 8 }}>
         {rules.map(([k, label]) => (
@@ -523,7 +523,7 @@ function BetaControl() {
   return (
     <div className="card">
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
-        <h3 style={{ margin: 0 }}>🧪 {t.bt_title}</h3>
+        <h3 style={{ margin: 0 }}><OnyxIcon emoji="🧪" size={15} /> {t.bt_title}</h3>
         <span className="pill" style={st?.active ? { color: '#0a0d14', background: '#ffd166' } : { color: 'var(--mut)' }}>
           {st?.active ? t.bt_on : (st?.hasPin ? t.bt_ready : t.bt_noPin)}
         </span>
@@ -858,18 +858,18 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                       {uOrdered.map((u, i) => (
                         <Fragment key={u.id}>
                         {i === 0 && uAdmins.length > 0 && (
-                          <tr><td colSpan={6} style={{ background: 'var(--bg2)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--soft-brand,var(--brand))', padding: '7px 12px' }}>🛡️ {lang === 'en' ? 'Administrators' : 'Administradores'} · {uAdmins.length}</td></tr>
+                          <tr><td colSpan={6} style={{ background: 'var(--bg2)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--soft-brand,var(--brand))', padding: '7px 12px' }}><OnyxIcon emoji="🛡" size={15} />️ {lang === 'en' ? 'Administrators' : 'Administradores'} · {uAdmins.length}</td></tr>
                         )}
                         {i === uAdmins.length && uOthers.length > 0 && (
-                          <tr><td colSpan={6} style={{ background: 'var(--bg2)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--mut)', padding: '7px 12px' }}>👥 {lang === 'en' ? 'Users' : 'Usuarios'} · {uOthers.length}</td></tr>
+                          <tr><td colSpan={6} style={{ background: 'var(--bg2)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--mut)', padding: '7px 12px' }}><OnyxIcon emoji="👥" size={15} /> {lang === 'en' ? 'Users' : 'Usuarios'} · {uOthers.length}</td></tr>
                         )}
                         <tr>
                           <td><div className="row" style={{ gap: 9 }}><span className="avatar-init" style={{ width: 28, height: 28, fontSize: 11 }}>{initials(u.full_name || u.email)}</span><span style={{ minWidth: 0 }}>
                   <span style={{ display: 'block' }}>{u.full_name || u.email}{u.is_admin && <span className="pill brand" style={{ marginLeft: 6 }}>{u.email === meEmail ? (lang === 'en' ? 'Owner' : 'Dueño') : t.u_admin}</span>}</span>
                   {u.full_name && <span className="muted" style={{ fontSize: 12, display: 'block' }}>{u.email}</span>}
                 </span></div></td>
-                          <td><div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><select value={u.plan} onChange={(e) => { if (e.target.value !== u.plan) askPlanChange(u, e.target.value); }} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select>{planTag(u) === 'paid' ? <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)', fontSize: 11 }}>{lang === 'en' ? 'Paid' : 'Pago'}</span> : planTag(u) === 'comp' ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)', fontSize: 11 }}>🎁 {lang === 'en' ? 'Comp' : 'Cortesía'}</span> : null}</div></td>
-                          <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : u.email_confirmed === false ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)' }}>✉ {lang === 'en' ? 'Unconfirmed' : 'Sin confirmar'}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
+                          <td><div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><select value={u.plan} onChange={(e) => { if (e.target.value !== u.plan) askPlanChange(u, e.target.value); }} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select>{planTag(u) === 'paid' ? <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)', fontSize: 11 }}>{lang === 'en' ? 'Paid' : 'Pago'}</span> : planTag(u) === 'comp' ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)', fontSize: 11 }}><OnyxIcon emoji="🎁" size={15} /> {lang === 'en' ? 'Comp' : 'Cortesía'}</span> : null}</div></td>
+                          <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : u.email_confirmed === false ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)' }}><OnyxIcon emoji="✉" size={15} /> {lang === 'en' ? 'Unconfirmed' : 'Sin confirmar'}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
                           <td className="muted">{u.accounts}</td>
                           <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? fmtDate(u.lastSync, lang) : '—'}</td>
                           <td><div className="row" style={{ gap: 8, alignItems: 'center' }}>
@@ -920,7 +920,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                               <td colSpan={6} style={{ padding: '2px 12px 12px' }}>
                                 <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px', maxWidth: 520 }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5, marginBottom: 6, gap: 8 }}>
-                                    <span className="muted">🎁 {lang === 'en' ? 'Trial' : 'Prueba'} {pn} · {total} {lang === 'en' ? 'days' : 'días'}</span>
+                                    <span className="muted"><OnyxIcon emoji="🎁" size={15} /> {lang === 'en' ? 'Trial' : 'Prueba'} {pn} · {total} {lang === 'en' ? 'days' : 'días'}</span>
                                     <span style={{ fontWeight: 600, color: col, whiteSpace: 'nowrap' }}>{left === 0 ? (lang === 'en' ? 'Expired' : 'Vencida') : (lang === 'en' ? `${left} day(s) left` : `Quedan ${left} día(s)`)}</span>
                                   </div>
                                   <div style={{ height: 6, borderRadius: 6, background: 'var(--line)', overflow: 'hidden' }}>
@@ -999,7 +999,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     background: 'linear-gradient(180deg, color-mix(in srgb,var(--card) 92%, #fff 8%), var(--card))',
                     border: '2px solid var(--brand)', boxShadow: '0 0 0 4px color-mix(in srgb,var(--brand) 16%,transparent), 0 24px 60px -18px var(--brand)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                      <span style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: 10, flexShrink: 0, fontSize: 17, background: 'rgba(124,140,255,.18)' }}>🎁</span>
+                      <span style={{ display: 'grid', placeItems: 'center', width: 34, height: 34, borderRadius: 10, flexShrink: 0, fontSize: 17, background: 'rgba(124,140,255,.18)' }}><OnyxIcon emoji="🎁" size={15} /></span>
                       <div style={{ fontWeight: 700, fontSize: 15.5 }}>{lang === 'en' ? 'Grant paid trial' : 'Dar prueba de pago'}</div>
                     </div>
                     <div className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>{trialFor.email}</div>
@@ -1050,7 +1050,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'landingnew' && (
               <div className="card">
                 <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                  <div className="row" style={{ gap: 10 }}><span style={{ fontSize: 18 }}>✨</span><h3>{lang === 'en' ? 'New landing (preview)' : 'Landing nueva (vista previa)'}</h3></div>
+                  <div className="row" style={{ gap: 10 }}><span style={{ fontSize: 18 }}><OnyxIcon emoji="✨" size={15} /></span><h3>{lang === 'en' ? 'New landing (preview)' : 'Landing nueva (vista previa)'}</h3></div>
                   <a className="btn btn-primary" href="/bot-builder" target="_blank" rel="noopener">{lang === 'en' ? 'Open in new tab' : 'Abrir en pestaña'} ↗</a>
                 </div>
                 <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{lang === 'en' ? 'Native bilingual landing at /bot-builder: line icons, live "bots built" counter and pricing from your Admin. Linked in the public menu. It does not replace your current homepage.' : 'Landing nativa y bilingüe en /bot-builder: iconos de línea, contador de "robots construidos" en vivo y precios desde tu Admin. Enlazada en el menú público. No reemplaza tu página de inicio actual.'}</p>
@@ -1235,7 +1235,7 @@ function PayCheck({ lang }: { lang: string }) {
 
       {/* Precios de planes y add-ons contra Stripe */}
       <div className="card" style={{ marginBottom: 14, overflowX: 'auto' }}>
-        <h3 style={{ marginBottom: 8 }}>💳 {en ? 'Prices vs Stripe' : 'Precios vs Stripe'}</h3>
+        <h3 style={{ marginBottom: 8 }}><OnyxIcon emoji="💳" size={15} /> {en ? 'Prices vs Stripe' : 'Precios vs Stripe'}</h3>
         {!data ? <p className="muted">{en ? 'Loading…' : 'Cargando…'}</p> : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5, minWidth: 520 }}>
             <thead><tr style={{ textAlign: 'left', color: 'var(--mut)', fontSize: 12 }}>
@@ -1256,7 +1256,7 @@ function PayCheck({ lang }: { lang: string }) {
 
       {/* Checklist de protección */}
       <div className="card" style={{ marginBottom: 14 }}>
-        <h3 style={{ marginBottom: 8 }}>🔒 {en ? 'Chargeback protection' : 'Protección anti-chargeback'}</h3>
+        <h3 style={{ marginBottom: 8 }}><OnyxIcon emoji="🔒" size={15} /> {en ? 'Chargeback protection' : 'Protección anti-chargeback'}</h3>
         <div style={{ display: 'grid', gap: 8 }}>
           {(data?.checklist || []).map((c: any, i: number) => (
             <div key={i} className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
@@ -1265,12 +1265,12 @@ function PayCheck({ lang }: { lang: string }) {
             </div>
           ))}
         </div>
-        {data?.testHint ? <p className="muted" style={{ fontSize: 12.5, marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>🧪 {data.testHint}</p> : null}
+        {data?.testHint ? <p className="muted" style={{ fontSize: 12.5, marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}><OnyxIcon emoji="🧪" size={15} /> {data.testHint}</p> : null}
       </div>
 
       {/* Cola de disputas: revisar y enviar evidencia a Stripe */}
       <div className="card">
-        <h3 style={{ marginBottom: 4 }}>📨 {en ? 'Open disputes' : 'Disputas abiertas'}</h3>
+        <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="📨" size={15} /> {en ? 'Open disputes' : 'Disputas abiertas'}</h3>
         <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{en ? 'When a customer disputes a charge, the evidence is auto-drafted. Review it and submit to Stripe.' : 'Cuando un cliente reclama un cargo, la evidencia se arma sola. Revísala y envíala a Stripe.'}</p>
         {disputes.length === 0 ? <p className="muted" style={{ fontSize: 13 }}>{en ? 'No open disputes 🎉' : 'Sin disputas abiertas 🎉'}</p> : (
           <div style={{ display: 'grid', gap: 10 }}>
@@ -1288,7 +1288,7 @@ function PayCheck({ lang }: { lang: string }) {
                   </div>
                 </div>
                 <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
-                  {(() => { const dl = daysLeft(d.dueBy); return dl ? <span className="pill" style={{ fontSize: 11, fontWeight: 700, background: dl.urgent ? 'rgba(255,69,58,.16)' : 'rgba(255,159,10,.16)', color: dl.urgent ? '#c62f26' : '#b26a00' }}>⏳ {dl.label}</span> : null; })()}
+                  {(() => { const dl = daysLeft(d.dueBy); return dl ? <span className="pill" style={{ fontSize: 11, fontWeight: 700, background: dl.urgent ? 'rgba(255,69,58,.16)' : 'rgba(255,159,10,.16)', color: dl.urgent ? '#c62f26' : '#b26a00' }}><OnyxIcon emoji="⏳" size={15} /> {dl.label}</span> : null; })()}
                   <span className="muted" style={{ fontSize: 11.5 }}>
                     {en ? 'Terms' : 'Términos'}: {d.consent ? `✔ ${d.termsVersion || ''}` : '—'} · {en ? 'Deliveries' : 'Entregas'}: {(d.deliveryLog || []).length}
                   </span>
@@ -1300,7 +1300,7 @@ function PayCheck({ lang }: { lang: string }) {
 
         {cfg && (
           <div className="card" style={{ marginTop: 14 }}>
-            <h3 style={{ marginBottom: 4 }}>🛟 {en ? 'Auto-submit safety net' : 'Respaldo automático'}</h3>
+            <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🛟" size={15} /> {en ? 'Auto-submit safety net' : 'Respaldo automático'}</h3>
             <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
               {en ? 'If you don\'t review a dispute in time, the system submits the built evidence to Stripe on its own, a few days before the deadline. So you never miss the window.'
                   : 'Si no revisas una disputa a tiempo, el sistema envía la evidencia armada a Stripe solo, unos días antes del plazo. Así nunca se te pasa la fecha.'}
@@ -1350,7 +1350,7 @@ function EmailRoutesControl({ lang }: { lang: string }) {
   );
   return (
     <div className="card" style={{ marginBottom: 12 }}>
-      <h3 style={{ marginBottom: 4 }}>✉️ {en ? 'Email addresses' : 'Direcciones de correo'}</h3>
+      <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="✉" size={15} />️ {en ? 'Email addresses' : 'Direcciones de correo'}</h3>
       <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
         {en ? 'One place to decide where mail comes FROM and which inbox each type of alert goes TO. They can all forward to the same Gmail, but a separate address per purpose lets you filter (and keeps disputes out of support).'
             : 'Un solo lugar decide DESDE dónde salen los correos y a QUÉ buzón entra cada aviso. Todas pueden reenviar al mismo Gmail, pero una dirección por función te deja filtrar (y saca las disputas de support).'}
@@ -1550,7 +1550,7 @@ function Modules() {
                   if (!r.ok || !Array.isArray(j.reviews) || !j.reviews.length) { alert(j.hint || j.error || 'IA no disponible'); return; }
                   setLf((p: any) => ({ ...p, reviews: [...(p.reviews || []), ...j.reviews] }));
                 } catch { alert('Error'); }
-              }}>✨ {es ? 'Generar 5 con IA (ES/EN)' : 'Generate 5 with AI (ES/EN)'}</button>
+              }}><OnyxIcon emoji="✨" size={15} /> {es ? 'Generar 5 con IA (ES/EN)' : 'Generate 5 with AI (ES/EN)'}</button>
             {(['es', 'en'] as const).map((lng) => (
               <button key={lng} className="btn btn-primary" style={{ padding: '7px 14px' }}
                 onClick={async () => {
@@ -1561,7 +1561,7 @@ function Modules() {
                     if (!r.ok || !j.review) { alert(j.hint || j.error || 'IA no disponible'); return; }
                     setLf((p: any) => ({ ...p, reviews: [...(p.reviews || []), j.review] }));
                   } catch { alert('Error'); }
-                }}>✨ {es ? 'Generar reseña con IA' : 'Generate review with AI'} · {lng.toUpperCase()}</button>
+                }}><OnyxIcon emoji="✨" size={15} /> {es ? 'Generar reseña con IA' : 'Generate review with AI'} · {lng.toUpperCase()}</button>
             ))}
           </div>
           {/* Buscador: filtra por nombre, alias, país, texto o fecha; y por estrellas.
@@ -1675,7 +1675,7 @@ function Modules() {
               style={{ width: '100%', margin: 0 }} />
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-            <button className="btn btn-primary" onClick={() => openVerModal('promote')} disabled={!!verBusy}>🚀 {es ? 'Promover Beta → Production' : 'Promote Beta → Production'}</button>
+            <button className="btn btn-primary" onClick={() => openVerModal('promote')} disabled={!!verBusy}><OnyxIcon emoji="🚀" size={15} /> {es ? 'Promover Beta → Production' : 'Promote Beta → Production'}</button>
             <button className="btn btn-ghost" onClick={() => openVerModal('rollback')} disabled={!!verBusy || !ver.stable} title={!ver.stable ? (es ? 'No hay versión Stable a la que volver' : 'No Stable version to roll back to') : ''}>↩︎ {es ? 'Rollback a Stable' : 'Rollback to Stable'}</button>
           </div>
           <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? `Al promover: v${ver.production} → Stable · v${ver.beta} → Production · nueva Beta automática. Cada cambio pide tu PIN.` : `On promote: v${ver.production} → Stable · v${ver.beta} → Production · new Beta auto-opens. Each change asks for your PIN.`}</p>
@@ -1821,7 +1821,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                   </select>
                 ) : <span className="pill" style={{ color: roleColor(m.role), background: 'rgba(124,140,255,.12)' }}>{(t as any)['role_' + (m.role || 'admin')]}</span>}
                 {canManage && m.role !== 'owner' && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => setEditId(editId === m.id ? '' : m.id)}>{editId === m.id ? t.t_close : t.t_perms}</button>}
-                {canManage && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => { setPinEditId(pinEditId === m.id ? '' : m.id); setPinVal(''); }}>🔒 {secPins.includes(m.id) ? t.t_pinSet : t.t_pinAssign}</button>}
+                {canManage && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => { setPinEditId(pinEditId === m.id ? '' : m.id); setPinVal(''); }}><OnyxIcon emoji="🔒" size={15} /> {secPins.includes(m.id) ? t.t_pinSet : t.t_pinAssign}</button>}
                 {canManage && m.role !== 'owner' && m.email !== meEmail && <button className="btn btn-danger" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => remove(m.id)}>{t.t_remove}</button>}
               </div>
             </div>
@@ -1850,7 +1850,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
 
             {pinEditId === m.id && canManage && (
               <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
-                <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>🔒 {t.t_pinTitle} — {secPins.includes(m.id) ? <span style={{ color: 'var(--soft-green)' }}>{t.t_pinHas}</span> : t.t_pinNone}</div>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}><OnyxIcon emoji="🔒" size={15} /> {t.t_pinTitle} — {secPins.includes(m.id) ? <span style={{ color: 'var(--soft-green)' }}>{t.t_pinHas}</span> : t.t_pinNone}</div>
                 <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                   <input value={pinVal} onChange={(e) => setPinVal(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••••" inputMode="numeric" maxLength={6}
                     style={{ width: 120, letterSpacing: 4, textAlign: 'center', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)' }} />
@@ -1883,7 +1883,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
           <h3 style={{ margin: 0 }}>🕘 {t.t_activity}</h3>
           {(() => { const qp = `${logFrom ? `from=${logFrom}&` : ''}${logTo ? `to=${logTo}&` : ''}${logMember ? `member=${encodeURIComponent(logMember)}&` : ''}lang=${lang}`; return (
             <span className="row" style={{ gap: 8 }}>
-              <a className="btn btn-ghost" href={`/api/admin/activity/report?${qp}`} target="_blank" rel="noreferrer" style={{ padding: '5px 11px', fontSize: 12 }}>🖨️ PDF</a>
+              <a className="btn btn-ghost" href={`/api/admin/activity/report?${qp}`} target="_blank" rel="noreferrer" style={{ padding: '5px 11px', fontSize: 12 }}><OnyxIcon emoji="🖨️" size={15} /> PDF</a>
               <a className="btn btn-ghost" href={`/api/admin/activity/report?export=csv&${qp}`} style={{ padding: '5px 11px', fontSize: 12 }}>⤓ CSV</a>
             </span>
           ); })()}
@@ -1901,7 +1901,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
         </div>
         {/* Búsqueda por palabra: acción, admin, destino, nota… */}
         <div style={{ position: 'relative', marginBottom: 10, maxWidth: 360 }}>
-          <span style={{ position: 'absolute', left: 10, top: 8, color: 'var(--mut)' }}>🔍</span>
+          <span style={{ position: 'absolute', left: 10, top: 8, color: 'var(--mut)' }}><OnyxIcon emoji="🔍" size={15} /></span>
           <input value={logQ} onChange={(e) => { setLogQ(e.target.value); setLogAll(true); }} placeholder={lang === 'es' ? 'Buscar: crédito, email, plan, nota…' : 'Search: credit, email, plan, note…'} style={{ width: '100%', margin: 0, paddingLeft: 32 }} />
         </div>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -2007,7 +2007,7 @@ function BotPlanMatrixEditor() {
     <div className="card" style={{ marginTop: 18 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 15 }}>🤖 {es ? 'Planes del Bot Builder' : 'Bot Builder plans'}</div>
+          <div style={{ fontWeight: 800, fontSize: 15 }}><OnyxIcon emoji="🤖" size={15} /> {es ? 'Planes del Bot Builder' : 'Bot Builder plans'}</div>
           <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'Controla la tabla comparativa del landing y qué desbloquea cada plan (métricas avanzadas, laboratorio, etc.).' : 'Controls the landing comparison table and what each plan unlocks (advanced metrics, portfolio lab, etc.).'}</div>
         </div>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>

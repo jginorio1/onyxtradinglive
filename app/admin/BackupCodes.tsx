@@ -42,7 +42,7 @@ export default function BackupCodes() {
           {codes.map((c) => <div key={c} className="code" style={{ textAlign: 'center', letterSpacing: 2, fontSize: 14 }}>{c}</div>)}
         </div>
       )}
-      {codes && <button className="btn btn-ghost" style={{ fontSize: 12.5, marginBottom: 10 }} onClick={() => { try { navigator.clipboard.writeText(codes.join('\n')); } catch {} }}>📋 {es ? 'Copiar todos' : 'Copy all'}</button>}
+      {codes && <button className="btn btn-ghost" style={{ fontSize: 12.5, marginBottom: 10 }} onClick={() => { try { navigator.clipboard.writeText(codes.join('\n')); } catch {} }}><OnyxIcon emoji="📋" size={15} /> {es ? 'Copiar todos' : 'Copy all'}</button>}
 
       {err && <div style={{ color: 'var(--amber)', fontSize: 12.5, marginBottom: 8 }}>{err}</div>}
       <button className="btn btn-primary" onClick={generate} disabled={busy} style={{ padding: '8px 12px' }}>

@@ -175,7 +175,7 @@ export default function Bots() {
   // Tarjeta de upsell reutilizable cuando una capacidad no está en el plan.
   const UpsellBox = ({ title, desc }: { title: string; desc: string }) => (
     <div style={{ marginTop: 8, border: '1px dashed color-mix(in srgb,var(--brand) 45%,transparent)', background: 'color-mix(in srgb,var(--brand) 7%,transparent)', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
-      <div style={{ fontWeight: 800, fontSize: 13.5 }}>🔒 {title}</div>
+      <div style={{ fontWeight: 800, fontSize: 13.5 }}><OnyxIcon emoji="🔒" size={15} /> {title}</div>
       <div className="muted" style={{ fontSize: 12, margin: '6px 0 10px' }}>{desc}</div>
       <a href="/dashboard/cuenta?upgrade=1" className="btn btn-primary" style={{ fontSize: 12, padding: '6px 14px' }}>{L('Mejorar plan', 'Upgrade plan')}</a>
     </div>

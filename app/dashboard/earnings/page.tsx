@@ -120,7 +120,7 @@ function EmptyState({ es }: { es: boolean }) {
   ];
   return (
     <div style={{ borderRadius: 16, padding: 24, background: 'var(--card)', border: '1px solid var(--line)', textAlign: 'center' }}>
-      <div style={{ fontSize: 34 }}>💰</div>
+      <div style={{ fontSize: 34 }}><OnyxIcon emoji="💰" size={15} /></div>
       <h3 style={{ margin: '8px 0 4px' }}>{es ? 'Aún no tienes ganancias' : 'No earnings yet'}</h3>
       <p className="muted" style={{ fontSize: 13.5, maxWidth: 480, margin: '0 auto 16px' }}>{es ? 'Estas son las formas de ganar dinero dentro de Onyx. Empieza por la que más te encaje.' : 'These are the ways to earn money inside Onyx. Start with whichever fits you best.'}</p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 10, textAlign: 'left', alignItems: 'stretch' }}>

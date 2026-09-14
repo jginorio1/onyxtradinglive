@@ -4,6 +4,7 @@ import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
 import RangeBar, { type Range, defaultRange } from './RangeBar';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 function dot(color: string) {
   return <span style={{ width: 10, height: 10, borderRadius: '50%', flex: 'none', background: color, display: 'inline-block' }} />;
@@ -44,7 +45,7 @@ export default function Diagnostics() {
   return (
     <div>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <div className="tabhead" style={{ marginBottom: 12 }}><div className="th-row"><span className="th-ic">🩺</span><span className="th-t">{t.h_diag_t}</span></div><div className="th-s">{t.h_diag_s}</div></div>
+        <div className="tabhead" style={{ marginBottom: 12 }}><div className="th-row"><span className="th-ic"><OnyxIcon emoji="🩺" size={15} /></span><span className="th-t">{t.h_diag_t}</span></div><div className="th-s">{t.h_diag_s}</div></div>
         <RangeBar value={range} onChange={setRange} presets={['d7', 'd30', 'quarter', 'custom']}
           pdfUrl={(f, tt) => `/api/admin/diag/report?from=${f}&to=${tt}&lang=${lang}`}
           csvUrl={(f, tt) => `/api/admin/diag/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />

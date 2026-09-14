@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Selector de fecha + hora colorido e intuitivo (calendario + AM/PM), el mismo
 // estilo que las clases en vivo de Onyx Academy. Emite "YYYY-MM-DDTHH:mm" (hora
@@ -81,7 +82,7 @@ export default function DateTimePicker({ value, onChange, es = true, minNow = fa
           border: '1px solid ' + (datePart ? 'var(--brand)' : 'var(--line)'), cursor: 'pointer', textAlign: 'left',
           background: datePart ? 'color-mix(in srgb,var(--brand) 12%,var(--card))' : 'var(--card)', color: 'var(--tx)',
         }}>
-        <span style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(160deg,var(--brand),color-mix(in srgb,var(--brand) 55%,#000))', flexShrink: 0, fontSize: 15 }}>📅</span>
+        <span style={{ display: 'grid', placeItems: 'center', width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(160deg,var(--brand),color-mix(in srgb,var(--brand) 55%,#000))', flexShrink: 0, fontSize: 15 }}><OnyxIcon emoji="📅" size={15} /></span>
         <span style={{ flex: 1, fontSize: 14, fontWeight: datePart ? 700 : 500, color: datePart ? 'var(--tx)' : 'var(--mut)', textTransform: 'capitalize' }}>
           {summary || L('Elige fecha y hora', 'Pick date & time')}
         </span>

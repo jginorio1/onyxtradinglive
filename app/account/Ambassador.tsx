@@ -271,7 +271,7 @@ export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout'
         </div>
         <p className="muted" style={{ fontSize: 12, margin: '10px 0 6px' }}>{t.holdNote}</p>
         <p className="muted" style={{ fontSize: 12, margin: '0 0 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
-          <span style={{ color: 'var(--amber)' }}>⏱</span> {t.reqDays}
+          <span style={{ color: 'var(--amber)' }}><OnyxIcon emoji="⏱" size={15} /></span> {t.reqDays}
         </p>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
           <button className="btn btn-primary" onClick={() => { setAccept(''); setReqOpen(true); }} disabled={!canReq || busy === 'req'}>{busy === 'req' ? t.reqing : t.req}</button>
@@ -311,7 +311,7 @@ export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout'
         ) : pm === 'credit' ? (
           <div style={{ marginTop: 12 }}>
             <div style={{ background: 'rgba(124,140,255,.12)', borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <span style={{ fontSize: 18 }}>🎁</span>
+              <span style={{ fontSize: 18 }}><OnyxIcon emoji="🎁" size={15} /></span>
               <div style={{ fontSize: 13, color: '#9aa4ff', lineHeight: 1.6 }}>{t.creditExpl}</div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--line)', marginTop: 12, paddingTop: 10, fontSize: 13 }}>
@@ -346,7 +346,7 @@ export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout'
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 10, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', maxWidth: 460 }}>
                 {addrValid(pd, net)
                   ? <img src={`/api/qr?data=${encodeURIComponent(pd.trim())}&size=120`} alt="QR" width={72} height={72} style={{ borderRadius: 8, background: '#fff', padding: 4 }} />
-                  : <div style={{ width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)', fontSize: 26 }}>⚠</div>}
+                  : <div style={{ width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--red)', fontSize: 26 }}><OnyxIcon emoji="⚠" size={15} /></div>}
                 <div style={{ fontSize: 12, lineHeight: 1.6 }}>
                   {addrValid(pd, net)
                     ? <><span style={{ color: 'var(--green)' }}>✓ {t.netOk} ({net})</span><br /><span className="muted">{t.usdtQr}</span></>
@@ -357,7 +357,7 @@ export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout'
             {/* La dirección NO dice si recibe USDT o USDC: confirmación obligatoria. */}
             {addrValid(pd, net) && (
               <>
-                <div style={{ background: 'rgba(240,160,20,.12)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--amber)', marginTop: 10, maxWidth: 460, lineHeight: 1.5 }}>⚠ {t.usdtWarn}</div>
+                <div style={{ background: 'rgba(240,160,20,.12)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--amber)', marginTop: 10, maxWidth: 460, lineHeight: 1.5 }}><OnyxIcon emoji="⚠" size={15} /> {t.usdtWarn}</div>
                 <label className="row" style={{ gap: 8, marginTop: 10, fontSize: 13, cursor: 'pointer', alignItems: 'flex-start', maxWidth: 460 }}>
                   <input type="checkbox" checked={usdtOk} onChange={(e) => setUsdtOk(e.target.checked)} style={{ margin: '3px 0 0', width: 'auto' }} />
                   <span>{t.usdtConfirmChk}</span>
@@ -449,12 +449,12 @@ export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout'
                 <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.reqWallet}</div>
                 <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 11px', fontFamily: 'var(--font-mono, monospace)', fontSize: 12, wordBreak: 'break-all', lineHeight: 1.5 }}>{pd}</div>
                 <div style={{ background: 'rgba(240,160,20,.12)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--amber)', display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 8 }}>
-                  <span>⚠</span><span>{t.reqWalletWarn}</span>
+                  <span><OnyxIcon emoji="⚠" size={15} /></span><span>{t.reqWalletWarn}</span>
                 </div>
               </div>
             )}
             <div style={{ background: 'rgba(240,160,20,.12)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--amber)', display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 12 }}>
-              <span>⏱</span><span>{t.reqDays}</span>
+              <span><OnyxIcon emoji="⏱" size={15} /></span><span>{t.reqDays}</span>
             </div>
             <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.reqType} <code style={{ fontWeight: 700 }}>{t.reqWord}</code></div>
             <input value={accept} onChange={(e) => setAccept(e.target.value.toUpperCase())} placeholder={t.reqWord} style={{ fontFamily: 'var(--font-mono, monospace)', letterSpacing: 1 }} />
