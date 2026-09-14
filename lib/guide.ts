@@ -293,7 +293,7 @@ export const ARTICLES: Article[] = [
         ] },
         { h: '⌨️ Las teclas F4, F7 y Ctrl+N' },
         { p: 'F4 y F7 son teclas de función: están en la fila de arriba del teclado (F1, F2, F3…). Ctrl+N significa mantener pulsada la tecla Ctrl y, sin soltarla, pulsar la N.' },
-        { note: 'En Windows: pulsa F4 y F7 directamente.\nEn Mac: MetaTrader es un programa de Windows, así que corre dentro de un envoltorio (el que da tu bróker, o PlayOnMac/Wine). Ahí puede que necesites pulsar Fn + F4 o Fn + F7 para que funcionen las teclas de función, y en algunos casos Cmd en vez de Ctrl. Todos los menús (Archivo, Herramientas…) están igual, así que siempre puedes usar el ratón en vez de las teclas.', title: 'Windows vs Mac' },
+        { note: 'En Windows: pulsa F4 y F7 directamente.\nEn Mac: sí funciona. Descarga MetaTrader para Mac desde tu bróker (viene listo para usar) y tus EA corren igual que en Windows. Como por dentro es un programa de Windows, las teclas de función pueden pedir Fn + F4 o Fn + F7, y a veces Cmd en vez de Ctrl. Todos los menús (Archivo, Herramientas…) son idénticos, así que siempre puedes usar el ratón en lugar de las teclas.\ncTrader es la excepción: no tiene app de Mac, así que ahí necesitarías un VPS de Windows o una PC.', title: 'Windows vs Mac' },
         { h: 'Si no sincroniza' },
         { p: 'Casi siempre es una de estas cuatro, en este orden de probabilidad:' },
         { list: [
@@ -317,7 +317,7 @@ export const ARTICLES: Article[] = [
         ] },
         { h: '⌨️ The F4, F7 and Ctrl+N keys' },
         { p: 'F4 and F7 are function keys: they sit on the top row of your keyboard (F1, F2, F3…). Ctrl+N means hold the Ctrl key and, without releasing it, press N.' },
-        { note: 'On Windows: press F4 and F7 directly.\nOn Mac: MetaTrader is a Windows program, so it runs inside a wrapper (your broker’s, or PlayOnMac/Wine). There you may need to press Fn + F4 or Fn + F7 for the function keys to work, and in some cases Cmd instead of Ctrl. All menus (File, Tools…) are the same, so you can always use the mouse instead of the keys.', title: 'Windows vs Mac' },
+        { note: 'On Windows: press F4 and F7 directly.\nOn Mac: it works. Download MetaTrader for Mac from your broker (it comes ready to use) and your EAs run just like on Windows. Since it is a Windows program under the hood, the function keys may need Fn + F4 or Fn + F7, and sometimes Cmd instead of Ctrl. All menus (File, Tools…) are identical, so you can always use the mouse instead of the keys.\ncTrader is the exception: it has no Mac app, so there you would need a Windows VPS or a PC.', title: 'Windows vs Mac' },
         { h: 'If it does not sync' },
         { p: 'It is almost always one of these four, in this order of likelihood:' },
         { list: [

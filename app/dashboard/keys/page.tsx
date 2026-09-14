@@ -9,6 +9,7 @@ import { ACC_TYPES } from '@/lib/accountMeta';
 import { errMsg } from '@/lib/i18nErrors';
 import InstallWizard, { WIZ } from './InstallWizard';
 import QrPop from '@/app/components/QrPop';
+import MacInstallNote from '@/app/components/MacInstallNote';
 import { useCatalog } from '@/lib/useCatalog';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -494,6 +495,8 @@ export default function KeysPage() {
                     <a className="muted" style={{ fontSize: 12, textDecoration: 'underline' }} href="/ctrader/GUIA_CTRADER.md" target="_blank" rel="noreferrer">{t.ctGuide}</a>
                   </div>
                 )}
+                {/* Nota automática solo para usuarios de Mac (no aparece en Windows). */}
+                {(kind === 'mt' || kind === 'ctrader') && <MacInstallNote kind={kind === 'ctrader' ? 'ctrader' : 'mt'} />}
               </div>
             </div>
 

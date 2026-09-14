@@ -157,6 +157,7 @@ const dict = {
       cta1: 'Empieza gratis →', cta2: 'Ver precios', note: 'Sin tarjeta para empezar · Cancela cuando quieras',
     },
     trust: ['✅ MT4, MT5 y cTrader', '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
+    osCompat: 'Funciona en:',
     logosT: 'Compatible con tu bróker y tu prop firm',
     videoBadge: '▶ En acción',
     videoT: 'Mira Onyx por dentro',
@@ -296,6 +297,7 @@ const dict = {
       cta1: 'Start free →', cta2: 'See pricing', note: 'No card to start · Cancel anytime',
     },
     trust: ['✅ MT4, MT5 & cTrader', '🔒 Read-only connection', '💳 Secure payments with Stripe'],
+    osCompat: 'Runs on Windows and Mac',
     logosT: 'Works with your broker and prop firm',
     videoBadge: '▶ In action',
     videoT: 'See Onyx from the inside',
@@ -641,6 +643,19 @@ export default function Home() {
       <div className="wrap" style={{ padding: '10px 22px 30px' }}>
         <div className="row" style={{ justifyContent: 'center', gap: 34, flexWrap: 'wrap', color: 'var(--mut)', fontSize: 15 }}>
           {trustBadges.map((x, i) => { const first = [...x][0]; const meta = TRUST_ICON[first]; const text = meta ? x.slice(first.length).trim() : x; return <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>{meta && <span style={{ color: meta.color, display: 'inline-flex' }}><OnyxIcon name={meta.name} size={16} glow={false} /></span>}{text}</span>; })}
+        </div>
+        {/* Compatibilidad de sistema operativo: funciona en Windows y en Mac.
+            Glyphs propios (mosaicos + ⌘), no logos de marca. */}
+        <div className="row" style={{ justifyContent: 'center', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
+          <span style={{ fontSize: 13, color: 'var(--mut)' }}>{t.osCompat}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: 'var(--tx)', background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 20, padding: '4px 13px' }}>
+            <svg width="14" height="14" viewBox="0 0 10 10" aria-hidden="true"><rect x="0" y="0" width="4.2" height="4.2" rx=".7" fill="currentColor" /><rect x="5.8" y="0" width="4.2" height="4.2" rx=".7" fill="currentColor" /><rect x="0" y="5.8" width="4.2" height="4.2" rx=".7" fill="currentColor" /><rect x="5.8" y="5.8" width="4.2" height="4.2" rx=".7" fill="currentColor" /></svg>
+            Windows
+          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: 'var(--tx)', background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 20, padding: '4px 13px' }}>
+            <span style={{ fontSize: 15, lineHeight: 1 }} aria-hidden="true">⌘</span>
+            macOS
+          </span>
         </div>
       </div>
 
