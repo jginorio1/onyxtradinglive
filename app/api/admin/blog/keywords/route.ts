@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { getSetting, saveSetting, blogKeywordsSettings, type BlogKeywords } from '@/lib/settings';
 import { listAllPosts } from '@/lib/blog';
-import { gscOverview, gscConfigured } from '@/lib/seoSearchConsole';
+import { gscOverview, gscConfigured, oppScore, isStrikingDistance } from '@/lib/seoSearchConsole';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -24,20 +24,26 @@ export async function GET() {
   const coverage: Record<string, number> = {};
   for (const k of [...(settings.es || []), ...(settings.en || [])]) coverage[k] = cov(k);
 
-  // Ideas: consultas reales de Google (impresiones + posición). Marca oportunidad
-  // = muchas impresiones pero posición floja (8-40) → fácil de mejorar.
+  // Ideas: consultas reales de Google (impresiones + posición). Ordenadas por
+  // "distancia de golpe" (mismo scoring que usa el generador), no por impresiones
+  // puras. Así lo fácil de ganar —página 2, borde de página 1 y tu marca— sale
+  // arriba, en vez de términos cabeza imposibles para un sitio nuevo.
   let ideas: any[] = [];
   let gsc = gscConfigured();
   if (gsc) {
     try {
       const ov = await gscOverview(90);
       if (ov.ok) {
-        ideas = (ov.queries || []).slice(0, 40).map((q: any) => ({
-          query: q.keys?.[0] || '', impressions: Math.round(q.impressions || 0), clicks: Math.round(q.clicks || 0),
-          position: Math.round((q.position || 0) * 10) / 10,
-          opportunity: (q.impressions || 0) >= 20 && (q.position || 0) >= 8 && (q.position || 0) <= 40,
-        })).filter((x: any) => x.query);
-        ideas.sort((a: any, b: any) => (b.opportunity ? 1 : 0) - (a.opportunity ? 1 : 0) || b.impressions - a.impressions);
+        ideas = (ov.queries || []).map((q: any) => {
+          const impressions = Math.round(q.impressions || 0);
+          const position = Math.round((q.position || 0) * 10) / 10;
+          return {
+            query: q.keys?.[0] || '', impressions, clicks: Math.round(q.clicks || 0), position,
+            opportunity: isStrikingDistance(impressions, position),
+          };
+        }).filter((x: any) => x.query);
+        ideas.sort((a: any, b: any) => oppScore(b.impressions, b.position, b.query) - oppScore(a.impressions, a.position, a.query));
+        ideas = ideas.slice(0, 40);
       }
     } catch (e) { await logError('blog_kw_gsc', e); }
   }

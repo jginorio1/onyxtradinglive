@@ -117,6 +117,40 @@ export async function gscOverview(days = 28): Promise<GscResult> {
 // Sirven para alimentar a la IA del blog con lo que la gente de verdad busca.
 // ============================================================
 export type GscOpportunity = { query: string; impressions: number; clicks: number; position: number };
+
+// ── Oportunidades SEO: puntuación por "distancia de golpe" ──────────────────
+// La idea: priorizar términos DONDE YA ASOMAS pero aún no estás arriba —el borde
+// de la página 1 y sobre todo la página 2 (posiciones ≈5-20)— porque ahí un
+// artículo dedicado SÍ te empuja al top. Amortiguamos las impresiones con log()
+// para que, en un sitio joven con pocas impresiones, mande la POSICIÓN y no un
+// término cabeza con muchas impresiones pero imposible de ganar a corto plazo.
+const BRAND_TOKEN = 'onyx'; // términos de tu marca: siempre debes poseerlos.
+
+// Peso por posición: máximo en pág. 2 (11-20) y borde de pág. 1 (4-10); ya-en-top
+// pesa poco (poco que ganar) y muy lejos casi nada.
+export function oppPosWeight(pos: number): number {
+  if (!(pos > 0)) return 0;
+  if (pos < 4) return 0.35;   // ya en el top
+  if (pos <= 10) return 1.0;  // fondo de página 1
+  if (pos <= 20) return 1.2;  // página 2 → distancia de golpe (lo mejor)
+  if (pos <= 30) return 0.7;
+  if (pos <= 40) return 0.5;
+  if (pos <= 60) return 0.28;
+  if (pos <= 80) return 0.15;
+  return 0.08;                // muy lejos
+}
+// Puntúa una consulta: peso de posición × impresiones amortiguadas × boost de marca.
+export function oppScore(impressions: number, position: number, query = ''): number {
+  const base = oppPosWeight(position) * (1 + Math.log1p(Math.max(0, impressions)));
+  const brand = String(query).toLowerCase().includes(BRAND_TOKEN) ? 1.6 : 1;
+  return base * brand;
+}
+// ¿Está "a distancia de golpe"? (para la píldora verde de oportunidad). Umbral bajo
+// de impresiones a propósito: un sitio nuevo tiene pocas y aún así son señal.
+export function isStrikingDistance(impressions: number, position: number): boolean {
+  return impressions >= 2 && position >= 4 && position <= 25;
+}
+
 export async function gscOpportunities(days = 90, max = 12): Promise<GscOpportunity[]> {
   if (!gscConfigured()) return [];
   try {
@@ -126,10 +160,12 @@ export async function gscOpportunities(days = 90, max = 12): Promise<GscOpportun
       query: q.keys?.[0] || '', impressions: Math.round(q.impressions || 0),
       clicks: Math.round(q.clicks || 0), position: Math.round((q.position || 0) * 10) / 10,
     })).filter((x) => x.query && x.query.length <= 90);
-    // Oportunidad: suficientes impresiones y posición entre 6 y 40 (asomando en Google,
-    // pero no en el top). Si no hay ninguna clara, cae a las de más impresiones.
-    const opp = rows.filter((x) => x.impressions >= 15 && x.position >= 6 && x.position <= 40);
-    const list = (opp.length ? opp : rows).sort((a, b) => b.impressions - a.impressions);
+    // Quitamos el ruido puro (0-1 impresiones); si no queda nada, usamos todo.
+    const withData = rows.filter((x) => x.impressions >= 2 && x.position > 0);
+    const base = withData.length ? withData : rows;
+    // Orden por distancia de golpe (no por impresiones puras). Así el generador
+    // teje en los artículos los términos GANABLES, no los cabeza imposibles.
+    const list = base.slice().sort((a, b) => oppScore(b.impressions, b.position, b.query) - oppScore(a.impressions, a.position, a.query));
     return list.slice(0, Math.max(0, max));
   } catch { return []; }
 }
