@@ -1,0 +1,6 @@
+*.tsx
+capacitor.config.ts
+*.ts
+/node_modules/.bin
+/node_modules
+/mobile
