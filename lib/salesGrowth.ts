@@ -44,9 +44,17 @@ export async function unassignedLeads(limit = 100): Promise<any[]> {
 // Reparte los leads sin dueño entre los vendedores activos (nivel vendedor),
 // balanceando por quien tiene menos clientes. Devuelve cuántos asignó.
 export async function assignLeadsRoundRobin(max = 200): Promise<{ assigned: number }> {
-  const { data: reps } = await supabaseAdmin.from('sales_reps').select('id').eq('status', 'active').eq('level', 'vendedor');
-  const sellers = (reps || []) as any[];
+  const { data: reps } = await supabaseAdmin.from('sales_reps').select('id,user_id').eq('status', 'active').eq('level', 'vendedor');
+  let sellers = (reps || []) as any[];
   if (!sellers.length) return { assigned: 0 };
+  // Gating por formación: si está activo, solo reparte a quien aprobó las rutas
+  // marcadas como requisito. competencyOk devuelve true si el gating está apagado.
+  try {
+    const { competencyOk } = await import('@/lib/training');
+    const eligible: any[] = [];
+    for (const r of sellers) { if (r.user_id && (await competencyOk(r.user_id))) eligible.push(r); }
+    if (eligible.length) sellers = eligible; // si nadie califica, no bloqueamos el reparto por completo
+  } catch {}
   // Carga actual por vendedor.
   const load: Record<string, number> = {};
   for (const r of sellers) { const { count } = await supabaseAdmin.from('sales_clients').select('*', { count: 'exact', head: true }).eq('rep_id', r.id); load[r.id] = count || 0; }
