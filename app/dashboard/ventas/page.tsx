@@ -19,7 +19,7 @@ function Hint({ text }: { text: string }) {
 // atender tickets, su equipo y cobros (Stripe Connect o USDT).
 export default function VentasPanel() {
   const [d, setD] = useState<any>(null);
-  const [tab, setTab] = useState<'resumen' | 'desempeno' | 'extracto' | 'clientes' | 'equipo' | 'evaluar' | 'soporte' | 'cobros' | 'kit' | 'guia'>('resumen');
+  const [tab, setTab] = useState<'resumen' | 'desempeno' | 'extracto' | 'clientes' | 'equipo' | 'evaluar' | 'soporte' | 'cobros' | 'kit' | 'formacion' | 'guia'>('resumen');
   const [msg, setMsg] = useState('');
   const [lang, setLang] = useState<'es' | 'en'>('es');
   const L = (es: string, en: string) => (lang === 'es' ? es : en);
@@ -81,6 +81,7 @@ export default function VentasPanel() {
         {tabBtn('soporte', L('Soporte', 'Support') + (d.tickets.length ? ` (${d.tickets.length})` : ''))}
         {tabBtn('cobros', L('Cobros', 'Payouts'))}
         {d.kit && d.kit.length > 0 && tabBtn('kit', L('Kit', 'Kit'))}
+        {d.rep.level !== 'vendedor' && tabBtn('formacion', L('Formación equipo', 'Team training'))}
         {tabBtn('guia', L('Guía', 'Guide'))}
       </div>
 
@@ -172,6 +173,7 @@ export default function VentasPanel() {
       </div>}
 
       {tab === 'kit' && <KitTab kit={d.kit || []} lang={lang} L={L} card={card} btn={btn} setMsg={setMsg} />}
+      {tab === 'formacion' && <TeamTraining lang={lang} L={L} card={card} />}
 
       {tab === 'guia' && <div style={card}>
         <h3 style={{ color: 'var(--tx,#e8ecf5)', marginTop: 0 }}>{L('Cómo trabajar y ayudar a tus clientes', 'How to work and help your clients')}</h3>
@@ -250,6 +252,51 @@ function NotesPanel({ clientId, L }: any) {
 }
 
 // Kit de materiales de venta (guiones copiables, enlaces, imágenes).
+// Cumplimiento de formación del equipo del supervisor (solo los suyos).
+function TeamTraining({ lang, L, card }: any) {
+  const [rep, setRep] = useState<any>(null);
+  const [no, setNo] = useState(false);
+  useEffect(() => { (async () => {
+    const r = await fetch('/api/sales/training').then((x) => x.json()).catch(() => null);
+    if (r?.canSeeTeam && r.report) setRep(r.report); else setNo(true);
+  })(); }, []);
+  if (no) return <div style={card}>{L('No tienes equipo para supervisar todavía.', 'No team to supervise yet.')}</div>;
+  if (!rep) return <div style={card}>{L('Cargando…', 'Loading…')}</div>;
+  const su = rep.summary || {};
+  const cell = (st: string) => {
+    const m: any = { ok: ['rgba(62,207,142,.16)', '#3ecf8e', L('Al día', 'OK')], expired: ['rgba(224,160,58,.18)', '#e0a03a', L('Vencido', 'Exp')], pending: ['rgba(242,85,90,.14)', '#f2555a', L('Pendiente', 'Pend')] };
+    const [bg, fg, tx] = m[st] || m.pending;
+    return <span style={{ fontSize: 11, background: bg, color: fg, padding: '2px 8px', borderRadius: 20, fontWeight: 600, whiteSpace: 'nowrap' }}>{tx}</span>;
+  };
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {[[L('Personas', 'People'), su.total, 'var(--tx,#e8ecf5)'], [L('Al día', 'Compliant'), su.compliant, '#3ecf8e'], [L('Vencidos', 'Overdue'), su.overdue, '#e0a03a'], [L('Pendientes', 'Pending'), su.pending, '#f2555a']].map((c: any, i) => (
+          <div key={i} style={{ ...card, flex: 1, minWidth: 120, padding: '12px 14px' }}><div style={{ fontSize: 22, fontWeight: 700, color: c[2] }}>{c[1] || 0}</div><div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>{c[0]}</div></div>
+        ))}
+      </div>
+      <div style={{ ...card, overflowX: 'auto' }}>
+        <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 10 }}>{L('Formación de mi equipo', 'My team training')}</div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+          <thead><tr>
+            <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--mut,#9aa6bd)', fontWeight: 500 }}>{L('Persona', 'Person')}</th>
+            {rep.tracks.map((t: any) => <th key={t.id} style={{ textAlign: 'center', padding: '6px 8px', color: 'var(--mut,#9aa6bd)', fontWeight: 500, minWidth: 80 }}>{t.title}</th>)}
+          </tr></thead>
+          <tbody>
+            {rep.people.map((p: any) => (
+              <tr key={p.user_id} style={{ borderTop: '1px solid var(--line,#2a3350)', opacity: p.active ? 1 : 0.55 }}>
+                <td style={{ padding: '8px' }}><div style={{ color: 'var(--tx,#e8ecf5)', fontWeight: 600 }}>{p.name || p.email || p.user_id.slice(0, 8)} {p.compliant && '✓'}</div><div style={{ color: 'var(--mut,#9aa6bd)', fontSize: 11 }}>{p.role}</div></td>
+                {rep.tracks.map((t: any) => <td key={t.id} style={{ textAlign: 'center', padding: '8px' }}>{p.items[t.id] ? cell(p.items[t.id].status) : <span style={{ color: 'var(--mut,#9aa6bd)' }}>—</span>}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {rep.people.length === 0 && <div style={{ color: 'var(--mut,#9aa6bd)', fontSize: 13 }}>{L('Tu equipo aún no tiene formación asignada.', 'Your team has no training assigned yet.')}</div>}
+      </div>
+    </div>
+  );
+}
+
 function KitTab({ kit, lang, L, card, btn, setMsg }: any) {
   const items = (kit || []).filter((a: any) => a.lang === 'all' || a.lang === lang);
   return (
