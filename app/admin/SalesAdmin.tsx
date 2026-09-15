@@ -241,7 +241,7 @@ function CreateRep({ reps, act, inp, btnP, lvName }: any) {
 
 function AppRow({ a, reps, act, inp, btn, btnP, canManage, lvName }: any) {
   const [level, setLevel] = useState(a.desired_role === 'supervisor' ? 'l1' : 'vendedor');
-  const [parent, setParent] = useState('');
+  const [parent, setParent] = useState(a.sponsor_rep_id || '');   // pre-lleno con quien lo trajo
   return (
     <div style={{ background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: 14, marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
@@ -251,6 +251,7 @@ function AppRow({ a, reps, act, inp, btn, btnP, canManage, lvName }: any) {
           <span className="muted" style={{ fontSize: 11 }}>{new Date(a.created_at).toLocaleDateString()}</span>
         </div>
       </div>
+      {a.sponsor_name && <div style={{ fontSize: 12, marginTop: 6, color: '#e5b567' }}>↳ Traído por <b>{a.sponsor_name}</b> · se colgará en su rama</div>}
       {(a.experience || a.audience || a.note) && <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>{[a.experience, a.audience, a.note].filter(Boolean).join(' · ')}</div>}
       {canManage && <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
         <select value={level} onChange={(e) => setLevel(e.target.value)} style={inp}><option value="vendedor">{lvName('vendedor')}</option><option value="l1">{lvName('l1')}</option><option value="l2">{lvName('l2')}</option></select>
@@ -759,6 +760,7 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
         <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 520 }}>
           {tog('auto_promote', 'Ascender de nivel automáticamente al llegar al umbral', 'Sube solo a un vendedor cuando alcanza los umbrales de abajo. El descenso NO es automático: lo haces tú a mano en la tarjeta de la persona. Apagado, no sube nadie solo.')}
           {tog('auto_assign_leads', 'Repartir leads sin dueño entre vendedores (round-robin)', 'Cuando alguien se registra SIN el enlace de un vendedor, el sistema lo asigna solo al vendedor con menos clientes. Apagado, esos leads quedan sin dueño hasta que los repartas a mano en Crecimiento.')}
+          {tog('recruit_auto_approve', 'Reclutamiento en cascada: aprobar solo a quien entra por el enlace de un supervisor', 'Cada supervisor tiene su enlace personal de reclutamiento (aparece en su panel). Con esto ENCENDIDO, si el candidato ya tiene cuenta en la app, se cuelga solo en la rama de quien lo trajo. Apagado (recomendado al inicio): la solicitud llega a Solicitudes ya marcada con quién lo trajo, y tú la apruebas.')}
         </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 12 }}>
           {num('promote_to_l1_clients', 'Advisor → Lead con … clientes activos', '', 'Cuántos clientes activos (pagando) debe tener un Advisor para subir solo a Lead. 0 = desactiva este ascenso.')}

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 
 // Formulario de reclutamiento (landing oculta). Bilingüe con un botón ES/EN.
@@ -32,6 +32,8 @@ export default function ApplyForm() {
   const [cvName, setCvName] = useState('');
   const [cvPath, setCvPath] = useState('');
   const [cvBusy, setCvBusy] = useState(false);
+  const [sponsor, setSponsor] = useState('');   // código del supervisor que invita (?sponsor=)
+  useEffect(() => { try { const s = new URLSearchParams(window.location.search).get('sponsor'); if (s) setSponsor(s); } catch {} }, []);
   const upd = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
 
   async function onCv(e: React.ChangeEvent<HTMLInputElement>) {
@@ -55,7 +57,7 @@ export default function ApplyForm() {
     if (cvBusy) { setErr(L('Espera a que termine de subir el CV.', 'Wait for the resume upload to finish.')); return; }
     setBusy(true);
     try {
-      const r = await fetch('/api/sales/apply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...f, resume_path: cvPath }) });
+      const r = await fetch('/api/sales/apply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...f, resume_path: cvPath, sponsor }) });
       const j = await r.json();
       if (j.ok) setDone(true); else setErr(j.error || L('No se pudo enviar. Intenta de nuevo.', 'Could not send. Try again.'));
     } catch { setErr(L('Error de red.', 'Network error.')); }

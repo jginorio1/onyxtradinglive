@@ -24,7 +24,16 @@ export async function GET() {
   for (const a of (appsRaw || []) as any[]) {
     let cv = null;
     if (a.resume_url) { try { const { data: sig } = await supabaseAdmin.storage.from('sales-cv').createSignedUrl(a.resume_url, 3600); cv = (sig as any)?.signedUrl || null; } catch {} }
-    apps.push({ ...a, resume_signed: cv });
+    // Nombre del supervisor que lo trajo (sponsor), para colgarlo en su rama.
+    let sponsor_name = null;
+    if (a.sponsor_rep_id) {
+      try {
+        const { data: sr } = await supabaseAdmin.from('sales_reps').select('display_name,user_id').eq('id', a.sponsor_rep_id).maybeSingle();
+        sponsor_name = (sr as any)?.display_name || null;
+        if (!sponsor_name && (sr as any)?.user_id) { const { data: sp } = await supabaseAdmin.from('profiles').select('email').eq('id', (sr as any).user_id).maybeSingle(); sponsor_name = (sp as any)?.email || null; }
+      } catch {}
+    }
+    apps.push({ ...a, resume_signed: cv, sponsor_name });
   }
   const { data: reps } = await supabaseAdmin.from('sales_reps').select('*').order('created_at', { ascending: true });
 

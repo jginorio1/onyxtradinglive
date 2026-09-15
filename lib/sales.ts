@@ -31,6 +31,9 @@ export type SalesSettings = {
   auto_assign_leads: boolean;
   // Ascenso automático por umbral (reversible, con freno del dueño):
   auto_promote: boolean; promote_to_l1_clients: number; promote_to_l2_team: number;
+  // Reclutamiento en cascada: si está activo, quien entra por el enlace de un
+  // supervisor se aprueba solo bajo su rama (si ya tiene cuenta en la app).
+  recruit_auto_approve: boolean;
   auto_payout: boolean;       // paga solo cuando el saldo madura
   review_before_pay: boolean; // freno global: encola pero apruebas tú
   allow_recruit: boolean;     // los supervisores pueden reclutar su equipo
@@ -73,6 +76,7 @@ const DEFAULTS: SalesSettings = {
   notify_new_client: true, notify_first_paid: true, notify_commission: true, notify_payout: true,
   auto_assign_leads: false,
   auto_promote: false, promote_to_l1_clients: 10, promote_to_l2_team: 3,
+  recruit_auto_approve: false,
   auto_payout: true, review_before_pay: false, allow_recruit: true,
   level_names: { l2: 'Director', l1: 'Lead', vendedor: 'Advisor' },
   commission_scope: { subscriptions: true, addons: true, guardian: true, academy: false, botlab: false, copy: false },

@@ -99,6 +99,20 @@ export default function VentasPanel() {
             <button style={btnP} onClick={() => { navigator.clipboard.writeText(d.link); setMsg(L('Enlace copiado ✓', 'Link copied ✓')); }}>{L('Copiar', 'Copy')}</button>
           </div>
         </div>
+        {d.perms?.can_recruit && (() => {
+          const origin = typeof window !== 'undefined' ? window.location.origin : '';
+          const recruitLink = `${origin}/unete-ventas?sponsor=${d.rep.code}`;
+          return (
+            <div style={{ ...card, borderColor: 'var(--accent,#8b93ff)' }}>
+              <div style={{ fontSize: 13, color: 'var(--tx,#e8ecf5)', fontWeight: 600, display: 'flex', alignItems: 'center' }}>{L('Arma tu equipo de ventas', 'Build your sales team')}<Hint text={L('Este enlace es para RECLUTAR vendedores para tu equipo (distinto al de invitar clientes). Quien aplique por aquí queda marcado como tuyo y se cuelga de tu rama; tú cobras override sobre lo que venda.', 'This link is to RECRUIT sellers into your team (different from the client invite link). Anyone who applies here is tagged as yours and joins your branch; you earn override on what they sell.')} /></div>
+              <div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', margin: '3px 0 8px' }}>{L('Comparte este enlace con quien quiera vender contigo:', 'Share this link with anyone who wants to sell with you:')}</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input readOnly value={recruitLink} style={{ flex: 1, minWidth: 220, padding: '9px 12px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13 }} />
+                <button style={btnP} onClick={() => { navigator.clipboard.writeText(recruitLink); setMsg(L('Enlace de reclutamiento copiado ✓', 'Recruit link copied ✓')); }}>{L('Copiar', 'Copy')}</button>
+              </div>
+            </div>
+          );
+        })()}
       </div>}
 
       {tab === 'desempeno' && <MyPerf d={d} L={L} act={act} card={card} btn={btn} btnP={btnP} />}
