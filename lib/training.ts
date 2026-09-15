@@ -230,6 +230,24 @@ export async function competencyOk(userId: string): Promise<boolean> {
   return need.every((t: any) => passed.has(t.id) && (valid.has(t.id) || true)); // el cert refuerza; el aprobado basta
 }
 
+// -------- DATOS DEL CERTIFICADO (para el PDF) --------
+export async function certData(userId: string, trackId: string, lang: Lang = 'es'): Promise<{ brand: string; personName: string; trackTitle: string; score: number; code: string; issuedAt: string; expiresAt: string | null } | null> {
+  const { data: cert } = await supabaseAdmin.from('training_certificates').select('*').eq('user_id', userId).eq('track_id', trackId).maybeSingle();
+  if (!cert) return null;
+  const s = await trainingSettings();
+  const { data: t } = await supabaseAdmin.from('training_tracks').select('title_es,title_en').eq('id', trackId).maybeSingle();
+  const { data: p } = await supabaseAdmin.from('profiles').select('name,email').eq('id', userId).maybeSingle();
+  return {
+    brand: s.brand_name,
+    personName: (p as any)?.name || (p as any)?.email || 'Onyx',
+    trackTitle: t ? T(t, 'title', lang) : '',
+    score: (cert as any).score || 0,
+    code: (cert as any).code || '',
+    issuedAt: (cert as any).issued_at,
+    expiresAt: (cert as any).expires_at || null,
+  };
+}
+
 // ============================================================
 // ADMIN
 // ============================================================
@@ -346,6 +364,62 @@ export async function roster() {
       passed: Object.keys(bestByTrack).length,
     };
   });
+}
+
+// -------- REPORTE DE CUMPLIMIENTO (auditoría) --------
+// Por persona × ruta obligatoria: estado ok | expired | pending. compliant si
+// todas sus rutas obligatorias están en ok. Sirve para el panel y el CSV.
+export async function complianceReport(): Promise<{ tracks: { id: string; title: string }[]; people: any[]; summary: { total: number; compliant: number; overdue: number; pending: number } }> {
+  const [{ data: acc }, { data: tracksRaw }] = await Promise.all([
+    supabaseAdmin.from('training_access').select('*').order('created_at', { ascending: true }),
+    supabaseAdmin.from('training_tracks').select('id,title_es,title_en,required_for,active').eq('active', true).order('sort', { ascending: true }),
+  ]);
+  const people0 = (acc || []) as any[];
+  const tracks = (tracksRaw || []) as any[];
+  const tracksOut = tracks.map((t) => ({ id: t.id, title: t.title_es || t.title_en || t.id }));
+  if (!people0.length) return { tracks: tracksOut, people: [], summary: { total: 0, compliant: 0, overdue: 0, pending: 0 } };
+
+  const ids = people0.map((p) => p.user_id);
+  const [{ data: profs }, { data: att }, { data: certs }] = await Promise.all([
+    supabaseAdmin.from('profiles').select('id,name,email').in('id', ids),
+    supabaseAdmin.from('training_attempts').select('user_id,track_id,score,passed').in('user_id', ids),
+    supabaseAdmin.from('training_certificates').select('user_id,track_id,score,expires_at').in('user_id', ids),
+  ]);
+  const profById: Record<string, any> = {}; for (const p of (profs || []) as any[]) profById[p.id] = p;
+  const bestPass: Record<string, Record<string, boolean>> = {};
+  const bestScore: Record<string, Record<string, number>> = {};
+  for (const a of (att || []) as any[]) {
+    (bestPass[a.user_id] ||= {})[a.track_id] = (bestPass[a.user_id]?.[a.track_id]) || a.passed;
+    (bestScore[a.user_id] ||= {})[a.track_id] = Math.max(bestScore[a.user_id]?.[a.track_id] || 0, a.score || 0);
+  }
+  const certByUT: Record<string, any> = {};
+  for (const c of (certs || []) as any[]) certByUT[c.user_id + '|' + c.track_id] = c;
+
+  let compliant = 0, overdue = 0, pending = 0;
+  const people = people0.map((p) => {
+    const prof = profById[p.user_id] || {};
+    const mine = tracks.filter((t) => !t.required_for?.length || t.required_for.includes(p.role));
+    const items: Record<string, any> = {};
+    let allOk = mine.length > 0, hasExpired = false, hasPending = false;
+    for (const t of mine) {
+      const passed = !!bestPass[p.user_id]?.[t.id];
+      const cert = certByUT[p.user_id + '|' + t.id];
+      const expired = cert?.expires_at ? new Date(cert.expires_at).getTime() < Date.now() : false;
+      let status: 'ok' | 'expired' | 'pending' = 'pending';
+      if (passed && !expired) status = 'ok';
+      else if (passed && expired) status = 'expired';
+      if (status !== 'ok') allOk = false;
+      if (status === 'expired') hasExpired = true;
+      if (status === 'pending') hasPending = true;
+      items[t.id] = { status, score: bestScore[p.user_id]?.[t.id] || 0, expires: cert?.expires_at || null };
+    }
+    if (mine.length && allOk) compliant++;
+    else if (hasExpired) overdue++;
+    else if (hasPending) pending++;
+    return { user_id: p.user_id, name: prof.name || null, email: prof.email || null, role: p.role, active: p.active, compliant: mine.length > 0 && allOk, items, required: mine.length };
+  });
+
+  return { tracks: tracksOut, people, summary: { total: people.length, compliant, overdue, pending } };
 }
 
 export async function setAccess(userId: string, patch: { active?: boolean; role?: string; source?: string }, adminId?: string): Promise<{ ok: boolean }> {
