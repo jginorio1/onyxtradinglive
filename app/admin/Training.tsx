@@ -58,7 +58,7 @@ export default function Training({ canManage, lang = 'es' }: { canManage: boolea
       {tab === 'personas' && <Personas d={d} canManage={canManage} L={L} post={post} reload={load} flash={flash} />}
       {tab === 'rutas' && !editing && <Rutas d={d} canManage={canManage} L={L} post={post} reload={load} open={(t: any) => openTrack(t)} />}
       {tab === 'rutas' && editing && <TrackEditor data={editing} tracks={d.tracks} canManage={canManage} L={L} post={post} onClose={() => { setEditing(null); load(); }} refresh={openTrack} />}
-      {tab === 'cumplimiento' && <Cumplimiento L={L} post={post} lang={lang} />}
+      {tab === 'cumplimiento' && <Cumplimiento L={L} post={post} lang={lang} canManage={canManage} />}
       {tab === 'ajustes' && <Ajustes s={s} canManage={canManage} L={L} post={post} reload={load} flash={flash} />}
     </div>
   );
@@ -274,9 +274,16 @@ function QuestionRow({ q, L, canManage, onSave, onDel, inp, lab, btn, btnP }: an
 }
 
 // -------- CUMPLIMIENTO (auditoría) --------
-function Cumplimiento({ L, post, lang }: any) {
+function Cumplimiento({ L, post, lang, canManage }: any) {
   const [rep, setRep] = useState<any>(null);
-  useEffect(() => { (async () => { const r = await post({ action: 'compliance' }); if (r?.report) setRep(r.report); })(); }, []);
+  const load = async () => { const r = await post({ action: 'compliance' }); if (r?.report) setRep(r.report); };
+  useEffect(() => { load(); }, []);
+  async function reset(p: any, t: any) {
+    if (!canManage) return;
+    if (!confirm(L(`¿Reabrir el examen de "${t.title}" para ${p.name || p.email}? Se borran sus intentos.`, `Reopen "${t.title}" exam for ${p.name || p.email}? Their attempts are cleared.`))) return;
+    await post({ action: 'reset_attempts', user_id: p.user_id, track_id: t.id });
+    load();
+  }
   if (!rep) return <div style={{ color: 'var(--mut,#9aa6bd)', padding: 20 }}>{L('Cargando…', 'Loading…')}</div>;
   const su = rep.summary || {};
   const cell = (st: string) => {
@@ -291,7 +298,11 @@ function Cumplimiento({ L, post, lang }: any) {
           <div key={i} style={{ ...box, marginBottom: 0, flex: 1, minWidth: 120, padding: '12px 14px' }}><div style={{ fontSize: 24, fontWeight: 600, color: c[2] }}>{c[1]}</div><div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>{c[0]}</div></div>
         ))}
       </div>
-      <a href={`/api/admin/training/report?lang=${lang}`} target="_blank" rel="noreferrer" style={{ ...btn, display: 'inline-block', textDecoration: 'none', marginBottom: 12 }}>↓ {L('Exportar CSV (auditoría)', 'Export CSV (audit)')}</a>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        <a href={`/api/admin/training/report?lang=${lang}`} target="_blank" rel="noreferrer" style={{ ...btn, display: 'inline-block', textDecoration: 'none' }}>↓ {L('Exportar CSV', 'Export CSV')}</a>
+        <a href={`/api/admin/training/report?format=pdf&lang=${lang}`} target="_blank" rel="noreferrer" style={{ ...btn, display: 'inline-block', textDecoration: 'none' }}>↓ {L('Exportar PDF', 'Export PDF')}</a>
+        {canManage && <span style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', alignSelf: 'center' }}>{L('Clic en una casilla para reabrir ese examen.', 'Click a cell to reopen that exam.')}</span>}
+      </div>
       <div style={{ ...box, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
           <thead><tr>
@@ -305,7 +316,7 @@ function Cumplimiento({ L, post, lang }: any) {
                   <div style={{ color: 'var(--tx,#e8ecf5)', fontWeight: 600 }}>{p.name || p.email || p.user_id.slice(0, 8)} {p.compliant && <span title={L('Al día', 'Compliant')}>✓</span>}</div>
                   <div style={{ color: 'var(--mut,#9aa6bd)', fontSize: 11 }}>{p.role}</div>
                 </td>
-                {rep.tracks.map((t: any) => <td key={t.id} style={{ textAlign: 'center', padding: '8px' }}>{p.items[t.id] ? cell(p.items[t.id].status) : <span style={{ color: 'var(--mut,#9aa6bd)' }}>—</span>}</td>)}
+                {rep.tracks.map((t: any) => <td key={t.id} style={{ textAlign: 'center', padding: '8px', cursor: canManage && p.items[t.id] ? 'pointer' : 'default' }} onClick={() => p.items[t.id] && reset(p, t)} title={canManage && p.items[t.id] ? L('Clic para reabrir', 'Click to reopen') : ''}>{p.items[t.id] ? cell(p.items[t.id].status) : <span style={{ color: 'var(--mut,#9aa6bd)' }}>—</span>}</td>)}
               </tr>
             ))}
           </tbody>
@@ -337,6 +348,16 @@ function Ajustes({ s, canManage, L, post, reload, flash }: any) {
         {row(L('Auto-alta de empleados', 'Auto-enroll staff'), <Toggle on={!!f.auto_enroll_staff} onClick={() => up('auto_enroll_staff', !f.auto_enroll_staff)} />)}
         {row(L('Bloquear leads sin certificar (gating)', 'Gate leads until certified'), <Toggle on={!!f.gating_enabled} onClick={() => up('gating_enabled', !f.gating_enabled)} />)}
       </div>
+
+      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', margin: '16px 0 4px' }}>{L('Anti-trampa', 'Anti-cheat')}</div>
+      <div>
+        {row(L('Exigir lecciones antes del examen', 'Require lessons before exam'), <Toggle on={!!f.require_lessons} onClick={() => up('require_lessons', !f.require_lessons)} />)}
+        {row(L('Barajar el orden de las opciones', 'Shuffle option order'), <Toggle on={!!f.shuffle_options} onClick={() => up('shuffle_options', !f.shuffle_options)} />)}
+        {row(L('Ocultar respuestas si reprueba', 'Hide answers on fail'), <Toggle on={!!f.hide_answers_on_fail} onClick={() => up('hide_answers_on_fail', !f.hide_answers_on_fail)} />)}
+        {row(L('Enviar certificado por correo', 'Email the certificate'), <Toggle on={!!f.email_cert} onClick={() => up('email_cert', !f.email_cert)} />)}
+        {row(L('Espera entre intentos (min)', 'Cooldown between attempts (min)'), <input style={{ ...inp, width: 90 }} type="number" value={f.attempt_cooldown_min ?? 5} onChange={(e) => up('attempt_cooldown_min', +e.target.value)} />)}
+      </div>
+      <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 6 }}>{L('Consejo: para que barajar y elegir al azar sean efectivos, carga más preguntas por ruta y usa “Preguntas al azar” en el examen.', 'Tip: for shuffling/random to matter, add more questions per track and use “Random questions”.')}</div>
       <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 8 }}>{L('Con el gating activo, un vendedor no recibe leads automáticos hasta aprobar las rutas marcadas como “requisito para leads”.', 'With gating on, a rep gets no auto-assigned leads until they pass the tracks marked as lead requirements.')}</div>
       {canManage && <button style={{ ...btnP, marginTop: 14 }} onClick={save}>{L('Guardar ajustes', 'Save settings')}</button>}
     </div>

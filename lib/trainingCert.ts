@@ -50,3 +50,54 @@ export async function certificatePdf(opts: {
 
   return await doc.save();
 }
+
+// Reporte de cumplimiento en PDF (una tabla persona × estado por ruta). Para
+// archivar o compartir con dirección/auditoría.
+export async function compliancePdf(opts: {
+  brand: string; lang?: 'es' | 'en';
+  tracks: { id: string; title: string }[];
+  people: any[];
+  summary: { total: number; compliant: number; overdue: number; pending: number };
+}): Promise<Uint8Array> {
+  const en = opts.lang === 'en';
+  // @ts-ignore
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const brand = rgb(0.486, 0.549, 1), dark = rgb(0.06, 0.075, 0.14), gray = rgb(0.42, 0.45, 0.5);
+  const green = rgb(0.1, 0.66, 0.42), amber = rgb(0.78, 0.55, 0.12), red = rgb(0.85, 0.28, 0.32);
+  const clean = (s: string) => String(s || '').replace(/[^\x00-\xFF]/g, '-');
+  const stColor = (st: string) => st === 'ok' ? green : st === 'expired' ? amber : red;
+  const stTxt = (st: string) => en ? (st === 'ok' ? 'OK' : st === 'expired' ? 'EXP' : 'PEND') : (st === 'ok' ? 'OK' : st === 'expired' ? 'VENC' : 'PEND');
+
+  const W = 842, H = 595, left = 36;
+  let page = doc.addPage([W, H]); let y = 0;
+  const nameW = 190; const colW = Math.min(70, (W - left - nameW - 20) / Math.max(1, opts.tracks.length));
+  const header = () => {
+    y = H - 44;
+    page.drawText(clean(opts.brand || 'Onyx Trading Live'), { x: left, y, size: 13, font: bold, color: brand }); y -= 18;
+    page.drawText(clean(en ? 'Training compliance report' : 'Reporte de cumplimiento de formacion'), { x: left, y, size: 16, font: bold, color: dark }); y -= 16;
+    const su = opts.summary;
+    page.drawText(clean(`${en ? 'People' : 'Personas'}: ${su.total}   ${en ? 'Compliant' : 'Al dia'}: ${su.compliant}   ${en ? 'Overdue' : 'Vencidos'}: ${su.overdue}   ${en ? 'Pending' : 'Pendientes'}: ${su.pending}   ·   ${new Date().toLocaleDateString(en ? 'en-US' : 'es-ES')}`, ), { x: left, y, size: 9, font, color: gray }); y -= 18;
+    // Cabecera de columnas.
+    page.drawText(clean(en ? 'Person' : 'Persona'), { x: left, y, size: 9, font: bold, color: gray });
+    opts.tracks.forEach((t, i) => page.drawText(clean(t.title.slice(0, 10)), { x: left + nameW + i * colW, y, size: 7.5, font, color: gray }));
+    y -= 4; page.drawLine({ start: { x: left, y }, end: { x: W - left, y }, thickness: 1, color: brand }); y -= 14;
+  };
+  header();
+  for (const p of opts.people) {
+    if (y < 44) { page = doc.addPage([W, H]); header(); }
+    const nm = clean((p.name || p.email || '-') + (p.compliant ? '  OK' : ''));
+    page.drawText(nm.slice(0, 34), { x: left, y, size: 9, font, color: dark });
+    page.drawText(clean('(' + p.role + ')'), { x: left, y: y - 9, size: 7, font, color: gray });
+    opts.tracks.forEach((t, i) => {
+      const it = p.items[t.id];
+      const x = left + nameW + i * colW;
+      if (it) page.drawText(stTxt(it.status), { x, y, size: 8, font: bold, color: stColor(it.status) });
+      else page.drawText('-', { x, y, size: 8, font, color: gray });
+    });
+    y -= 22;
+  }
+  return await doc.save();
+}

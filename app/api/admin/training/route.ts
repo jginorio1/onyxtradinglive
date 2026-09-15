@@ -3,7 +3,7 @@ import { requirePerm, logAdmin } from '@/lib/admin';
 import {
   trainingSettings, saveTrainingSettings, listTracksAdmin, trackFull,
   saveTrack, delTrack, saveLesson, delLesson, saveQuestion, delQuestion,
-  roster, setAccess, enrollByEmail, autoEnrollSync, complianceReport,
+  roster, setAccess, enrollByEmail, autoEnrollSync, complianceReport, resetAttempts,
 } from '@/lib/training';
 
 export const dynamic = 'force-dynamic';
@@ -59,6 +59,11 @@ export async function POST(req: Request) {
       }
       case 'roster': return NextResponse.json({ ok: true, roster: await roster() });
       case 'compliance': return NextResponse.json({ ok: true, report: await complianceReport() });
+      case 'reset_attempts': {
+        await resetAttempts(String(body.user_id), String(body.track_id), !!body.revoke_cert);
+        await logAdmin(email, 'training_reset', String(body.user_id) + '|' + String(body.track_id), { revoke: !!body.revoke_cert });
+        return NextResponse.json({ ok: true });
+      }
       default: return NextResponse.json({ error: 'acción desconocida' }, { status: 400 });
     }
   } catch (e: any) {

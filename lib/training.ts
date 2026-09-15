@@ -19,6 +19,12 @@ export type TrainingSettings = {
   auto_enroll_sales: boolean;
   auto_enroll_staff: boolean;
   gating_enabled: boolean;   // bloquear leads a quien no aprobó las rutas requisito
+  // --- anti-trampa ---
+  require_lessons: boolean;  // exige completar todas las lecciones antes del examen
+  attempt_cooldown_min: number; // minutos de espera entre intentos (0 = sin espera)
+  shuffle_options: boolean;  // baraja el orden de las opciones en cada intento
+  hide_answers_on_fail: boolean; // no revela las respuestas correctas si repruebas
+  email_cert: boolean;       // envía el certificado por correo al aprobar
 };
 
 const DEFAULTS: TrainingSettings = {
@@ -31,6 +37,11 @@ const DEFAULTS: TrainingSettings = {
   auto_enroll_sales: true,
   auto_enroll_staff: true,
   gating_enabled: false,
+  require_lessons: true,
+  attempt_cooldown_min: 5,
+  shuffle_options: true,
+  hide_answers_on_fail: true,
+  email_cert: true,
 };
 
 export async function trainingSettings(): Promise<TrainingSettings> {
@@ -128,30 +139,51 @@ export async function learnerHome(userId: string, lang: Lang = 'es') {
 // -------- DETALLE DE RUTA (para estudiar + examen) --------
 // Devuelve lecciones con estado y un examen SIN las respuestas correctas.
 export async function trackDetail(userId: string, trackId: string, lang: Lang = 'es') {
+  const s = await trainingSettings();
   const { data: t } = await supabaseAdmin.from('training_tracks').select('*').eq('id', trackId).maybeSingle();
   if (!t) return null;
   const [{ data: lessons }, { data: qs }, { data: prog }, { data: att }] = await Promise.all([
     supabaseAdmin.from('training_lessons').select('*').eq('track_id', trackId).order('sort', { ascending: true }),
     supabaseAdmin.from('training_questions').select('*').eq('track_id', trackId).order('sort', { ascending: true }),
     supabaseAdmin.from('training_progress').select('lesson_id').eq('user_id', userId),
-    supabaseAdmin.from('training_attempts').select('passed').eq('user_id', userId).eq('track_id', trackId),
+    supabaseAdmin.from('training_attempts').select('passed,created_at').eq('user_id', userId).eq('track_id', trackId).order('created_at', { ascending: false }),
   ]);
   const doneSet = new Set((prog || []).map((p: any) => p.lesson_id));
   const attemptsUsed = (att || []).length;
   const passed = (att || []).some((a: any) => a.passed);
   const attemptsLeft = (t as any).max_attempts > 0 ? Math.max(0, (t as any).max_attempts - attemptsUsed) : -1;
+  const lessonsList = (lessons || []) as any[];
+  const lessonsDone = lessonsList.length > 0 && lessonsList.every((l: any) => doneSet.has(l.id));
+
+  // Cooldown entre intentos (anti fuerza-bruta).
+  let cooldownLeft = 0;
+  if (!passed && s.attempt_cooldown_min > 0 && (att || [])[0]) {
+    const last = new Date((att as any)[0].created_at).getTime();
+    const mins = (Date.now() - last) / 60000;
+    cooldownLeft = Math.max(0, Math.ceil(s.attempt_cooldown_min - mins));
+  }
+  const lessonsBlock = s.require_lessons && !passed && !lessonsDone;
 
   // Banco al azar: si exam_count > 0, tomamos ese nº de preguntas mezcladas.
-  let bank = (qs || []).slice();
-  for (let i = bank.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bank[i], bank[j]] = [bank[j], bank[i]]; }
+  const shuf = (arr: any[]) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  let bank = shuf(qs || []);
   if ((t as any).exam_count > 0) bank = bank.slice(0, (t as any).exam_count);
 
   return {
     track: { id: t.id, slug: (t as any).slug, title: T(t, 'title', lang), summary: T(t, 'summary', lang), passScore: (t as any).pass_score },
-    lessons: (lessons || []).map((l: any) => ({ id: l.id, title: T(l, 'title', lang), body: T(l, 'body', lang), video: l.video_url || null, done: doneSet.has(l.id) })),
+    lessons: lessonsList.map((l: any) => ({ id: l.id, title: T(l, 'title', lang), body: T(l, 'body', lang), video: l.video_url || null, done: doneSet.has(l.id) })),
     exam: {
-      passScore: (t as any).pass_score, attemptsLeft, passed, canTake: passed || attemptsLeft !== 0,
-      questions: bank.map((q: any) => ({ id: q.id, prompt: T(q, 'prompt', lang), options: (lang === 'en' ? q.options_en : q.options_es) || [] })),
+      passScore: (t as any).pass_score, attemptsLeft, passed,
+      lessonsDone, requireLessons: s.require_lessons, cooldownLeft,
+      canTake: passed || (attemptsLeft !== 0 && cooldownLeft === 0 && !lessonsBlock),
+      questions: bank.map((q: any) => {
+        // Cada opción lleva su índice original; barajamos el orden para que no se
+        // memorice "la respuesta es la B". El cliente devuelve el índice original.
+        const src = (lang === 'en' ? q.options_en : q.options_es) || [];
+        let opts = src.map((text: string, i: number) => ({ i, text }));
+        if (s.shuffle_options) opts = shuf(opts);
+        return { id: q.id, prompt: T(q, 'prompt', lang), options: opts };
+      }),
     },
   };
 }
@@ -163,15 +195,32 @@ export async function markLesson(userId: string, lessonId: string, done = true):
 
 // -------- CALIFICAR EXAMEN --------
 // answers: { [questionId]: choiceIndex }. Califica solo las preguntas enviadas.
-export async function submitExam(userId: string, trackId: string, answers: Record<string, number>, lang: Lang = 'es'): Promise<{ ok: boolean; error?: string; score?: number; passed?: boolean; correct?: number; total?: number; results?: any[]; certIssued?: boolean }> {
+export async function submitExam(userId: string, trackId: string, answers: Record<string, number>, lang: Lang = 'es'): Promise<{ ok: boolean; error?: string; score?: number; passed?: boolean; correct?: number; total?: number; results?: any[]; certIssued?: boolean; hidden?: boolean }> {
+  const s = await trainingSettings();
+  const en = lang === 'en';
   const { data: t } = await supabaseAdmin.from('training_tracks').select('*').eq('id', trackId).maybeSingle();
   if (!t) return { ok: false, error: 'ruta no encontrada' };
 
-  const { data: att } = await supabaseAdmin.from('training_attempts').select('passed').eq('user_id', userId).eq('track_id', trackId);
+  const { data: att } = await supabaseAdmin.from('training_attempts').select('passed,created_at').eq('user_id', userId).eq('track_id', trackId).order('created_at', { ascending: false });
   const alreadyPassed = (att || []).some((a: any) => a.passed);
   const attemptsUsed = (att || []).length;
   if (!alreadyPassed && (t as any).max_attempts > 0 && attemptsUsed >= (t as any).max_attempts) {
-    return { ok: false, error: 'Sin intentos disponibles. Contacta a tu supervisor.' };
+    return { ok: false, error: en ? 'No attempts left. Contact your supervisor.' : 'Sin intentos disponibles. Contacta a tu supervisor.' };
+  }
+  // Anti-trampa: espera entre intentos.
+  if (!alreadyPassed && s.attempt_cooldown_min > 0 && (att || [])[0]) {
+    const mins = (Date.now() - new Date((att as any)[0].created_at).getTime()) / 60000;
+    if (mins < s.attempt_cooldown_min) return { ok: false, error: en ? `Wait ${Math.ceil(s.attempt_cooldown_min - mins)} min before retrying.` : `Espera ${Math.ceil(s.attempt_cooldown_min - mins)} min antes de reintentar.` };
+  }
+  // Anti-trampa: exige completar las lecciones antes del examen.
+  if (!alreadyPassed && s.require_lessons) {
+    const [{ data: lrows }, { data: prow }] = await Promise.all([
+      supabaseAdmin.from('training_lessons').select('id').eq('track_id', trackId),
+      supabaseAdmin.from('training_progress').select('lesson_id').eq('user_id', userId),
+    ]);
+    const done = new Set((prow || []).map((p: any) => p.lesson_id));
+    const all = (lrows || []) as any[];
+    if (all.length && !all.every((l: any) => done.has(l.id))) return { ok: false, error: en ? 'Finish all lessons before the exam.' : 'Completa todas las lecciones antes del examen.' };
   }
 
   const ids = Object.keys(answers || {});
@@ -202,12 +251,35 @@ export async function submitExam(userId: string, trackId: string, answers: Recor
       { user_id: userId, track_id: trackId, score, code, issued_at: new Date().toISOString(), expires_at: expires },
       { onConflict: 'user_id,track_id' });
     certIssued = true;
-    // Aviso (no bloquea si falla).
+    // Aviso in-app (no bloquea si falla).
     try {
       const { notify } = await import('@/lib/notify');
-      await notify(userId, { kind: 'training', title: lang === 'en' ? 'Course passed' : 'Curso aprobado', body: `${T(t, 'title', lang)} · ${score}/100`, url: '/entrenamiento' });
+      await notify(userId, { kind: 'training', title: en ? 'Course passed' : 'Curso aprobado', body: `${T(t, 'title', lang)} · ${score}/100`, url: '/entrenamiento' });
     } catch {}
+    // Correo con enlace de descarga del certificado.
+    if (s.email_cert) {
+      try {
+        const { data: p } = await supabaseAdmin.from('profiles').select('email,name,lang').eq('id', userId).maybeSingle();
+        const em = (p as any)?.email;
+        if (em) {
+          const eu = ((p as any)?.lang === 'en') ? 'en' : lang;
+          const enE = eu === 'en';
+          const app = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://www.onyxtradinglive.com';
+          const url = `${app}/api/training/cert?track=${trackId}&lang=${eu}`;
+          const title = T(t, 'title', eu);
+          const { sendEmail } = await import('@/lib/mail');
+          const subject = enE ? `Certificate: ${title}` : `Certificado: ${title}`;
+          const body = enE
+            ? `Congratulations ${(p as any)?.name || ''}! You passed "${title}" with ${score}/100.\n\nDownload your certificate (sign in first):\n${url}`
+            : `¡Felicidades ${(p as any)?.name || ''}! Aprobaste "${title}" con ${score}/100.\n\nDescarga tu certificado (inicia sesión primero):\n${url}`;
+          await sendEmail(em, subject, body, { kind: 'training_cert', userId });
+        }
+      } catch {}
+    }
   }
+  // Anti-trampa: si reprueba y está activado, NO revelamos las respuestas correctas
+  // (solo la nota), para que no coseche el examen y lo repita.
+  if (!passed && s.hide_answers_on_fail) return { ok: true, score, passed, correct, total, hidden: true };
   return { ok: true, score, passed, correct, total, results, certIssued };
 }
 
@@ -429,6 +501,15 @@ export async function setAccess(userId: string, patch: { active?: boolean; role?
   const active = patch.active !== undefined ? patch.active : (cur?.active ?? true);
   if (cur) await supabaseAdmin.from('training_access').update({ active, role }).eq('user_id', userId);
   else await supabaseAdmin.from('training_access').insert({ user_id: userId, role, active, source: patch.source || 'manual', assigned_by: adminId || null });
+  return { ok: true };
+}
+
+// Reinicia los intentos de una persona en una ruta (para reabrir un examen
+// bloqueado). Opcionalmente revoca su certificado de esa ruta.
+export async function resetAttempts(userId: string, trackId: string, revokeCert = false): Promise<{ ok: boolean }> {
+  if (!userId || !trackId) return { ok: false };
+  await supabaseAdmin.from('training_attempts').delete().eq('user_id', userId).eq('track_id', trackId);
+  if (revokeCert) await supabaseAdmin.from('training_certificates').delete().eq('user_id', userId).eq('track_id', trackId);
   return { ok: true };
 }
 

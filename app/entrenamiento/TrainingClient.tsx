@@ -126,19 +126,28 @@ export default function TrainingClient() {
                 <button style={{ ...S.btn, width: '100%' }} onClick={() => { setDetail(null); setResult(null); }}>{L('Volver a mis rutas', 'Back to my tracks')}</button>
               </div>
             ) : !ex.canTake ? (
-              <div style={{ color: 'var(--mut,#9aa6bd)', fontSize: 14 }}>{L('Sin intentos disponibles. Contacta a tu supervisor.', 'No attempts left. Contact your supervisor.')}</div>
+              <div style={{ color: '#e0a03a', fontSize: 14 }}>
+                {ex.requireLessons && !ex.lessonsDone ? L('Completa todas las lecciones para desbloquear el examen.', 'Finish all lessons to unlock the exam.')
+                  : ex.cooldownLeft > 0 ? L(`Espera ${ex.cooldownLeft} min antes de reintentar.`, `Wait ${ex.cooldownLeft} min before retrying.`)
+                    : L('Sin intentos disponibles. Contacta a tu supervisor.', 'No attempts left. Contact your supervisor.')}
+              </div>
             ) : (
               <div>
                 {!allDone && <div style={{ fontSize: 12.5, color: '#e0a03a', marginBottom: 12 }}>{L('Sugerencia: completa todas las lecciones antes del examen.', 'Tip: finish all lessons before the exam.')}</div>}
                 {ex.questions.map((q: any, qi: number) => (
                   <div key={q.id} style={{ marginBottom: 16 }}>
                     <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 8 }}>{qi + 1}. {q.prompt}</div>
-                    {(q.options || []).map((op: string, oi: number) => (
-                      <label key={oi} style={{ display: 'flex', gap: 9, alignItems: 'center', padding: '9px 11px', borderRadius: 9, border: '1px solid ' + (answers[q.id] === oi ? 'var(--accent,#8b93ff)' : 'var(--line,#2a3350)'), background: answers[q.id] === oi ? 'rgba(139,147,255,.08)' : 'transparent', marginBottom: 6, cursor: 'pointer', fontSize: 14 }}>
-                        <input type="radio" name={q.id} checked={answers[q.id] === oi} onChange={() => setAnswers((a) => ({ ...a, [q.id]: oi }))} />
-                        <span style={{ color: 'var(--tx,#e8ecf5)' }}>{op}</span>
-                      </label>
-                    ))}
+                    {(q.options || []).map((op: any, oi: number) => {
+                      const val = typeof op === 'object' ? op.i : oi;
+                      const txt = typeof op === 'object' ? op.text : op;
+                      const sel = answers[q.id] === val;
+                      return (
+                        <label key={oi} style={{ display: 'flex', gap: 9, alignItems: 'center', padding: '9px 11px', borderRadius: 9, border: '1px solid ' + (sel ? 'var(--accent,#8b93ff)' : 'var(--line,#2a3350)'), background: sel ? 'rgba(139,147,255,.08)' : 'transparent', marginBottom: 6, cursor: 'pointer', fontSize: 14 }}>
+                          <input type="radio" name={q.id} checked={sel} onChange={() => setAnswers((a) => ({ ...a, [q.id]: val }))} />
+                          <span style={{ color: 'var(--tx,#e8ecf5)' }}>{txt}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 ))}
                 {err && <div style={{ color: '#e2555a', fontSize: 13, marginBottom: 10 }}>{err}</div>}
