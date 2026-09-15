@@ -25,6 +25,9 @@ export type TrainingSettings = {
   shuffle_options: boolean;  // baraja el orden de las opciones en cada intento
   hide_answers_on_fail: boolean; // no revela las respuestas correctas si repruebas
   email_cert: boolean;       // envía el certificado por correo al aprobar
+  require_attestation: boolean; // exige la casilla "respondí yo mismo" al enviar
+  min_read_sec: number;      // segundos mínimos en una lección antes de marcarla
+  onboarding_block: boolean; // muestra aviso de onboarding obligatorio hasta certificar
 };
 
 const DEFAULTS: TrainingSettings = {
@@ -42,6 +45,9 @@ const DEFAULTS: TrainingSettings = {
   shuffle_options: true,
   hide_answers_on_fail: true,
   email_cert: true,
+  require_attestation: true,
+  min_read_sec: 15,
+  onboarding_block: false,
 };
 
 export async function trainingSettings(): Promise<TrainingSettings> {
@@ -120,6 +126,7 @@ export async function learnerHome(userId: string, lang: Lang = 'es') {
       cert: cert ? { score: cert.score, issued_at: cert.issued_at, expires_at: cert.expires_at, expired: certExpired } : null,
       locked, prereqTitle: prereq ? T(prereq, 'title', lang) : null,
       gateLeads: !!t.gate_leads,
+      required: !!(t.required_for?.length && t.required_for.includes(role)),
     };
   });
 
@@ -171,10 +178,11 @@ export async function trackDetail(userId: string, trackId: string, lang: Lang = 
 
   return {
     track: { id: t.id, slug: (t as any).slug, title: T(t, 'title', lang), summary: T(t, 'summary', lang), passScore: (t as any).pass_score },
+    minReadSec: s.min_read_sec || 0,
     lessons: lessonsList.map((l: any) => ({ id: l.id, title: T(l, 'title', lang), body: T(l, 'body', lang), video: l.video_url || null, done: doneSet.has(l.id) })),
     exam: {
       passScore: (t as any).pass_score, attemptsLeft, passed,
-      lessonsDone, requireLessons: s.require_lessons, cooldownLeft,
+      lessonsDone, requireLessons: s.require_lessons, cooldownLeft, attestRequired: s.require_attestation,
       canTake: passed || (attemptsLeft !== 0 && cooldownLeft === 0 && !lessonsBlock),
       questions: bank.map((q: any) => {
         // Cada opción lleva su índice original; barajamos el orden para que no se
@@ -195,9 +203,10 @@ export async function markLesson(userId: string, lessonId: string, done = true):
 
 // -------- CALIFICAR EXAMEN --------
 // answers: { [questionId]: choiceIndex }. Califica solo las preguntas enviadas.
-export async function submitExam(userId: string, trackId: string, answers: Record<string, number>, lang: Lang = 'es'): Promise<{ ok: boolean; error?: string; score?: number; passed?: boolean; correct?: number; total?: number; results?: any[]; certIssued?: boolean; hidden?: boolean }> {
+export async function submitExam(userId: string, trackId: string, answers: Record<string, number>, lang: Lang = 'es', meta: { attested?: boolean; ip?: string; ua?: string } = {}): Promise<{ ok: boolean; error?: string; score?: number; passed?: boolean; correct?: number; total?: number; results?: any[]; certIssued?: boolean; hidden?: boolean }> {
   const s = await trainingSettings();
   const en = lang === 'en';
+  if (s.require_attestation && !meta.attested) return { ok: false, error: en ? 'Confirm you answered it yourself.' : 'Confirma que respondiste tú mismo.' };
   const { data: t } = await supabaseAdmin.from('training_tracks').select('*').eq('id', trackId).maybeSingle();
   if (!t) return { ok: false, error: 'ruta no encontrada' };
 
@@ -240,7 +249,7 @@ export async function submitExam(userId: string, trackId: string, answers: Recor
   const score = total ? Math.round((correct / total) * 100) : 0;
   const passed = score >= (t as any).pass_score;
 
-  await supabaseAdmin.from('training_attempts').insert({ user_id: userId, track_id: trackId, score, passed, total, correct });
+  await supabaseAdmin.from('training_attempts').insert({ user_id: userId, track_id: trackId, score, passed, total, correct, attested: !!meta.attested, ip: meta.ip || null, user_agent: (meta.ua || '').slice(0, 300) || null });
 
   let certIssued = false;
   if (passed) {
@@ -318,6 +327,23 @@ export async function certData(userId: string, trackId: string, lang: Lang = 'es
     issuedAt: (cert as any).issued_at,
     expiresAt: (cert as any).expires_at || null,
   };
+}
+
+// -------- ONBOARDING OBLIGATORIO --------
+// ¿Completó las rutas obligatorias de su rol? Devuelve las pendientes para el
+// aviso. Sirve para mostrar un banner que empuje a terminar la formación.
+export async function onboardingStatus(userId: string, lang: Lang = 'es'): Promise<{ enabled: boolean; complete: boolean; pending: { id: string; title: string }[] }> {
+  const s = await trainingSettings();
+  const acc = await accessFor(userId);
+  if (!acc || !acc.active) return { enabled: false, complete: true, pending: [] };
+  const role = acc.role || 'staff';
+  const { data: tracks } = await supabaseAdmin.from('training_tracks').select('id,title_es,title_en,required_for').eq('active', true);
+  const req = (tracks || []).filter((t: any) => t.required_for?.length && t.required_for.includes(role));
+  if (!req.length) return { enabled: s.onboarding_block, complete: true, pending: [] };
+  const { data: att } = await supabaseAdmin.from('training_attempts').select('track_id,passed').eq('user_id', userId).eq('passed', true);
+  const passed = new Set((att || []).map((a: any) => a.track_id));
+  const pending = req.filter((t: any) => !passed.has(t.id)).map((t: any) => ({ id: t.id, title: T(t, 'title', lang) }));
+  return { enabled: s.onboarding_block, complete: pending.length === 0, pending };
 }
 
 // ============================================================
@@ -441,9 +467,11 @@ export async function roster() {
 // -------- REPORTE DE CUMPLIMIENTO (auditoría) --------
 // Por persona × ruta obligatoria: estado ok | expired | pending. compliant si
 // todas sus rutas obligatorias están en ok. Sirve para el panel y el CSV.
-export async function complianceReport(): Promise<{ tracks: { id: string; title: string }[]; people: any[]; summary: { total: number; compliant: number; overdue: number; pending: number } }> {
+export async function complianceReport(scopeUserIds?: string[] | null): Promise<{ tracks: { id: string; title: string }[]; people: any[]; summary: { total: number; compliant: number; overdue: number; pending: number } }> {
+  let accQ = supabaseAdmin.from('training_access').select('*').order('created_at', { ascending: true });
+  if (scopeUserIds) accQ = accQ.in('user_id', scopeUserIds.length ? scopeUserIds : ['00000000-0000-0000-0000-000000000000']);
   const [{ data: acc }, { data: tracksRaw }] = await Promise.all([
-    supabaseAdmin.from('training_access').select('*').order('created_at', { ascending: true }),
+    accQ,
     supabaseAdmin.from('training_tracks').select('id,title_es,title_en,required_for,active').eq('active', true).order('sort', { ascending: true }),
   ]);
   const people0 = (acc || []) as any[];
@@ -571,10 +599,28 @@ export async function runTrainingReminders(): Promise<{ pending: number; expirin
   }
 
   if (s.remind_cert_days > 0) {
+    const nowIso = new Date().toISOString();
+    // (a) Certificados por vencer (dentro de N días): aviso nivel 1.
     const soon = new Date(Date.now() + s.remind_cert_days * 24 * 3600 * 1000).toISOString();
-    const { data: certs } = await supabaseAdmin.from('training_certificates').select('user_id,track_id,expires_at').not('expires_at', 'is', null).lte('expires_at', soon).gt('expires_at', new Date().toISOString());
+    const { data: certs } = await supabaseAdmin.from('training_certificates').select('id,user_id,track_id,expires_at,remind_level').not('expires_at', 'is', null).lte('expires_at', soon).gt('expires_at', nowIso);
     for (const c of (certs || []) as any[]) {
-      try { await notify(c.user_id, { kind: 'training', title: 'Certificado por vencer', body: 'Vuelve a certificarte para mantener tu acceso a leads.', url: '/entrenamiento' }); expiring++; } catch {}
+      if ((c.remind_level || 0) >= 1) continue; // ya avisado
+      const days = Math.max(0, Math.ceil((new Date(c.expires_at).getTime() - Date.now()) / 86400000));
+      try {
+        await notify(c.user_id, { kind: 'training', title: 'Certificado por vencer', body: `Vence en ${days} día(s). Vuelve a certificarte para no perder acceso a leads.`, url: '/entrenamiento' });
+        await supabaseAdmin.from('training_certificates').update({ remind_level: 1 }).eq('id', c.id);
+        expiring++;
+      } catch {}
+    }
+    // (b) Certificados YA vencidos: aviso escalado nivel 2 (suspensión de leads si el gating está activo).
+    const { data: expired } = await supabaseAdmin.from('training_certificates').select('id,user_id,remind_level').not('expires_at', 'is', null).lt('expires_at', nowIso);
+    for (const c of (expired || []) as any[]) {
+      if ((c.remind_level || 0) >= 2) continue;
+      try {
+        await notify(c.user_id, { kind: 'training', title: 'Certificado vencido', body: s.gating_enabled ? 'Tu certificado venció: no recibirás leads hasta recertificarte.' : 'Tu certificado venció. Recertifícate cuanto antes.', url: '/entrenamiento' });
+        await supabaseAdmin.from('training_certificates').update({ remind_level: 2 }).eq('id', c.id);
+        expiring++;
+      } catch {}
     }
   }
   return { pending, expiring };

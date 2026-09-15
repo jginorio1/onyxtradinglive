@@ -170,6 +170,15 @@ function TrackEditor({ data, tracks, canManage, L, post, onClose, refresh }: any
   async function addQ() { await post({ action: 'save_question', question: { track_id: t.id, prompt_es: '', options_es: ['', ''], correct: 0, sort: questions.length } }); refresh({ id: t.id }); }
   async function saveQ(q: any) { await post({ action: 'save_question', question: q }); refresh({ id: t.id }); }
   async function delQ(id: string) { await post({ action: 'del_question', id }); refresh({ id: t.id }); }
+  const [aiBusy, setAiBusy] = useState(false);
+  async function aiGen() {
+    if (!lessons.length) { alert(L('Añade lecciones con contenido primero.', 'Add lessons with content first.')); return; }
+    setAiBusy(true);
+    const r = await post({ action: 'ai_questions', track_id: t.id, n: 8 });
+    setAiBusy(false);
+    if (r?.ok) { alert(L(`Se generaron ${r.added} preguntas.`, `${r.added} questions generated.`)); refresh({ id: t.id }); }
+    else alert(r?.error || 'Error');
+  }
 
   return (
     <div>
@@ -220,8 +229,12 @@ function TrackEditor({ data, tracks, canManage, L, post, onClose, refresh }: any
       <div style={box}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>{L('Preguntas del examen', 'Exam questions')} · {questions.length}</div>
-          {canManage && <button style={btn} onClick={addQ}>+ {L('Pregunta', 'Question')}</button>}
+          {canManage && <div style={{ display: 'flex', gap: 6 }}>
+            <button style={{ ...btn, background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none', opacity: aiBusy ? 0.6 : 1 }} disabled={aiBusy} onClick={aiGen} title={L('Genera 8 preguntas con IA a partir de las lecciones.', 'Generate 8 AI questions from the lessons.')}>{aiBusy ? L('Generando…', 'Generating…') : '✨ ' + L('Generar con IA', 'Generate with AI')}</button>
+            <button style={btn} onClick={addQ}>+ {L('Pregunta', 'Question')}</button>
+          </div>}
         </div>
+        {canManage && <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginBottom: 8 }}>{L('Tip anti-trampa: ten 10–15 preguntas por ruta y pon “Preguntas al azar” en la ficha de la ruta para que cada examen sea distinto.', 'Anti-cheat tip: keep 10–15 questions per track and set “Random questions” so each exam differs.')}</div>}
         {questions.map((q: any) => <QuestionRow key={q.id} q={q} L={L} canManage={canManage} onSave={saveQ} onDel={delQ} inp={inp} lab={lab} btn={btn} btnP={btnP} />)}
       </div>
     </div>
@@ -231,6 +244,14 @@ function TrackEditor({ data, tracks, canManage, L, post, onClose, refresh }: any
 function LessonRow({ l, L, canManage, onSave, onDel, inp, lab, btn, btnP }: any) {
   const [x, setX] = useState(l);
   const up = (k: string, v: any) => setX((p: any) => ({ ...p, [k]: v }));
+  const [upBusy, setUpBusy] = useState(false);
+  async function upload(file: File) {
+    setUpBusy(true);
+    const fd = new FormData(); fd.append('file', file);
+    const r = await fetch('/api/admin/training/upload', { method: 'POST', body: fd }).then((z) => z.json()).catch(() => null);
+    setUpBusy(false);
+    if (r?.url) up('video_url', r.url); else alert(r?.error || 'Error');
+  }
   return (
     <div style={{ borderTop: '1px solid var(--line,#2a3350)', padding: '10px 0' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -240,8 +261,12 @@ function LessonRow({ l, L, canManage, onSave, onDel, inp, lab, btn, btnP }: any)
       <textarea style={{ ...inp, marginTop: 8, minHeight: 90, resize: 'vertical' }} value={x.body_es || ''} onChange={(e) => up('body_es', e.target.value)} placeholder={L('Contenido ES (texto / listas con - )', 'Content ES')} />
       <textarea style={{ ...inp, marginTop: 8, minHeight: 60, resize: 'vertical' }} value={x.body_en || ''} onChange={(e) => up('body_en', e.target.value)} placeholder={L('Contenido EN (opcional)', 'Content EN (optional)')} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 8, alignItems: 'center' }}>
-        <input style={inp} value={x.video_url || ''} onChange={(e) => up('video_url', e.target.value)} placeholder={L('URL de video (opcional)', 'Video URL (optional)')} />
-        {canManage && <div style={{ display: 'flex', gap: 6 }}><button style={btnP} onClick={() => onSave(x)}>{L('Guardar', 'Save')}</button><button style={{ ...btn, color: '#e2555a' }} onClick={() => onDel(l.id)}>✕</button></div>}
+        <input style={inp} value={x.video_url || ''} onChange={(e) => up('video_url', e.target.value)} placeholder={L('URL de video (YouTube/Vimeo/mp4)', 'Video URL (YouTube/Vimeo/mp4)')} />
+        {canManage && <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <label style={{ ...btn, cursor: 'pointer', opacity: upBusy ? 0.6 : 1 }}>{upBusy ? L('Subiendo…', 'Uploading…') : L('Subir video', 'Upload video')}
+            <input type="file" accept="video/*,image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} /></label>
+          <button style={btnP} onClick={() => onSave(x)}>{L('Guardar', 'Save')}</button><button style={{ ...btn, color: '#e2555a' }} onClick={() => onDel(l.id)}>✕</button>
+        </div>}
       </div>
     </div>
   );
@@ -354,8 +379,11 @@ function Ajustes({ s, canManage, L, post, reload, flash }: any) {
         {row(L('Exigir lecciones antes del examen', 'Require lessons before exam'), <Toggle on={!!f.require_lessons} onClick={() => up('require_lessons', !f.require_lessons)} />)}
         {row(L('Barajar el orden de las opciones', 'Shuffle option order'), <Toggle on={!!f.shuffle_options} onClick={() => up('shuffle_options', !f.shuffle_options)} />)}
         {row(L('Ocultar respuestas si reprueba', 'Hide answers on fail'), <Toggle on={!!f.hide_answers_on_fail} onClick={() => up('hide_answers_on_fail', !f.hide_answers_on_fail)} />)}
+        {row(L('Exigir declaración de honestidad', 'Require honesty attestation'), <Toggle on={!!f.require_attestation} onClick={() => up('require_attestation', !f.require_attestation)} />)}
+        {row(L('Aviso de onboarding obligatorio', 'Mandatory onboarding notice'), <Toggle on={!!f.onboarding_block} onClick={() => up('onboarding_block', !f.onboarding_block)} />)}
         {row(L('Enviar certificado por correo', 'Email the certificate'), <Toggle on={!!f.email_cert} onClick={() => up('email_cert', !f.email_cert)} />)}
         {row(L('Espera entre intentos (min)', 'Cooldown between attempts (min)'), <input style={{ ...inp, width: 90 }} type="number" value={f.attempt_cooldown_min ?? 5} onChange={(e) => up('attempt_cooldown_min', +e.target.value)} />)}
+        {row(L('Lectura mínima por lección (seg)', 'Min read per lesson (sec)'), <input style={{ ...inp, width: 90 }} type="number" value={f.min_read_sec ?? 15} onChange={(e) => up('min_read_sec', +e.target.value)} />)}
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 6 }}>{L('Consejo: para que barajar y elegir al azar sean efectivos, carga más preguntas por ruta y usa “Preguntas al azar” en el examen.', 'Tip: for shuffling/random to matter, add more questions per track and use “Random questions”.')}</div>
       <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 8 }}>{L('Con el gating activo, un vendedor no recibe leads automáticos hasta aprobar las rutas marcadas como “requisito para leads”.', 'With gating on, a rep gets no auto-assigned leads until they pass the tracks marked as lead requirements.')}</div>

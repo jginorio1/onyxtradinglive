@@ -46,6 +46,12 @@ export async function POST(req: Request) {
       case 'del_lesson': { await delLesson(String(body.id)); return NextResponse.json({ ok: true }); }
       case 'save_question': return NextResponse.json(await saveQuestion(body.question || {}));
       case 'del_question': { await delQuestion(String(body.id)); return NextResponse.json({ ok: true }); }
+      case 'ai_questions': {
+        const { generateQuestions } = await import('@/lib/trainingAI');
+        const r = await generateQuestions(String(body.track_id), Math.min(15, Math.max(3, Number(body.n) || 8)));
+        await logAdmin(email, 'training_ai_questions', String(body.track_id), { added: r.added });
+        return NextResponse.json(r);
+      }
       case 'set_access': {
         await setAccess(String(body.user_id), { active: body.active, role: body.role }, user?.id);
         await logAdmin(email, 'training_access', String(body.user_id), { active: body.active, role: body.role });

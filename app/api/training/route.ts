@@ -48,7 +48,9 @@ export async function POST(req: Request) {
   }
   if (action === 'submit_exam') {
     if (!body.track_id) return NextResponse.json({ error: 'falta ruta' }, { status: 400 });
-    const res = await submitExam(user.id, String(body.track_id), (body.answers || {}) as Record<string, number>, lang);
+    const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || req.headers.get('x-real-ip') || '';
+    const ua = req.headers.get('user-agent') || '';
+    const res = await submitExam(user.id, String(body.track_id), (body.answers || {}) as Record<string, number>, lang, { attested: !!body.attested, ip, ua });
     return NextResponse.json(res);
   }
   return NextResponse.json({ error: 'acción desconocida' }, { status: 400 });
