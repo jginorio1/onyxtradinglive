@@ -26,6 +26,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
   let plan = 'free';
   let planName = '';
   let isAdmin = false;
+  let isRep = false;        // ¿la cuenta es parte de la red de ventas?
   let eaLive: boolean | null = null;
   let caps: any = {};
   let addonAlgo = false;
@@ -45,6 +46,9 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
       plan = prof?.plan || 'free';
       isAdmin = !!prof?.is_admin;
       addonAlgo = !!(prof as any)?.addon_algo;
+
+      // ¿Es vendedor de la red? Para mostrarle el acceso a su panel de ventas.
+      try { const { data: rep } = await supabaseAdmin.from('sales_reps').select('id').eq('user_id', user.id).eq('status', 'active').maybeSingle(); isRep = !!rep; } catch {}
 
       const { data: planRow } = await supabaseAdmin
         .from('plans').select('name,name_en,capabilities').eq('id', plan).maybeSingle();
@@ -164,7 +168,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
               <ThemeToggle />
               <LangToggle compact />
               <span className="topsep" />
-              <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} t={t} />
+              <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} isRep={isRep} salesLabel={lang === 'en' ? 'My sales panel' : 'Mi panel de ventas'} t={t} />
             </div>
           </div>
           {/* Fila 2: todos los tabs, a lo ancho. Si no caben, la fila se desliza. */}

@@ -4,8 +4,8 @@ import Link from 'next/link';
 
 // Avatar con menú. Se cierra al pulsar fuera o con Escape, como cualquier
 // menú al que el usuario esté acostumbrado.
-export default function TopBarMenu({ email, initial, isAdmin, t }:
-  { email: string; initial: string; isAdmin: boolean; t: Record<string, string> }) {
+export default function TopBarMenu({ email, initial, isAdmin, isRep = false, salesLabel = 'Mi panel de ventas', t }:
+  { email: string; initial: string; isAdmin: boolean; isRep?: boolean; salesLabel?: string; t: Record<string, string> }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -32,6 +32,7 @@ export default function TopBarMenu({ email, initial, isAdmin, t }:
           <Link className="menu-item" href="/dashboard/soporte" onClick={() => setOpen(false)}>{t.support}</Link>
           <Link className="menu-item" href="/account#referidos" onClick={() => setOpen(false)}>{t.referrals}</Link>
           <Link className="menu-item" href="/guia" onClick={() => setOpen(false)}>{t.guide}</Link>
+          {isRep && <Link className="menu-item" href="/dashboard/ventas" onClick={() => setOpen(false)}>{salesLabel}</Link>}
           {isAdmin && <Link className="menu-item" href="/admin" onClick={() => setOpen(false)}>{t.adminPanel}</Link>}
 
           {/* El idioma ya vive en la barra superior (junto al avatar), así que
