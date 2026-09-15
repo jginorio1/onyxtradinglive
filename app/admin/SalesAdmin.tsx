@@ -379,6 +379,44 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
         </div>
       </div>
       <div style={card}>
+        <b>Permisos por nivel</b>
+        <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
+          Lo que cada posición puede hacer por defecto. Puedes anularlo persona por persona en su tarjeta (La red → Editar → Permisos personalizados).
+        </div>
+        {(() => {
+          const PD = f.perms_defaults || {};
+          const DEF_ALL = { can_trial: true, can_discount: true, can_clients: true, can_tickets: true, can_recruit: true, can_team: true };
+          const DEF_SELLER = { can_trial: true, can_discount: true, can_clients: true, can_tickets: true, can_recruit: false, can_team: false };
+          const rowDef = (lv: string) => ({ ...(lv === 'vendedor' ? DEF_SELLER : DEF_ALL), ...((PD as any)[lv] || {}) });
+          const setp = (lv: string, k: string, v: boolean) => setF((x: any) => ({ ...x, perms_defaults: { ...(x.perms_defaults || {}), [lv]: { ...rowDef(lv), [k]: v } } }));
+          const PERMS: [string, string][] = [['can_trial', 'Dar pruebas'], ['can_discount', 'Dar descuentos'], ['can_clients', 'Gestionar clientes'], ['can_tickets', 'Atender tickets'], ['can_recruit', 'Reclutar equipo'], ['can_team', 'Ver equipo']];
+          const cols: [string, string, string][] = [['vendedor', f.level_names?.vendedor || 'Advisor', LV.vendedor.fg], ['l1', f.level_names?.l1 || 'Lead', LV.l1.fg], ['l2', f.level_names?.l2 || 'Director', LV.l2.fg]];
+          return (
+            <div style={{ overflowX: 'auto', marginTop: 10 }}>
+              <table style={{ borderCollapse: 'collapse', minWidth: 420, width: '100%' }}>
+                <thead><tr>
+                  <th style={{ textAlign: 'left', padding: '4px 8px', fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Permiso</th>
+                  {cols.map(([lv, label, fg]) => <th key={lv} style={{ padding: '4px 8px', fontSize: 11.5, color: fg, fontWeight: 700 }}>{label}</th>)}
+                </tr></thead>
+                <tbody>
+                  {PERMS.map(([k, label]) => (
+                    <tr key={k} style={{ borderTop: '1px solid var(--line,#2a3350)' }}>
+                      <td style={{ padding: '6px 8px', fontSize: 13, color: 'var(--tx,#e8ecf5)' }}>{label}</td>
+                      {cols.map(([lv]) => (
+                        <td key={lv} style={{ textAlign: 'center', padding: '6px 8px' }}>
+                          <input type="checkbox" checked={!!(rowDef(lv) as any)[k]} onChange={(e) => setp(lv, k, e.target.checked)} style={{ width: 15, height: 15, cursor: 'pointer' }} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+        <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>«Reclutar» y «Ver equipo» solo aplican a Lead/Director. Un vendedor con permiso personalizado ignora esta tabla.</div>
+      </div>
+      <div style={card}>
         <b>Sobre qué servicios se paga comisión</b>
         <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 520 }}>
           {scopeTog('subscriptions', 'Suscripciones y planes', 'recomendado')}
