@@ -308,6 +308,47 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           {num('override2_rate', 'Override Nivel 2', '%')}
           {num('commission_months', 'Meses (0 = ∞)')}
         </div>
+        {(() => {
+          const dr = Number(f.direct_rate) || 0, o1 = Number(f.override1_rate) || 0, o2 = Number(f.override2_rate) || 0;
+          const nm2 = f.level_names?.l2 || 'Director', nm1 = f.level_names?.l1 || 'Lead', nmv = f.level_names?.vendedor || 'Advisor';
+          const m = (pct: number) => pct > 0 ? '$' + pct.toFixed(0) : '—';   // sobre $100
+          const months = Number(f.commission_months) || 0;
+          const th: React.CSSProperties = { textAlign: 'right', padding: '6px 8px', fontSize: 11.5, color: 'var(--mut,#9aa6bd)', fontWeight: 600, borderBottom: '1px solid var(--line,#2a3350)' };
+          const td: React.CSSProperties = { textAlign: 'right', padding: '7px 8px', fontSize: 12.5, borderBottom: '1px solid var(--line,#2a3350)' };
+          const first: React.CSSProperties = { ...td, textAlign: 'left', color: 'var(--tx,#e8ecf5)', fontWeight: 500 };
+          const rows = [
+            { who: nm2, adv: 0, lead: 0, dir: dr },   // Director cierra: cobra directo, nadie arriba
+            { who: nm1, adv: 0, lead: dr, dir: o1 },   // Lead cierra: directo + Director (override1)
+            { who: nmv, adv: dr, lead: o1, dir: o2 },  // Advisor cierra: cadena completa
+          ];
+          return (
+            <div style={{ marginTop: 14, background: 'var(--bg,#0e1220)', border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: '12px 14px' }}>
+              <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', lineHeight: 1.55, marginBottom: 10 }}>
+                <b style={{ color: 'var(--tx,#e8ecf5)' }}>Reparto por venta</b> · el % lo gana <b>quien cierra</b> (su enlace); los overrides son para quienes están arriba. Ejemplo con un cliente de <b>$100/mes</b>:
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 380 }}>
+                  <thead><tr>
+                    <th style={{ ...th, textAlign: 'left' }}>Quién cierra</th>
+                    <th style={th}>{nmv}</th><th style={th}>{nm1}</th><th style={th}>{nm2}</th><th style={{ ...th, color: 'var(--tx,#e8ecf5)' }}>Total</th>
+                  </tr></thead>
+                  <tbody>
+                    {rows.map((r, i) => (
+                      <tr key={i}>
+                        <td style={first}>{r.who}</td>
+                        <td style={{ ...td, color: r.adv ? '#5ed6a0' : 'var(--mut,#9aa6bd)' }}>{m(r.adv)}</td>
+                        <td style={{ ...td, color: r.lead ? '#5ed6a0' : 'var(--mut,#9aa6bd)' }}>{m(r.lead)}</td>
+                        <td style={{ ...td, color: r.dir ? '#e5b567' : 'var(--mut,#9aa6bd)' }}>{m(r.dir)}</td>
+                        <td style={{ ...td, fontWeight: 700, color: 'var(--tx,#e8ecf5)' }}>${(r.adv + r.lead + r.dir).toFixed(0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 10 }}>Se repite {months === 0 ? 'cada mes que el cliente siga pagando (Meses = ∞)' : `durante los primeros ${months} meses de cada cliente`}. Los valores cambian solos si editas los % de arriba.</div>
+            </div>
+          );
+        })()}
       </div>
       <div style={card}>
         <b>Topes, pagos y frenos</b>
