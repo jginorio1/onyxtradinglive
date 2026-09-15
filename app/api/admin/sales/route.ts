@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { salesSettings, saveSalesSettings, uniqueRepCode, balances } from '@/lib/sales';
 import { scoreboard, repScorecard, reviewsForTeam, evaluationsFor, actionsFor, submitEvaluation, logAction } from '@/lib/salesPerf';
 import { goalProgress, goalFor } from '@/lib/salesGoals';
+import { funnelStats, unassignedLeads, assignLeadsRoundRobin, autoPromoteAll } from '@/lib/salesGrowth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -82,6 +83,12 @@ export async function POST(req: Request) {
       await supabaseAdmin.from('sales_goals').delete().eq('rep_id', b.rep_id).eq('period', period);
       return NextResponse.json({ ok: true });
     }
+
+    // ---- CRECIMIENTO: embudo, leads sin dueño, ascensos ----
+    if (action === 'funnel') { const f = await funnelStats(); return NextResponse.json({ ok: true, ...f }); }
+    if (action === 'leads') { const leads = await unassignedLeads(100); return NextResponse.json({ ok: true, leads }); }
+    if (action === 'assign_leads') { const r = await assignLeadsRoundRobin(300); return NextResponse.json({ ok: true, ...r }); }
+    if (action === 'promote_now') { const r = await autoPromoteAll(); return NextResponse.json({ ok: true, ...r }); }
 
     // ---- DESEMPEÑO ----
     // Tablero de todo el equipo (o de una rama si se pasa root_rep_id).

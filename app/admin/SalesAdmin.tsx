@@ -14,7 +14,7 @@ const LV = {
 
 export default function SalesAdmin({ canManage = true }: { canManage?: boolean }) {
   const [d, setD] = useState<any>(null);
-  const [sub, setSub] = useState<'solicitudes' | 'red' | 'desempeno' | 'metas' | 'ajustes' | 'pagos'>('red');
+  const [sub, setSub] = useState<'solicitudes' | 'red' | 'desempeno' | 'metas' | 'crecimiento' | 'ajustes' | 'pagos'>('red');
   const [msg, setMsg] = useState('');
   const [dragId, setDragId] = useState<string>('');
 
@@ -68,6 +68,7 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
         {subBtn('red', 'La red', reps.length)}
         {subBtn('desempeno', 'Desempeño')}
         {subBtn('metas', 'Metas')}
+        {subBtn('crecimiento', 'Crecimiento')}
         {subBtn('solicitudes', 'Solicitudes', apps.length)}
         {subBtn('ajustes', 'Ajustes')}
         {subBtn('pagos', 'Pagos')}
@@ -120,6 +121,9 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
 
       {/* ===== METAS ===== */}
       {sub === 'metas' && <MetasBox act={act} inp={inp} btn={btn} btnP={btnP} canManage={canManage} lvName={lvName} LV={LV} />}
+
+      {/* ===== CRECIMIENTO ===== */}
+      {sub === 'crecimiento' && <CrecimientoBox inp={inp} btn={btn} btnP={btnP} canManage={canManage} lvName={lvName} />}
 
       {/* ===== AJUSTES ===== */}
       {sub === 'ajustes' && <SettingsBox s={s} names={names} act={act} inp={inp} btnP={btnP} canManage={canManage} />}
@@ -262,6 +266,98 @@ function PayRow({ r, act, inp, btn, btnP, canManage }: any) {
           <input placeholder="txid (USDT)" value={ref} onChange={(e) => setRef(e.target.value)} style={{ ...inp, width: 150 }} />
           <button style={btn} onClick={() => act({ action: 'pay_manual', rep_id: r.id, method: 'usdt', ref })}>Marcar pagado</button>
         </div>}
+      </div>
+    </div>
+  );
+}
+
+// ===== CRECIMIENTO: embudo + leads sin dueño + ascensos =====
+function CrecimientoBox({ inp, btn, btnP, canManage, lvName }: any) {
+  const [funnel, setFunnel] = useState<any>(null);
+  const [leads, setLeads] = useState<any[]>([]);
+  const [busy, setBusy] = useState(true);
+  const [msg, setMsg] = useState('');
+  async function post(body: any) {
+    const r = await fetch('/api/admin/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    return r.json();
+  }
+  async function load() {
+    setBusy(true);
+    try { const [f, l] = await Promise.all([post({ action: 'funnel' }), post({ action: 'leads' })]); setFunnel(f); setLeads(l.leads || []); } catch {}
+    setBusy(false);
+  }
+  useEffect(() => { load(); }, []);
+  if (busy) return <div className="muted">Cargando…</div>;
+  const t = funnel?.totals || { clicks: 0, signups: 0, trials: 0, paid: 0 };
+  const stage = (label: string, val: number, color: string) => (
+    <div style={{ flex: 1, minWidth: 110, background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: '12px 14px', textAlign: 'center' }}>
+      <div style={{ fontSize: 22, fontWeight: 800, color }}>{val}</div>
+      <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 2 }}>{label}</div>
+    </div>
+  );
+  const card: React.CSSProperties = { background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 14, padding: 16, marginBottom: 14 };
+  return (
+    <div>
+      {msg && <div style={{ border: '1px solid var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', borderRadius: 10, padding: '8px 12px', marginBottom: 12, fontSize: 13 }}>{msg}</div>}
+
+      <div style={card}>
+        <b>Embudo de conversión (global)</b>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
+          {stage('Clics', t.clicks, 'var(--tx,#e8ecf5)')}<span className="muted">→</span>
+          {stage('Registros', t.signups, '#8b93ff')}<span className="muted">→</span>
+          {stage('Pruebas', t.trials, '#e5b567')}<span className="muted">→</span>
+          {stage('Pagados', t.paid, '#5ed6a0')}
+        </div>
+        <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>Conversión registro→pagado: <b style={{ color: 'var(--tx,#e8ecf5)' }}>{t.signups > 0 ? Math.round((t.paid / t.signups) * 100) : 0}%</b></div>
+      </div>
+
+      <div style={card}>
+        <b>Por vendedor</b>
+        <div style={{ overflowX: 'auto', marginTop: 8 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 460, fontSize: 13 }}>
+            <thead><tr style={{ color: 'var(--mut,#9aa6bd)', fontSize: 11.5, textAlign: 'right' }}>
+              <th style={{ padding: '6px', textAlign: 'left' }}>Vendedor</th><th style={{ padding: '6px' }}>Clics</th><th style={{ padding: '6px' }}>Registros</th><th style={{ padding: '6px' }}>Pruebas</th><th style={{ padding: '6px' }}>Pagados</th><th style={{ padding: '6px' }}>Conv.</th>
+            </tr></thead>
+            <tbody>
+              {(funnel?.rows || []).map((r: any) => (
+                <tr key={r.rep_id} style={{ borderTop: '1px solid var(--line,#2a3350)' }}>
+                  <td style={{ padding: '7px 6px', color: 'var(--tx,#e8ecf5)' }}>{r.name} <span className="muted" style={{ fontSize: 11 }}>· {lvName(r.level)}</span></td>
+                  <td style={{ padding: '7px 6px', textAlign: 'right', color: 'var(--mut,#9aa6bd)' }}>{r.clicks}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'right', color: '#8b93ff' }}>{r.signups}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'right', color: '#e5b567' }}>{r.trials}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'right', color: '#5ed6a0' }}>{r.paid}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'right', fontWeight: 700, color: 'var(--tx,#e8ecf5)' }}>{r.conv}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <b>Leads sin dueño ({leads.length})</b>
+          {canManage && <div style={{ display: 'flex', gap: 8 }}>
+            <button style={btnP} onClick={async () => { const j = await post({ action: 'assign_leads' }); setMsg(`Repartidos ${j.assigned || 0} leads ✓`); load(); }}>Repartir ahora</button>
+            <button style={btn} onClick={async () => { const j = await post({ action: 'promote_now' }); setMsg(`Ascendidos ${j.promoted || 0} ✓`); load(); }}>Ascender ahora</button>
+          </div>}
+        </div>
+        <div className="muted" style={{ fontSize: 12, margin: '4px 0 10px' }}>Usuarios registrados sin vendedor asignado. «Repartir» los balancea entre los vendedores (menos cargados primero).</div>
+        {!leads.length ? <div className="muted">Todos los usuarios ya tienen vendedor. 🎉</div> :
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <tbody>
+                {leads.slice(0, 50).map((l: any) => (
+                  <tr key={l.user_id} style={{ borderTop: '1px solid var(--line,#2a3350)' }}>
+                    <td style={{ padding: '7px 6px', color: 'var(--tx,#e8ecf5)' }}>{l.email || l.name || l.user_id.slice(0, 8)}</td>
+                    <td style={{ padding: '7px 6px', color: 'var(--mut,#9aa6bd)' }}>{l.plan}</td>
+                    <td style={{ padding: '7px 6px', color: 'var(--mut,#9aa6bd)', fontSize: 12, textAlign: 'right' }}>{l.since ? new Date(l.since).toLocaleDateString() : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {leads.length > 50 && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>… y {leads.length - 50} más.</div>}
+          </div>}
       </div>
     </div>
   );
@@ -579,6 +675,20 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           {tog('notify_first_paid', 'Primer pago de un cliente')}
           {tog('notify_commission', 'Comisión ganada')}
           {tog('notify_payout', 'Pago enviado')}
+        </div>
+      </div>
+      <div style={card}>
+        <b>Ascensos y reparto automáticos</b>
+        <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
+          Reversible: puedes degradar a alguien a mano y apagar esto cuando quieras.
+        </div>
+        <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 520 }}>
+          {tog('auto_promote', 'Ascender de nivel automáticamente al llegar al umbral')}
+          {tog('auto_assign_leads', 'Repartir leads sin dueño entre vendedores (round-robin)')}
+        </div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 12 }}>
+          {num('promote_to_l1_clients', 'Advisor → Lead con … clientes activos')}
+          {num('promote_to_l2_team', 'Lead → Director con … en su equipo')}
         </div>
       </div>
       {canManage && <button style={btnP} onClick={() => act({ action: 'save_settings', settings: f })}>Guardar ajustes</button>}

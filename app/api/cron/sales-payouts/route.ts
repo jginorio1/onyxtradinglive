@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { autoPaySalesDue } from '@/lib/salesPayout';
+import { salesSettings } from '@/lib/sales';
+import { assignLeadsRoundRobin, autoPromoteAll } from '@/lib/salesGrowth';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +19,12 @@ export async function GET(req: Request) {
   }
   try {
     const r = await autoPaySalesDue();
-    return NextResponse.json({ ok: true, ...r });
+    // Motor de crecimiento: reparte leads y asciende si el dueño lo activó.
+    const s = await salesSettings();
+    let assigned = 0, promoted = 0;
+    if (s.auto_assign_leads === true) { try { assigned = (await assignLeadsRoundRobin(300)).assigned; } catch {} }
+    if (s.auto_promote === true) { try { promoted = (await autoPromoteAll()).promoted; } catch {} }
+    return NextResponse.json({ ok: true, ...r, assigned, promoted });
   } catch (e: any) {
     await logError('cron_sales_payouts', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
