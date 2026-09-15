@@ -54,7 +54,7 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 20, display: 'flex', alignItems: 'center', gap: 8 }}>{ic('users-group', 22, 'var(--accent,#8b93ff)')} Red de ventas</h2>
+        <h2 style={{ margin: 0, fontSize: 20, display: 'flex', alignItems: 'center', gap: 8 }}>{ic('users-group', 22, 'var(--accent,#8b93ff)')} Red de ventas<Hint text="Tu equipo de comisionistas en 3 niveles (Advisor, Lead, Director). Cada pestaña de arriba controla una parte: La red = el árbol, Desempeño = puntajes, Metas = objetivos, Crecimiento = embudo y leads, Kit = materiales, Solicitudes = quienes aplican, Ajustes = todas las reglas, Pagos = pagarles." /></h2>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <span className="muted" style={{ fontSize: 12 }}>Reclutamiento:</span>
           <input readOnly value={recruitLink} style={{ ...inp, width: 230 }} />
@@ -78,7 +78,7 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
       {/* ===== LA RED (árbol con drag & drop) ===== */}
       {sub === 'red' && <div>
         {canManage && <div style={{ background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: 14, marginBottom: 12 }}>
-          <b style={{ fontSize: 14 }}>Añadir representante manualmente</b>
+          <b style={{ fontSize: 14 }}>Añadir representante manualmente<Hint text="Da de alta a un vendedor por su correo (debe tener cuenta en la app). Eliges su nivel y quién es su supervisor. También puedes arrastrar tarjetas para moverlo de rama, o darle de alta aprobando una Solicitud." /></b>
           <CreateRep reps={reps} act={act} inp={inp} btnP={btnP} lvName={lvName} />
         </div>}
 
@@ -112,10 +112,14 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
       </div>}
 
       {/* ===== DESEMPEÑO ===== */}
-      {sub === 'desempeno' && <SalesPerf canManage={canManage} names={names} />}
+      {sub === 'desempeno' && <div>
+        <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginBottom: 8, display: 'flex', alignItems: 'center' }}>Puntaje y calificación de cada vendedor<Hint text="Tablero de rendimiento del equipo. Cada vendedor tiene un puntaje (0-100) que mezcla reseñas de clientes, conversión, actividad, atención y retención, y cae en Estrella / Sólido / En riesgo. Aquí ves reseñas, evaluaciones 360 y consejos de la IA." /></div>
+        <SalesPerf canManage={canManage} names={names} />
+      </div>}
 
       {/* ===== SOLICITUDES ===== */}
       {sub === 'solicitudes' && <div>
+        <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginBottom: 8, display: 'flex', alignItems: 'center' }}>Personas que aplicaron para vender<Hint text="Quienes se postularon desde la página pública de reclutamiento. Revisa su CV, elige nivel y supervisor, y Aprueba (queda de alta como vendedor) o Rechaza." /></div>
         {apps.length === 0 && <div className="muted">No hay solicitudes pendientes.</div>}
         {apps.map((a) => <AppRow key={a.id} a={a} reps={reps} act={act} inp={inp} btn={btn} btnP={btnP} canManage={canManage} lvName={lvName} />)}
       </div>}
@@ -134,7 +138,7 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
 
       {/* ===== PAGOS ===== */}
       {sub === 'pagos' && <div>
-        <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>Paga el saldo disponible (madurado). Stripe = automático · USDT/manual = marcas con referencia.</div>
+        <div className="muted" style={{ fontSize: 13, marginBottom: 8, display: 'flex', alignItems: 'center' }}>Paga el saldo disponible (madurado). Stripe = automático · USDT/manual = marcas con referencia.<Hint text="Solo aparecen aquí los vendedores con saldo DISPONIBLE (ya maduró y pasó la retención). Con Stripe el dinero sale solo al conectar su cuenta; con USDT/manual pagas fuera del sistema y marcas la referencia. Si tienes el pago automático activo, esto se hace solo." /></div>
         {reps.filter((r) => (r.balances?.available || 0) > 0).length === 0 && <div className="muted">Nadie tiene saldo disponible ahora mismo.</div>}
         {reps.filter((r) => (r.balances?.available || 0) > 0).map((r) => <PayRow key={r.id} r={r} act={act} inp={inp} btn={btn} btnP={btnP} canManage={canManage} />)}
       </div>}
@@ -302,6 +306,7 @@ function KitBox({ inp, btn, btnP, canManage }: any) {
   if (busy) return <div className="muted">Cargando kit…</div>;
   return (
     <div>
+      <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginBottom: 10, display: 'flex', alignItems: 'center' }}>Materiales para que tu equipo venda mejor<Hint text="Guiones, plantillas de WhatsApp, banners, PDFs o videos que creas aquí y aparecen en la pestaña 'Kit' del panel de cada vendedor (con botón de copiar/abrir). Elige idioma y si está activo (visible) o no." /></div>
       {canManage && <button style={{ ...btnP, marginBottom: 12 }} onClick={() => setEd({ ...blank })}>+ Nuevo material</button>}
       {ed && <div style={card}>
         <b>{ed.id ? 'Editar material' : 'Nuevo material'}</b>
@@ -370,7 +375,7 @@ function CrecimientoBox({ inp, btn, btnP, canManage, lvName }: any) {
       {msg && <div style={{ border: '1px solid var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', borderRadius: 10, padding: '8px 12px', marginBottom: 12, fontSize: 13 }}>{msg}</div>}
 
       <div style={card}>
-        <b>Embudo de conversión (global)</b>
+        <b>Embudo de conversión (global)<Hint text="El recorrido del cliente en 4 pasos: Clics en enlaces de vendedores → Registros → Pruebas dadas → Pagados. La caída entre pasos te dice dónde se pierde la gente. Abajo lo ves por cada vendedor para saber quién convierte de verdad." /></b>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
           {stage('Clics', t.clicks, 'var(--tx,#e8ecf5)')}<span className="muted">→</span>
           {stage('Registros', t.signups, '#8b93ff')}<span className="muted">→</span>
@@ -405,7 +410,7 @@ function CrecimientoBox({ inp, btn, btnP, canManage, lvName }: any) {
 
       <div style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <b>Leads sin dueño ({leads.length})</b>
+          <b>Leads sin dueño ({leads.length})<Hint text="Usuarios registrados que NO llegaron por el enlace de ningún vendedor, así que no tienen comisionista asignado. 'Repartir ahora' los distribuye entre los vendedores (el de menos clientes primero). 'Ascender ahora' revisa quién cumple umbral y sube de nivel." /></b>
           {canManage && <div style={{ display: 'flex', gap: 8 }}>
             <button style={btnP} onClick={async () => { const j = await post({ action: 'assign_leads' }); setMsg(`Repartidos ${j.assigned || 0} leads ✓`); load(); }}>Repartir ahora</button>
             <button style={btn} onClick={async () => { const j = await post({ action: 'promote_now' }); setMsg(`Ascendidos ${j.promoted || 0} ✓`); load(); }}>Ascender ahora</button>
@@ -451,7 +456,7 @@ function MetasBox({ inp, btn, btnP, canManage, lvName, LV }: any) {
   if (busy) return <div className="muted">Cargando metas…</div>;
   return (
     <div>
-      <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Metas del mes <b style={{ color: 'var(--tx,#e8ecf5)' }}>{period}</b>. En blanco = usa la meta global (Ajustes). El bono se paga solo como comisión al cumplir.</div>
+      <div className="muted" style={{ fontSize: 13, marginBottom: 10, display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}><span>Metas del mes <b style={{ color: 'var(--tx,#e8ecf5)' }}>{period}</b>. En blanco = usa la meta global (Ajustes). El bono se paga solo como comisión al cumplir.</span><Hint text="El objetivo mensual de cada vendedor y su avance en vivo (clientes nuevos y comisión generada). Fija una meta propia a alguien o deja los campos en blanco para usar la meta global de Ajustes. Al cumplir, el bono se acredita solo." /></div>
       {msg && <div style={{ border: '1px solid var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', borderRadius: 10, padding: '7px 12px', marginBottom: 10, fontSize: 13 }}>{msg}</div>}
       {!rows.length && <div className="muted">No hay vendedores activos.</div>}
       <div style={{ display: 'grid', gap: 10 }}>

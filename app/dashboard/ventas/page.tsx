@@ -1,6 +1,20 @@
 'use client';
 import { useEffect, useState } from 'react';
 
+// Icono "?" con explicación (clic para abrir/cerrar; title como respaldo).
+function Hint({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle', marginLeft: 5 }}>
+      <button type="button" title={text} aria-label="Ayuda"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        style={{ width: 16, height: 16, borderRadius: '50%', border: '1px solid var(--line,#3a4363)', background: 'var(--card,#1b2338)', color: 'var(--mut,#9aa6bd)', fontSize: 10.5, lineHeight: '14px', cursor: 'pointer', padding: 0, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>?</button>
+      {open && <span style={{ position: 'absolute', bottom: '135%', left: '50%', transform: 'translateX(-50%)', width: 240, maxWidth: '75vw', background: 'var(--panel,#161c2e)', border: '1px solid var(--accent,#8b93ff)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--tx,#e8ecf5)', lineHeight: 1.5, zIndex: 80, boxShadow: '0 8px 30px rgba(0,0,0,.45)', fontWeight: 400, whiteSpace: 'normal', textAlign: 'left' }}>{text}</span>}
+    </span>
+  );
+}
+
 // Panel del VENDEDOR / SUPERVISOR. Sus clientes, comisiones, dar prueba/descuento,
 // atender tickets, su equipo y cobros (Stripe Connect o USDT).
 export default function VentasPanel() {
@@ -79,7 +93,7 @@ export default function VentasPanel() {
         </div>
         {d.goal && (d.goal.target_clients > 0 || d.goal.target_amount > 0) && <GoalCard g={d.goal} L={L} card={card} />}
         <div style={card}>
-          <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginBottom: 6 }}>{L('Tu enlace de invitación (quien se registre por aquí queda atado a ti):', 'Your invite link (anyone who signs up here is attributed to you):')}</div>
+          <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginBottom: 6, display: 'flex', alignItems: 'center' }}><span>{L('Tu enlace de invitación (quien se registre por aquí queda atado a ti):', 'Your invite link (anyone who signs up here is attributed to you):')}</span><Hint text={L('Comparte este enlace. Todo el que se registre a través de él queda como tu cliente de por vida y cobras comisión cada mes que pague. Es tu herramienta #1.', 'Share this link. Anyone who signs up through it becomes your client for life and you earn commission every month they pay. This is your #1 tool.')} /></div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input readOnly value={d.link} style={{ flex: 1, minWidth: 220, padding: '9px 12px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13 }} />
             <button style={btnP} onClick={() => { navigator.clipboard.writeText(d.link); setMsg(L('Enlace copiado ✓', 'Link copied ✓')); }}>{L('Copiar', 'Copy')}</button>
@@ -97,13 +111,13 @@ export default function VentasPanel() {
         <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginBottom: 10 }}>{L('Puedes darles prueba (hasta', 'You can grant a trial (up to')} {d.caps.trial_max_days} {L('días) o generar un descuento (hasta', 'days) or generate a discount (up to')} {d.caps.discount_max_pct}%).</div>
         <ClientList d={d} L={L} act={act} />
         <div style={{ marginTop: 14, borderTop: '1px solid var(--line,#2a3350)', paddingTop: 12 }}>
-          <b style={{ color: 'var(--tx,#e8ecf5)', fontSize: 14 }}>{L('Generar cupón de descuento', 'Generate a discount coupon')}</b>
+          <b style={{ color: 'var(--tx,#e8ecf5)', fontSize: 14 }}>{L('Generar cupón de descuento', 'Generate a discount coupon')}<Hint text={L('Crea un código de descuento para cerrar una venta. Tiene un tope de % y un límite de cuántos puedes generar al día. El descuento baja el precio y la comisión se calcula sobre lo que el cliente realmente paga.', 'Create a discount code to close a sale. It has a max % and a daily limit. The discount lowers the price, and commission is calculated on what the client actually pays.')} /></b>
           <DiscountBox d={d} L={L} act={act} />
         </div>
       </div>}
 
       {tab === 'equipo' && <div style={card}>
-        <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Tu equipo', 'Your team')}</b>
+        <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Tu equipo', 'Your team')}<Hint text={L('Las personas debajo de ti en la red, con sus clientes y su saldo. Ganas un override (comisión extra) sobre lo que ellos venden.', 'The people below you in the network, with their clients and balance. You earn an override (extra commission) on what they sell.')} /></b>
         <table style={{ width: '100%', marginTop: 10, fontSize: 13.5, borderCollapse: 'collapse' }}>
           <tbody>
             {d.team.map((t: any) => (
@@ -118,7 +132,7 @@ export default function VentasPanel() {
       </div>}
 
       {tab === 'soporte' && <div style={card}>
-        <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Tickets de tus clientes', 'Your clients’ tickets')}</b>
+        <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Tickets de tus clientes', 'Your clients’ tickets')}<Hint text={L('Dudas y problemas abiertos por tus clientes. Respóndeles rápido aquí: la atención cuenta para tu puntaje y ayuda a que no se den de baja.', 'Questions and issues opened by your clients. Reply fast here: support counts toward your score and helps prevent churn.')} /></b>
         {d.tickets.length === 0 ? <p style={{ color: 'var(--mut,#9aa6bd)' }}>{L('No hay tickets abiertos. ¡Todo al día!', 'No open tickets. All good!')}</p> :
           d.tickets.map((t: any) => <TicketRow key={t.id} t={t} L={L} act={act} />)}
       </div>}
@@ -326,7 +340,7 @@ function PayoutBox({ d, L, act, btn, btnP, card }: any) {
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <div style={card}>
-        <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Cómo quieres cobrar', 'How you want to get paid')}</b>
+        <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Cómo quieres cobrar', 'How you want to get paid')}<Hint text={L('Elige Stripe (banco/tarjeta, pago automático al conectar tu cuenta) o USDT (cripto). Sin un método conectado, tu saldo se acumula pero no se puede pagar.', 'Choose Stripe (bank/card, automatic once connected) or USDT (crypto). Without a connected method, your balance accrues but can’t be paid out.')} /></b>
         <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
           <label style={{ ...btn, background: method === 'stripe' ? 'var(--accent,#8b93ff)' : btn.background, color: method === 'stripe' ? '#fff' : btn.color }}>
             <input type="radio" checked={method === 'stripe'} onChange={() => setMethod('stripe')} style={{ marginRight: 6 }} />{L('Stripe (banco/tarjeta) · automático', 'Stripe (bank/card) · automatic')}</label>
