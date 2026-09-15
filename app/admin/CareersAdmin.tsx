@@ -94,7 +94,10 @@ export default function CareersAdmin({ canManage = true }: { canManage?: boolean
       </div>}
 
       {/* ===== AJUSTES ===== */}
-      {sub === 'ajustes' && <SettingsBox s={s} act={act} inp={inp} btnP={btnP} card={card} canManage={canManage} />}
+      {sub === 'ajustes' && <>
+        <SettingsBox s={s} act={act} inp={inp} btnP={btnP} card={card} canManage={canManage} />
+        <CompanyBox company={d.company || ''} act={act} inp={inp} btnP={btnP} card={card} canManage={canManage} />
+      </>}
 
       {edit && <PositionModal p={edit} act={act} onClose={() => setEdit(null)} inp={inp} btn={btn} btnP={btnP} />}
     </div>
@@ -248,6 +251,26 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
 
         <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end' }}><button style={btn} onClick={onClose}>Cancelar</button><button style={btnP} onClick={save}>Guardar</button></div>
       </div>
+    </div>
+  );
+}
+
+// Contexto Onyx: perfil de empresa que la IA usa para generar/sugerir/auditar
+// vacantes (y lo comparte Ventas). Editable; si se vacía, vuelve al default.
+function CompanyBox({ company, act, inp, btnP, card, canManage }: any) {
+  const [txt, setTxt] = useState<string>(company || '');
+  useEffect(() => { setTxt(company || ''); }, [company]);
+  const lbl: React.CSSProperties = { fontSize: 12.5, color: 'var(--mut,#9aa6bd)', display: 'block', marginBottom: 4 };
+  return (
+    <div style={{ ...card, marginTop: 12 }}>
+      <b style={{ fontSize: 14 }}>🏢 Contexto Onyx <span style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)', fontWeight: 400 }}>· lo que usamos y hacia dónde vamos</span></b>
+      <p style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', margin: '6px 0 10px', lineHeight: 1.5 }}>
+        La IA lee esto al <b>Generar</b>, <b>Sugerir skills</b> y <b>Auditar</b> una plaza, para nombrar tus herramientas reales (Next.js, Supabase, Stripe, MT4/MT5, cTrader…) y alinear la vacante con tu dirección. También lo comparte el reclutamiento de ventas.
+      </p>
+      <label><span style={lbl}>Perfil de la empresa (stack, qué hacemos, hacia dónde vamos)</span>
+        <textarea style={{ ...inp, width: '100%', minHeight: 130, resize: 'vertical', lineHeight: 1.5 }} value={txt} onChange={(e) => setTxt(e.target.value)} placeholder="Somos… Usamos… Vamos hacia…" />
+      </label>
+      {canManage && <div style={{ marginTop: 10 }}><button style={btnP} onClick={() => act({ action: 'save_company', company: txt })}>Guardar contexto</button></div>}
     </div>
   );
 }

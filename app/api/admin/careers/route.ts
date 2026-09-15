@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { careersSettings, saveCareersSettings, allPositions, savePosition, deletePosition, listApplications } from '@/lib/careers';
+import { companyContext, saveCompanyContext } from '@/lib/companyContext';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -13,8 +14,9 @@ export async function GET() {
   const settings = await careersSettings();
   const positions = await allPositions();
   const applications = await listApplications(300);
+  const company = await companyContext();
   const link = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '') + '/carreras';
-  return NextResponse.json({ settings, positions, applications, link });
+  return NextResponse.json({ settings, positions, applications, link, company });
 }
 
 // POST · gestión.
@@ -25,6 +27,8 @@ export async function POST(req: Request) {
   const action = String(b.action || '');
   try {
     if (action === 'save_settings') { const s = await saveCareersSettings(b.settings || {}); return NextResponse.json({ ok: true, settings: s }); }
+    // Guardar el Contexto Onyx (perfil de empresa compartido con la IA).
+    if (action === 'save_company') { const r = await saveCompanyContext(b.company || ''); return NextResponse.json({ ok: true, company: r.text }); }
     if (action === 'save_position') { const r = await savePosition(b.position || {}); await logAdmin(user?.email || '', 'careers_save', r.id || '', {}); return NextResponse.json(r); }
     if (action === 'set_status' && b.id) { await supabaseAdmin.from('job_openings').update({ status: ['open', 'closed', 'draft'].includes(b.status) ? b.status : 'draft' }).eq('id', b.id); return NextResponse.json({ ok: true }); }
     if (action === 'delete_position' && b.id) { await deletePosition(b.id); return NextResponse.json({ ok: true }); }
@@ -39,21 +43,21 @@ export async function POST(req: Request) {
     // Generar un borrador de la plaza con IA a partir del título/contexto.
     if (action === 'draft') {
       const { draftJob } = await import('@/lib/careersAI');
-      const r = await draftJob(b.ctx || {}, b.lang === 'en' ? 'en' : 'es');
+      const r = await draftJob(b.ctx || {}, b.lang === 'en' ? 'en' : 'es', await companyContext());
       if (!r) return NextResponse.json({ ok: false, error: 'IA no disponible (falta ANTHROPIC_API_KEY)' }, { status: 400 });
       return NextResponse.json({ ok: true, draft: r });
     }
     // Sugerir SOLO las etiquetas/skills del puesto.
     if (action === 'suggest_skills') {
       const { suggestSkills } = await import('@/lib/careersAI');
-      const r = await suggestSkills(b.ctx || {}, b.lang === 'en' ? 'en' : 'es');
+      const r = await suggestSkills(b.ctx || {}, b.lang === 'en' ? 'en' : 'es', await companyContext());
       if (!r) return NextResponse.json({ ok: false, error: 'IA no disponible (falta ANTHROPIC_API_KEY)' }, { status: 400 });
       return NextResponse.json({ ok: true, tags: r });
     }
     // Auditar la plaza con IA (puntaje + sugerencias).
     if (action === 'audit') {
       const { auditJob } = await import('@/lib/careersAI');
-      const r = await auditJob(b.job || {}, b.lang === 'en' ? 'en' : 'es');
+      const r = await auditJob(b.job || {}, b.lang === 'en' ? 'en' : 'es', await companyContext());
       return NextResponse.json({ ok: true, audit: r });
     }
     // Analizar el CV de una postulación contra su vacante (IA lee el archivo).

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useLang } from '@/lib/lang';
 
 // Formulario de reclutamiento (landing oculta). Bilingüe con un botón ES/EN.
 // Íconos de línea inline (SVG) y subida de currículum (PDF) al bucket privado.
@@ -20,7 +21,9 @@ function Ic({ n, s = 20, c = 'currentColor' }: { n: string; s?: number; c?: stri
 }
 
 export default function ApplyForm() {
-  const [lang, setLang] = useState<'es' | 'en'>('es');
+  // Idioma global del sitio (mismo selector de la barra). Solo hay ES/EN.
+  const { lang: siteLang } = useLang();
+  const lang: 'es' | 'en' = siteLang === 'es' ? 'es' : 'en';
   const L = (es: string, en: string) => (lang === 'es' ? es : en);
   const [f, setF] = useState({ name: '', email: '', phone: '', country: '', desired_role: 'vendedor', experience: '', audience: '', note: '' });
   const [busy, setBusy] = useState(false);
@@ -82,9 +85,7 @@ export default function ApplyForm() {
 
   return (
     <div style={wrap}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-        <button onClick={() => setLang(lang === 'es' ? 'en' : 'es')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 13 }}><Ic n="globe" s={15} />{lang === 'es' ? 'EN' : 'ES'}</button>
-      </div>
+      {/* El idioma lo controla el selector global del sitio (barra superior). */}
 
       <div style={{ textAlign: 'center', marginBottom: 20 }}>
         <div style={{ fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gold,#e5b567)', fontWeight: 700 }}>{L('Programa privado', 'Private program')}</div>

@@ -81,9 +81,11 @@ export async function translateJob(src: { title?: string; summary?: string; desc
 export async function draftJob(
   ctx: { title?: string; department?: string; type?: string; location?: string; salary_range?: string; summary?: string; description?: string; tags?: string[] },
   lang: 'es' | 'en' = 'es',
+  company = '',
 ): Promise<{ title: string; summary: string; description: string; tags: string[] } | null> {
   const es = lang === 'es';
-  const system = es
+  const ctxLine = company ? `\n\nSOBRE LA EMPRESA (úsalo: menciona las herramientas/sistemas reales y alinea con su dirección):\n${company}` : '';
+  const system = (es
     ? `Eres reclutador senior. A partir del contexto, redacta una vacante ATRACTIVA y profesional en español. Responde SOLO con JSON: {"title":"","summary":"","description":"","tags":["",""]}.
 - title: mejóralo si es genérico (añade nivel/seniority si aplica), respetando la intención.
 - summary: 1-2 frases para la tarjeta.
@@ -95,7 +97,7 @@ No inventes salario ni ubicación; usa los del contexto si vienen.`
 - summary: 1-2 sentences for the card.
 - description: use real line breaks. Include sections: what you'll do (responsibilities), what we're looking for (requirements/skills), and what we offer. Realistic, inclusive, no hype.
 - tags: 4-8 role skills/technologies. Keep tech names as-is (React, Node, SQL).
-Do not invent salary or location; use the ones in the context if present.`;
+Do not invent salary or location; use the ones in the context if present.`) + ctxLine;
   const user = JSON.stringify({
     title: ctx.title || '', department: ctx.department || '', type: ctx.type || '', location: ctx.location || '',
     salary_range: ctx.salary_range || '', summary: ctx.summary || '', description: ctx.description || '', tags: ctx.tags || [],
@@ -113,11 +115,13 @@ Do not invent salary or location; use the ones in the context if present.`;
 export async function suggestSkills(
   ctx: { title?: string; department?: string; description?: string },
   lang: 'es' | 'en' = 'es',
+  company = '',
 ): Promise<string[] | null> {
   const es = lang === 'es';
-  const system = es
+  const ctxLine = company ? `\nEmpresa (prioriza skills acordes a su stack real): ${company}` : '';
+  const system = (es
     ? 'Eres reclutador técnico. Devuelve SOLO las habilidades/tecnologías clave del puesto. Responde SOLO con JSON: {"tags":["",""]}. 4-10 etiquetas cortas (1-2 palabras), sin frases. Mantén nombres técnicos como están (React, Node, SQL, Figma). Incluye 1-2 blandas si aplican (ej. Comunicación).'
-    : 'You are a technical recruiter. Return ONLY the key skills/technologies for the role. Reply ONLY with JSON: {"tags":["",""]}. 4-10 short tags (1-2 words), no phrases. Keep tech names as-is (React, Node, SQL, Figma). Include 1-2 soft skills if relevant (e.g. Communication).';
+    : 'You are a technical recruiter. Return ONLY the key skills/technologies for the role. Reply ONLY with JSON: {"tags":["",""]}. 4-10 short tags (1-2 words), no phrases. Keep tech names as-is (React, Node, SQL, Figma). Include 1-2 soft skills if relevant (e.g. Communication).') + ctxLine;
   const user = JSON.stringify({ title: ctx.title || '', department: ctx.department || '', description: (ctx.description || '').slice(0, 2000) });
   const j = parseJson(await anthropic(system, user, 400));
   if (!j || !Array.isArray(j.tags)) return null;
@@ -127,15 +131,16 @@ export async function suggestSkills(
 export type AuditItem = { level: 'good' | 'warn' | 'info'; text: string };
 
 // Audita la plaza: puntaje 0-100 + sugerencias según el rol.
-export async function auditJob(job: any, lang: 'es' | 'en' = 'es'): Promise<{ score: number; items: AuditItem[]; ai: boolean }> {
+export async function auditJob(job: any, lang: 'es' | 'en' = 'es', company = ''): Promise<{ score: number; items: AuditItem[]; ai: boolean }> {
   const es = lang === 'es';
   const facts = JSON.stringify({
     title: job.title, department: job.department, type: job.type, location: job.location,
     salary_range: job.salary_range, summary: job.summary, description: job.description, tags: job.tags,
   });
-  const system = es
+  const ctxLine = company ? `\nContexto de la empresa (revisa que la vacante encaje con su stack y rumbo, y sugiere nombrar las herramientas reales): ${company}` : '';
+  const system = (es
     ? 'Eres reclutador senior. Audita esta vacante y responde SOLO con JSON: {"score": 0-100, "items": [{"level":"good|warn|info","text":"sugerencia corta y accionable"}]}. Juzga según el ROL: claridad del título, resumen (ni vago ni larguísimo), descripción con responsabilidades y requisitos, salario visible, ubicación/zona horaria si es remoto, cómo postularse, etiquetas/skills acordes al puesto, lenguaje inclusivo y requisitos realistas. Da 3-6 items, en español.'
-    : 'You are a senior recruiter. Audit this job posting and reply ONLY with JSON: {"score": 0-100, "items": [{"level":"good|warn|info","text":"short actionable tip"}]}. Judge by ROLE: title clarity, summary (not vague nor too long), description with responsibilities and requirements, visible salary, location/timezone if remote, how to apply, tags/skills fitting the role, inclusive language and realistic requirements. Give 3-6 items.';
+    : 'You are a senior recruiter. Audit this job posting and reply ONLY with JSON: {"score": 0-100, "items": [{"level":"good|warn|info","text":"short actionable tip"}]}. Judge by ROLE: title clarity, summary (not vague nor too long), description with responsibilities and requirements, visible salary, location/timezone if remote, how to apply, tags/skills fitting the role, inclusive language and realistic requirements. Give 3-6 items.') + ctxLine;
   const j = parseJson(await anthropic(system, facts, 900));
   if (j && typeof j.score === 'number' && Array.isArray(j.items)) {
     const items = j.items.map((it: any) => ({ level: ['good', 'warn', 'info'].includes(it.level) ? it.level : 'info', text: String(it.text || '') })).filter((x: AuditItem) => x.text).slice(0, 6);

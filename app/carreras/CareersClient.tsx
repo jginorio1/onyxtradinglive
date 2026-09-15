@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { useLang } from '@/lib/lang';
 
 // Página pública de CARRERAS. Tarjetas por plaza, filtro por área, y postulación
 // con CV. Bilingüe (ES/EN). Se configura desde Admin → Carreras.
@@ -32,7 +33,10 @@ function Ic({ n, s = 16, c = 'currentColor' }: { n: string; s?: number; c?: stri
 
 export default function CareersClient() {
   const [d, setD] = useState<any>(null);
-  const [lang, setLang] = useState<'es' | 'en'>('es');
+  // Sigue el idioma global del sitio (mismo selector de la barra). Solo tenemos
+  // contenido ES/EN, así que cualquier idioma que no sea español muestra inglés.
+  const { lang: siteLang } = useLang();
+  const lang: 'es' | 'en' = siteLang === 'es' ? 'es' : 'en';
   const [filter, setFilter] = useState('all');
   const [apply, setApply] = useState<any>(null);
   const L = (es: string, en: string) => (lang === 'es' ? es : en);
@@ -59,9 +63,7 @@ export default function CareersClient() {
 
   return (
     <div style={wrap}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-        <button onClick={() => setLang(lang === 'es' ? 'en' : 'es')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 10, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 13 }}><Ic n="globe" s={15} />{lang === 'es' ? 'EN' : 'ES'}</button>
-      </div>
+      {/* El idioma lo controla el selector global del sitio (barra superior). */}
 
       {/* Hero */}
       <div style={{ textAlign: 'center', marginBottom: 30 }}>
