@@ -143,52 +143,58 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
 
   async function translate() {
     setBusyT(true);
-    const r = await act({ action: 'translate', to: other, src: {
-      title: f[F('title')] || '', summary: f[F('summary')] || '', description: f[F('description')] || '',
-      tags: String((lang === 'en' ? f.tags_en : f.tags) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
-    } });
-    if (r?.translated) {
-      const t = r.translated;
-      setF((x: any) => ({ ...x,
-        [other === 'en' ? 'title_en' : 'title']: t.title,
-        [other === 'en' ? 'summary_en' : 'summary']: t.summary,
-        [other === 'en' ? 'description_en' : 'description']: t.description,
-        [other === 'en' ? 'tags_en' : 'tags']: (t.tags || []).join(', '),
-      }));
-      setLang(other);
-    }
-    setBusyT(false);
+    try {
+      const r = await act({ action: 'translate', to: other, src: {
+        title: f[F('title')] || '', summary: f[F('summary')] || '', description: f[F('description')] || '',
+        tags: String((lang === 'en' ? f.tags_en : f.tags) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
+      } });
+      if (r?.translated) {
+        const t = r.translated;
+        setF((x: any) => ({ ...x,
+          [other === 'en' ? 'title_en' : 'title']: t.title,
+          [other === 'en' ? 'summary_en' : 'summary']: t.summary,
+          [other === 'en' ? 'description_en' : 'description']: t.description,
+          [other === 'en' ? 'tags_en' : 'tags']: (t.tags || []).join(', '),
+        }));
+        setLang(other);
+      } else if (r && r.ok === false) alert(r.error || 'La IA no respondió.');
+    } catch { alert(lang === 'es' ? 'La IA tardó demasiado o falló. Intenta de nuevo.' : 'AI timed out or failed. Try again.'); }
+    finally { setBusyT(false); }
   }
   async function generate() {
     if (!String(f[F('title')] || '').trim()) { alert(lang === 'es' ? 'Escribe primero el título de la plaza.' : 'Write the job title first.'); return; }
     setBusyG(true);
-    const r = await act({ action: 'draft', lang, ctx: {
-      title: f[F('title')], department: f.department, type: f.type, location: f.location, salary_range: f.salary_range,
-      summary: f[F('summary')], description: f[F('description')],
-      tags: String((lang === 'en' ? f.tags_en : f.tags) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
-    } });
-    if (r?.draft) {
-      const g = r.draft;
-      setF((x: any) => ({ ...x,
-        [F('title')]: g.title || x[F('title')],
-        [F('summary')]: g.summary,
-        [F('description')]: g.description,
-        [lang === 'en' ? 'tags_en' : 'tags']: (g.tags || []).join(', '),
-      }));
-    }
-    setBusyG(false);
+    try {
+      const r = await act({ action: 'draft', lang, ctx: {
+        title: f[F('title')], department: f.department, type: f.type, location: f.location, salary_range: f.salary_range,
+        summary: f[F('summary')], description: f[F('description')],
+        tags: String((lang === 'en' ? f.tags_en : f.tags) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
+      } });
+      if (r?.draft) {
+        const g = r.draft;
+        setF((x: any) => ({ ...x,
+          [F('title')]: g.title || x[F('title')],
+          [F('summary')]: g.summary,
+          [F('description')]: g.description,
+          [lang === 'en' ? 'tags_en' : 'tags']: (g.tags || []).join(', '),
+        }));
+      } else if (r && r.ok === false) alert(r.error || 'La IA no respondió.');
+    } catch { alert(lang === 'es' ? 'La IA tardó demasiado o falló. Intenta de nuevo.' : 'AI timed out or failed. Try again.'); }
+    finally { setBusyG(false); }
   }
   async function suggest() {
     if (!String(f[F('title')] || '').trim()) { alert(lang === 'es' ? 'Escribe primero el título de la plaza.' : 'Write the job title first.'); return; }
     setBusyS(true);
-    const r = await act({ action: 'suggest_skills', lang, ctx: { title: f[F('title')], department: f.department, description: f[F('description')] } });
-    if (r?.tags?.length) {
-      const key = lang === 'en' ? 'tags_en' : 'tags';
-      const have = String(f[key] || '').split(',').map((t: string) => t.trim()).filter(Boolean);
-      const merged = Array.from(new Set([...have, ...r.tags])).slice(0, 12);
-      setF((x: any) => ({ ...x, [key]: merged.join(', ') }));
-    }
-    setBusyS(false);
+    try {
+      const r = await act({ action: 'suggest_skills', lang, ctx: { title: f[F('title')], department: f.department, description: f[F('description')] } });
+      if (r?.tags?.length) {
+        const key = lang === 'en' ? 'tags_en' : 'tags';
+        const have = String(f[key] || '').split(',').map((t: string) => t.trim()).filter(Boolean);
+        const merged = Array.from(new Set([...have, ...r.tags])).slice(0, 12);
+        setF((x: any) => ({ ...x, [key]: merged.join(', ') }));
+      } else if (r && r.ok === false) alert(r.error || 'La IA no respondió.');
+    } catch { alert(lang === 'es' ? 'La IA tardó demasiado o falló. Intenta de nuevo.' : 'AI timed out or failed. Try again.'); }
+    finally { setBusyS(false); }
   }
   // Arma el objeto de la plaza en el idioma activo (para auditar/aplicar).
   const jobNow = (src: any = f) => ({
@@ -199,29 +205,34 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
   async function runAudit(jobOverride?: any) {
     setBusyA(true);
     if (!jobOverride) setPrevScore(null); // auditoría manual: sin comparación
-    const r = await act({ action: 'audit', lang, job: jobOverride || jobNow() });
-    setAudit(r?.audit || null); setBusyA(false);
-    return r?.audit || null;
+    try {
+      const r = await act({ action: 'audit', lang, job: jobOverride || jobNow() });
+      setAudit(r?.audit || null);
+      return r?.audit || null;
+    } catch { alert(lang === 'es' ? 'La IA tardó demasiado o falló. Intenta de nuevo.' : 'AI timed out or failed. Try again.'); return null; }
+    finally { setBusyA(false); }
   }
   // Aplica las sugerencias con IA, rellena los campos y vuelve a auditar.
   async function applyAndReaudit() {
     if (!audit || !(audit.items || []).length) return;
     setBusyAp(true);
     const before = audit.score;
-    const r = await act({ action: 'apply_audit', lang, items: audit.items, job: jobNow() });
-    if (r?.applied) {
-      const a = r.applied;
-      const next = { ...f,
-        [F('title')]: a.title || f[F('title')],
-        [F('summary')]: a.summary,
-        [F('description')]: a.description,
-        [lang === 'en' ? 'tags_en' : 'tags']: (a.tags || []).join(', '),
-      };
-      setF(next);
-      setPrevScore(before);
-      await runAudit(jobNow(next));
-    }
-    setBusyAp(false);
+    try {
+      const r = await act({ action: 'apply_audit', lang, items: audit.items, job: jobNow() });
+      if (r?.applied) {
+        const a = r.applied;
+        const next = { ...f,
+          [F('title')]: a.title || f[F('title')],
+          [F('summary')]: a.summary,
+          [F('description')]: a.description,
+          [lang === 'en' ? 'tags_en' : 'tags']: (a.tags || []).join(', '),
+        };
+        setF(next);
+        setPrevScore(before);
+        await runAudit(jobNow(next));
+      } else if (r && r.ok === false) alert(r.error || 'La IA no respondió.');
+    } catch { alert(lang === 'es' ? 'La IA tardó demasiado o falló. Intenta de nuevo.' : 'AI timed out or failed. Try again.'); }
+    finally { setBusyAp(false); }
   }
   async function save() {
     const r = await act({ action: 'save_position', position: { ...f,

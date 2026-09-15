@@ -4,10 +4,12 @@
 async function anthropic(system: string, user: string, maxTokens = 1200): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 40000); // nunca colgar el servidor
   try {
     const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
     const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+      method: 'POST', signal: ctrl.signal,
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: 'user', content: user.slice(0, 8000) }] }),
     });
@@ -15,7 +17,7 @@ async function anthropic(system: string, user: string, maxTokens = 1200): Promis
     const d = await r.json();
     import('@/lib/aiCost').then((m) => m.logAiUsage('carreras', d)).catch(() => {});
     return (d?.content || []).map((c: any) => c.text || '').join('\n').trim() || null;
-  } catch { return null; }
+  } catch { return null; } finally { clearTimeout(timer); }
 }
 
 function parseJson(raw: string | null): any {
