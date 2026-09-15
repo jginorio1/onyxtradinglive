@@ -35,8 +35,11 @@ export default function CareersClient() {
   const [d, setD] = useState<any>(null);
   // Sigue el idioma global del sitio (mismo selector de la barra). Solo tenemos
   // contenido ES/EN, así que cualquier idioma que no sea español muestra inglés.
+  // Si el QR trae ?lang=es|en, ese idioma manda para esta visita.
   const { lang: siteLang } = useLang();
-  const lang: 'es' | 'en' = siteLang === 'es' ? 'es' : 'en';
+  const [urlLang, setUrlLang] = useState<'es' | 'en' | ''>('');
+  useEffect(() => { try { const l = new URLSearchParams(window.location.search).get('lang'); if (l === 'es' || l === 'en') setUrlLang(l); } catch {} }, []);
+  const lang: 'es' | 'en' = urlLang || (siteLang === 'es' ? 'es' : 'en');
   const [filter, setFilter] = useState('all');
   const [apply, setApply] = useState<any>(null);
   const L = (es: string, en: string) => (lang === 'es' ? es : en);

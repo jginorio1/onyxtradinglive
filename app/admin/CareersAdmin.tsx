@@ -124,11 +124,22 @@ function QrShareModal({ pos, baseLink, onClose, btn, btnP }: any) {
   const [qr, setQr] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [lang, setLang] = useState<'es' | 'en'>('es');
   const canRef = useRef<HTMLCanvasElement>(null);
   const base = String(baseLink || '').replace(/\?.*$/, '');
-  const url = `${base}?job=${pos.id}`;
-  const title = pos.title || 'Vacante';
-  const desc = (pos.summary || pos.description || '').toString().replace(/\s+/g, ' ').trim().slice(0, 160);
+  const url = `${base}?job=${pos.id}&lang=${lang}`;
+  // Textos de la tarjeta en el idioma elegido (con respaldo al otro).
+  const en = lang === 'en';
+  const title = (en ? (pos.title_en || pos.title) : (pos.title || pos.title_en)) || 'Vacante';
+  const desc = ((en ? (pos.summary_en || pos.summary || pos.description_en || pos.description) : (pos.summary || pos.description || pos.summary_en || pos.description_en)) || '').toString().replace(/\s+/g, ' ').trim().slice(0, 160);
+  const T = { kicker: en ? 'ONYX TRADING LIVE · CAREERS' : 'ONYX TRADING LIVE · CARRERAS', scan: en ? 'Scan and apply' : 'Escanea y postúlate' };
+  const loc = pos.location || (en ? 'Remote' : 'Remoto');
+  // Copy listo para pegar en redes, en el idioma elegido.
+  const social = en
+    ? `🚀 We're hiring — ${title}\n\n${desc}\n\n📍 ${loc}${pos.sales_level ? ' · Commission-based' : ''} · Apply here 👇\n${url}\n\n#Jobs #Hiring #Trading #Fintech #Remote`
+    : `🚀 ¡Estamos contratando! ${title}\n\n${desc}\n\n📍 ${loc}${pos.sales_level ? ' · Por comisión' : ''} · Postúlate aquí 👇\n${url}\n\n#Empleo #Trabajo #Trading #Fintech #Remoto`;
+  const [copiedC, setCopiedC] = useState(false);
+  async function copySocial() { try { await navigator.clipboard.writeText(social); setCopiedC(true); setTimeout(() => setCopiedC(false), 1500); } catch {} }
 
   useEffect(() => {
     (async () => {
@@ -148,7 +159,7 @@ function QrShareModal({ pos, baseLink, onClose, btn, btnP }: any) {
     const g = c.getContext('2d')!;
     g.fillStyle = '#0e1220'; g.fillRect(0, 0, W, H);
     g.fillStyle = '#e5b567'; g.font = '600 15px system-ui, sans-serif';
-    g.fillText('ONYX TRADING LIVE · CARRERAS', 40, 56);
+    g.fillText(T.kicker, 40, 56);
     // Título (wrap)
     g.fillStyle = '#e8ecf5'; g.font = '600 30px system-ui, sans-serif';
     const wrap = (text: string, max: number, font: string) => { g.font = font; const words = text.split(' '); const lines: string[] = []; let ln = ''; for (const w of words) { const t = ln ? ln + ' ' + w : w; if (g.measureText(t).width > max && ln) { lines.push(ln); ln = w; } else ln = t; } if (ln) lines.push(ln); return lines; };
@@ -163,14 +174,14 @@ function QrShareModal({ pos, baseLink, onClose, btn, btnP }: any) {
     if (qr) { const img = new Image(); await new Promise((res) => { img.onload = res; img.onerror = res; img.src = qr; }); g.drawImage(img, bx + 20, by + 20, box - 40, box - 40); }
     // Pie
     g.fillStyle = '#e8ecf5'; g.font = '600 20px system-ui, sans-serif'; g.textAlign = 'center';
-    g.fillText('Escanea y postúlate', W / 2, by + box + 44);
+    g.fillText(T.scan, W / 2, by + box + 44);
     g.fillStyle = '#9aa6bd'; g.font = '400 15px system-ui, sans-serif';
     g.fillText(url.replace(/^https?:\/\//, ''), W / 2, by + box + 72);
     g.textAlign = 'left';
     return c.toDataURL('image/png');
   }
   function dl(dataUrl: string, name: string) { const a = document.createElement('a'); a.href = dataUrl; a.download = name; a.click(); }
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'plaza';
+  const slug = (title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 36) || 'plaza') + '-' + lang;
 
   async function downloadCard() { setBusy(true); try { dl(await buildCard(), `onyx-carreras-${slug}.png`); } catch {} setBusy(false); }
   function downloadQr() { if (qr) dl(qr, `qr-${slug}.png`); }
@@ -185,7 +196,12 @@ function QrShareModal({ pos, baseLink, onClose, btn, btnP }: any) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 95, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: 24, overflowY: 'auto' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(420px,100%)', background: 'var(--bg,#0e1220)', border: '1px solid var(--line,#2a3350)', borderRadius: 14, padding: 20, textAlign: 'center' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}><b style={{ fontSize: 16 }}>QR · Compartir</b><button onClick={onClose} style={btn}>✕</button></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}><b style={{ fontSize: 16 }}>QR · Compartir</b><button onClick={onClose} style={btn}>✕</button></div>
+        {/* Idioma del QR y la tarjeta */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginBottom: 10 }}>
+          <button onClick={() => setLang('es')} style={{ ...btn, padding: '4px 14px', ...(lang === 'es' ? { background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none' } : {}) }}>Español</button>
+          <button onClick={() => setLang('en')} style={{ ...btn, padding: '4px 14px', ...(lang === 'en' ? { background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none' } : {}) }}>English</button>
+        </div>
         <div className="muted" style={{ fontSize: 12.5, marginBottom: 12, textAlign: 'left' }}>{title}</div>
         <div style={{ background: '#fff', borderRadius: 12, padding: 14, display: 'inline-block', minHeight: 200 }}>
           {qr ? <img src={qr} alt="QR" style={{ width: 200, height: 200, display: 'block' }} /> : <div style={{ width: 200, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: 13 }}>Generando…</div>}
@@ -198,6 +214,14 @@ function QrShareModal({ pos, baseLink, onClose, btn, btnP }: any) {
             <button style={{ ...btn, flex: 1 }} onClick={copyLink}>{copied ? 'Copiado ✓' : 'Copiar enlace'}</button>
             <button style={{ ...btn, flex: 1 }} onClick={nativeShare}>Compartir</button>
           </div>
+        </div>
+        {/* Copy listo para redes */}
+        <div style={{ marginTop: 14, textAlign: 'left' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>{en ? 'Post caption' : 'Copy para redes'}</span>
+            <button style={{ ...btn, padding: '4px 10px', fontSize: 11.5, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)' }} onClick={copySocial}>{copiedC ? (en ? 'Copied ✓' : 'Copiado ✓') : (en ? 'Copy' : 'Copiar')}</button>
+          </div>
+          <textarea readOnly value={social} onFocus={(e) => e.target.select()} style={{ width: '100%', minHeight: 120, resize: 'vertical', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 12, lineHeight: 1.5 }} />
         </div>
         <canvas ref={canRef} style={{ display: 'none' }} />
       </div>
