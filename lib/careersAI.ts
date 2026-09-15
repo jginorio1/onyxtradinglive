@@ -25,6 +25,22 @@ function parseJson(raw: string | null): any {
   try { return JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1)); } catch { return null; }
 }
 
+// Quita Markdown del texto que genera la IA: nada de #, *, **, ` ni viñetas con
+// - o *. Deja el texto limpio y convierte las viñetas a "• ".
+function stripMd(s: any): string {
+  let t = String(s || '');
+  t = t.replace(/^\s{0,3}#{1,6}\s*/gm, '');            // encabezados #, ##, ###
+  t = t.replace(/\*\*([^*]+)\*\*/g, '$1');             // **negrita**
+  t = t.replace(/__([^_]+)__/g, '$1');                 // __negrita__
+  t = t.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1$2'); // *cursiva*
+  t = t.replace(/`{1,3}([^`]*)`{1,3}/g, '$1');         // `código`
+  t = t.replace(/^\s*[-*]\s+/gm, '• ');                // viñetas - o * → •
+  t = t.replace(/[*#`]/g, '');                          // cualquier resto de * # `
+  t = t.replace(/[ \t]+\n/g, '\n');                    // espacios al final de línea
+  return t.trim();
+}
+const stripTags = (arr: any): string[] => (Array.isArray(arr) ? arr.map((t: any) => stripMd(t).replace(/^•\s*/, '')).filter(Boolean) : []);
+
 // Contexto para plazas del EQUIPO DE VENTAS por comisión (Director/Lead/Advisor).
 // Cambia el enfoque a ventas y evita salario fijo. Vacío si no es plaza de ventas.
 function salesLine(level: any, es: boolean): string {
@@ -99,8 +115,8 @@ export async function translateJob(src: { title?: string; summary?: string; desc
   const j = parseJson(await anthropic(system, user, 1600));
   if (!j) return null;
   return {
-    title: String(j.title || src.title || ''), summary: String(j.summary || ''),
-    description: String(j.description || ''), tags: Array.isArray(j.tags) ? j.tags.map((t: any) => String(t)).slice(0, 12) : (src.tags || []),
+    title: stripMd(j.title || src.title || ''), summary: stripMd(j.summary || ''),
+    description: stripMd(j.description || ''), tags: (j.tags ? stripTags(j.tags) : (src.tags || [])).slice(0, 12),
   };
 }
 
@@ -112,7 +128,8 @@ export async function draftJob(
   company = '',
 ): Promise<{ title: string; summary: string; description: string; tags: string[] } | null> {
   const es = lang === 'es';
-  const ctxLine = (company ? `\n\nSOBRE LA EMPRESA (úsalo: menciona las herramientas/sistemas reales y alinea con su dirección):\n${company}` : '') + salesLine(ctx.sales_level, es);
+  const noMd = es ? '\n\nNO uses Markdown: nada de #, *, ** ni comillas invertidas. Texto limpio. Para secciones escribe el título en su propia línea; para listas usa "• " al inicio.' : '\n\nDo NOT use Markdown: no #, *, ** or backticks. Clean text. For sections put the heading on its own line; for lists start with "• ".';
+  const ctxLine = (company ? `\n\nSOBRE LA EMPRESA (úsalo: menciona las herramientas/sistemas reales y alinea con su dirección):\n${company}` : '') + salesLine(ctx.sales_level, es) + noMd;
   const system = (es
     ? `Eres reclutador senior. A partir del contexto, redacta una vacante ATRACTIVA y profesional en español. Responde SOLO con JSON: {"title":"","summary":"","description":"","tags":["",""]}.
 - title: mejóralo si es genérico (añade nivel/seniority si aplica), respetando la intención.
@@ -133,8 +150,8 @@ Do not invent salary or location; use the ones in the context if present.`) + ct
   const j = parseJson(await anthropic(system, user, 1800));
   if (!j) return null;
   return {
-    title: String(j.title || ctx.title || ''), summary: String(j.summary || ''),
-    description: String(j.description || ''), tags: Array.isArray(j.tags) ? j.tags.map((t: any) => String(t)).slice(0, 12) : (ctx.tags || []),
+    title: stripMd(j.title || ctx.title || ''), summary: stripMd(j.summary || ''),
+    description: stripMd(j.description || ''), tags: (j.tags ? stripTags(j.tags) : (ctx.tags || [])).slice(0, 12),
   };
 }
 
@@ -170,7 +187,8 @@ export async function applyAudit(
 ): Promise<{ title: string; summary: string; description: string; tags: string[] } | null> {
   const es = lang === 'es';
   const sugg = (items || []).map((it) => `- ${it.text}`).join('\n').slice(0, 3000);
-  const ctxLine = (company ? `\n\nEmpresa (nombra sus herramientas/stack reales cuando aplique):\n${company}` : '') + salesLine(job.sales_level, es);
+  const noMd = es ? '\n\nNO uses Markdown: nada de #, *, ** ni comillas invertidas. Texto limpio; secciones en su línea, listas con "• ".' : '\n\nDo NOT use Markdown: no #, *, ** or backticks. Clean text; sections on their own line, lists with "• ".';
+  const ctxLine = (company ? `\n\nEmpresa (nombra sus herramientas/stack reales cuando aplique):\n${company}` : '') + salesLine(job.sales_level, es) + noMd;
   const system = (es
     ? `Eres reclutador senior. Reescribe la vacante APLICANDO las sugerencias de auditoría. Responde SOLO con JSON: {"title":"","summary":"","description":"","tags":["",""]}.
 REGLAS:
@@ -189,8 +207,8 @@ RULES:
   const j = parseJson(await anthropic(system, user, 2000));
   if (!j) return null;
   return {
-    title: String(j.title || job.title || ''), summary: String(j.summary || ''),
-    description: String(j.description || ''), tags: Array.isArray(j.tags) ? j.tags.map((t: any) => String(t)).slice(0, 12) : (job.tags || []),
+    title: stripMd(j.title || job.title || ''), summary: stripMd(j.summary || ''),
+    description: stripMd(j.description || ''), tags: (j.tags ? stripTags(j.tags) : (job.tags || [])).slice(0, 12),
   };
 }
 
