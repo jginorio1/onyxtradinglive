@@ -1,4 +1,5 @@
 import { repPublicProfile } from '@/lib/salesKit';
+import OnyxIcon from '@/app/components/OnyxIcon';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,7 @@ const S = {
   btn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', border: '1px solid var(--line,#2a3350)', borderRadius: 11, padding: '13px 22px', fontSize: 15, fontWeight: 600, textDecoration: 'none' },
   feat: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginTop: 22, borderTop: '1px solid var(--line,#2a3350)', paddingTop: 18 },
   ft: { fontSize: 12.5, color: 'var(--tx,#e8ecf5)' },
+  fic: { color: 'var(--accent,#8b93ff)', display: 'flex', justifyContent: 'center', marginBottom: 6, fontSize: 22 },
 };
 
 export default async function RepLanding({ params }: Props) {
@@ -53,9 +55,9 @@ export default async function RepLanding({ params }: Props) {
         </div>
 
         <div style={S.feat}>
-          <div><div style={{ fontSize: 22 }}>🔌</div><div style={S.ft}>Conecto tu cuenta</div></div>
-          <div><div style={{ fontSize: 22 }}>🛡️</div><div style={S.ft}>Activo tu Guardian</div></div>
-          <div><div style={{ fontSize: 22 }}>🎧</div><div style={S.ft}>Soporte cada mes</div></div>
+          <div><div style={S.fic}><OnyxIcon name="link" size={24} /></div><div style={S.ft}>Conecto tu cuenta</div></div>
+          <div><div style={S.fic}><OnyxIcon name="guardian" size={24} /></div><div style={S.ft}>Activo tu Guardian</div></div>
+          <div><div style={S.fic}><OnyxIcon name="chat" size={24} /></div><div style={S.ft}>Soporte cada mes</div></div>
         </div>
       </div>
     </div>
