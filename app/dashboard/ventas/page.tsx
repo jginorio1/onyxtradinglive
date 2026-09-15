@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 // atender tickets, su equipo y cobros (Stripe Connect o USDT).
 export default function VentasPanel() {
   const [d, setD] = useState<any>(null);
-  const [tab, setTab] = useState<'resumen' | 'desempeno' | 'extracto' | 'clientes' | 'equipo' | 'evaluar' | 'soporte' | 'cobros' | 'guia'>('resumen');
+  const [tab, setTab] = useState<'resumen' | 'desempeno' | 'extracto' | 'clientes' | 'equipo' | 'evaluar' | 'soporte' | 'cobros' | 'kit' | 'guia'>('resumen');
   const [msg, setMsg] = useState('');
   const [lang, setLang] = useState<'es' | 'en'>('es');
   const L = (es: string, en: string) => (lang === 'es' ? es : en);
@@ -66,6 +66,7 @@ export default function VentasPanel() {
         {((d.evalTargets && d.evalTargets.length) || d.mySupervisor) && tabBtn('evaluar', L('Evaluar', 'Evaluate'))}
         {tabBtn('soporte', L('Soporte', 'Support') + (d.tickets.length ? ` (${d.tickets.length})` : ''))}
         {tabBtn('cobros', L('Cobros', 'Payouts'))}
+        {d.kit && d.kit.length > 0 && tabBtn('kit', L('Kit', 'Kit'))}
         {tabBtn('guia', L('Guía', 'Guide'))}
       </div>
 
@@ -122,7 +123,12 @@ export default function VentasPanel() {
           d.tickets.map((t: any) => <TicketRow key={t.id} t={t} L={L} act={act} />)}
       </div>}
 
-      {tab === 'cobros' && <PayoutBox d={d} L={L} act={act} btn={btn} btnP={btnP} card={card} />}
+      {tab === 'cobros' && <div style={{ display: 'grid', gap: 12 }}>
+        <ContractBox d={d} L={L} act={act} card={card} btn={btn} btnP={btnP} />
+        <PayoutBox d={d} L={L} act={act} btn={btn} btnP={btnP} card={card} />
+      </div>}
+
+      {tab === 'kit' && <KitTab kit={d.kit || []} lang={lang} L={L} card={card} btn={btn} setMsg={setMsg} />}
 
       {tab === 'guia' && <div style={card}>
         <h3 style={{ color: 'var(--tx,#e8ecf5)', marginTop: 0 }}>{L('Cómo trabajar y ayudar a tus clientes', 'How to work and help your clients')}</h3>
@@ -140,21 +146,141 @@ export default function VentasPanel() {
 
 function ClientList({ d, L, act }: any) {
   const [days, setDays] = useState<Record<string, number>>({});
+  const [openNotes, setOpenNotes] = useState<string>('');
   return (
     <div>
       {d.clients.length === 0 && <p style={{ color: 'var(--mut,#9aa6bd)' }}>{L('Aún no tienes clientes. Comparte tu enlace.', 'No clients yet. Share your link.')}</p>}
       {d.clients.map((c: any) => (
-        <div key={c.user_id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--line,#2a3350)', padding: '10px 0' }}>
-          <div style={{ flex: 1, minWidth: 180 }}>
-            <div style={{ color: 'var(--tx,#e8ecf5)', fontSize: 14 }}>{c.email || c.name || c.user_id.slice(0, 8)}</div>
-            <div style={{ fontSize: 12, color: c.active ? 'var(--green,#5ed6a0)' : 'var(--mut,#9aa6bd)' }}>{c.active ? L('activo · ', 'active · ') + c.plan : (c.plan || 'free')}</div>
+        <div key={c.user_id} style={{ borderTop: '1px solid var(--line,#2a3350)', padding: '10px 0' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <div style={{ color: 'var(--tx,#e8ecf5)', fontSize: 14 }}>{c.email || c.name || c.user_id.slice(0, 8)}</div>
+              <div style={{ fontSize: 12, color: c.active ? 'var(--green,#5ed6a0)' : 'var(--mut,#9aa6bd)' }}>{c.active ? L('activo · ', 'active · ') + c.plan : (c.plan || 'free')}</div>
+            </div>
+            <input type="number" min={1} max={d.caps.trial_max_days} placeholder={L('días', 'days')} value={days[c.user_id] || ''} onChange={(e) => setDays((s) => ({ ...s, [c.user_id]: parseInt(e.target.value, 10) || 0 }))}
+              style={{ width: 70, padding: '7px 9px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13 }} />
+            <button onClick={() => act({ action: 'grant_trial', client_user_id: c.user_id, days: days[c.user_id] || d.caps.trial_max_days })}
+              style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 12.5 }}>{L('Dar prueba', 'Give trial')}</button>
+            <button onClick={() => setOpenNotes(openNotes === c.user_id ? '' : c.user_id)}
+              style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: openNotes === c.user_id ? 'var(--accent,#8b93ff)' : 'var(--card,#1b2338)', color: openNotes === c.user_id ? '#fff' : 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 12.5 }}>{L('Notas', 'Notes')}</button>
           </div>
-          <input type="number" min={1} max={d.caps.trial_max_days} placeholder={L('días', 'days')} value={days[c.user_id] || ''} onChange={(e) => setDays((s) => ({ ...s, [c.user_id]: parseInt(e.target.value, 10) || 0 }))}
-            style={{ width: 70, padding: '7px 9px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13 }} />
-          <button onClick={() => act({ action: 'grant_trial', client_user_id: c.user_id, days: days[c.user_id] || d.caps.trial_max_days })}
-            style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 12.5 }}>{L('Dar prueba', 'Give trial')}</button>
+          {openNotes === c.user_id && <NotesPanel clientId={c.user_id} L={L} />}
         </div>
       ))}
+    </div>
+  );
+}
+
+// Mini-CRM: notas y recordatorio de seguimiento por cliente.
+function NotesPanel({ clientId, L }: any) {
+  const [notes, setNotes] = useState<any[]>([]);
+  const [note, setNote] = useState('');
+  const [follow, setFollow] = useState('');
+  const [busy, setBusy] = useState(true);
+  async function post(body: any) { const r = await fetch('/api/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); return r.json(); }
+  async function load() { setBusy(true); try { const j = await post({ action: 'client_notes', client_user_id: clientId }); setNotes(j.notes || []); } catch {} setBusy(false); }
+  useEffect(() => { load(); }, []);
+  const inp: React.CSSProperties = { padding: '7px 10px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13 };
+  return (
+    <div style={{ marginTop: 8, background: 'var(--bg,#0e1220)', borderRadius: 10, padding: 10 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={L('Nueva nota…', 'New note…')} style={{ ...inp, flex: 1, minWidth: 160 }} />
+        <input type="date" value={follow} onChange={(e) => setFollow(e.target.value)} title={L('Recordatorio', 'Reminder')} style={{ ...inp, width: 150 }} />
+        <button onClick={async () => { if (note.trim() || follow) { await post({ action: 'add_note', client_user_id: clientId, note, followup_at: follow ? new Date(follow).toISOString() : null }); setNote(''); setFollow(''); load(); } }}
+          style={{ padding: '7px 12px', borderRadius: 8, border: 'none', background: 'var(--accent,#8b93ff)', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 12.5 }}>{L('Guardar', 'Save')}</button>
+      </div>
+      {busy ? <div style={{ color: 'var(--mut,#9aa6bd)', fontSize: 12, marginTop: 8 }}>…</div> :
+        notes.length === 0 ? <div style={{ color: 'var(--mut,#9aa6bd)', fontSize: 12, marginTop: 8 }}>{L('Sin notas aún.', 'No notes yet.')}</div> :
+          <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+            {notes.map((n: any) => (
+              <div key={n.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5 }}>
+                <input type="checkbox" checked={!!n.done} onChange={async () => { await post({ action: 'note_done', note_id: n.id, done: !n.done }); load(); }} style={{ marginTop: 2 }} />
+                <div style={{ flex: 1 }}>
+                  <span style={{ color: 'var(--tx,#e8ecf5)', textDecoration: n.done ? 'line-through' : 'none' }}>{n.note}</span>
+                  {n.followup_at && <span style={{ color: '#e5b567', fontSize: 11, marginLeft: 6 }}>⏰ {new Date(n.followup_at).toLocaleDateString()}</span>}
+                </div>
+              </div>
+            ))}
+          </div>}
+    </div>
+  );
+}
+
+// Kit de materiales de venta (guiones copiables, enlaces, imágenes).
+function KitTab({ kit, lang, L, card, btn, setMsg }: any) {
+  const items = (kit || []).filter((a: any) => a.lang === 'all' || a.lang === lang);
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={card}>
+        <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Kit de ventas', 'Sales kit')}</b>
+        <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginTop: 3 }}>{L('Guiones, plantillas y materiales para vender mejor.', 'Scripts, templates and materials to sell better.')}</div>
+      </div>
+      {items.length === 0 && <div style={card}><p style={{ color: 'var(--mut,#9aa6bd)' }}>{L('Aún no hay materiales.', 'No materials yet.')}</p></div>}
+      {items.map((a: any) => (
+        <div key={a.id} style={card}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <b style={{ color: 'var(--tx,#e8ecf5)', fontSize: 14 }}>{a.title}</b>
+            <span style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)', textTransform: 'uppercase' }}>{a.kind}</span>
+          </div>
+          {a.kind === 'image' && a.url && <img src={a.url} alt={a.title} style={{ maxWidth: '100%', borderRadius: 10, marginTop: 8 }} />}
+          {a.body && <div style={{ whiteSpace: 'pre-wrap', fontSize: 13, color: 'var(--tx,#e8ecf5)', marginTop: 8, lineHeight: 1.5, background: 'var(--bg,#0e1220)', borderRadius: 8, padding: 10 }}>{a.body}</div>}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            {a.body && <button style={btn} onClick={() => { navigator.clipboard.writeText(a.body); setMsg(L('Copiado ✓', 'Copied ✓')); }}>{L('Copiar texto', 'Copy text')}</button>}
+            {a.url && <a href={a.url} target="_blank" rel="noopener" style={{ ...btn, textDecoration: 'none' }}>{L('Abrir enlace', 'Open link')}</a>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Contrato + datos fiscales + perfil público para el landing personalizado.
+function ContractBox({ d, L, act, card, btn, btnP }: any) {
+  const r = d.rep || {};
+  const [name, setName] = useState(r.contract_name || r.display_name || '');
+  const [bio, setBio] = useState(r.bio || '');
+  const [photo, setPhoto] = useState(r.photo_url || '');
+  const td = r.tax_data || {};
+  const [taxType, setTaxType] = useState(r.tax_form_type || 'none');
+  const [legal, setLegal] = useState(td.legal_name || '');
+  const [country, setCountry] = useState(td.country || '');
+  const [last4, setLast4] = useState(td.tax_id_last4 || '');
+  const signed = !!r.contract_signed_at;
+  const inp: React.CSSProperties = { width: '100%', padding: '9px 12px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13, marginTop: 6 };
+  return (
+    <div style={{ ...card, borderColor: signed ? (card.border as string) : 'var(--amber,#f0b74e)' }}>
+      <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Contrato, fiscal y tu perfil', 'Contract, tax & your profile')}</b>
+      {!signed && <div style={{ fontSize: 12.5, color: 'var(--amber,#f0b74e)', marginTop: 4 }}>{L('Firma tu acuerdo de comisionista para poder cobrar.', 'Sign your contractor agreement to get paid.')}</div>}
+
+      <div style={{ marginTop: 12 }}>
+        <label style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)' }}>{L('Nombre legal (firma del acuerdo)', 'Legal name (agreement signature)')}
+          <input value={name} onChange={(e) => setName(e.target.value)} style={inp} /></label>
+        {signed
+          ? <div style={{ fontSize: 12.5, color: 'var(--green,#5ed6a0)', marginTop: 8 }}>{L('✓ Firmado el ', '✓ Signed on ')}{new Date(r.contract_signed_at).toLocaleDateString()} {L('por', 'by')} {r.contract_name}</div>
+          : <button style={{ ...btnP, marginTop: 8 }} onClick={async () => { if (name.trim()) await act({ action: 'sign_contract', name }); }}>{L('Aceptar y firmar el acuerdo', 'Accept & sign agreement')}</button>}
+      </div>
+
+      <div style={{ marginTop: 16, borderTop: '1px solid var(--line,#2a3350)', paddingTop: 12 }}>
+        <b style={{ color: 'var(--tx,#e8ecf5)', fontSize: 13.5 }}>{L('Datos fiscales', 'Tax info')}</b>
+        <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', margin: '2px 0 6px' }}>{L('No pongas números completos; solo los últimos 4.', 'Never full numbers; last 4 only.')}</div>
+        <select value={taxType} onChange={(e) => setTaxType(e.target.value)} style={inp}>
+          <option value="none">{L('Sin definir', 'Not set')}</option><option value="w9">W-9 (EE. UU.)</option><option value="w8">W-8 ({L('fuera EE. UU.', 'non-US')})</option><option value="other">{L('Otro', 'Other')}</option>
+        </select>
+        <input value={legal} onChange={(e) => setLegal(e.target.value)} placeholder={L('Nombre/razón fiscal', 'Legal/tax name')} style={inp} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder={L('País', 'Country')} style={{ ...inp, flex: 1 }} />
+          <input value={last4} onChange={(e) => setLast4(e.target.value.slice(0, 4))} placeholder={L('ID fiscal (últimos 4)', 'Tax ID (last 4)')} style={{ ...inp, flex: 1 }} />
+        </div>
+        <button style={{ ...btn, marginTop: 8 }} onClick={() => act({ action: 'save_tax', form_type: taxType, tax_data: { legal_name: legal, country, tax_id_last4: last4 } })}>{L('Guardar fiscal', 'Save tax')}</button>
+      </div>
+
+      <div style={{ marginTop: 16, borderTop: '1px solid var(--line,#2a3350)', paddingTop: 12 }}>
+        <b style={{ color: 'var(--tx,#e8ecf5)', fontSize: 13.5 }}>{L('Tu perfil (landing con tu enlace)', 'Your profile (landing with your link)')}</b>
+        <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', margin: '2px 0 6px' }}>{L('Quien entre con tu enlace verá tu nombre y esto.', 'Whoever opens your link sees your name and this.')}</div>
+        <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder={L('Breve presentación (2 líneas)', 'Short intro (2 lines)')} style={{ ...inp, minHeight: 54, resize: 'vertical' }} />
+        <input value={photo} onChange={(e) => setPhoto(e.target.value)} placeholder={L('URL de tu foto (opcional)', 'Photo URL (optional)')} style={inp} />
+        <button style={{ ...btn, marginTop: 8 }} onClick={() => act({ action: 'save_profile', bio, photo_url: photo })}>{L('Guardar perfil', 'Save profile')}</button>
+      </div>
     </div>
   );
 }

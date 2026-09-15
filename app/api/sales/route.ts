@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { repByUser, repById, salesSettings, balances, listClients, teamRollup, grantTrial, permsFor, subtreeRepIds } from '@/lib/sales';
 import { repStatement, goalProgress } from '@/lib/salesGoals';
+import { listAssets, notesForClient, addNote, setNoteDone, pendingFollowups, signContract, saveTax, saveRepProfile } from '@/lib/salesKit';
 import { repScorecard, scoreboard, reviewsForRep, reviewsForTeam, evaluationsFor, submitEvaluation, logAction } from '@/lib/salesPerf';
 
 export const dynamic = 'force-dynamic';
@@ -48,6 +49,10 @@ export async function GET() {
   const myReviews = await reviewsForRep(rep.id, 40);
   const statement = await repStatement(rep.id, 200);   // extracto línea por línea
   const goal = await goalProgress(rep.id, s);            // progreso de la meta del mes
+  const [kitEs, kitEn] = await Promise.all([listAssets('es', true), listAssets('en', true)]);
+  const kitMap: Record<string, any> = {}; [...kitEs, ...kitEn].forEach((a: any) => { kitMap[a.id] = a; });
+  const kit = Object.values(kitMap);                    // materiales de venta
+  const followups = await pendingFollowups(rep.id);     // seguimientos pendientes
 
   // Supervisores: tablero de su equipo + reseñas del equipo + a quién puede evaluar.
   let teamBoard: any[] = [], teamReviews: any[] = [], evalTargets: any[] = [];
@@ -72,9 +77,9 @@ export async function GET() {
 
   return NextResponse.json({
     isRep: true,
-    rep: { id: rep.id, level: rep.level, code: rep.code, display_name: rep.display_name, from_name: rep.from_name, reply_to: rep.reply_to, payout_method: (rep as any).payout_method || 'stripe', on_hold: rep.on_hold, status: rep.status },
+    rep: { id: rep.id, level: rep.level, code: rep.code, display_name: rep.display_name, from_name: rep.from_name, reply_to: rep.reply_to, payout_method: (rep as any).payout_method || 'stripe', on_hold: rep.on_hold, status: rep.status, contract_signed_at: (rep as any).contract_signed_at || null, contract_name: (rep as any).contract_name || null, tax_form_type: (rep as any).tax_form_type || null, tax_data: (rep as any).tax_data || {}, bio: (rep as any).bio || '', photo_url: (rep as any).photo_url || '' },
     link, balances: bal, caps, clients, team, tickets, connect,
-    perms, scorecard: myCard, myReviews, teamBoard, teamReviews, evalTargets, mySupervisor, statement, goal,
+    perms, scorecard: myCard, myReviews, teamBoard, teamReviews, evalTargets, mySupervisor, statement, goal, kit, followups,
     eval_criteria: s.eval_criteria || [],
     level_names: s.level_names || { l2: 'Director', l1: 'Lead', vendedor: 'Advisor' },
     wallets: { trc20: (prof as any)?.payout_usdt_trc20 || '', erc20: (prof as any)?.payout_usdt_erc20 || '', network: (prof as any)?.payout_usdt_network || 'trc20' },
@@ -213,6 +218,25 @@ export async function POST(req: Request) {
       await logAction({ repId: b.rep_id, kind: String(b.kind || 'coach'), note: b.note, by: user.id });
       return NextResponse.json({ ok: true });
     }
+
+    // ---- MINI-CRM: notas y seguimiento por cliente ----
+    if (action === 'client_notes' && b.client_user_id) {
+      const own = await supabaseAdmin.from('sales_clients').select('id').eq('rep_id', rep.id).eq('user_id', b.client_user_id).maybeSingle();
+      if (!own.data) return NextResponse.json({ ok: false, error: 'no es tu cliente' }, { status: 403 });
+      return NextResponse.json({ ok: true, notes: await notesForClient(rep.id, b.client_user_id) });
+    }
+    if (action === 'add_note' && b.client_user_id && (b.note || b.followup_at)) {
+      const own = await supabaseAdmin.from('sales_clients').select('id').eq('rep_id', rep.id).eq('user_id', b.client_user_id).maybeSingle();
+      if (!own.data) return NextResponse.json({ ok: false, error: 'no es tu cliente' }, { status: 403 });
+      await addNote(rep.id, b.client_user_id, String(b.note || ''), b.followup_at || null);
+      return NextResponse.json({ ok: true });
+    }
+    if (action === 'note_done' && b.note_id) { await setNoteDone(rep.id, b.note_id, b.done !== false); return NextResponse.json({ ok: true }); }
+
+    // ---- Contrato, fiscal y perfil público ----
+    if (action === 'sign_contract') { const r = await signContract(rep.id, b.name); return NextResponse.json(r); }
+    if (action === 'save_tax') { await saveTax(rep.id, String(b.form_type || 'other'), b.tax_data || {}); return NextResponse.json({ ok: true }); }
+    if (action === 'save_profile') { await saveRepProfile(rep.id, { bio: b.bio, photo_url: b.photo_url }); return NextResponse.json({ ok: true }); }
 
     return NextResponse.json({ ok: false, error: 'acción desconocida' }, { status: 400 });
   } catch (e: any) {

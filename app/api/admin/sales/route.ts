@@ -5,6 +5,7 @@ import { salesSettings, saveSalesSettings, uniqueRepCode, balances } from '@/lib
 import { scoreboard, repScorecard, reviewsForTeam, evaluationsFor, actionsFor, submitEvaluation, logAction } from '@/lib/salesPerf';
 import { goalProgress, goalFor } from '@/lib/salesGoals';
 import { funnelStats, unassignedLeads, assignLeadsRoundRobin, autoPromoteAll } from '@/lib/salesGrowth';
+import { listAssets, saveAsset, delAsset } from '@/lib/salesKit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -89,6 +90,11 @@ export async function POST(req: Request) {
     if (action === 'leads') { const leads = await unassignedLeads(100); return NextResponse.json({ ok: true, leads }); }
     if (action === 'assign_leads') { const r = await assignLeadsRoundRobin(300); return NextResponse.json({ ok: true, ...r }); }
     if (action === 'promote_now') { const r = await autoPromoteAll(); return NextResponse.json({ ok: true, ...r }); }
+
+    // ---- KIT DE MATERIALES ----
+    if (action === 'assets_list') { const assets = await listAssets('es', false); return NextResponse.json({ ok: true, assets }); }
+    if (action === 'save_asset') { const r = await saveAsset(b.asset || {}); return NextResponse.json({ ok: true, ...r }); }
+    if (action === 'del_asset' && b.id) { await delAsset(b.id); return NextResponse.json({ ok: true }); }
 
     // ---- DESEMPEÑO ----
     // Tablero de todo el equipo (o de una rama si se pasa root_rep_id).

@@ -14,7 +14,7 @@ const LV = {
 
 export default function SalesAdmin({ canManage = true }: { canManage?: boolean }) {
   const [d, setD] = useState<any>(null);
-  const [sub, setSub] = useState<'solicitudes' | 'red' | 'desempeno' | 'metas' | 'crecimiento' | 'ajustes' | 'pagos'>('red');
+  const [sub, setSub] = useState<'solicitudes' | 'red' | 'desempeno' | 'metas' | 'crecimiento' | 'kit' | 'ajustes' | 'pagos'>('red');
   const [msg, setMsg] = useState('');
   const [dragId, setDragId] = useState<string>('');
 
@@ -69,6 +69,7 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
         {subBtn('desempeno', 'Desempeño')}
         {subBtn('metas', 'Metas')}
         {subBtn('crecimiento', 'Crecimiento')}
+        {subBtn('kit', 'Kit')}
         {subBtn('solicitudes', 'Solicitudes', apps.length)}
         {subBtn('ajustes', 'Ajustes')}
         {subBtn('pagos', 'Pagos')}
@@ -124,6 +125,9 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
 
       {/* ===== CRECIMIENTO ===== */}
       {sub === 'crecimiento' && <CrecimientoBox inp={inp} btn={btn} btnP={btnP} canManage={canManage} lvName={lvName} />}
+
+      {/* ===== KIT ===== */}
+      {sub === 'kit' && <KitBox inp={inp} btn={btn} btnP={btnP} canManage={canManage} />}
 
       {/* ===== AJUSTES ===== */}
       {sub === 'ajustes' && <SettingsBox s={s} names={names} act={act} inp={inp} btnP={btnP} canManage={canManage} />}
@@ -267,6 +271,57 @@ function PayRow({ r, act, inp, btn, btnP, canManage }: any) {
           <button style={btn} onClick={() => act({ action: 'pay_manual', rep_id: r.id, method: 'usdt', ref })}>Marcar pagado</button>
         </div>}
       </div>
+    </div>
+  );
+}
+
+// ===== KIT: gestión de materiales de venta =====
+function KitBox({ inp, btn, btnP, canManage }: any) {
+  const [items, setItems] = useState<any[]>([]);
+  const [busy, setBusy] = useState(true);
+  const [ed, setEd] = useState<any>(null);   // asset en edición (o nuevo)
+  async function post(body: any) { const r = await fetch('/api/admin/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); return r.json(); }
+  async function load() { setBusy(true); try { const j = await post({ action: 'assets_list' }); setItems(j.assets || []); } catch {} setBusy(false); }
+  useEffect(() => { load(); }, []);
+  const card: React.CSSProperties = { background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 14, padding: 16, marginBottom: 12 };
+  const blank = { kind: 'script', title: '', body: '', url: '', lang: 'es', sort: 0, active: true };
+  if (busy) return <div className="muted">Cargando kit…</div>;
+  return (
+    <div>
+      {canManage && <button style={{ ...btnP, marginBottom: 12 }} onClick={() => setEd({ ...blank })}>+ Nuevo material</button>}
+      {ed && <div style={card}>
+        <b>{ed.id ? 'Editar material' : 'Nuevo material'}</b>
+        <div style={{ display: 'grid', gap: 8, marginTop: 10, maxWidth: 560 }}>
+          <input value={ed.title} onChange={(e) => setEd({ ...ed, title: e.target.value })} placeholder="Título" style={inp} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <select value={ed.kind} onChange={(e) => setEd({ ...ed, kind: e.target.value })} style={inp}>
+              <option value="script">Guion / plantilla</option><option value="link">Enlace</option><option value="image">Imagen</option><option value="pdf">PDF</option><option value="video">Video</option>
+            </select>
+            <select value={ed.lang} onChange={(e) => setEd({ ...ed, lang: e.target.value })} style={inp}><option value="es">Español</option><option value="en">English</option><option value="all">Ambos</option></select>
+            <input type="number" value={ed.sort} onChange={(e) => setEd({ ...ed, sort: Number(e.target.value) })} placeholder="Orden" style={{ ...inp, width: 90 }} />
+          </div>
+          <textarea value={ed.body || ''} onChange={(e) => setEd({ ...ed, body: e.target.value })} placeholder="Texto (guion / plantilla)" style={{ ...inp, minHeight: 90, resize: 'vertical' }} />
+          <input value={ed.url || ''} onChange={(e) => setEd({ ...ed, url: e.target.value })} placeholder="URL (enlace / imagen / pdf / video)" style={inp} />
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: 'var(--tx,#e8ecf5)' }}><input type="checkbox" checked={ed.active !== false} onChange={(e) => setEd({ ...ed, active: e.target.checked })} /> Activo (visible para vendedores)</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={btnP} onClick={async () => { if (ed.title.trim()) { await post({ action: 'save_asset', asset: ed }); setEd(null); load(); } }}>Guardar</button>
+            <button style={btn} onClick={() => setEd(null)}>Cancelar</button>
+          </div>
+        </div>
+      </div>}
+      {items.length === 0 && <div className="muted">Aún no hay materiales. Crea guiones, banners, PDFs o videos para el equipo.</div>}
+      {items.map((a) => (
+        <div key={a.id} style={card}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div><b style={{ color: 'var(--tx,#e8ecf5)' }}>{a.title}</b> <span className="muted" style={{ fontSize: 11.5 }}>· {a.kind} · {a.lang}{a.active === false ? ' · oculto' : ''}</span></div>
+            {canManage && <div style={{ display: 'flex', gap: 6 }}>
+              <button style={btn} onClick={() => setEd({ ...a })}>Editar</button>
+              <button style={btn} onClick={async () => { await post({ action: 'del_asset', id: a.id }); load(); }}>Borrar</button>
+            </div>}
+          </div>
+          {a.body && <div className="muted" style={{ fontSize: 12, marginTop: 6, whiteSpace: 'pre-wrap', maxHeight: 80, overflow: 'hidden' }}>{a.body}</div>}
+        </div>
+      ))}
     </div>
   );
 }

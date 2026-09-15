@@ -24,6 +24,7 @@ import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
 import OnlineNow from './OnlineNow';
 import VisitorBeacon from './VisitorBeacon';
+import RepInviteBanner from './RepInviteBanner';
 import TzSync from './TzSync';
 import PendingCheckoutGate from './PendingCheckoutGate';
 import { getSetting, onlineNowSettings, chatWidgetSettings, botlabChatWidget } from '@/lib/settings';
@@ -229,6 +230,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <OnlineNow min={online.min} max={online.max} speed={online.speed} color={online.color} hideMobile={online.hideMobile} label={lang === 'es' ? online.label_es : online.label_en} />
             )}
             <PendingCheckoutGate />
+            {!path.startsWith('/admin') && !path.startsWith('/dashboard') && <RepInviteBanner />}
             <VisitorBeacon />
             <TzSync />
             <Toaster />
