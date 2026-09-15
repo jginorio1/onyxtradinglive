@@ -22,7 +22,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 
 export default function Training({ canManage, lang = 'es' }: { canManage: boolean; lang?: 'es' | 'en' }) {
   const L = (es: string, en: string) => (lang === 'en' ? en : es);
-  const [tab, setTab] = useState<'personas' | 'rutas' | 'ajustes'>('personas');
+  const [tab, setTab] = useState<'personas' | 'rutas' | 'cumplimiento' | 'ajustes'>('personas');
   const [d, setD] = useState<any>(null);
   const [msg, setMsg] = useState('');
   const [editing, setEditing] = useState<any>(null); // { track, lessons, questions }
@@ -47,9 +47,9 @@ export default function Training({ canManage, lang = 'es' }: { canManage: boolea
       <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginBottom: 14 }}>{L('Academia interna para empleados y vendedores · aislada de las academias de mentores.', 'Internal academy for employees and reps · isolated from mentor academies.')}</div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        {(['personas', 'rutas', 'ajustes'] as const).map((tt) => (
+        {(['personas', 'rutas', 'cumplimiento', 'ajustes'] as const).map((tt) => (
           <button key={tt} onClick={() => { setTab(tt); setEditing(null); }} style={{ ...btn, ...(tab === tt ? { background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none' } : {}) }}>
-            {tt === 'personas' ? L('Personas', 'People') : tt === 'rutas' ? L('Rutas y exámenes', 'Tracks & exams') : L('Ajustes', 'Settings')}
+            {tt === 'personas' ? L('Personas', 'People') : tt === 'rutas' ? L('Rutas y exámenes', 'Tracks & exams') : tt === 'cumplimiento' ? L('Cumplimiento', 'Compliance') : L('Ajustes', 'Settings')}
           </button>
         ))}
       </div>
@@ -58,6 +58,7 @@ export default function Training({ canManage, lang = 'es' }: { canManage: boolea
       {tab === 'personas' && <Personas d={d} canManage={canManage} L={L} post={post} reload={load} flash={flash} />}
       {tab === 'rutas' && !editing && <Rutas d={d} canManage={canManage} L={L} post={post} reload={load} open={(t: any) => openTrack(t)} />}
       {tab === 'rutas' && editing && <TrackEditor data={editing} tracks={d.tracks} canManage={canManage} L={L} post={post} onClose={() => { setEditing(null); load(); }} refresh={openTrack} />}
+      {tab === 'cumplimiento' && <Cumplimiento L={L} post={post} lang={lang} />}
       {tab === 'ajustes' && <Ajustes s={s} canManage={canManage} L={L} post={post} reload={load} flash={flash} />}
     </div>
   );
@@ -268,6 +269,49 @@ function QuestionRow({ q, L, canManage, onSave, onDel, inp, lab, btn, btnP }: an
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 6 }}>{L('Marca el círculo de la respuesta correcta. Las opciones EN se copian de ES si las dejas vacías.', 'Mark the correct answer. EN options fall back to ES.')}</div>
       {canManage && <div style={{ display: 'flex', gap: 6, marginTop: 8 }}><button style={btnP} onClick={() => onSave({ ...x, options_en: x.options_en?.length ? x.options_en : x.options_es })}>{L('Guardar', 'Save')}</button><button style={{ ...btn, color: '#e2555a' }} onClick={() => onDel(q.id)}>{L('Eliminar', 'Delete')}</button></div>}
+    </div>
+  );
+}
+
+// -------- CUMPLIMIENTO (auditoría) --------
+function Cumplimiento({ L, post, lang }: any) {
+  const [rep, setRep] = useState<any>(null);
+  useEffect(() => { (async () => { const r = await post({ action: 'compliance' }); if (r?.report) setRep(r.report); })(); }, []);
+  if (!rep) return <div style={{ color: 'var(--mut,#9aa6bd)', padding: 20 }}>{L('Cargando…', 'Loading…')}</div>;
+  const su = rep.summary || {};
+  const cell = (st: string) => {
+    const map: any = { ok: ['rgba(70,190,120,.16)', '#4bbd7c', L('Al día', 'OK')], expired: ['rgba(224,160,58,.18)', '#e0a03a', L('Vencido', 'Expired')], pending: ['rgba(226,85,90,.14)', '#e2555a', L('Pendiente', 'Pending')] };
+    const [bg, fg, txt] = map[st] || map.pending;
+    return <span style={{ fontSize: 11, background: bg, color: fg, padding: '2px 8px', borderRadius: 20, fontWeight: 600, whiteSpace: 'nowrap' }}>{txt}</span>;
+  };
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+        {[[L('Personas', 'People'), su.total, 'var(--tx,#e8ecf5)'], [L('Al día', 'Compliant'), su.compliant, '#4bbd7c'], [L('Vencidos', 'Overdue'), su.overdue, '#e0a03a'], [L('Pendientes', 'Pending'), su.pending, '#e2555a']].map((c: any, i) => (
+          <div key={i} style={{ ...box, marginBottom: 0, flex: 1, minWidth: 120, padding: '12px 14px' }}><div style={{ fontSize: 24, fontWeight: 600, color: c[2] }}>{c[1]}</div><div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>{c[0]}</div></div>
+        ))}
+      </div>
+      <a href={`/api/admin/training/report?lang=${lang}`} target="_blank" rel="noreferrer" style={{ ...btn, display: 'inline-block', textDecoration: 'none', marginBottom: 12 }}>↓ {L('Exportar CSV (auditoría)', 'Export CSV (audit)')}</a>
+      <div style={{ ...box, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+          <thead><tr>
+            <th style={{ textAlign: 'left', padding: '6px 8px', color: 'var(--mut,#9aa6bd)', fontWeight: 500, position: 'sticky', left: 0, background: 'var(--panel,#161c2e)' }}>{L('Persona', 'Person')}</th>
+            {rep.tracks.map((t: any) => <th key={t.id} style={{ textAlign: 'center', padding: '6px 8px', color: 'var(--mut,#9aa6bd)', fontWeight: 500, minWidth: 90 }}>{t.title}</th>)}
+          </tr></thead>
+          <tbody>
+            {rep.people.map((p: any) => (
+              <tr key={p.user_id} style={{ borderTop: '1px solid var(--line,#2a3350)', opacity: p.active ? 1 : 0.55 }}>
+                <td style={{ padding: '8px', position: 'sticky', left: 0, background: 'var(--panel,#161c2e)' }}>
+                  <div style={{ color: 'var(--tx,#e8ecf5)', fontWeight: 600 }}>{p.name || p.email || p.user_id.slice(0, 8)} {p.compliant && <span title={L('Al día', 'Compliant')}>✓</span>}</div>
+                  <div style={{ color: 'var(--mut,#9aa6bd)', fontSize: 11 }}>{p.role}</div>
+                </td>
+                {rep.tracks.map((t: any) => <td key={t.id} style={{ textAlign: 'center', padding: '8px' }}>{p.items[t.id] ? cell(p.items[t.id].status) : <span style={{ color: 'var(--mut,#9aa6bd)' }}>—</span>}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {rep.people.length === 0 && <div style={{ color: 'var(--mut,#9aa6bd)', fontSize: 13, padding: 10 }}>{L('Sin personas con acceso todavía.', 'No people with access yet.')}</div>}
+      </div>
     </div>
   );
 }

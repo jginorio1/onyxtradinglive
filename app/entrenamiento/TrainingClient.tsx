@@ -122,6 +122,7 @@ export default function TrainingClient() {
                   <div style={{ fontSize: 15, fontWeight: 600, color: result.passed ? 'var(--accent,#8b93ff)' : '#e2555a', marginTop: 4 }}>{result.passed ? L('¡Aprobado!', 'Passed!') : L('No alcanzaste la nota', 'Not enough to pass')}</div>
                   <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginTop: 2 }}>{result.correct}/{result.total} {L('correctas', 'correct')}{result.certIssued ? ' · ' + L('Certificado emitido', 'Certificate issued') : ''}</div>
                 </div>
+                {result.certIssued && <a href={`/api/training/cert?track=${detail.track.id}&lang=${lang}`} target="_blank" rel="noreferrer" style={{ ...S.btnP, width: '100%', display: 'block', textAlign: 'center', textDecoration: 'none', marginBottom: 10, boxSizing: 'border-box' }}>↓ {L('Descargar certificado (PDF)', 'Download certificate (PDF)')}</a>}
                 <button style={{ ...S.btn, width: '100%' }} onClick={() => { setDetail(null); setResult(null); }}>{L('Volver a mis rutas', 'Back to my tracks')}</button>
               </div>
             ) : !ex.canTake ? (
@@ -193,6 +194,7 @@ export default function TrainingClient() {
               )}
               {t.cert && !t.cert.expired && <span style={S.badge('rgba(139,147,255,.14)', 'var(--accent,#8b93ff)')}>{L('Certificado', 'Certified')} {t.cert.score}</span>}
               {t.cert && t.cert.expired && <span style={S.badge('rgba(224,160,58,.16)', '#e0a03a')}>{L('Recertifica', 'Recertify')}</span>}
+              {t.cert && <a href={`/api/training/cert?track=${t.id}&lang=${lang}`} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: 'var(--accent,#8b93ff)', fontWeight: 600, textDecoration: 'none' }}>↓ {L('Certificado PDF', 'PDF certificate')}</a>}
             </div>
           </div>
         );
