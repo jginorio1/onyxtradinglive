@@ -17,7 +17,17 @@ export default function CareersAdmin({ canManage = true }: { canManage?: boolean
 
   useEffect(() => { load(); }, []);
   async function load() { try { const r = await fetch('/api/admin/careers', { cache: 'no-store' }); setD(await r.json()); } catch {} }
-  async function act(body: any) { setMsg(''); const r = await fetch('/api/admin/careers', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json(); if (j.error) setMsg('⚠ ' + j.error); else setMsg('Hecho ✓'); await load(); return j; }
+  // Acciones de IA que NO tocan la lista: no recargan (evita refrescos que cierran el editor).
+  const AI_ONLY = new Set(['draft', 'translate', 'suggest_skills', 'audit', 'apply_audit']);
+  async function act(body: any) {
+    const aiOnly = AI_ONLY.has(String(body.action || ''));
+    if (!aiOnly) setMsg('');
+    const r = await fetch('/api/admin/careers', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (j.error) setMsg('⚠ ' + j.error); else if (!aiOnly) setMsg('Hecho ✓');
+    if (!aiOnly) await load();  // solo recarga tras cambios reales (guardar/estado/borrar)
+    return j;
+  }
 
   const inp: React.CSSProperties = { padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13 };
   const btn: React.CSSProperties = { padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--panel,#161c2e)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 12.5 };
