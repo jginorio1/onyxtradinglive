@@ -275,6 +275,20 @@ function PayRow({ r, act, inp, btn, btnP, canManage }: any) {
   );
 }
 
+// Icono "?" con explicación en un globo (clic para abrir/cerrar; title como respaldo).
+function Hint({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle', marginLeft: 5 }}>
+      <button type="button" title={text} aria-label="Ayuda"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        style={{ width: 16, height: 16, borderRadius: '50%', border: '1px solid var(--line,#3a4363)', background: 'var(--card,#1b2338)', color: 'var(--mut,#9aa6bd)', fontSize: 10.5, lineHeight: '14px', cursor: 'pointer', padding: 0, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>?</button>
+      {open && <span style={{ position: 'absolute', bottom: '135%', left: '50%', transform: 'translateX(-50%)', width: 250, maxWidth: '70vw', background: 'var(--panel,#161c2e)', border: '1px solid var(--accent,#8b93ff)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--tx,#e8ecf5)', lineHeight: 1.5, zIndex: 80, boxShadow: '0 8px 30px rgba(0,0,0,.45)', fontWeight: 400, whiteSpace: 'normal', textAlign: 'left' }}>{text}</span>}
+    </span>
+  );
+}
+
 // ===== KIT: gestión de materiales de venta =====
 function KitBox({ inp, btn, btnP, canManage }: any) {
   const [items, setItems] = useState<any[]>([]);
@@ -502,13 +516,13 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
     </label>
   );
   const card: React.CSSProperties = { background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: 16, marginBottom: 12 };
-  const num = (k: string, label: string, suf = '') => (
-    <label style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', display: 'block' }}>{label}<div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}><input type="number" value={f[k] ?? 0} onChange={(e) => u(k, Number(e.target.value))} style={{ ...inp, width: 90 }} />{suf && <span className="muted">{suf}</span>}</div></label>
+  const num = (k: string, label: string, suf = '', hint = '') => (
+    <label style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', display: 'block' }}><span>{label}{hint && <Hint text={hint} />}</span><div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}><input type="number" value={f[k] ?? 0} onChange={(e) => u(k, Number(e.target.value))} style={{ ...inp, width: 90 }} />{suf && <span className="muted">{suf}</span>}</div></label>
   );
-  const tog = (k: string, label: string) => (
+  const tog = (k: string, label: string, hint = '') => (
     <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 10, fontSize: 13.5, cursor: 'pointer', color: 'var(--tx,#e8ecf5)', padding: '2px 0' }}>
       <input type="checkbox" checked={!!f[k]} onChange={(e) => u(k, e.target.checked)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} />
-      <span>{label}</span>
+      <span>{label}{hint && <Hint text={hint} />}</span>
     </label>
   );
   return (
@@ -522,7 +536,7 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
         </div>
       </div>
       <div style={card}>
-        <b>Comisiones (% del pago mensual)</b>
+        <b>Comisiones (% del pago mensual)<Hint text="El % que gana la red por cada pago del cliente. Directo = quien cerró la venta. Override 1 y 2 = los dos niveles arriba de él en el árbol. Se cobra cada mes que el cliente siga pagando." /></b>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>
           {num('direct_rate', 'Vendedor directo', '%')}
           {num('override1_rate', 'Override Nivel 1', '%')}
@@ -574,10 +588,10 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
       <div style={card}>
         <b>Topes, pagos y frenos</b>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>
-          {num('trial_max_days', 'Máx. días de prueba')}
-          {num('discount_max_pct', 'Máx. descuento', '%')}
-          {num('hold_days', 'Retención (días)')}
-          {num('min_payout', 'Mínimo para pagar', '$')}
+          {num('trial_max_days', 'Máx. días de prueba', '', 'Cuántos días de acceso gratis puede dar un vendedor a un cliente en UNA prueba. Si pide más, el sistema lo recorta a este tope.')}
+          {num('discount_max_pct', 'Máx. descuento', '%', 'El % de descuento máximo que un vendedor puede generar en un cupón. Aunque escriba más, se recorta a este valor.')}
+          {num('hold_days', 'Retención (días)', '', 'Días que una comisión queda "madurando" antes de estar disponible para pagar. Protege ante reembolsos: si el cliente pide devolución en este plazo, la comisión se anula sin haberse pagado.')}
+          {num('min_payout', 'Mínimo para pagar', '$', 'Saldo mínimo que un vendedor debe acumular para que el pago automático se dispare. Debajo de esto, el saldo se sigue juntando pero no se paga aún.')}
         </div>
 
         <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line,#2a3350)' }}>
@@ -586,21 +600,21 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
             Evita que un vendedor deje a un cliente gratis para siempre o inunde de cupones. <b>0 = sin límite.</b> Se aplican en el servidor, no solo en la pantalla.
           </div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            {num('trial_max_per_client', 'Máx. pruebas por cliente')}
-            {num('trial_max_total_days', 'Máx. días gratis por cliente')}
-            {num('trial_daily_cap', 'Máx. pruebas por día (vendedor)')}
-            {num('discount_daily_cap', 'Máx. cupones por día (vendedor)')}
+            {num('trial_max_per_client', 'Máx. pruebas por cliente', '', 'Cuántas veces (de cualquier vendedor) un mismo cliente puede recibir prueba gratis. Con 1, evita que le den prueba tras prueba y quede gratis para siempre. 0 = sin límite.')}
+            {num('trial_max_total_days', 'Máx. días gratis por cliente', '', 'Tope de días gratis ACUMULADOS por cliente, sumando todas sus pruebas. Al llegar, no se le dan más; si pide más de los que quedan, se recorta. 0 = sin límite.')}
+            {num('trial_daily_cap', 'Máx. pruebas por día (vendedor)', '', 'Cuántas pruebas puede dar UN vendedor en 24 horas. Frena que inunde de pruebas a muchos de golpe. 0 = sin límite.')}
+            {num('discount_daily_cap', 'Máx. cupones por día (vendedor)', '', 'Cuántos cupones de descuento puede generar UN vendedor en 24 horas. 0 = sin límite.')}
           </div>
         </div>
         <div style={{ display: 'grid', gap: 6, marginTop: 14, maxWidth: 460 }}>
-          {tog('enabled', 'Programa activo')}
-          {tog('auto_payout', 'Pago automático cuando el saldo madura')}
-          {tog('review_before_pay', 'Freno global: revisar antes de pagar')}
-          {tog('allow_recruit', 'Los supervisores pueden reclutar su equipo')}
+          {tog('enabled', 'Programa activo', 'Interruptor maestro de toda la red de ventas. Apagado, no se acredita ninguna comisión ni se paga nada.')}
+          {tog('auto_payout', 'Pago automático cuando el saldo madura', 'Si está activo, el sistema paga solo a cada vendedor cuando su saldo maduró y supera el mínimo. Apagado, tienes que pagar tú a mano en la pestaña Pagos.')}
+          {tog('review_before_pay', 'Freno global: revisar antes de pagar', 'Pausa TODOS los pagos automáticos. Las comisiones se siguen acumulando, pero nadie cobra hasta que tú lo revises y pagues a mano. Útil si sospechas de algo.')}
+          {tog('allow_recruit', 'Los supervisores pueden reclutar su equipo', 'Permite que Leads y Directores añadan/inviten vendedores a su propia rama. Apagado, solo tú (admin) puedes mover gente en la red.')}
         </div>
       </div>
       <div style={card}>
-        <b>Permisos por nivel</b>
+        <b>Permisos por nivel<Hint text="Define qué puede hacer cada posición (Advisor/Lead/Director) por defecto: dar pruebas, descuentos, gestionar clientes, atender tickets, reclutar y ver su equipo. Puedes anularlo persona por persona en su tarjeta." /></b>
         <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
           Lo que cada posición puede hacer por defecto. Puedes anularlo persona por persona en su tarjeta (La red → Editar → Permisos personalizados).
         </div>
@@ -638,7 +652,7 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
         <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>«Reclutar» y «Ver equipo» solo aplican a Lead/Director. Un vendedor con permiso personalizado ignora esta tabla.</div>
       </div>
       <div style={card}>
-        <b>Sobre qué servicios se paga comisión</b>
+        <b>Sobre qué servicios se paga comisión<Hint text="Enciende las líneas de ingreso por las que SÍ se paga comisión de ventas. Academia y Bot Lab vienen apagadas porque ya pagan al mentor/creador; si las enciendes, usa la 'Comisión por línea' de abajo para no doblar el pago." /></b>
         <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 520 }}>
           {scopeTog('subscriptions', 'Suscripciones y planes', 'recomendado')}
           {scopeTog('addons', 'Add-ons y cuentas extra')}
@@ -649,7 +663,7 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
         </div>
       </div>
       <div style={card}>
-        <b>Comisión por línea (opcional)</b>
+        <b>Comisión por línea (opcional)<Hint text="Un % propio (más bajo) solo para Academia, Bot Lab o Copy, que ya pagan al mentor/creador. Así el vendedor cobra un incentivo sin doblar el pago. En blanco = usa el % global de arriba. Recuerda encender la línea en 'Sobre qué servicios se paga comisión'." /></b>
         <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
           Academia y Bot Lab <b>ya pagan</b> al mentor/creador. Si activas su comisión de ventas, pon aquí un <b>% propio más bajo</b> (sale de la parte de Onyx) para no doblar el pago. En blanco = usa el % global de arriba.
         </div>
@@ -688,7 +702,7 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
         <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Recuerda activar la línea arriba para que se pague; aquí solo defines el %.</div>
       </div>
       <div style={card}>
-        <b>Umbrales del plan de manejo (puntaje 0-100)</b>
+        <b>Umbrales del plan de manejo (puntaje 0-100)<Hint text="El puntaje del vendedor (mezcla reseñas, conversión, actividad, atención y retención) lo clasifica en tres estados. Estrella = igual o mayor al primer número. En riesgo = menor al segundo. Entre ambos = Sólido." /></b>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10, alignItems: 'flex-end' }}>
           <label style={{ fontSize: 12.5, color: '#e5b567' }}>Estrella ≥<input type="number" value={th.star} onChange={(e) => uth('star', e.target.value)} style={{ ...inp, display: 'block', marginTop: 4, width: 90 }} /></label>
           <label style={{ fontSize: 12.5, color: '#f0736f' }}>En riesgo &lt;<input type="number" value={th.risk} onChange={(e) => uth('risk', e.target.value)} style={{ ...inp, display: 'block', marginTop: 4, width: 90 }} /></label>
@@ -696,13 +710,13 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
         </div>
       </div>
       <div style={card}>
-        <b>Criterios de evaluación 360</b>
+        <b>Criterios de evaluación 360<Hint text="Los aspectos que se califican cuando un supervisor evalúa a su equipo y viceversa (comunicación, conocimiento, puntualidad, etc.). Uno por línea; puedes cambiarlos." /></b>
         <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Uno por línea. Se usan en las evaluaciones supervisor↔vendedor.</div>
         <textarea value={(f.eval_criteria || []).join('\n')} onChange={(e) => u('eval_criteria', e.target.value.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 12))}
           style={{ ...inp, marginTop: 8, width: '100%', minHeight: 110, resize: 'vertical', fontFamily: 'inherit' }} />
       </div>
       <div style={card}>
-        <b>Reseñas de clientes</b>
+        <b>Reseñas de clientes<Hint text="Pide automáticamente al cliente que califique a su vendedor después de X días de ser cliente. Las reseñas alimentan el puntaje del vendedor." /></b>
         <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 520 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, cursor: 'pointer', color: 'var(--tx,#e8ecf5)' }}>
             <input type="checkbox" checked={!!rev.enabled} onChange={(e) => urev('enabled', e.target.checked)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} />
@@ -717,19 +731,19 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           Se aplican a todos los vendedores salvo que fijes una meta propia en la pestaña «Metas». El bono se paga solo como comisión al cumplir.
         </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>
-          {num('goal_clients', 'Meta de clientes nuevos')}
-          {num('goal_amount', 'Meta de comisión', '$')}
-          {num('goal_bonus', 'Bono al cumplir', '$')}
+          {num('goal_clients', 'Meta de clientes nuevos', '', 'Cuántos clientes nuevos (que pagaron) debe traer un vendedor al mes para cumplir su meta. 0 = no se mide por clientes.')}
+          {num('goal_amount', 'Meta de comisión', '$', 'Cuánta comisión debe generar en el mes para cumplir. 0 = no se mide por dinero.')}
+          {num('goal_bonus', 'Bono al cumplir', '$', 'Bono extra que se paga (como comisión) cuando el vendedor cumple su meta del mes. 0 = sin bono.')}
         </div>
       </div>
       <div style={card}>
         <b>Notificaciones al vendedor</b>
         <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Avísale por app, correo y Telegram cuando pasa algo importante.</div>
         <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 460 }}>
-          {tog('notify_new_client', 'Cliente nuevo con su enlace')}
-          {tog('notify_first_paid', 'Primer pago de un cliente')}
-          {tog('notify_commission', 'Comisión ganada')}
-          {tog('notify_payout', 'Pago enviado')}
+          {tog('notify_new_client', 'Cliente nuevo con su enlace', 'Avisa al vendedor cuando alguien se registra usando su enlace de invitación.')}
+          {tog('notify_first_paid', 'Primer pago de un cliente', 'Avisa cuando uno de sus clientes hace su primer pago (empieza a generar comisión).')}
+          {tog('notify_commission', 'Comisión ganada', 'Avisa cada vez que se le acredita una comisión.')}
+          {tog('notify_payout', 'Pago enviado', 'Avisa cuando le pagas su saldo (por Stripe, USDT o manual).')}
         </div>
       </div>
       <div style={card}>
@@ -738,12 +752,12 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           Reversible: puedes degradar a alguien a mano y apagar esto cuando quieras.
         </div>
         <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 520 }}>
-          {tog('auto_promote', 'Ascender de nivel automáticamente al llegar al umbral')}
-          {tog('auto_assign_leads', 'Repartir leads sin dueño entre vendedores (round-robin)')}
+          {tog('auto_promote', 'Ascender de nivel automáticamente al llegar al umbral', 'Sube solo a un vendedor cuando alcanza los umbrales de abajo. El descenso NO es automático: lo haces tú a mano en la tarjeta de la persona. Apagado, no sube nadie solo.')}
+          {tog('auto_assign_leads', 'Repartir leads sin dueño entre vendedores (round-robin)', 'Cuando alguien se registra SIN el enlace de un vendedor, el sistema lo asigna solo al vendedor con menos clientes. Apagado, esos leads quedan sin dueño hasta que los repartas a mano en Crecimiento.')}
         </div>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 12 }}>
-          {num('promote_to_l1_clients', 'Advisor → Lead con … clientes activos')}
-          {num('promote_to_l2_team', 'Lead → Director con … en su equipo')}
+          {num('promote_to_l1_clients', 'Advisor → Lead con … clientes activos', '', 'Cuántos clientes activos (pagando) debe tener un Advisor para subir solo a Lead. 0 = desactiva este ascenso.')}
+          {num('promote_to_l2_team', 'Lead → Director con … en su equipo', '', 'Cuántas personas debe tener un Lead en su equipo para subir solo a Director. 0 = desactiva este ascenso.')}
         </div>
       </div>
       {canManage && <button style={btnP} onClick={() => act({ action: 'save_settings', settings: f })}>Guardar ajustes</button>}
