@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { repByUser, repById, salesSettings, balances, listClients, teamRollup, grantTrial, permsFor, subtreeRepIds } from '@/lib/sales';
+import { repStatement, goalProgress } from '@/lib/salesGoals';
 import { repScorecard, scoreboard, reviewsForRep, reviewsForTeam, evaluationsFor, submitEvaluation, logAction } from '@/lib/salesPerf';
 
 export const dynamic = 'force-dynamic';
@@ -45,6 +46,8 @@ export async function GET() {
   const perms = permsFor(rep as any, s);
   const myCard = await repScorecard(rep.id, s);
   const myReviews = await reviewsForRep(rep.id, 40);
+  const statement = await repStatement(rep.id, 200);   // extracto línea por línea
+  const goal = await goalProgress(rep.id, s);            // progreso de la meta del mes
 
   // Supervisores: tablero de su equipo + reseñas del equipo + a quién puede evaluar.
   let teamBoard: any[] = [], teamReviews: any[] = [], evalTargets: any[] = [];
@@ -71,7 +74,7 @@ export async function GET() {
     isRep: true,
     rep: { id: rep.id, level: rep.level, code: rep.code, display_name: rep.display_name, from_name: rep.from_name, reply_to: rep.reply_to, payout_method: (rep as any).payout_method || 'stripe', on_hold: rep.on_hold, status: rep.status },
     link, balances: bal, caps, clients, team, tickets, connect,
-    perms, scorecard: myCard, myReviews, teamBoard, teamReviews, evalTargets, mySupervisor,
+    perms, scorecard: myCard, myReviews, teamBoard, teamReviews, evalTargets, mySupervisor, statement, goal,
     eval_criteria: s.eval_criteria || [],
     level_names: s.level_names || { l2: 'Director', l1: 'Lead', vendedor: 'Advisor' },
     wallets: { trc20: (prof as any)?.payout_usdt_trc20 || '', erc20: (prof as any)?.payout_usdt_erc20 || '', network: (prof as any)?.payout_usdt_network || 'trc20' },

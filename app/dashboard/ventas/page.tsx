@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 // atender tickets, su equipo y cobros (Stripe Connect o USDT).
 export default function VentasPanel() {
   const [d, setD] = useState<any>(null);
-  const [tab, setTab] = useState<'resumen' | 'desempeno' | 'clientes' | 'equipo' | 'evaluar' | 'soporte' | 'cobros' | 'guia'>('resumen');
+  const [tab, setTab] = useState<'resumen' | 'desempeno' | 'extracto' | 'clientes' | 'equipo' | 'evaluar' | 'soporte' | 'cobros' | 'guia'>('resumen');
   const [msg, setMsg] = useState('');
   const [lang, setLang] = useState<'es' | 'en'>('es');
   const L = (es: string, en: string) => (lang === 'es' ? es : en);
@@ -60,6 +60,7 @@ export default function VentasPanel() {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         {tabBtn('resumen', L('Resumen', 'Overview'))}
         {tabBtn('desempeno', L('Mi desempeño', 'My performance'))}
+        {tabBtn('extracto', L('Extracto', 'Statement'))}
         {tabBtn('clientes', L('Mis clientes', 'My clients') + ` (${d.clients.length})`)}
         {d.team.length > 0 && tabBtn('equipo', L('Mi equipo', 'My team'))}
         {((d.evalTargets && d.evalTargets.length) || d.mySupervisor) && tabBtn('evaluar', L('Evaluar', 'Evaluate'))}
@@ -75,6 +76,7 @@ export default function VentasPanel() {
           {stat(L('En espera', 'Pending'), '$' + (b.pending || 0))}
           {stat(L('Pagado', 'Paid'), '$' + (b.paid || 0))}
         </div>
+        {d.goal && (d.goal.target_clients > 0 || d.goal.target_amount > 0) && <GoalCard g={d.goal} L={L} card={card} />}
         <div style={card}>
           <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginBottom: 6 }}>{L('Tu enlace de invitación (quien se registre por aquí queda atado a ti):', 'Your invite link (anyone who signs up here is attributed to you):')}</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -85,6 +87,8 @@ export default function VentasPanel() {
       </div>}
 
       {tab === 'desempeno' && <MyPerf d={d} L={L} act={act} card={card} btn={btn} btnP={btnP} />}
+
+      {tab === 'extracto' && <Statement rows={d.statement || []} L={L} card={card} />}
 
       {tab === 'evaluar' && <Evaluate d={d} L={L} act={act} card={card} btn={btn} btnP={btnP} />}
 
@@ -295,6 +299,78 @@ function MyPerf({ d, L, act, card, btn }: any) {
             </div>
           ))}
       </div>
+    </div>
+  );
+}
+
+// ===== Meta del mes (barra de progreso) =====
+function GoalCard({ g, L, card }: any) {
+  const pctC = g.target_clients > 0 ? Math.min(100, Math.round((g.clients / g.target_clients) * 100)) : null;
+  const pctA = g.target_amount > 0 ? Math.min(100, Math.round((g.amount / g.target_amount) * 100)) : null;
+  const bar = (label: string, cur: string, tgt: string, pct: number) => (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: 'var(--mut,#9aa6bd)' }}>
+        <span>{label}</span><span style={{ color: 'var(--tx,#e8ecf5)' }}>{cur} / {tgt}</span>
+      </div>
+      <div style={{ height: 9, borderRadius: 6, background: 'var(--bg,#0e1220)', marginTop: 4, overflow: 'hidden' }}>
+        <div style={{ width: pct + '%', height: '100%', borderRadius: 6, background: pct >= 100 ? 'var(--green,#5ed6a0)' : 'var(--accent,#8b93ff)', transition: 'width .4s' }} />
+      </div>
+    </div>
+  );
+  return (
+    <div style={{ ...card, borderColor: g.met ? 'var(--green,#5ed6a0)' : (card.border as string) }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+        <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Meta del mes', 'Monthly goal')}</b>
+        {g.bonus_amount > 0 && <span style={{ fontSize: 12.5, color: g.met ? 'var(--green,#5ed6a0)' : '#e5b567' }}>{g.met ? L('¡Bono ganado! ', 'Bonus earned! ') : L('Bono al cumplir: ', 'Bonus on hit: ')}${g.bonus_amount}</span>}
+      </div>
+      {pctC != null && bar(L('Clientes nuevos', 'New clients'), String(g.clients), String(g.target_clients), pctC)}
+      {pctA != null && bar(L('Comisión generada', 'Commission earned'), '$' + g.amount, '$' + g.target_amount, pctA)}
+    </div>
+  );
+}
+
+// ===== Extracto (comisiones línea por línea) =====
+function Statement({ rows, L, card }: any) {
+  const badge = (st: string) => {
+    const m: Record<string, [string, string]> = {
+      paid: ['#5ed6a0', L('Pagado', 'Paid')], available: ['#8b93ff', L('Disponible', 'Available')],
+      pending: ['#9aa6bd', L('Madurando', 'Maturing')], reversed: ['#f0736f', L('Reversado', 'Reversed')],
+    };
+    const [c, t] = m[st] || ['#9aa6bd', st];
+    return <span style={{ color: c, fontSize: 12, fontWeight: 600 }}>{t}</span>;
+  };
+  const lvl = (l: string) => l === 'override1' ? 'Ov.1' : l === 'override2' ? 'Ov.2' : l === 'bonus' ? L('Bono', 'Bonus') : L('Directo', 'Direct');
+  return (
+    <div style={card}>
+      <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Extracto de comisiones', 'Commission statement')}</b>
+      <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', margin: '4px 0 10px' }}>{L('Cada comisión: de qué cliente, sobre cuánto, tu % y en qué estado está.', 'Each commission: which client, on how much, your % and its status.')}</div>
+      {!rows.length ? <p style={{ color: 'var(--mut,#9aa6bd)' }}>{L('Aún no hay comisiones.', 'No commissions yet.')}</p> :
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480, fontSize: 13 }}>
+            <thead><tr style={{ color: 'var(--mut,#9aa6bd)', fontSize: 11.5, textAlign: 'left' }}>
+              <th style={{ padding: '6px 6px' }}>{L('Cliente', 'Client')}</th>
+              <th style={{ padding: '6px 6px' }}>{L('Nivel', 'Level')}</th>
+              <th style={{ padding: '6px 6px', textAlign: 'right' }}>{L('Base', 'Base')}</th>
+              <th style={{ padding: '6px 6px', textAlign: 'right' }}>%</th>
+              <th style={{ padding: '6px 6px', textAlign: 'right' }}>{L('Tu comisión', 'Your cut')}</th>
+              <th style={{ padding: '6px 6px' }}>{L('Estado', 'Status')}</th>
+              <th style={{ padding: '6px 6px' }}>{L('Fecha', 'Date')}</th>
+            </tr></thead>
+            <tbody>
+              {rows.map((r: any, i: number) => (
+                <tr key={i} style={{ borderTop: '1px solid var(--line,#2a3350)' }}>
+                  <td style={{ padding: '7px 6px', color: 'var(--tx,#e8ecf5)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.client}</td>
+                  <td style={{ padding: '7px 6px', color: 'var(--mut,#9aa6bd)' }}>{lvl(r.level)}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'right', color: 'var(--mut,#9aa6bd)' }}>{r.base ? '$' + r.base : '—'}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'right', color: 'var(--mut,#9aa6bd)' }}>{r.pct ? r.pct + '%' : '—'}</td>
+                  <td style={{ padding: '7px 6px', textAlign: 'right', color: r.status === 'reversed' ? '#f0736f' : 'var(--tx,#e8ecf5)', fontWeight: 600, textDecoration: r.status === 'reversed' ? 'line-through' : 'none' }}>${r.amount}</td>
+                  <td style={{ padding: '7px 6px' }}>{badge(r.status)}</td>
+                  <td style={{ padding: '7px 6px', color: 'var(--mut,#9aa6bd)', fontSize: 12 }}>{r.when ? new Date(r.when).toLocaleDateString() : ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>}
     </div>
   );
 }

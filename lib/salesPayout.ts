@@ -66,6 +66,7 @@ export async function paySalesRep(repId: string): Promise<{ ok: boolean; amount?
   await supabaseAdmin.from('sales_commissions')
     .update({ status: 'paid', paid_at: now, payout_id: (payout as any)?.id || null })
     .eq('rep_id', repId).in('status', ['pending', 'available']).lte('available_at', now).neq('status', 'reversed');
+  try { const { notifyRep } = await import('@/lib/salesNotify'); await notifyRep(repId, 'payout', { amount: bal.available }); } catch { /* opcional */ }
   return { ok: true, amount: bal.available, transfer_id: transfer.id };
 }
 
@@ -80,6 +81,7 @@ export async function markSalesPaidManual(repId: string, method = 'manual', ref?
   await supabaseAdmin.from('sales_commissions')
     .update({ status: 'paid', paid_at: now, payout_id: (payout as any)?.id || null })
     .eq('rep_id', repId).in('status', ['pending', 'available']).lte('available_at', now).neq('status', 'reversed');
+  try { const { notifyRep } = await import('@/lib/salesNotify'); await notifyRep(repId, 'payout', { amount: bal.available }); } catch { /* opcional */ }
   return { ok: true, amount: bal.available };
 }
 

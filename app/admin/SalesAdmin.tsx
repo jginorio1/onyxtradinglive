@@ -14,7 +14,7 @@ const LV = {
 
 export default function SalesAdmin({ canManage = true }: { canManage?: boolean }) {
   const [d, setD] = useState<any>(null);
-  const [sub, setSub] = useState<'solicitudes' | 'red' | 'desempeno' | 'ajustes' | 'pagos'>('red');
+  const [sub, setSub] = useState<'solicitudes' | 'red' | 'desempeno' | 'metas' | 'ajustes' | 'pagos'>('red');
   const [msg, setMsg] = useState('');
   const [dragId, setDragId] = useState<string>('');
 
@@ -67,6 +67,7 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         {subBtn('red', 'La red', reps.length)}
         {subBtn('desempeno', 'Desempeño')}
+        {subBtn('metas', 'Metas')}
         {subBtn('solicitudes', 'Solicitudes', apps.length)}
         {subBtn('ajustes', 'Ajustes')}
         {subBtn('pagos', 'Pagos')}
@@ -116,6 +117,9 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
         {apps.length === 0 && <div className="muted">No hay solicitudes pendientes.</div>}
         {apps.map((a) => <AppRow key={a.id} a={a} reps={reps} act={act} inp={inp} btn={btn} btnP={btnP} canManage={canManage} lvName={lvName} />)}
       </div>}
+
+      {/* ===== METAS ===== */}
+      {sub === 'metas' && <MetasBox act={act} inp={inp} btn={btn} btnP={btnP} canManage={canManage} lvName={lvName} LV={LV} />}
 
       {/* ===== AJUSTES ===== */}
       {sub === 'ajustes' && <SettingsBox s={s} names={names} act={act} inp={inp} btnP={btnP} canManage={canManage} />}
@@ -259,6 +263,72 @@ function PayRow({ r, act, inp, btn, btnP, canManage }: any) {
           <button style={btn} onClick={() => act({ action: 'pay_manual', rep_id: r.id, method: 'usdt', ref })}>Marcar pagado</button>
         </div>}
       </div>
+    </div>
+  );
+}
+
+// ===== METAS: progreso + editor por vendedor =====
+function MetasBox({ inp, btn, btnP, canManage, lvName, LV }: any) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [period, setPeriod] = useState('');
+  const [busy, setBusy] = useState(true);
+  const [msg, setMsg] = useState('');
+  async function post(body: any) {
+    const r = await fetch('/api/admin/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    return r.json();
+  }
+  async function load() {
+    setBusy(true);
+    try { const j = await post({ action: 'goals' }); setRows(j.rows || []); setPeriod(j.period || ''); } catch {}
+    setBusy(false);
+  }
+  useEffect(() => { load(); }, []);
+  if (busy) return <div className="muted">Cargando metas…</div>;
+  return (
+    <div>
+      <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>Metas del mes <b style={{ color: 'var(--tx,#e8ecf5)' }}>{period}</b>. En blanco = usa la meta global (Ajustes). El bono se paga solo como comisión al cumplir.</div>
+      {msg && <div style={{ border: '1px solid var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', borderRadius: 10, padding: '7px 12px', marginBottom: 10, fontSize: 13 }}>{msg}</div>}
+      {!rows.length && <div className="muted">No hay vendedores activos.</div>}
+      <div style={{ display: 'grid', gap: 10 }}>
+        {rows.map((r) => <RepGoalRow key={r.rep_id} r={r} period={period} lvName={lvName} LV={LV} inp={inp} btn={btn} btnP={btnP} canManage={canManage} post={post} onSaved={(m: string) => { setMsg(m); load(); }} />)}
+      </div>
+    </div>
+  );
+}
+
+function RepGoalRow({ r, period, lvName, LV, inp, btn, btnP, canManage, post, onSaved }: any) {
+  const [tc, setTc] = useState(String(r.goal?.target_clients ?? ''));
+  const [ta, setTa] = useState(String(r.goal?.target_amount ?? ''));
+  const [bo, setBo] = useState(String(r.goal?.bonus_amount ?? ''));
+  const p = r.progress || {};
+  const c = (LV as any)[r.level] || (LV as any).vendedor;
+  const bar = (cur: number, tgt: number) => {
+    const pct = tgt > 0 ? Math.min(100, Math.round((cur / tgt) * 100)) : 0;
+    return <div style={{ height: 7, borderRadius: 5, background: 'var(--bg,#0e1220)', overflow: 'hidden', minWidth: 90, flex: 1 }}><div style={{ width: pct + '%', height: '100%', background: pct >= 100 ? 'var(--green,#5ed6a0)' : 'var(--accent,#8b93ff)' }} /></div>;
+  };
+  return (
+    <div style={{ background: 'var(--card,#1b2338)', border: `1px solid ${c.bd}`, borderRadius: 12, padding: '12px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <b style={{ color: c.fg, fontSize: 14 }}>{r.name}</b>
+        <span className="muted" style={{ fontSize: 11.5 }}>· {lvName(r.level)}</span>
+        {p.met && <span style={{ fontSize: 11.5, color: 'var(--green,#5ed6a0)', fontWeight: 700 }}>✓ cumplió</span>}
+        {r.goal?.custom && <span style={{ fontSize: 11, color: '#e5b567' }}>meta propia</span>}
+      </div>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', margin: '8px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 180 }}>
+          <span className="muted" style={{ fontSize: 12 }}>Clientes {p.clients}/{p.target_clients || '—'}</span>{bar(p.clients || 0, p.target_clients || 0)}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 180 }}>
+          <span className="muted" style={{ fontSize: 12 }}>Comisión ${p.amount}/${p.target_amount || '—'}</span>{bar(p.amount || 0, p.target_amount || 0)}
+        </div>
+      </div>
+      {canManage && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid var(--line,#2a3350)', paddingTop: 10 }}>
+        <label style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Clientes<input type="number" value={tc} onChange={(e) => setTc(e.target.value)} style={{ ...inp, width: 70, display: 'block', marginTop: 3 }} /></label>
+        <label style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Comisión $<input type="number" value={ta} onChange={(e) => setTa(e.target.value)} style={{ ...inp, width: 80, display: 'block', marginTop: 3 }} /></label>
+        <label style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Bono $<input type="number" value={bo} onChange={(e) => setBo(e.target.value)} style={{ ...inp, width: 80, display: 'block', marginTop: 3 }} /></label>
+        <button style={{ ...btnP, alignSelf: 'flex-end' }} onClick={async () => { await post({ action: 'set_goal', rep_id: r.rep_id, period, target_clients: Number(tc) || 0, target_amount: Number(ta) || 0, bonus_amount: Number(bo) || 0 }); onSaved('Meta guardada ✓'); }}>Guardar meta</button>
+        {r.goal?.custom && <button style={{ ...btn, alignSelf: 'flex-end' }} onClick={async () => { await post({ action: 'del_goal', rep_id: r.rep_id, period }); onSaved('Volvió a la meta global ✓'); }}>Usar global</button>}
+      </div>}
     </div>
   );
 }
@@ -488,6 +558,27 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
             <span>Pedir reseña al cliente automáticamente</span>
           </label>
           <label style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)' }}>Pedirla después de<input type="number" value={rev.after_days} onChange={(e) => urev('after_days', Number(e.target.value))} style={{ ...inp, width: 90, margin: '0 8px' }} />días de ser cliente</label>
+        </div>
+      </div>
+      <div style={card}>
+        <b>Metas por defecto (mensuales)</b>
+        <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
+          Se aplican a todos los vendedores salvo que fijes una meta propia en la pestaña «Metas». El bono se paga solo como comisión al cumplir.
+        </div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>
+          {num('goal_clients', 'Meta de clientes nuevos')}
+          {num('goal_amount', 'Meta de comisión', '$')}
+          {num('goal_bonus', 'Bono al cumplir', '$')}
+        </div>
+      </div>
+      <div style={card}>
+        <b>Notificaciones al vendedor</b>
+        <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Avísale por app, correo y Telegram cuando pasa algo importante.</div>
+        <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 460 }}>
+          {tog('notify_new_client', 'Cliente nuevo con su enlace')}
+          {tog('notify_first_paid', 'Primer pago de un cliente')}
+          {tog('notify_commission', 'Comisión ganada')}
+          {tog('notify_payout', 'Pago enviado')}
         </div>
       </div>
       {canManage && <button style={btnP} onClick={() => act({ action: 'save_settings', settings: f })}>Guardar ajustes</button>}

@@ -3,6 +3,7 @@ import { requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { salesSettings, saveSalesSettings, uniqueRepCode, balances } from '@/lib/sales';
 import { scoreboard, repScorecard, reviewsForTeam, evaluationsFor, actionsFor, submitEvaluation, logAction } from '@/lib/salesPerf';
+import { goalProgress, goalFor } from '@/lib/salesGoals';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -47,6 +48,39 @@ export async function POST(req: Request) {
     if (action === 'save_settings') {
       const s = await saveSalesSettings(b.settings || {});
       return NextResponse.json({ ok: true, settings: s });
+    }
+
+    // ---- METAS Y BONOS ----
+    // Progreso de metas del mes por cada rep (meta propia o global) + estado.
+    if (action === 'goals') {
+      const s = await salesSettings();
+      const period = new Date().toISOString().slice(0, 7);
+      const { data: reps } = await supabaseAdmin.from('sales_reps').select('id,level,display_name,user_id').eq('status', 'active');
+      const rows: any[] = [];
+      for (const r of (reps || []) as any[]) {
+        const { data: prof } = await supabaseAdmin.from('profiles').select('email').eq('id', r.user_id).maybeSingle();
+        const g = await goalFor(r.id, period, s);
+        const p = await goalProgress(r.id, s);
+        rows.push({ rep_id: r.id, level: r.level, name: r.display_name || (prof as any)?.email || 'Rep', goal: g, progress: p });
+      }
+      return NextResponse.json({ ok: true, period, rows });
+    }
+    // Fijar meta propia de un rep (anula la global para ese mes).
+    if (action === 'set_goal' && b.rep_id) {
+      const period = String(b.period || new Date().toISOString().slice(0, 7)).slice(0, 7);
+      await supabaseAdmin.from('sales_goals').upsert({
+        rep_id: b.rep_id, period,
+        target_clients: Math.max(0, Number(b.target_clients) || 0),
+        target_amount: Math.max(0, Number(b.target_amount) || 0),
+        bonus_amount: Math.max(0, Number(b.bonus_amount) || 0),
+      }, { onConflict: 'rep_id,period' });
+      return NextResponse.json({ ok: true });
+    }
+    // Quitar meta propia (vuelve a heredar la global).
+    if (action === 'del_goal' && b.rep_id) {
+      const period = String(b.period || new Date().toISOString().slice(0, 7)).slice(0, 7);
+      await supabaseAdmin.from('sales_goals').delete().eq('rep_id', b.rep_id).eq('period', period);
+      return NextResponse.json({ ok: true });
     }
 
     // ---- DESEMPEÑO ----

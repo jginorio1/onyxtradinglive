@@ -21,6 +21,16 @@ export type SalesSettings = {
   trial_max_total_days: number;   // tope de días gratis acumulados por cliente (suma de todas sus pruebas)
   trial_daily_cap: number;        // máx. pruebas que un vendedor puede dar en 24h
   discount_daily_cap: number;     // máx. cupones que un vendedor puede generar en 24h
+  // Metas globales por defecto (si un rep no tiene meta propia en sales_goals):
+  goal_clients: number;           // meta mensual de clientes activos nuevos
+  goal_amount: number;            // meta mensual de comisión generada ($)
+  goal_bonus: number;             // bono al cumplir ($)
+  // Notificaciones al vendedor (in-app + email + Telegram):
+  notify_new_client: boolean; notify_first_paid: boolean; notify_commission: boolean; notify_payout: boolean;
+  // Reparto automático de leads sin dueño (round-robin entre vendedores activos):
+  auto_assign_leads: boolean;
+  // Ascenso automático por umbral (reversible, con freno del dueño):
+  auto_promote: boolean; promote_to_l1_clients: number; promote_to_l2_team: number;
   auto_payout: boolean;       // paga solo cuando el saldo madura
   review_before_pay: boolean; // freno global: encola pero apruebas tú
   allow_recruit: boolean;     // los supervisores pueden reclutar su equipo
@@ -59,6 +69,10 @@ const DEFAULTS: SalesSettings = {
   commission_months: 0, hold_days: 30, min_payout: 50,
   trial_max_days: 14, discount_max_pct: 20,
   trial_max_per_client: 1, trial_max_total_days: 21, trial_daily_cap: 10, discount_daily_cap: 10,
+  goal_clients: 5, goal_amount: 0, goal_bonus: 0,
+  notify_new_client: true, notify_first_paid: true, notify_commission: true, notify_payout: true,
+  auto_assign_leads: false,
+  auto_promote: false, promote_to_l1_clients: 10, promote_to_l2_team: 3,
   auto_payout: true, review_before_pay: false, allow_recruit: true,
   level_names: { l2: 'Director', l1: 'Lead', vendedor: 'Advisor' },
   commission_scope: { subscriptions: true, addons: true, guardian: true, academy: false, botlab: false, copy: false },
@@ -183,10 +197,9 @@ export async function creditFromPayment(opts: {
   const directRepId = (sc as any)?.rep_id;
   if (!directRepId) return { credited: 0, reason: 'no_rep' };
 
-  if (s.commission_months > 0) {
-    const done = await monthsBilled(opts.clientUserId);
-    if (done >= s.commission_months) return { credited: 0, reason: 'cap_months' };
-  }
+  const priorDirect = await monthsBilled(opts.clientUserId);
+  if (s.commission_months > 0 && priorDirect >= s.commission_months) return { credited: 0, reason: 'cap_months' };
+  const firstPay = priorDirect === 0;   // primer pago de este cliente
 
   const { direct, up1, up2 } = await beneficiaryChain(directRepId);
   const availableAt = new Date(Date.now() + (s.hold_days || 0) * 86400000).toISOString();
@@ -213,6 +226,17 @@ export async function creditFromPayment(opts: {
   if (error) return { credited: 0, reason: error.message };
 
   try { await supabaseAdmin.from('sales_clients').update({ first_paid_at: new Date().toISOString() }).eq('user_id', opts.clientUserId).is('first_paid_at', null); } catch {}
+
+  // Avisos al vendedor + bono por meta cumplida (nunca rompen el cobro).
+  try {
+    const { notifyRep } = await import('@/lib/salesNotify');
+    const { awardBonusIfMet } = await import('@/lib/salesGoals');
+    const clientEmail = await (async () => { try { const { data } = await supabaseAdmin.from('profiles').select('email').eq('id', opts.clientUserId).maybeSingle(); return (data as any)?.email || undefined; } catch { return undefined; } })();
+    if (firstPay && direct) await notifyRep(direct.id, 'first_paid', { client: clientEmail });
+    for (const row of rows) await notifyRep(row.rep_id, 'commission', { amount: row.amount });
+    for (const rep of [direct, up1, up2]) if (rep) await awardBonusIfMet(rep.id, s);
+  } catch { /* opcional */ }
+
   return { credited: rows.length };
 }
 
@@ -248,6 +272,7 @@ export async function attachClientByCode(userId: string, code: string, source: '
     if (!rep || rep.user_id === userId) return { linked: false };
     await supabaseAdmin.from('sales_clients').insert({ rep_id: rep.id, user_id: userId, source });
     await supabaseAdmin.from('profiles').update({ sales_rep_id: rep.id }).eq('id', userId);
+    try { const { notifyRep } = await import('@/lib/salesNotify'); await notifyRep(rep.id, 'new_client'); } catch { /* opcional */ }
     return { linked: true };
   } catch { return { linked: false }; }
 }
