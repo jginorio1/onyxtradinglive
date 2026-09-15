@@ -30,6 +30,10 @@ export type SalesSettings = {
   tier_thresholds: { star: number; risk: number };
   // Reseñas de clientes: se piden solas tras X días de ser cliente.
   review: { enabled: boolean; after_days: number; email: boolean };
+  // % por línea (opcional): protege el margen en líneas que ya pagan a otros
+  // (Academia al mentor, Bot Lab al creador). Si una línea tiene valor aquí, ese
+  // % manda para esa línea; en blanco/undefined hereda el global.
+  line_rates?: Partial<Record<'subscriptions' | 'addons' | 'guardian' | 'academy' | 'botlab' | 'copy', { direct?: number | null; override1?: number | null; override2?: number | null }>>;
 };
 
 // Qué puede hacer un representante dentro del sistema.
@@ -56,6 +60,7 @@ const DEFAULTS: SalesSettings = {
   eval_criteria: ['Comunicación', 'Conocimiento del producto', 'Puntualidad', 'Cierre de ventas', 'Trabajo en equipo', 'Actitud'],
   tier_thresholds: { star: 75, risk: 45 },
   review: { enabled: true, after_days: 20, email: false },
+  line_rates: {},
 };
 
 // Permisos efectivos de un rep: default del nivel + override propio (rep.perms).
@@ -137,8 +142,13 @@ export async function subtreeRepIds(rootId: string): Promise<string[]> {
 
 // % que le toca a un beneficiario según su nivel en el reparto (el override del
 // rep manda si está puesto).
-export function pctFor(rep: Rep | null, slot: 'direct' | 'override1' | 'override2', s: SalesSettings): number {
+export function pctFor(rep: Rep | null, slot: 'direct' | 'override1' | 'override2', s: SalesSettings, line?: string): number {
   if (!rep) return 0;
+  // % por línea (Academia/Bot Lab con tarifa propia para no doblar comisión) manda si está puesto.
+  if (line && s.line_rates && (s.line_rates as any)[line]) {
+    const v = (s.line_rates as any)[line][slot];
+    if (v != null && v !== '') return Number(v);
+  }
   if (rep.rate_override != null && rep.rate_override !== ('' as any)) return Number(rep.rate_override);
   return slot === 'direct' ? s.direct_rate : slot === 'override1' ? s.override1_rate : s.override2_rate;
 }
@@ -179,7 +189,7 @@ export async function creditFromPayment(opts: {
   const rows: any[] = [];
   const add = (rep: Rep | null, slot: 'direct' | 'override1' | 'override2', level: string) => {
     if (!rep || rep.status !== 'active') return;
-    const pct = pctFor(rep, slot, s);
+    const pct = pctFor(rep, slot, s, line);
     if (!(pct > 0)) return;
     rows.push({
       rep_id: rep.id, client_user_id: opts.clientUserId, level, invoice_id: opts.invoiceId,

@@ -377,6 +377,45 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
         </div>
       </div>
       <div style={card}>
+        <b>Comisión por línea (opcional)</b>
+        <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
+          Academia y Bot Lab <b>ya pagan</b> al mentor/creador. Si activas su comisión de ventas, pon aquí un <b>% propio más bajo</b> (sale de la parte de Onyx) para no doblar el pago. En blanco = usa el % global de arriba.
+        </div>
+        {(() => {
+          const lr = f.line_rates || {};
+          const ulr = (line: string, slot: string, v: string) => setF((x: any) => ({ ...x, line_rates: { ...(x.line_rates || {}), [line]: { ...((x.line_rates || {})[line] || {}), [slot]: v === '' ? null : Number(v) } } }));
+          const val = (line: string, slot: string) => { const v = (lr as any)[line]?.[slot]; return v == null ? '' : v; };
+          const inpS: React.CSSProperties = { ...inp, width: 72, textAlign: 'right' };
+          const lines: [string, string][] = [['academy', 'Academia'], ['botlab', 'Bot Lab'], ['copy', 'Copy']];
+          const gl = { direct: f.direct_rate, override1: f.override1_rate, override2: f.override2_rate };
+          return (
+            <div style={{ overflowX: 'auto', marginTop: 10 }}>
+              <table style={{ borderCollapse: 'collapse', minWidth: 380 }}>
+                <thead><tr>
+                  <th style={{ textAlign: 'left', padding: '4px 8px', fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Línea</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px', fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Directo %</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px', fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Ov. 1 %</th>
+                  <th style={{ textAlign: 'right', padding: '4px 8px', fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Ov. 2 %</th>
+                </tr></thead>
+                <tbody>
+                  {lines.map(([k, label]) => (
+                    <tr key={k}>
+                      <td style={{ padding: '5px 8px', fontSize: 13, color: 'var(--tx,#e8ecf5)' }}>{label}</td>
+                      {(['direct', 'override1', 'override2'] as const).map((slot) => (
+                        <td key={slot} style={{ padding: '5px 8px', textAlign: 'right' }}>
+                          <input type="number" value={val(k, slot)} onChange={(e) => ulr(k, slot, e.target.value)} placeholder={String((gl as any)[slot] ?? 0)} style={inpS} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+        <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Recuerda activar la línea arriba para que se pague; aquí solo defines el %.</div>
+      </div>
+      <div style={card}>
         <b>Umbrales del plan de manejo (puntaje 0-100)</b>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10, alignItems: 'flex-end' }}>
           <label style={{ fontSize: 12.5, color: '#e5b567' }}>Estrella ≥<input type="number" value={th.star} onChange={(e) => uth('star', e.target.value)} style={{ ...inp, display: 'block', marginTop: 4, width: 90 }} /></label>
