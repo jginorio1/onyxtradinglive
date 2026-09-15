@@ -115,6 +115,10 @@ export default function TrainingClient() {
     const ex = detail.exam || {};
     const doneN = detail.lessons.filter((l: any) => l.done).length;
     const prog = detail.lessons.length ? Math.round((doneN / detail.lessons.length) * 100) : 0;
+    // Candado del examen calculado EN VIVO (no con el estado viejo del servidor):
+    // al marcar la última lección, el examen se desbloquea al instante.
+    const doneAll = detail.lessons.length === 0 || detail.lessons.every((l: any) => l.done);
+    const canTake = ex.passed || (ex.attemptsLeft !== 0 && ex.cooldownLeft === 0 && (!ex.requireLessons || doneAll));
     return (
       <div style={S.wrap}>
         <button style={{ ...S.btn, marginBottom: 14 }} onClick={() => { setDetail(null); setResult(null); }}>← {L('Volver', 'Back')}</button>
@@ -149,9 +153,9 @@ export default function TrainingClient() {
 
             {result ? (
               <ResultView result={result} trackId={detail.track.id} lang={lang} L={L} onBack={() => { setDetail(null); setResult(null); }} />
-            ) : !ex.canTake ? (
+            ) : !canTake ? (
               <div style={{ ...S.pill(tint(WARN, 0.15), WARN), padding: '12px 14px', display: 'block', textAlign: 'center' }}>
-                {ex.requireLessons && !ex.lessonsDone ? L('Completa todas las lecciones para desbloquear el examen.', 'Finish all lessons to unlock the exam.')
+                {ex.requireLessons && !doneAll ? L('Completa todas las lecciones para desbloquear el examen.', 'Finish all lessons to unlock the exam.')
                   : ex.cooldownLeft > 0 ? L(`Espera ${ex.cooldownLeft} min antes de reintentar.`, `Wait ${ex.cooldownLeft} min before retrying.`)
                     : L('Sin intentos disponibles. Contacta a tu supervisor.', 'No attempts left. Contact your supervisor.')}
               </div>
@@ -295,6 +299,7 @@ function LessonStep({ l, i, last, isOpen, L, minRead, onToggleOpen, onDone }: an
           <div style={{ padding: '0 16px 16px' }}>
             {l.video && <div style={{ marginBottom: 12 }}><Video url={l.video} /></div>}
             <Body text={l.body} />
+            {l.doc && <a href={l.doc} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', color: AC, fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}><i /> 📄 {l.docName || L('Descargar material', 'Download material')}</a>}
             <button disabled={!canMark} onClick={() => onDone(!l.done)}
               style={{ ...(l.done ? S.btn : S.btnP), marginTop: 14, opacity: canMark ? 1 : 0.55, cursor: canMark ? 'pointer' : 'default' }}>
               {l.done ? L('✓ Visto (deshacer)', '✓ Done (undo)') : canMark ? L('Marcar como visto', 'Mark as done') : L(`Lee ${remain}s…`, `Read ${remain}s…`)}

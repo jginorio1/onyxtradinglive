@@ -179,7 +179,7 @@ export async function trackDetail(userId: string, trackId: string, lang: Lang = 
   return {
     track: { id: t.id, slug: (t as any).slug, title: T(t, 'title', lang), summary: T(t, 'summary', lang), passScore: (t as any).pass_score },
     minReadSec: s.min_read_sec || 0,
-    lessons: lessonsList.map((l: any) => ({ id: l.id, title: T(l, 'title', lang), body: T(l, 'body', lang), video: l.video_url || null, done: doneSet.has(l.id) })),
+    lessons: lessonsList.map((l: any) => ({ id: l.id, title: T(l, 'title', lang), body: T(l, 'body', lang), video: l.video_url || null, doc: l.doc_url || null, docName: l.doc_name || null, done: doneSet.has(l.id) })),
     exam: {
       passScore: (t as any).pass_score, attemptsLeft, passed,
       lessonsDone, requireLessons: s.require_lessons, cooldownLeft, attestRequired: s.require_attestation,
@@ -394,7 +394,10 @@ export async function saveLesson(l: any): Promise<{ ok: boolean; id?: string }> 
   const row: any = {
     track_id: l.track_id, title_es: String(l.title_es || '').slice(0, 200), title_en: String(l.title_en || '').slice(0, 200),
     body_es: String(l.body_es || '').slice(0, 20000), body_en: String(l.body_en || '').slice(0, 20000),
-    video_url: l.video_url ? String(l.video_url).slice(0, 800) : null, sort: Number(l.sort) || 0,
+    video_url: l.video_url ? String(l.video_url).slice(0, 800) : null,
+    doc_url: l.doc_url ? String(l.doc_url).slice(0, 800) : null,
+    doc_name: l.doc_name ? String(l.doc_name).slice(0, 160) : null,
+    sort: Number(l.sort) || 0,
   };
   if (l.id) { delete row.track_id; await supabaseAdmin.from('training_lessons').update(row).eq('id', l.id); return { ok: true, id: l.id }; }
   const { data } = await supabaseAdmin.from('training_lessons').insert(row).select('id').maybeSingle();

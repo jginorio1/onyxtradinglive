@@ -15,6 +15,18 @@ const btnP: React.CSSProperties = { background: 'var(--accent,#8b93ff)', color: 
 const btn: React.CSSProperties = { background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', border: '1px solid var(--line,#2a3350)', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer' };
 const lab: React.CSSProperties = { fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'block', marginBottom: 4 };
 
+// Icono "?" con explicación (clic para abrir/cerrar; title como respaldo).
+function Hint({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle', marginLeft: 6 }}>
+      <button type="button" title={text} aria-label="Ayuda" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }} onBlur={() => setTimeout(() => setOpen(false), 150)}
+        style={{ width: 16, height: 16, borderRadius: '50%', border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--mut,#9aa6bd)', fontSize: 10.5, lineHeight: '14px', cursor: 'pointer', padding: 0, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>?</button>
+      {open && <span style={{ position: 'absolute', bottom: '135%', left: '50%', transform: 'translateX(-50%)', width: 250, maxWidth: '78vw', background: 'var(--panel,#161c2e)', border: '1px solid var(--accent,#8b93ff)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--tx,#e8ecf5)', lineHeight: 1.5, zIndex: 90, boxShadow: '0 8px 30px rgba(0,0,0,.45)', fontWeight: 400, whiteSpace: 'normal', textAlign: 'left' }}>{text}</span>}
+    </span>
+  );
+}
+
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <button onClick={onClick} style={{ width: 40, height: 22, borderRadius: 20, border: 'none', background: on ? 'var(--accent,#8b93ff)' : 'var(--card,#1b2338)', position: 'relative', cursor: 'pointer', flexShrink: 0 }}>
     <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left .15s' }} /></button>;
@@ -244,13 +256,14 @@ function TrackEditor({ data, tracks, canManage, L, post, onClose, refresh }: any
 function LessonRow({ l, L, canManage, onSave, onDel, inp, lab, btn, btnP }: any) {
   const [x, setX] = useState(l);
   const up = (k: string, v: any) => setX((p: any) => ({ ...p, [k]: v }));
-  const [upBusy, setUpBusy] = useState(false);
-  async function upload(file: File) {
-    setUpBusy(true);
+  const [upBusy, setUpBusy] = useState<'' | 'video' | 'doc'>('');
+  async function upload(file: File, kind: 'video' | 'doc') {
+    setUpBusy(kind);
     const fd = new FormData(); fd.append('file', file);
     const r = await fetch('/api/admin/training/upload', { method: 'POST', body: fd }).then((z) => z.json()).catch(() => null);
-    setUpBusy(false);
-    if (r?.url) up('video_url', r.url); else alert(r?.error || 'Error');
+    setUpBusy('');
+    if (r?.url) { if (kind === 'video') up('video_url', r.url); else { up('doc_url', r.url); up('doc_name', file.name); } }
+    else alert(r?.error || 'Error');
   }
   return (
     <div style={{ borderTop: '1px solid var(--line,#2a3350)', padding: '10px 0' }}>
@@ -262,12 +275,15 @@ function LessonRow({ l, L, canManage, onSave, onDel, inp, lab, btn, btnP }: any)
       <textarea style={{ ...inp, marginTop: 8, minHeight: 60, resize: 'vertical' }} value={x.body_en || ''} onChange={(e) => up('body_en', e.target.value)} placeholder={L('Contenido EN (opcional)', 'Content EN (optional)')} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, marginTop: 8, alignItems: 'center' }}>
         <input style={inp} value={x.video_url || ''} onChange={(e) => up('video_url', e.target.value)} placeholder={L('URL de video (YouTube/Vimeo/mp4)', 'Video URL (YouTube/Vimeo/mp4)')} />
-        {canManage && <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <label style={{ ...btn, cursor: 'pointer', opacity: upBusy ? 0.6 : 1 }}>{upBusy ? L('Subiendo…', 'Uploading…') : L('Subir video', 'Upload video')}
-            <input type="file" accept="video/*,image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} /></label>
+        {canManage && <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <label style={{ ...btn, cursor: 'pointer', opacity: upBusy === 'video' ? 0.6 : 1 }}>{upBusy === 'video' ? L('Subiendo…', 'Uploading…') : L('Subir video', 'Upload video')}
+            <input type="file" accept="video/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, 'video'); }} /></label>
+          <label style={{ ...btn, cursor: 'pointer', opacity: upBusy === 'doc' ? 0.6 : 1 }}>{upBusy === 'doc' ? L('Subiendo…', 'Uploading…') : L('Subir PDF/archivo', 'Upload PDF/file')}
+            <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, 'doc'); }} /></label>
           <button style={btnP} onClick={() => onSave(x)}>{L('Guardar', 'Save')}</button><button style={{ ...btn, color: '#e2555a' }} onClick={() => onDel(l.id)}>✕</button>
         </div>}
       </div>
+      {x.doc_url && <div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', marginTop: 6 }}>📄 {x.doc_name || 'archivo'} · <a href={x.doc_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent,#8b93ff)' }}>{L('ver', 'view')}</a> · <button onClick={() => { up('doc_url', ''); up('doc_name', ''); }} style={{ background: 'none', border: 'none', color: '#e2555a', cursor: 'pointer', fontSize: 12, padding: 0 }}>{L('quitar', 'remove')}</button></div>}
     </div>
   );
 }
@@ -285,9 +301,9 @@ function QuestionRow({ q, L, canManage, onSave, onDel, inp, lab, btn, btnP }: an
       <div style={{ marginTop: 8 }}>
         {(x.options_es || []).map((op: string, i: number) => (
           <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
-            <input type="radio" checked={x.correct === i} onChange={() => up('correct', i)} title={L('Correcta', 'Correct')} />
-            <input style={inp} value={op} onChange={(e) => setOpt(i, e.target.value)} placeholder={L('Opción', 'Option') + ' ' + (i + 1)} />
-            {(x.options_es || []).length > 2 && <button style={{ ...btn, padding: '5px 9px', color: '#e2555a' }} onClick={() => rmOpt(i)}>✕</button>}
+            <input type="radio" checked={x.correct === i} onChange={() => up('correct', i)} title={L('Marcar como correcta', 'Mark as correct')} style={{ width: 18, height: 18, minWidth: 18, flex: '0 0 18px', padding: 0, margin: 0, accentColor: 'var(--accent,#8b93ff)' }} />
+            <input style={{ ...inp, flex: 1, minWidth: 0 }} value={op} onChange={(e) => setOpt(i, e.target.value)} placeholder={L('Opción', 'Option') + ' ' + (i + 1)} />
+            {(x.options_es || []).length > 2 && <button style={{ ...btn, padding: '5px 9px', color: '#e2555a', flexShrink: 0 }} onClick={() => rmOpt(i)}>✕</button>}
           </div>
         ))}
         <button style={{ ...btn, padding: '5px 10px' }} onClick={addOpt}>+ {L('Opción', 'Option')}</button>
@@ -318,14 +334,16 @@ function Cumplimiento({ L, post, lang, canManage }: any) {
   };
   return (
     <div>
+      <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 10 }}>{L('Vista de auditoría: quién está al día con su formación obligatoria y quién no.', 'Audit view: who is up to date with their required training and who isn’t.')}<Hint text={L('Cada persona con acceso aparece con el estado de cada ruta obligatoria de su rol. Verde = aprobada y vigente; ámbar = certificado vencido (hay que recertificar); rojo = aún no aprobada.', 'Each person with access shows the status of every required track for their role. Green = passed and valid; amber = certificate expired; red = not passed yet.')} /></div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
-        {[[L('Personas', 'People'), su.total, 'var(--tx,#e8ecf5)'], [L('Al día', 'Compliant'), su.compliant, '#4bbd7c'], [L('Vencidos', 'Overdue'), su.overdue, '#e0a03a'], [L('Pendientes', 'Pending'), su.pending, '#e2555a']].map((c: any, i) => (
-          <div key={i} style={{ ...box, marginBottom: 0, flex: 1, minWidth: 120, padding: '12px 14px' }}><div style={{ fontSize: 24, fontWeight: 600, color: c[2] }}>{c[1]}</div><div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>{c[0]}</div></div>
+        {[[L('Personas', 'People'), su.total, 'var(--tx,#e8ecf5)', L('Total de personas con acceso a la formación.', 'Total people with training access.')], [L('Al día', 'Compliant'), su.compliant, '#4bbd7c', L('Aprobaron TODAS sus rutas obligatorias y sus certificados siguen vigentes.', 'Passed ALL required tracks and their certificates are still valid.')], [L('Vencidos', 'Overdue'), su.overdue, '#e0a03a', L('Tienen al menos un certificado caducado: deben recertificarse.', 'Have at least one expired certificate: they must recertify.')], [L('Pendientes', 'Pending'), su.pending, '#e2555a', L('Aún no aprueban al menos una ruta obligatoria.', 'Still haven’t passed at least one required track.')]].map((c: any, i) => (
+          <div key={i} style={{ ...box, marginBottom: 0, flex: 1, minWidth: 120, padding: '12px 14px' }}><div style={{ fontSize: 24, fontWeight: 600, color: c[2] }}>{c[1]}</div><div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>{c[0]}<Hint text={c[3]} /></div></div>
         ))}
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         <a href={`/api/admin/training/report?lang=${lang}`} target="_blank" rel="noreferrer" style={{ ...btn, display: 'inline-block', textDecoration: 'none' }}>↓ {L('Exportar CSV', 'Export CSV')}</a>
         <a href={`/api/admin/training/report?format=pdf&lang=${lang}`} target="_blank" rel="noreferrer" style={{ ...btn, display: 'inline-block', textDecoration: 'none' }}>↓ {L('Exportar PDF', 'Export PDF')}</a>
+        <span style={{ alignSelf: 'center' }}><Hint text={L('Descarga el reporte completo (una fila por persona y ruta) para archivarlo o mandárselo a dirección/auditoría. CSV para hoja de cálculo, PDF para imprimir/compartir.', 'Download the full report (one row per person and track) to archive or send to management/audit. CSV for spreadsheets, PDF to print/share.')} /></span>
         {canManage && <span style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', alignSelf: 'center' }}>{L('Clic en una casilla para reabrir ese examen.', 'Click a cell to reopen that exam.')}</span>}
       </div>
       <div style={{ ...box, overflowX: 'auto' }}>
@@ -357,33 +375,33 @@ function Ajustes({ s, canManage, L, post, reload, flash }: any) {
   const [f, setF] = useState(s);
   const up = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
   async function save() { await post({ action: 'save_settings', settings: f }); flash(L('Ajustes guardados.', 'Settings saved.')); reload(); }
-  const row = (label: string, node: React.ReactNode) => <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '9px 0', borderTop: '1px solid var(--line,#2a3350)' }}><span style={{ fontSize: 13.5, color: 'var(--tx,#e8ecf5)' }}>{label}</span>{node}</div>;
+  const row = (label: string, node: React.ReactNode, hint?: string) => <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '9px 0', borderTop: '1px solid var(--line,#2a3350)' }}><span style={{ fontSize: 13.5, color: 'var(--tx,#e8ecf5)' }}>{label}{hint && <Hint text={hint} />}</span>{node}</div>;
   return (
     <div style={box}>
-      <div><span style={lab}>{L('Nombre visible del área', 'Area display name')}</span><input style={inp} value={f.brand_name || ''} onChange={(e) => up('brand_name', e.target.value)} /></div>
+      <div><span style={lab}>{L('Nombre visible del área', 'Area display name')}<Hint text={L('El nombre que ve el empleado arriba en su área de estudio. Ej: “Onyx Academy · Formación interna”.', 'The name employees see at the top of their study area.')} /></span><input style={inp} value={f.brand_name || ''} onChange={(e) => up('brand_name', e.target.value)} /></div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginTop: 10 }}>
-        <div><span style={lab}>{L('Nota mínima por defecto', 'Default pass score')}</span><input style={inp} type="number" value={f.pass_score ?? 80} onChange={(e) => up('pass_score', +e.target.value)} /></div>
-        <div><span style={lab}>{L('Intentos por defecto', 'Default attempts')}</span><input style={inp} type="number" value={f.max_attempts ?? 3} onChange={(e) => up('max_attempts', +e.target.value)} /></div>
-        <div><span style={lab}>{L('Aviso cert. (días antes)', 'Cert reminder (days)')}</span><input style={inp} type="number" value={f.remind_cert_days ?? 15} onChange={(e) => up('remind_cert_days', +e.target.value)} /></div>
+        <div><span style={lab}>{L('Nota mínima por defecto', 'Default pass score')}<Hint text={L('Calificación mínima (0-100) para aprobar un examen. Cada ruta puede tener la suya propia; esta es la que se usa por defecto.', 'Minimum score (0-100) to pass. Each track can override it; this is the default.')} /></span><input style={inp} type="number" value={f.pass_score ?? 80} onChange={(e) => up('pass_score', +e.target.value)} /></div>
+        <div><span style={lab}>{L('Intentos por defecto', 'Default attempts')}<Hint text={L('Cuántas veces puede presentar un examen antes de bloquearse. 0 = ilimitados. Cada ruta puede sobreescribirlo.', 'How many exam attempts before it locks. 0 = unlimited. Each track can override it.')} /></span><input style={inp} type="number" value={f.max_attempts ?? 3} onChange={(e) => up('max_attempts', +e.target.value)} /></div>
+        <div><span style={lab}>{L('Aviso cert. (días antes)', 'Cert reminder (days)')}<Hint text={L('Con cuántos días de anticipación se avisa a la persona de que su certificado va a caducar, para que recertifique a tiempo.', 'How many days before a certificate expires the person is reminded to recertify.')} /></span><input style={inp} type="number" value={f.remind_cert_days ?? 15} onChange={(e) => up('remind_cert_days', +e.target.value)} /></div>
       </div>
       <div style={{ marginTop: 8 }}>
-        {row(L('Módulo activo', 'Module enabled'), <Toggle on={f.enabled !== false} onClick={() => up('enabled', !(f.enabled !== false))} />)}
-        {row(L('Recordar cursos pendientes', 'Remind pending courses'), <Toggle on={!!f.remind_pending} onClick={() => up('remind_pending', !f.remind_pending)} />)}
-        {row(L('Auto-alta de vendedores', 'Auto-enroll reps'), <Toggle on={!!f.auto_enroll_sales} onClick={() => up('auto_enroll_sales', !f.auto_enroll_sales)} />)}
-        {row(L('Auto-alta de empleados', 'Auto-enroll staff'), <Toggle on={!!f.auto_enroll_staff} onClick={() => up('auto_enroll_staff', !f.auto_enroll_staff)} />)}
-        {row(L('Bloquear leads sin certificar (gating)', 'Gate leads until certified'), <Toggle on={!!f.gating_enabled} onClick={() => up('gating_enabled', !f.gating_enabled)} />)}
+        {row(L('Módulo activo', 'Module enabled'), <Toggle on={f.enabled !== false} onClick={() => up('enabled', !(f.enabled !== false))} />, L('Apaga por completo el centro de formación. Nadie podrá entrar a estudiar hasta reactivarlo.', 'Turns the whole training center off. No one can study until re-enabled.'))}
+        {row(L('Recordar cursos pendientes', 'Remind pending courses'), <Toggle on={!!f.remind_pending} onClick={() => up('remind_pending', !f.remind_pending)} />, L('Envía una notificación diaria (por el cron) a quien tenga cursos obligatorios sin completar.', 'Sends a daily notification to anyone with required courses left to finish.'))}
+        {row(L('Auto-alta de vendedores', 'Auto-enroll reps'), <Toggle on={!!f.auto_enroll_sales} onClick={() => up('auto_enroll_sales', !f.auto_enroll_sales)} />, L('Da acceso automáticamente a todo vendedor activo de la red de ventas, sin tener que añadirlo a mano.', 'Automatically grants access to every active sales rep, without adding them by hand.'))}
+        {row(L('Auto-alta de empleados', 'Auto-enroll staff'), <Toggle on={!!f.auto_enroll_staff} onClick={() => up('auto_enroll_staff', !f.auto_enroll_staff)} />, L('Da acceso automáticamente a todo empleado activo de Nómina/Equipo.', 'Automatically grants access to every active staff member from Payroll/Team.'))}
+        {row(L('Bloquear leads sin certificar (gating)', 'Gate leads until certified'), <Toggle on={!!f.gating_enabled} onClick={() => up('gating_enabled', !f.gating_enabled)} />, L('Si está activo, un vendedor NO recibe leads automáticos hasta aprobar las rutas marcadas como “requisito para leads” en la ficha de cada ruta.', 'If on, a rep gets no auto-assigned leads until they pass the tracks marked as “lead requirement”.'))}
       </div>
 
       <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', margin: '16px 0 4px' }}>{L('Anti-trampa', 'Anti-cheat')}</div>
       <div>
-        {row(L('Exigir lecciones antes del examen', 'Require lessons before exam'), <Toggle on={!!f.require_lessons} onClick={() => up('require_lessons', !f.require_lessons)} />)}
-        {row(L('Barajar el orden de las opciones', 'Shuffle option order'), <Toggle on={!!f.shuffle_options} onClick={() => up('shuffle_options', !f.shuffle_options)} />)}
-        {row(L('Ocultar respuestas si reprueba', 'Hide answers on fail'), <Toggle on={!!f.hide_answers_on_fail} onClick={() => up('hide_answers_on_fail', !f.hide_answers_on_fail)} />)}
-        {row(L('Exigir declaración de honestidad', 'Require honesty attestation'), <Toggle on={!!f.require_attestation} onClick={() => up('require_attestation', !f.require_attestation)} />)}
-        {row(L('Aviso de onboarding obligatorio', 'Mandatory onboarding notice'), <Toggle on={!!f.onboarding_block} onClick={() => up('onboarding_block', !f.onboarding_block)} />)}
-        {row(L('Enviar certificado por correo', 'Email the certificate'), <Toggle on={!!f.email_cert} onClick={() => up('email_cert', !f.email_cert)} />)}
-        {row(L('Espera entre intentos (min)', 'Cooldown between attempts (min)'), <input style={{ ...inp, width: 90 }} type="number" value={f.attempt_cooldown_min ?? 5} onChange={(e) => up('attempt_cooldown_min', +e.target.value)} />)}
-        {row(L('Lectura mínima por lección (seg)', 'Min read per lesson (sec)'), <input style={{ ...inp, width: 90 }} type="number" value={f.min_read_sec ?? 15} onChange={(e) => up('min_read_sec', +e.target.value)} />)}
+        {row(L('Exigir lecciones antes del examen', 'Require lessons before exam'), <Toggle on={!!f.require_lessons} onClick={() => up('require_lessons', !f.require_lessons)} />, L('El examen permanece bloqueado hasta que la persona marque todas las lecciones como vistas. Evita saltarse el estudio.', 'The exam stays locked until every lesson is marked done. Stops people skipping the study.'))}
+        {row(L('Barajar el orden de las opciones', 'Shuffle option order'), <Toggle on={!!f.shuffle_options} onClick={() => up('shuffle_options', !f.shuffle_options)} />, L('En cada intento las opciones (A, B, C, D) salen en orden distinto, para que no se memorice “la respuesta es la B”.', 'Options appear in a different order each attempt, so people can’t memorise “the answer is B”.'))}
+        {row(L('Ocultar respuestas si reprueba', 'Hide answers on fail'), <Toggle on={!!f.hide_answers_on_fail} onClick={() => up('hide_answers_on_fail', !f.hide_answers_on_fail)} />, L('Al reprobar solo se muestra la nota, nunca las respuestas correctas, para que no coseche el examen y lo repita.', 'On fail only the score is shown, never the correct answers, so people can’t harvest the exam.'))}
+        {row(L('Exigir declaración de honestidad', 'Require honesty attestation'), <Toggle on={!!f.require_attestation} onClick={() => up('require_attestation', !f.require_attestation)} />, L('Antes de enviar, la persona debe marcar una casilla declarando que responde por sí misma. Se guarda junto con IP y fecha para auditoría.', 'Before submitting, the person must tick a box declaring they answer it themselves. Stored with IP and date for audit.'))}
+        {row(L('Aviso de onboarding obligatorio', 'Mandatory onboarding notice'), <Toggle on={!!f.onboarding_block} onClick={() => up('onboarding_block', !f.onboarding_block)} />, L('Muestra un banner destacado a quien aún no aprueba sus rutas obligatorias, empujándolo a completar su formación inicial.', 'Shows a prominent banner to anyone who hasn’t passed their required tracks, pushing them to finish onboarding.'))}
+        {row(L('Enviar certificado por correo', 'Email the certificate'), <Toggle on={!!f.email_cert} onClick={() => up('email_cert', !f.email_cert)} />, L('Al aprobar, se le manda un correo con un enlace seguro para descargar su certificado en PDF.', 'On passing, the person gets an email with a secure link to download their PDF certificate.'))}
+        {row(L('Espera entre intentos (min)', 'Cooldown between attempts (min)'), <input style={{ ...inp, width: 90 }} type="number" value={f.attempt_cooldown_min ?? 5} onChange={(e) => up('attempt_cooldown_min', +e.target.value)} />, L('Minutos que debe esperar antes de reintentar un examen reprobado. Frena el ensayo-error rápido. 0 = sin espera.', 'Minutes to wait before retrying a failed exam. Stops rapid trial-and-error. 0 = no wait.'))}
+        {row(L('Lectura mínima por lección (seg)', 'Min read per lesson (sec)'), <input style={{ ...inp, width: 90 }} type="number" value={f.min_read_sec ?? 15} onChange={(e) => up('min_read_sec', +e.target.value)} />, L('Segundos que la lección debe estar abierta antes de poder marcarla como vista. Evita marcar todo sin leer. 0 = sin espera.', 'Seconds a lesson must stay open before it can be marked done. Stops ticking everything without reading. 0 = no wait.'))}
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 6 }}>{L('Consejo: para que barajar y elegir al azar sean efectivos, carga más preguntas por ruta y usa “Preguntas al azar” en el examen.', 'Tip: for shuffling/random to matter, add more questions per track and use “Random questions”.')}</div>
       <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 8 }}>{L('Con el gating activo, un vendedor no recibe leads automáticos hasta aprobar las rutas marcadas como “requisito para leads”.', 'With gating on, a rep gets no auto-assigned leads until they pass the tracks marked as lead requirements.')}</div>
