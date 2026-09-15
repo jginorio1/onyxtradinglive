@@ -420,6 +420,27 @@ export async function saveQuestion(q: any): Promise<{ ok: boolean; id?: string }
 }
 export async function delQuestion(id: string): Promise<void> { await supabaseAdmin.from('training_questions').delete().eq('id', id); }
 
+// Reordena lecciones o preguntas: guarda el nuevo 'sort' según el orden de ids.
+export async function reorderItems(kind: 'lessons' | 'questions', ids: string[]): Promise<{ ok: boolean }> {
+  const table = kind === 'lessons' ? 'training_lessons' : 'training_questions';
+  const arr = Array.isArray(ids) ? ids : [];
+  for (let i = 0; i < arr.length; i++) await supabaseAdmin.from(table).update({ sort: i }).eq('id', arr[i]);
+  return { ok: true };
+}
+
+// -------- BIBLIOTECA DE MATERIALES (reutilizable entre lecciones) --------
+export async function listMaterials(): Promise<any[]> {
+  const { data } = await supabaseAdmin.from('training_assets').select('*').order('created_at', { ascending: false }).limit(300);
+  return data || [];
+}
+export async function saveMaterial(m: { kind?: string; title?: string; url: string; size?: number }): Promise<{ ok: boolean; id?: string }> {
+  if (!m.url) return { ok: false };
+  const kind = m.kind === 'video' ? 'video' : 'doc';
+  const { data } = await supabaseAdmin.from('training_assets').insert({ kind, title: String(m.title || '').slice(0, 200), url: String(m.url).slice(0, 800), size: m.size || null }).select('id').maybeSingle();
+  return { ok: true, id: (data as any)?.id };
+}
+export async function delMaterial(id: string): Promise<void> { await supabaseAdmin.from('training_assets').delete().eq('id', id); }
+
 // -------- ROSTER + RENDIMIENTO --------
 // Lista de personas con acceso + progreso, promedio de examen y certificados.
 export async function roster() {

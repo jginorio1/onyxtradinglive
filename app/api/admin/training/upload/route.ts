@@ -25,5 +25,9 @@ export async function POST(req: Request) {
   const { error } = await supabaseAdmin.storage.from(BUCKET).upload(path, raw, { contentType: file.type || 'application/octet-stream', upsert: true });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
-  return NextResponse.json({ ok: true, url: pub.publicUrl });
+  const url = pub.publicUrl;
+  // Auto-registrar en la biblioteca de materiales para poder reutilizarlo.
+  const kind = (file.type || '').startsWith('video') || /\.(mp4|webm|mov)$/i.test(file.name) ? 'video' : 'doc';
+  try { const { saveMaterial } = await import('@/lib/training'); await saveMaterial({ kind, title: file.name, url, size: file.size }); } catch {}
+  return NextResponse.json({ ok: true, url, name: file.name, kind });
 }

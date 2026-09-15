@@ -94,6 +94,7 @@ export default function TrainingClient() {
     setDetail((d: any) => ({ ...d, lessons: d.lessons.map((l: any) => l.id === id ? { ...l, done } : l) }));
     await fetch('/api/training', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'mark_lesson', lesson_id: id, done, lang }) });
     if (done) { const ls = detail.lessons; const idx = ls.findIndex((l: any) => l.id === id); const next = ls.slice(idx + 1).find((l: any) => !l.done); setOpen(next ? next.id : null); }
+    loadHome(); // refresca anillos/estadísticas sin recargar la página
   }
   async function submitExam() {
     const qs = detail?.exam?.questions || [];

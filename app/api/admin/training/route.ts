@@ -4,6 +4,7 @@ import {
   trainingSettings, saveTrainingSettings, listTracksAdmin, trackFull,
   saveTrack, delTrack, saveLesson, delLesson, saveQuestion, delQuestion,
   roster, setAccess, enrollByEmail, autoEnrollSync, complianceReport, resetAttempts,
+  reorderItems, listMaterials, saveMaterial, delMaterial,
 } from '@/lib/training';
 
 export const dynamic = 'force-dynamic';
@@ -63,6 +64,10 @@ export async function POST(req: Request) {
         await logAdmin(email, 'training_auto_enroll', '', r);
         return NextResponse.json({ ok: true, ...r });
       }
+      case 'reorder': { await reorderItems(body.kind === 'questions' ? 'questions' : 'lessons', body.ids || []); return NextResponse.json({ ok: true }); }
+      case 'materials': return NextResponse.json({ ok: true, materials: await listMaterials() });
+      case 'save_material': return NextResponse.json(await saveMaterial(body.material || {}));
+      case 'del_material': { await delMaterial(String(body.id)); return NextResponse.json({ ok: true }); }
       case 'roster': return NextResponse.json({ ok: true, roster: await roster() });
       case 'compliance': return NextResponse.json({ ok: true, report: await complianceReport() });
       case 'reset_attempts': {

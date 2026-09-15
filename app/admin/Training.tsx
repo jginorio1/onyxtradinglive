@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // ============================================================
 // ADMIN · Centro de formación interno (empleados + vendedores).
@@ -34,7 +34,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 
 export default function Training({ canManage, lang = 'es' }: { canManage: boolean; lang?: 'es' | 'en' }) {
   const L = (es: string, en: string) => (lang === 'en' ? en : es);
-  const [tab, setTab] = useState<'personas' | 'rutas' | 'cumplimiento' | 'ajustes'>('personas');
+  const [tab, setTab] = useState<'personas' | 'rutas' | 'materiales' | 'cumplimiento' | 'ajustes'>('personas');
   const [d, setD] = useState<any>(null);
   const [msg, setMsg] = useState('');
   const [editing, setEditing] = useState<any>(null); // { track, lessons, questions }
@@ -59,9 +59,9 @@ export default function Training({ canManage, lang = 'es' }: { canManage: boolea
       <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginBottom: 14 }}>{L('Academia interna para empleados y vendedores · aislada de las academias de mentores.', 'Internal academy for employees and reps · isolated from mentor academies.')}</div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        {(['personas', 'rutas', 'cumplimiento', 'ajustes'] as const).map((tt) => (
+        {(['personas', 'rutas', 'materiales', 'cumplimiento', 'ajustes'] as const).map((tt) => (
           <button key={tt} onClick={() => { setTab(tt); setEditing(null); }} style={{ ...btn, ...(tab === tt ? { background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none' } : {}) }}>
-            {tt === 'personas' ? L('Personas', 'People') : tt === 'rutas' ? L('Rutas y exámenes', 'Tracks & exams') : tt === 'cumplimiento' ? L('Cumplimiento', 'Compliance') : L('Ajustes', 'Settings')}
+            {tt === 'personas' ? L('Personas', 'People') : tt === 'rutas' ? L('Rutas y exámenes', 'Tracks & exams') : tt === 'materiales' ? L('Materiales', 'Materials') : tt === 'cumplimiento' ? L('Cumplimiento', 'Compliance') : L('Ajustes', 'Settings')}
           </button>
         ))}
       </div>
@@ -70,6 +70,7 @@ export default function Training({ canManage, lang = 'es' }: { canManage: boolea
       {tab === 'personas' && <Personas d={d} canManage={canManage} L={L} post={post} reload={load} flash={flash} />}
       {tab === 'rutas' && !editing && <Rutas d={d} canManage={canManage} L={L} post={post} reload={load} open={(t: any) => openTrack(t)} />}
       {tab === 'rutas' && editing && <TrackEditor data={editing} tracks={d.tracks} canManage={canManage} L={L} post={post} onClose={() => { setEditing(null); load(); }} refresh={openTrack} />}
+      {tab === 'materiales' && <Materiales L={L} post={post} canManage={canManage} />}
       {tab === 'cumplimiento' && <Cumplimiento L={L} post={post} lang={lang} canManage={canManage} />}
       {tab === 'ajustes' && <Ajustes s={s} canManage={canManage} L={L} post={post} reload={load} flash={flash} />}
     </div>
@@ -170,7 +171,21 @@ function Rutas({ d, canManage, L, post, reload, open }: any) {
 // -------- EDITOR DE RUTA --------
 function TrackEditor({ data, tracks, canManage, L, post, onClose, refresh }: any) {
   const [t, setT] = useState<any>(data.track);
-  const lessons = data.lessons; const questions = data.questions;
+  const [lord, setLord] = useState<any[]>(data.lessons);
+  const [qord, setQord] = useState<any[]>(data.questions);
+  useEffect(() => { setLord(data.lessons); }, [data.lessons]);
+  useEffect(() => { setQord(data.questions); }, [data.questions]);
+  const lessons = lord; const questions = qord;
+  const [preview, setPreview] = useState(false);
+  const dragRef = useRef<{ list: 'l' | 'q'; from: number } | null>(null);
+  function drop(list: 'l' | 'q', to: number) {
+    const d = dragRef.current; dragRef.current = null;
+    if (!d || d.list !== list || d.from === to) return;
+    const arr = (list === 'l' ? [...lord] : [...qord]);
+    const [m] = arr.splice(d.from, 1); arr.splice(to, 0, m);
+    if (list === 'l') setLord(arr); else setQord(arr);
+    post({ action: 'reorder', kind: list === 'l' ? 'lessons' : 'questions', ids: arr.map((x: any) => x.id) });
+  }
   const up = (k: string, v: any) => setT((p: any) => ({ ...p, [k]: v }));
   const toggleRole = (r: string) => { const cur = t.required_for || []; up('required_for', cur.includes(r) ? cur.filter((x: string) => x !== r) : [...cur, r]); };
 
@@ -231,32 +246,93 @@ function TrackEditor({ data, tracks, canManage, L, post, onClose, refresh }: any
       {/* LECCIONES */}
       <div style={box}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>{L('Lecciones', 'Lessons')} · {lessons.length}</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>{L('Lecciones', 'Lessons')} · {lessons.length}<Hint text={L('Arrastra el ⠿ para reordenar. El orden se guarda solo.', 'Drag the ⠿ handle to reorder. Order saves automatically.')} /></div>
           {canManage && <button style={btn} onClick={addLesson}>+ {L('Lección', 'Lesson')}</button>}
         </div>
-        {lessons.map((l: any) => <LessonRow key={l.id} l={l} L={L} canManage={canManage} onSave={saveLesson} onDel={delLesson} inp={inp} lab={lab} btn={btn} btnP={btnP} />)}
+        {lessons.map((l: any, i: number) => (
+          <div key={l.id} onDragOver={(e) => e.preventDefault()} onDrop={() => drop('l', i)} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+            {canManage && <span draggable onDragStart={() => { dragRef.current = { list: 'l', from: i }; }} title={L('Arrastrar para reordenar', 'Drag to reorder')} style={{ cursor: 'grab', color: 'var(--mut,#9aa6bd)', paddingTop: 12, fontSize: 16, userSelect: 'none' }}>⠿</span>}
+            <div style={{ flex: 1, minWidth: 0 }}><LessonRow l={l} L={L} canManage={canManage} onSave={saveLesson} onDel={delLesson} inp={inp} lab={lab} btn={btn} btnP={btnP} post={post} /></div>
+          </div>
+        ))}
       </div>
 
       {/* EXAMEN */}
       <div style={box}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>{L('Preguntas del examen', 'Exam questions')} · {questions.length}</div>
-          {canManage && <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>{L('Preguntas del examen', 'Exam questions')} · {questions.length}<Hint text={L('Arrastra el ⠿ para reordenar. Usa “Vista previa” para ver el examen como lo verá el alumno.', 'Drag the ⠿ handle to reorder. Use “Preview” to see the exam as the student will.')} /></div>
+          {canManage && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {questions.length > 0 && <button style={btn} onClick={() => setPreview(true)}>👁 {L('Vista previa', 'Preview')}</button>}
             <button style={{ ...btn, background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none', opacity: aiBusy ? 0.6 : 1 }} disabled={aiBusy} onClick={aiGen} title={L('Genera 8 preguntas con IA a partir de las lecciones.', 'Generate 8 AI questions from the lessons.')}>{aiBusy ? L('Generando…', 'Generating…') : '✨ ' + L('Generar con IA', 'Generate with AI')}</button>
             <button style={btn} onClick={addQ}>+ {L('Pregunta', 'Question')}</button>
           </div>}
         </div>
         {canManage && <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginBottom: 8 }}>{L('Tip anti-trampa: ten 10–15 preguntas por ruta y pon “Preguntas al azar” en la ficha de la ruta para que cada examen sea distinto.', 'Anti-cheat tip: keep 10–15 questions per track and set “Random questions” so each exam differs.')}</div>}
-        {questions.map((q: any) => <QuestionRow key={q.id} q={q} L={L} canManage={canManage} onSave={saveQ} onDel={delQ} inp={inp} lab={lab} btn={btn} btnP={btnP} />)}
+        {questions.map((q: any, i: number) => (
+          <div key={q.id} onDragOver={(e) => e.preventDefault()} onDrop={() => drop('q', i)} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+            {canManage && <span draggable onDragStart={() => { dragRef.current = { list: 'q', from: i }; }} title={L('Arrastrar para reordenar', 'Drag to reorder')} style={{ cursor: 'grab', color: 'var(--mut,#9aa6bd)', paddingTop: 12, fontSize: 16, userSelect: 'none' }}>⠿</span>}
+            <div style={{ flex: 1, minWidth: 0 }}><QuestionRow q={q} L={L} canManage={canManage} onSave={saveQ} onDel={delQ} inp={inp} lab={lab} btn={btn} btnP={btnP} /></div>
+          </div>
+        ))}
+      </div>
+      {preview && <ExamPreview questions={questions} track={t} L={L} onClose={() => setPreview(false)} />}
+    </div>
+  );
+}
+
+// Vista previa del examen tal como lo verá el alumno (admin, sin persistir).
+function ExamPreview({ questions, track, L, onClose }: any) {
+  const [ans, setAns] = useState<Record<string, number>>({});
+  const [show, setShow] = useState(false);
+  const AC = 'var(--accent,#8b93ff)';
+  let correct = 0; questions.forEach((q: any) => { if (ans[q.id] === q.correct) correct++; });
+  const score = questions.length ? Math.round((correct / questions.length) * 100) : 0;
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '30px 12px' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 16, padding: 20, maxWidth: 640, width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx,#e8ecf5)' }}>{L('Vista previa del examen', 'Exam preview')}</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--mut,#9aa6bd)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 14 }}>{track?.title_es || ''} · {L('Nota mínima', 'Pass')} {track?.pass_score ?? 80}</div>
+        {questions.map((q: any, qi: number) => (
+          <div key={q.id} style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 8 }}>{qi + 1}. {q.prompt_es}</div>
+            <div style={{ display: 'grid', gap: 7 }}>
+              {(q.options_es || []).map((op: string, oi: number) => {
+                const sel = ans[q.id] === oi; const isRight = show && oi === q.correct; const isWrong = show && sel && oi !== q.correct;
+                return (
+                  <div key={oi} onClick={() => !show && setAns((a) => ({ ...a, [q.id]: oi }))} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px', borderRadius: 10, cursor: show ? 'default' : 'pointer', fontSize: 14, border: '1.5px solid ' + (isRight ? '#3ecf8e' : isWrong ? '#f2555a' : sel ? AC : 'var(--line,#2a3350)'), background: isRight ? 'rgba(62,207,142,.1)' : isWrong ? 'rgba(242,85,90,.1)' : sel ? 'rgba(139,147,255,.08)' : 'var(--card,#1b2338)' }}>
+                    <span style={{ width: 18, height: 18, borderRadius: '50%', flex: '0 0 18px', border: '2px solid ' + (sel || isRight ? AC : 'var(--mut,#9aa6bd)'), display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{(sel || isRight) && <span style={{ width: 9, height: 9, borderRadius: '50%', background: isRight ? '#3ecf8e' : AC }} />}</span>
+                    <span style={{ color: 'var(--tx,#e8ecf5)', flex: 1 }}>{op}</span>
+                    {isRight && <span style={{ color: '#3ecf8e', fontSize: 12, fontWeight: 700 }}>✓ {L('correcta', 'correct')}</span>}
+                  </div>
+                );
+              })}
+            </div>
+            {show && q.explain_es && <div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', marginTop: 6 }}>💡 {q.explain_es}</div>}
+          </div>
+        ))}
+        {!show ? (
+          <button style={{ ...btnP, width: '100%' }} onClick={() => setShow(true)}>{L('Ver resultado y respuestas', 'Show result and answers')}</button>
+        ) : (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 26, fontWeight: 700, color: score >= (track?.pass_score ?? 80) ? '#3ecf8e' : '#f2555a' }}>{score}/100</div>
+            <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginBottom: 12 }}>{correct}/{questions.length} {L('correctas', 'correct')}</div>
+            <button style={{ ...btn, width: '100%' }} onClick={() => { setShow(false); setAns({}); }}>{L('Reiniciar vista previa', 'Reset preview')}</button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function LessonRow({ l, L, canManage, onSave, onDel, inp, lab, btn, btnP }: any) {
+function LessonRow({ l, L, canManage, onSave, onDel, inp, lab, btn, btnP, post }: any) {
   const [x, setX] = useState(l);
   const up = (k: string, v: any) => setX((p: any) => ({ ...p, [k]: v }));
   const [upBusy, setUpBusy] = useState<'' | 'video' | 'doc'>('');
+  const [pick, setPick] = useState<'video' | 'doc' | null>(null);
+  function fromLib(a: any) { if (a.kind === 'video') up('video_url', a.url); else { up('doc_url', a.url); up('doc_name', a.title); } setPick(null); }
   async function upload(file: File, kind: 'video' | 'doc') {
     setUpBusy(kind);
     const fd = new FormData(); fd.append('file', file);
@@ -280,9 +356,12 @@ function LessonRow({ l, L, canManage, onSave, onDel, inp, lab, btn, btnP }: any)
             <input type="file" accept="video/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, 'video'); }} /></label>
           <label style={{ ...btn, cursor: 'pointer', opacity: upBusy === 'doc' ? 0.6 : 1 }}>{upBusy === 'doc' ? L('Subiendo…', 'Uploading…') : L('Subir PDF/archivo', 'Upload PDF/file')}
             <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f, 'doc'); }} /></label>
+          {post && <button style={btn} onClick={() => setPick('video')} title={L('Reusar un video ya subido', 'Reuse an uploaded video')}>📚 {L('Biblioteca (video)', 'Library (video)')}</button>}
+          {post && <button style={btn} onClick={() => setPick('doc')} title={L('Reusar un PDF/archivo ya subido', 'Reuse an uploaded PDF/file')}>📚 {L('Biblioteca (PDF)', 'Library (PDF)')}</button>}
           <button style={btnP} onClick={() => onSave(x)}>{L('Guardar', 'Save')}</button><button style={{ ...btn, color: '#e2555a' }} onClick={() => onDel(l.id)}>✕</button>
         </div>}
       </div>
+      {pick && <MaterialPicker kind={pick} post={post} L={L} onPick={fromLib} onClose={() => setPick(null)} />}
       {x.doc_url && <div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', marginTop: 6 }}>📄 {x.doc_name || 'archivo'} · <a href={x.doc_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent,#8b93ff)' }}>{L('ver', 'view')}</a> · <button onClick={() => { up('doc_url', ''); up('doc_name', ''); }} style={{ background: 'none', border: 'none', color: '#e2555a', cursor: 'pointer', fontSize: 12, padding: 0 }}>{L('quitar', 'remove')}</button></div>}
     </div>
   );
@@ -310,6 +389,70 @@ function QuestionRow({ q, L, canManage, onSave, onDel, inp, lab, btn, btnP }: an
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 6 }}>{L('Marca el círculo de la respuesta correcta. Las opciones EN se copian de ES si las dejas vacías.', 'Mark the correct answer. EN options fall back to ES.')}</div>
       {canManage && <div style={{ display: 'flex', gap: 6, marginTop: 8 }}><button style={btnP} onClick={() => onSave({ ...x, options_en: x.options_en?.length ? x.options_en : x.options_es })}>{L('Guardar', 'Save')}</button><button style={{ ...btn, color: '#e2555a' }} onClick={() => onDel(q.id)}>{L('Eliminar', 'Delete')}</button></div>}
+    </div>
+  );
+}
+
+// Selector de la biblioteca de materiales (para reusar en una lección).
+function MaterialPicker({ kind, post, L, onPick, onClose }: any) {
+  const [items, setItems] = useState<any[] | null>(null);
+  useEffect(() => { (async () => { const r = await post({ action: 'materials' }); setItems((r?.materials || []).filter((m: any) => m.kind === kind)); })(); }, []);
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 220, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '30px 12px' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ ...box, marginBottom: 0, maxWidth: 520, width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>{L('Elegir de la biblioteca', 'Choose from library')} · {kind === 'video' ? L('videos', 'videos') : L('archivos', 'files')}</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--mut,#9aa6bd)', fontSize: 20, cursor: 'pointer' }}>✕</button>
+        </div>
+        {!items ? <div style={{ color: 'var(--mut,#9aa6bd)' }}>{L('Cargando…', 'Loading…')}</div>
+          : items.length === 0 ? <div style={{ color: 'var(--mut,#9aa6bd)', fontSize: 13 }}>{L('Aún no hay materiales de este tipo. Sube uno desde la lección o desde la pestaña Materiales.', 'No materials of this type yet. Upload one from the lesson or the Materials tab.')}</div>
+            : items.map((m: any) => (
+              <div key={m.id} onClick={() => onPick(m)} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 12px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', marginBottom: 6, cursor: 'pointer', background: 'var(--card,#1b2338)' }}>
+                <span>{m.kind === 'video' ? '🎬' : '📄'}</span>
+                <span style={{ flex: 1, color: 'var(--tx,#e8ecf5)', fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title || m.url}</span>
+                <span style={{ color: 'var(--accent,#8b93ff)', fontSize: 12.5, fontWeight: 600 }}>{L('usar', 'use')}</span>
+              </div>
+            ))}
+      </div>
+    </div>
+  );
+}
+
+// Pestaña Materiales: biblioteca central de videos/PDF reutilizables.
+function Materiales({ L, post, canManage }: any) {
+  const [items, setItems] = useState<any[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const load = async () => { const r = await post({ action: 'materials' }); setItems(r?.materials || []); };
+  useEffect(() => { load(); }, []);
+  async function upload(file: File) {
+    setBusy(true);
+    const fd = new FormData(); fd.append('file', file);
+    const r = await fetch('/api/admin/training/upload', { method: 'POST', body: fd }).then((z) => z.json()).catch(() => null);
+    setBusy(false);
+    if (r?.url) load(); else alert(r?.error || 'Error');
+  }
+  async function del(id: string) { if (!confirm(L('¿Eliminar de la biblioteca? No borra lo ya usado en lecciones.', 'Remove from library? Does not delete what lessons already use.'))) return; await post({ action: 'del_material', id }); load(); }
+  function copy(url: string) { try { navigator.clipboard.writeText(url); setMsg(L('URL copiada.', 'URL copied.')); setTimeout(() => setMsg(''), 1500); } catch {} }
+  return (
+    <div style={box}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>{L('Biblioteca de materiales', 'Materials library')}<Hint text={L('Sube un video o PDF una sola vez y reúsalo en cualquier lección con el botón “Biblioteca”. Cada archivo que subes en una lección también aparece aquí.', 'Upload a video or PDF once and reuse it in any lesson via the “Library” button. Files uploaded in a lesson also show up here.')} /></div>
+        {canManage && <label style={{ ...btnP, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? L('Subiendo…', 'Uploading…') : '+ ' + L('Subir material', 'Upload material')}
+          <input type="file" accept="video/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }} /></label>}
+      </div>
+      {msg && <div style={{ fontSize: 12.5, color: '#3ecf8e', marginBottom: 8 }}>{msg}</div>}
+      {!items ? <div style={{ color: 'var(--mut,#9aa6bd)', marginTop: 8 }}>{L('Cargando…', 'Loading…')}</div>
+        : items.length === 0 ? <div style={{ color: 'var(--mut,#9aa6bd)', fontSize: 13, marginTop: 8 }}>{L('Aún no hay materiales. Sube el primero.', 'No materials yet. Upload the first one.')}</div>
+          : <div style={{ marginTop: 8 }}>{items.map((m: any) => (
+            <div key={m.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 0', borderTop: '1px solid var(--line,#2a3350)' }}>
+              <span>{m.kind === 'video' ? '🎬' : '📄'}</span>
+              <span style={{ flex: 1, minWidth: 0, color: 'var(--tx,#e8ecf5)', fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title || m.url}</span>
+              <a href={m.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent,#8b93ff)', fontSize: 12.5, fontWeight: 600, textDecoration: 'none' }}>{L('ver', 'view')}</a>
+              <button onClick={() => copy(m.url)} style={{ ...btn, padding: '4px 9px', fontSize: 12 }}>{L('copiar URL', 'copy URL')}</button>
+              {canManage && <button onClick={() => del(m.id)} style={{ ...btn, padding: '4px 9px', color: '#e2555a' }}>✕</button>}
+            </div>
+          ))}</div>}
     </div>
   );
 }
