@@ -99,6 +99,21 @@ export default function VentasPanel() {
             <button style={btnP} onClick={() => { navigator.clipboard.writeText(d.link); setMsg(L('Enlace copiado ✓', 'Link copied ✓')); }}>{L('Copiar', 'Copy')}</button>
           </div>
         </div>
+        {(() => {
+          const origin = typeof window !== 'undefined' ? window.location.origin : '';
+          const pageLink = `${origin}/v/${d.rep.code}`;
+          return (
+            <div style={card}>
+              <div style={{ fontSize: 13, color: 'var(--tx,#e8ecf5)', fontWeight: 600, display: 'flex', alignItems: 'center' }}>{L('Tu página', 'Your page')}<Hint text={L('Tu vitrina personal con tu foto, nombre y bio. Compártela en tus redes; desde ahí la gente se registra contigo o (si puedes reclutar) se une a tu equipo. Edita tu foto y bio en Cobros → Tu perfil.', 'Your personal page with your photo, name and bio. Share it on social; people sign up with you or (if you can recruit) join your team. Edit your photo and bio in Payouts → Your profile.')} /></div>
+              <div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', margin: '3px 0 8px' }}>{L('Tu vitrina para compartir en redes:', 'Your showcase to share on social:')}</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input readOnly value={pageLink} style={{ flex: 1, minWidth: 220, padding: '9px 12px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13 }} />
+                <a href={pageLink} target="_blank" rel="noopener" style={{ ...btn, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>{L('Ver', 'View')}</a>
+                <button style={btnP} onClick={() => { navigator.clipboard.writeText(pageLink); setMsg(L('Enlace de tu página copiado ✓', 'Your page link copied ✓')); }}>{L('Copiar', 'Copy')}</button>
+              </div>
+            </div>
+          );
+        })()}
         {d.perms?.can_recruit && (() => {
           const origin = typeof window !== 'undefined' ? window.location.origin : '';
           const recruitLink = `${origin}/unete-ventas?sponsor=${d.rep.code}`;

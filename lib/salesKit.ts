@@ -66,12 +66,22 @@ export async function saveTax(repId: string, formType: string, data: any): Promi
   for (const k of ['legal_name', 'country', 'tax_id_last4', 'entity']) if (data && data[k] != null) safe[k] = String(data[k]).slice(0, 120);
   await supabaseAdmin.from('sales_reps').update({ tax_form_type: t, tax_data: safe }).eq('id', repId);
 }
-// Perfil público de un vendedor por su código (para el landing personalizado).
-export async function repPublicProfile(code: string): Promise<{ name: string; bio: string | null; photo: string | null } | null> {
+// Perfil público de un vendedor por su código (para el landing personalizado y el banner).
+export async function repPublicProfile(code: string): Promise<{ name: string; bio: string | null; photo: string | null; code: string; canRecruit: boolean; roleName: string } | null> {
+  const c = String(code || '').toLowerCase();
   const { data: rep } = await supabaseAdmin.from('sales_reps')
-    .select('user_id,display_name,bio,photo_url,status').eq('code', String(code || '').toLowerCase()).eq('status', 'active').maybeSingle();
+    .select('user_id,display_name,bio,photo_url,status,level,perms').eq('code', c).eq('status', 'active').maybeSingle();
   if (!rep) return null;
   let name = (rep as any).display_name;
   if (!name) { const { data: p } = await supabaseAdmin.from('profiles').select('name').eq('id', (rep as any).user_id).maybeSingle(); name = (p as any)?.name || 'Tu asesor Onyx'; }
-  return { name, bio: (rep as any).bio || null, photo: (rep as any).photo_url || null };
+  // ¿Puede reclutar? (permiso del nivel + override propio). Y nombre del nivel.
+  let canRecruit = false, roleName = 'Asesor Onyx';
+  try {
+    const { salesSettings, permsFor } = await import('@/lib/sales');
+    const s = await salesSettings();
+    canRecruit = permsFor(rep as any, s).can_recruit;
+    const lv = (rep as any).level;
+    roleName = lv === 'l2' ? (s.level_names?.l2 || 'Director') : lv === 'l1' ? (s.level_names?.l1 || 'Lead') : (s.level_names?.vendedor || 'Asesor');
+  } catch {}
+  return { name, bio: (rep as any).bio || null, photo: (rep as any).photo_url || null, code: c, canRecruit, roleName };
 }
