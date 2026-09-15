@@ -95,6 +95,7 @@ export default function CareersClient() {
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="pin" s={14} /> {p.location || 'Remoto'}</span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="clock" s={14} /> {(TYPE[p.type] || TYPE.full)[lang]}</span>
                   {p.salary_range && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="cash" s={14} /> {p.salary_range}</span>}
+                  {p.sales_level && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#c98bff' }}><Ic n="cash" s={14} c="#c98bff" /> {L('Por comisión', 'Commission')}</span>}
                 </div>
                 {!!TG(p).length && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                   {TG(p).slice(0, 6).map((t: string, i: number) => <span key={i} style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)', border: '1px solid var(--line,#2a3350)', borderRadius: 6, padding: '2px 8px' }}>{t}</span>)}
@@ -123,7 +124,10 @@ export default function CareersClient() {
 
 function ApplyModal({ job, settings, L, lang, onClose }: any) {
   const [tab, setTab] = useState<'detail' | 'apply'>('detail');
-  const [f, setF] = useState({ name: '', email: '', phone: '', country: '', message: '' });
+  const [f, setF] = useState({ name: '', email: '', phone: '', country: '', message: '', audience: '', experience: '' });
+  // Plaza del equipo de ventas (por comisión): pide preguntas extra.
+  const isSales = !!job.sales_level;
+  const levelLabel = job.sales_level === 'director' ? 'Director' : job.sales_level === 'lead' ? 'Lead' : 'Advisor';
   const [cvName, setCvName] = useState(''); const [cvPath, setCvPath] = useState(''); const [cvBusy, setCvBusy] = useState(false);
   const [busy, setBusy] = useState(false); const [done, setDone] = useState(false); const [err, setErr] = useState('');
   const upd = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
@@ -172,6 +176,10 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
         </div>
 
         {tab === 'detail' && <>
+          {isSales && <div style={{ background: 'rgba(201,139,255,.12)', border: '1px solid rgba(201,139,255,.4)', borderRadius: 10, padding: '10px 12px', marginBottom: 12, fontSize: 12.5, color: 'var(--tx,#e8ecf5)' }}>
+            <b style={{ color: '#c98bff' }}>{L(`Equipo de ventas · nivel ${levelLabel}`, `Sales team · ${levelLabel} level`)}</b><br />
+            {L('Este puesto es por comisión recurrente, no es un empleo de nómina. Ganas según lo que vendas.', 'This role is recurring-commission based, not payroll employment. You earn from what you sell.')}
+          </div>}
           {T('description') ? <div style={{ fontSize: 14, color: 'var(--tx,#e8ecf5)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{T('description')}</div> : <p style={{ color: 'var(--mut,#9aa6bd)' }}>{T('summary')}</p>}
           <button onClick={applyBtn} style={{ marginTop: 20, width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: 'var(--accent,#8b93ff)', color: '#fff', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>{L('Postularme a esta plaza', 'Apply to this position')}</button>
         </>}
@@ -189,6 +197,10 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
                 <label><span style={lbl}>{L('Teléfono', 'Phone')}</span><input style={inp} value={f.phone} onChange={(e) => upd('phone', e.target.value)} /></label>
                 <label><span style={lbl}>{L('País', 'Country')}</span><input style={inp} value={f.country} onChange={(e) => upd('country', e.target.value)} /></label>
               </div>
+              {isSales && <>
+                <label style={{ display: 'block', marginTop: 12 }}><span style={lbl}>{L('Tu audiencia / red (dónde vendes)', 'Your audience / network (where you sell)')}</span><textarea style={{ ...inp, minHeight: 56, resize: 'vertical' }} value={f.audience} onChange={(e) => upd('audience', e.target.value)} placeholder={L('Redes, grupos, país, idioma, tamaño…', 'Social, groups, country, language, size…')} /></label>
+                <label style={{ display: 'block', marginTop: 12 }}><span style={lbl}>{L('Experiencia vendiendo', 'Sales experience')}</span><textarea style={{ ...inp, minHeight: 56, resize: 'vertical' }} value={f.experience} onChange={(e) => upd('experience', e.target.value)} placeholder={L('¿Qué has vendido y cómo?', 'What have you sold and how?')} /></label>
+              </>}
               <label style={{ display: 'block', marginTop: 12 }}><span style={lbl}>{L('¿Por qué tú?', 'Why you?')}</span><textarea style={{ ...inp, minHeight: 80, resize: 'vertical' }} value={f.message} onChange={(e) => upd('message', e.target.value)} placeholder={L('Cuéntanos de tu experiencia', 'Tell us about your experience')} /></label>
               <div style={{ marginTop: 12 }}>
                 <span style={lbl}>{L('Currículum (PDF)', 'Resume (PDF)')}</span>

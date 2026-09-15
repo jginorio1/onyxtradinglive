@@ -57,6 +57,8 @@ export async function savePosition(p: any): Promise<{ ok: boolean; id?: string; 
     // Versión en inglés (bilingüe).
     title_en: clean(p.title_en, 120), summary_en: clean(p.summary_en, 300), description_en: clean(p.description_en, 6000),
     tags_en: Array.isArray(p.tags_en) ? p.tags_en.map((t: any) => String(t).slice(0, 30)).slice(0, 12) : [],
+    // Ventas por comisión: nivel del puesto (director/lead/advisor) o null (empleo normal).
+    sales_level: ['director', 'lead', 'advisor'].includes(p.sales_level) ? p.sales_level : null,
   };
   if (!patch.title) return { ok: false, error: 'falta el título' };
   if (p.id) { await supabaseAdmin.from('job_openings').update(patch).eq('id', p.id); return { ok: true, id: p.id }; }
@@ -69,12 +71,19 @@ export async function deletePosition(id: string) { await supabaseAdmin.from('job
 const isEmail = (s: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
 
 // Un candidato se postula (público). Anti-duplicado por email+plaza.
-export async function submitApplication(b: any): Promise<{ ok: boolean; error?: string; duplicated?: boolean }> {
+// Si la plaza es de ventas (sales_level), devuelve `sales` para que la ruta
+// también la registre en el reclutamiento de ventas.
+export async function submitApplication(b: any): Promise<{ ok: boolean; error?: string; duplicated?: boolean; sales?: any }> {
   const name = clean(b.name, 120), email = clean(b.email, 160)?.toLowerCase();
   if (!name || name.length < 2 || !email || !isEmail(email)) return { ok: false, error: 'datos incompletos' };
   const jobId = b.job_id || null;
   let jobTitle: string | null = null;
-  if (jobId) { const { data: j } = await supabaseAdmin.from('job_openings').select('title').eq('id', jobId).maybeSingle(); jobTitle = (j as any)?.title || null; }
+  let salesLevel: string | null = null;
+  if (jobId) {
+    const { data: j } = await supabaseAdmin.from('job_openings').select('title, sales_level').eq('id', jobId).maybeSingle();
+    jobTitle = (j as any)?.title || null;
+    salesLevel = (j as any)?.sales_level || null;
+  }
   const { data: prev } = await supabaseAdmin.from('job_applications').select('id').eq('email', email).eq('job_id', jobId).maybeSingle();
   if (prev) return { ok: true, duplicated: true };
   await supabaseAdmin.from('job_applications').insert({
@@ -82,7 +91,38 @@ export async function submitApplication(b: any): Promise<{ ok: boolean; error?: 
     phone: clean(b.phone, 40), country: clean(b.country, 60), message: clean(b.message, 2000),
     resume_url: clean(b.resume_path, 300), status: 'new',
   });
-  return { ok: true };
+  const sales = salesLevel ? {
+    level: salesLevel, name, email,
+    phone: clean(b.phone, 40) || null, country: clean(b.country, 60) || null,
+    experience: clean(b.experience, 800) || null, audience: clean(b.audience, 400) || null,
+    note: clean(b.message, 1000) || null, resume_path: clean(b.resume_path, 300) || null,
+    job_title: jobTitle,
+  } : null;
+  return { ok: true, sales };
+}
+
+// Registra una postulación de ventas (llegada desde Carreras) en el pipeline de
+// reclutamiento de ventas, sin duplicar si ya hay una pendiente del mismo correo.
+export async function pushSalesApplication(s: any): Promise<void> {
+  try {
+    const email = String(s.email || '').toLowerCase();
+    if (!email) return;
+    const { data: prev } = await supabaseAdmin.from('sales_applications').select('id').eq('email', email).eq('status', 'pending').maybeSingle();
+    if (prev) return;
+    // El pipeline solo distingue vendedor/supervisor; el nivel exacto va en la nota.
+    const role = s.level === 'advisor' ? 'vendedor' : 'supervisor';
+    const levelLabel = s.level === 'director' ? 'Director' : s.level === 'lead' ? 'Lead' : 'Advisor';
+    await supabaseAdmin.from('sales_applications').insert({
+      name: s.name, email,
+      phone: s.phone, country: s.country,
+      desired_role: role,
+      experience: s.experience,
+      audience: s.audience,
+      note: `[Desde Carreras · ${s.job_title || 'Ventas'} · nivel ${levelLabel}]${s.note ? ' ' + s.note : ''}`,
+      resume_url: s.resume_path,
+      status: 'pending',
+    });
+  } catch {}
 }
 
 export async function listApplications(limit = 300): Promise<any[]> {

@@ -31,7 +31,7 @@ function jobsLd(positions: any[]) {
       title: p.title,
       description: desc.replace(/\n/g, '<br>'),
       datePosted: (p.created_at || new Date().toISOString()).slice(0, 10),
-      employmentType: EMP[p.type] || 'FULL_TIME',
+      employmentType: p.sales_level ? 'OTHER' : (EMP[p.type] || 'FULL_TIME'),
       hiringOrganization: org,
       directApply: true,
       identifier: { '@type': 'PropertyValue', name: 'Onyx Trading Live', value: String(p.id) },
@@ -42,8 +42,8 @@ function jobsLd(positions: any[]) {
     } else {
       ld.jobLocation = { '@type': 'Place', address: { '@type': 'PostalAddress', addressLocality: p.location || 'Remoto', addressCountry: 'US' } };
     }
-    const bs = baseSalary(p.salary_range);
-    if (bs) ld.baseSalary = bs;
+    // Comisión: sin salario base (no prometer sueldo fijo que no existe).
+    if (!p.sales_level) { const bs = baseSalary(p.salary_range); if (bs) ld.baseSalary = bs; }
     return ld;
   });
 }
