@@ -36,6 +36,38 @@ export async function translateJob(src: { title?: string; summary?: string; desc
   };
 }
 
+// Genera un BORRADOR completo de la plaza a partir del título (y contexto que ya
+// haya). Rellena resumen, descripción y etiquetas. No inventa salario ni ubicación.
+export async function draftJob(
+  ctx: { title?: string; department?: string; type?: string; location?: string; salary_range?: string; summary?: string; description?: string; tags?: string[] },
+  lang: 'es' | 'en' = 'es',
+): Promise<{ title: string; summary: string; description: string; tags: string[] } | null> {
+  const es = lang === 'es';
+  const system = es
+    ? `Eres reclutador senior. A partir del contexto, redacta una vacante ATRACTIVA y profesional en español. Responde SOLO con JSON: {"title":"","summary":"","description":"","tags":["",""]}.
+- title: mejóralo si es genérico (añade nivel/seniority si aplica), respetando la intención.
+- summary: 1-2 frases para la tarjeta.
+- description: usa saltos de línea reales. Incluye secciones: qué harás (responsabilidades), lo que buscamos (requisitos/skills), y qué ofrecemos. Realista, inclusivo, sin exagerar.
+- tags: 4-8 skills/tecnologías del puesto. Mantén nombres técnicos como están (React, Node, SQL).
+No inventes salario ni ubicación; usa los del contexto si vienen.`
+    : `You are a senior recruiter. From the context, write an ATTRACTIVE, professional job posting in English. Reply ONLY with JSON: {"title":"","summary":"","description":"","tags":["",""]}.
+- title: improve it if generic (add level/seniority if it fits), keeping the intent.
+- summary: 1-2 sentences for the card.
+- description: use real line breaks. Include sections: what you'll do (responsibilities), what we're looking for (requirements/skills), and what we offer. Realistic, inclusive, no hype.
+- tags: 4-8 role skills/technologies. Keep tech names as-is (React, Node, SQL).
+Do not invent salary or location; use the ones in the context if present.`;
+  const user = JSON.stringify({
+    title: ctx.title || '', department: ctx.department || '', type: ctx.type || '', location: ctx.location || '',
+    salary_range: ctx.salary_range || '', summary: ctx.summary || '', description: ctx.description || '', tags: ctx.tags || [],
+  });
+  const j = parseJson(await anthropic(system, user, 1800));
+  if (!j) return null;
+  return {
+    title: String(j.title || ctx.title || ''), summary: String(j.summary || ''),
+    description: String(j.description || ''), tags: Array.isArray(j.tags) ? j.tags.map((t: any) => String(t)).slice(0, 12) : (ctx.tags || []),
+  };
+}
+
 export type AuditItem = { level: 'good' | 'warn' | 'info'; text: string };
 
 // Audita la plaza: puntaje 0-100 + sugerencias según el rol.

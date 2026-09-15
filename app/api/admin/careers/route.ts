@@ -36,6 +36,13 @@ export async function POST(req: Request) {
       if (!r) return NextResponse.json({ ok: false, error: 'IA no disponible (falta ANTHROPIC_API_KEY)' }, { status: 400 });
       return NextResponse.json({ ok: true, translated: r });
     }
+    // Generar un borrador de la plaza con IA a partir del título/contexto.
+    if (action === 'draft') {
+      const { draftJob } = await import('@/lib/careersAI');
+      const r = await draftJob(b.ctx || {}, b.lang === 'en' ? 'en' : 'es');
+      if (!r) return NextResponse.json({ ok: false, error: 'IA no disponible (falta ANTHROPIC_API_KEY)' }, { status: 400 });
+      return NextResponse.json({ ok: true, draft: r });
+    }
     // Auditar la plaza con IA (puntaje + sugerencias).
     if (action === 'audit') {
       const { auditJob } = await import('@/lib/careersAI');

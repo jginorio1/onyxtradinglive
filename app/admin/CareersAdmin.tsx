@@ -102,6 +102,7 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
   const [busyT, setBusyT] = useState(false);
   const [audit, setAudit] = useState<any>(null);
   const [busyA, setBusyA] = useState(false);
+  const [busyG, setBusyG] = useState(false);
   const u = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
   const lbl: React.CSSProperties = { fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'block', marginBottom: 4 };
   // Sufijo de campo según idioma que se edita.
@@ -125,6 +126,25 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
       setLang(other);
     }
     setBusyT(false);
+  }
+  async function generate() {
+    if (!String(f[F('title')] || '').trim()) { alert(lang === 'es' ? 'Escribe primero el título de la plaza.' : 'Write the job title first.'); return; }
+    setBusyG(true);
+    const r = await act({ action: 'draft', lang, ctx: {
+      title: f[F('title')], department: f.department, type: f.type, location: f.location, salary_range: f.salary_range,
+      summary: f[F('summary')], description: f[F('description')],
+      tags: String((lang === 'en' ? f.tags_en : f.tags) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
+    } });
+    if (r?.draft) {
+      const g = r.draft;
+      setF((x: any) => ({ ...x,
+        [F('title')]: g.title || x[F('title')],
+        [F('summary')]: g.summary,
+        [F('description')]: g.description,
+        [lang === 'en' ? 'tags_en' : 'tags']: (g.tags || []).join(', '),
+      }));
+    }
+    setBusyG(false);
   }
   async function runAudit() {
     setBusyA(true);
@@ -155,7 +175,10 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
             <button onClick={() => setLang('es')} style={{ ...btn, padding: '5px 12px', ...(lang === 'es' ? { background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none' } : {}) }}>Español</button>
             <button onClick={() => setLang('en')} style={{ ...btn, padding: '5px 12px', ...(lang === 'en' ? { background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none' } : {}) }}>English</button>
           </div>
-          <button onClick={translate} disabled={busyT} style={{ ...btn, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', padding: '5px 12px' }}>{busyT ? 'Traduciendo…' : `Traducir al ${other === 'en' ? 'inglés' : 'español'} con IA`}</button>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button onClick={generate} disabled={busyG} title={lang === 'es' ? 'Rellena resumen, descripción y etiquetas desde el título' : 'Fills summary, description and tags from the title'} style={{ ...btnP, padding: '5px 12px' }}>{busyG ? (lang === 'es' ? 'Generando…' : 'Generating…') : (lang === 'es' ? '✨ Generar con IA' : '✨ Generate with AI')}</button>
+            <button onClick={translate} disabled={busyT} style={{ ...btn, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', padding: '5px 12px' }}>{busyT ? 'Traduciendo…' : `Traducir al ${other === 'en' ? 'inglés' : 'español'} con IA`}</button>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
