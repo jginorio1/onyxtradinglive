@@ -25,6 +25,26 @@ function parseJson(raw: string | null): any {
   try { return JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1)); } catch { return null; }
 }
 
+// Contexto para plazas del EQUIPO DE VENTAS por comisión (Director/Lead/Advisor).
+// Cambia el enfoque a ventas y evita salario fijo. Vacío si no es plaza de ventas.
+function salesLine(level: any, es: boolean): string {
+  const l = ['director', 'lead', 'advisor'].includes(level) ? level : '';
+  if (!l) return '';
+  const roleEs: Record<string, string> = {
+    director: 'Director de ventas: lidera todo el equipo, define estrategia y metas, recluta y forma Leads/Advisors; gana comisión + override sobre el equipo.',
+    lead: 'Lead de ventas: supervisa y entrena a un grupo de vendedores, asegura metas; gana comisión + override de su grupo.',
+    advisor: 'Advisor (vendedor): prospecta, cierra y atiende clientes de los productos de Onyx; gana comisión por lo que vende.',
+  };
+  const roleEn: Record<string, string> = {
+    director: 'Sales Director: leads the whole team, sets strategy and targets, recruits and coaches Leads/Advisors; earns commission + override on the team.',
+    lead: 'Sales Lead: supervises and trains a group of sellers, ensures targets; earns commission + override on the group.',
+    advisor: 'Advisor (seller): prospects, closes and serves customers of Onyx products; earns commission on what they sell.',
+  };
+  return es
+    ? `\n\nIMPORTANTE — Es una plaza del EQUIPO DE VENTAS por COMISIÓN (NO nómina). ${roleEs[l]} Enfócate en VENTAS: prospección, cierre, atención al cliente, red/audiencia, metas y estructura de comisión. NO en marketing ni desarrollo. NO menciones ni pidas salario fijo: el pago es comisión recurrente (y override para Director/Lead).`
+    : `\n\nIMPORTANT — This is a COMMISSION-based SALES TEAM role (NOT payroll). ${roleEn[l]} Focus on SALES: prospecting, closing, customer service, network/audience, targets and commission structure. NOT marketing or development. Do NOT mention or ask for a fixed salary: pay is recurring commission (plus override for Director/Lead).`;
+}
+
 // Compara un CV (PDF o imagen) contra la vacante. Envía el archivo a Claude como
 // documento/imagen y pide un puntaje de encaje + resumen. Sin clave → null.
 export async function matchCv(
@@ -87,12 +107,12 @@ export async function translateJob(src: { title?: string; summary?: string; desc
 // Genera un BORRADOR completo de la plaza a partir del título (y contexto que ya
 // haya). Rellena resumen, descripción y etiquetas. No inventa salario ni ubicación.
 export async function draftJob(
-  ctx: { title?: string; department?: string; type?: string; location?: string; salary_range?: string; summary?: string; description?: string; tags?: string[] },
+  ctx: { title?: string; department?: string; type?: string; location?: string; salary_range?: string; summary?: string; description?: string; tags?: string[]; sales_level?: string },
   lang: 'es' | 'en' = 'es',
   company = '',
 ): Promise<{ title: string; summary: string; description: string; tags: string[] } | null> {
   const es = lang === 'es';
-  const ctxLine = company ? `\n\nSOBRE LA EMPRESA (úsalo: menciona las herramientas/sistemas reales y alinea con su dirección):\n${company}` : '';
+  const ctxLine = (company ? `\n\nSOBRE LA EMPRESA (úsalo: menciona las herramientas/sistemas reales y alinea con su dirección):\n${company}` : '') + salesLine(ctx.sales_level, es);
   const system = (es
     ? `Eres reclutador senior. A partir del contexto, redacta una vacante ATRACTIVA y profesional en español. Responde SOLO con JSON: {"title":"","summary":"","description":"","tags":["",""]}.
 - title: mejóralo si es genérico (añade nivel/seniority si aplica), respetando la intención.
@@ -121,12 +141,12 @@ Do not invent salary or location; use the ones in the context if present.`) + ct
 // Sugiere SOLO las etiquetas/skills del puesto (sin tocar el resto). Devuelve
 // una lista corta para que el admin las acepte con un clic.
 export async function suggestSkills(
-  ctx: { title?: string; department?: string; description?: string },
+  ctx: { title?: string; department?: string; description?: string; sales_level?: string },
   lang: 'es' | 'en' = 'es',
   company = '',
 ): Promise<string[] | null> {
   const es = lang === 'es';
-  const ctxLine = company ? `\nEmpresa (prioriza skills acordes a su stack real): ${company}` : '';
+  const ctxLine = (company ? `\nEmpresa (prioriza skills acordes a su stack real): ${company}` : '') + salesLine(ctx.sales_level, es);
   const system = (es
     ? 'Eres reclutador técnico. Devuelve SOLO las habilidades/tecnologías clave del puesto. Responde SOLO con JSON: {"tags":["",""]}. 4-10 etiquetas cortas (1-2 palabras), sin frases. Mantén nombres técnicos como están (React, Node, SQL, Figma). Incluye 1-2 blandas si aplican (ej. Comunicación).'
     : 'You are a technical recruiter. Return ONLY the key skills/technologies for the role. Reply ONLY with JSON: {"tags":["",""]}. 4-10 short tags (1-2 words), no phrases. Keep tech names as-is (React, Node, SQL, Figma). Include 1-2 soft skills if relevant (e.g. Communication).') + ctxLine;
@@ -143,14 +163,14 @@ export type AuditItem = { level: 'good' | 'warn' | 'info'; text: string };
 // corchetes para que el dueño lo complete. Mejora estructura, claridad, cómo
 // postularse, y nombra herramientas reales del stack.
 export async function applyAudit(
-  job: { title?: string; summary?: string; description?: string; tags?: string[]; salary_range?: string; location?: string; type?: string; department?: string },
+  job: { title?: string; summary?: string; description?: string; tags?: string[]; salary_range?: string; location?: string; type?: string; department?: string; sales_level?: string },
   items: AuditItem[],
   lang: 'es' | 'en' = 'es',
   company = '',
 ): Promise<{ title: string; summary: string; description: string; tags: string[] } | null> {
   const es = lang === 'es';
   const sugg = (items || []).map((it) => `- ${it.text}`).join('\n').slice(0, 3000);
-  const ctxLine = company ? `\n\nEmpresa (nombra sus herramientas/stack reales cuando aplique):\n${company}` : '';
+  const ctxLine = (company ? `\n\nEmpresa (nombra sus herramientas/stack reales cuando aplique):\n${company}` : '') + salesLine(job.sales_level, es);
   const system = (es
     ? `Eres reclutador senior. Reescribe la vacante APLICANDO las sugerencias de auditoría. Responde SOLO con JSON: {"title":"","summary":"","description":"","tags":["",""]}.
 REGLAS:
@@ -181,7 +201,11 @@ export async function auditJob(job: any, lang: 'es' | 'en' = 'es', company = '')
     title: job.title, department: job.department, type: job.type, location: job.location,
     salary_range: job.salary_range, summary: job.summary, description: job.description, tags: job.tags,
   });
-  const ctxLine = company ? `\nContexto de la empresa (revisa que la vacante encaje con su stack y rumbo, y sugiere nombrar las herramientas reales): ${company}` : '';
+  const sl = salesLine(job.sales_level, es);
+  const salesAudit = sl ? (es
+    ? ' NO penalices la falta de salario fijo (es comisión); en su lugar evalúa si explica la estructura de comisión/override, metas, y qué red/audiencia y experiencia de ventas se busca.'
+    : ' Do NOT penalize the lack of a fixed salary (it is commission); instead check whether it explains the commission/override structure, targets, and what sales network/audience and experience are sought.') : '';
+  const ctxLine = (company ? `\nContexto de la empresa (revisa que la vacante encaje con su stack y rumbo, y sugiere nombrar las herramientas reales): ${company}` : '') + sl + salesAudit;
   const system = (es
     ? 'Eres reclutador senior. Audita esta vacante y responde SOLO con JSON: {"score": 0-100, "items": [{"level":"good|warn|info","text":"sugerencia corta y accionable"}]}. Juzga según el ROL: claridad del título, resumen (ni vago ni larguísimo), descripción con responsabilidades y requisitos, salario visible, ubicación/zona horaria si es remoto, cómo postularse, etiquetas/skills acordes al puesto, lenguaje inclusivo y requisitos realistas. Da 3-6 items, en español.'
     : 'You are a senior recruiter. Audit this job posting and reply ONLY with JSON: {"score": 0-100, "items": [{"level":"good|warn|info","text":"short actionable tip"}]}. Judge by ROLE: title clarity, summary (not vague nor too long), description with responsibilities and requirements, visible salary, location/timezone if remote, how to apply, tags/skills fitting the role, inclusive language and realistic requirements. Give 3-6 items.') + ctxLine;

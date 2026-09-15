@@ -167,7 +167,7 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
     try {
       const r = await act({ action: 'draft', lang, ctx: {
         title: f[F('title')], department: f.department, type: f.type, location: f.location, salary_range: f.salary_range,
-        summary: f[F('summary')], description: f[F('description')],
+        summary: f[F('summary')], description: f[F('description')], sales_level: f.sales_level || '',
         tags: String((lang === 'en' ? f.tags_en : f.tags) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
       } });
       if (r?.draft) {
@@ -186,7 +186,7 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
     if (!String(f[F('title')] || '').trim()) { alert(lang === 'es' ? 'Escribe primero el título de la plaza.' : 'Write the job title first.'); return; }
     setBusyS(true);
     try {
-      const r = await act({ action: 'suggest_skills', lang, ctx: { title: f[F('title')], department: f.department, description: f[F('description')] } });
+      const r = await act({ action: 'suggest_skills', lang, ctx: { title: f[F('title')], department: f.department, description: f[F('description')], sales_level: f.sales_level || '' } });
       if (r?.tags?.length) {
         const key = lang === 'en' ? 'tags_en' : 'tags';
         const have = String(f[key] || '').split(',').map((t: string) => t.trim()).filter(Boolean);
@@ -199,7 +199,7 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
   // Arma el objeto de la plaza en el idioma activo (para auditar/aplicar).
   const jobNow = (src: any = f) => ({
     title: src[F('title')], department: src.department, type: src.type, location: src.location, salary_range: src.salary_range,
-    summary: src[F('summary')], description: src[F('description')],
+    summary: src[F('summary')], description: src[F('description')], sales_level: src.sales_level || '',
     tags: String((lang === 'en' ? src.tags_en : src.tags) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
   });
   async function runAudit(jobOverride?: any) {
