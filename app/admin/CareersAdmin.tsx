@@ -298,7 +298,7 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
             <b style={{ fontSize: 13.5 }}>Onyx AI · auditoría de la plaza</b>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {audit && <span style={{ fontSize: 20, fontWeight: 700, color: audit.score >= 75 ? '#5ed6a0' : audit.score >= 50 ? '#f0b74e' : '#f0736f' }}>{audit.score}<span style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)', fontWeight: 400 }}>/100</span></span>}
-              <button onClick={runAudit} disabled={busyA} style={{ ...btn, padding: '5px 12px', borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)' }}>{busyA ? 'Analizando…' : audit ? 'Re-auditar' : 'Auditar'}</button>
+              <button onClick={() => runAudit()} disabled={busyA} style={{ ...btn, padding: '5px 12px', borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)' }}>{busyA ? 'Analizando…' : audit ? 'Re-auditar' : 'Auditar'}</button>
             </div>
           </div>
           {audit && <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
