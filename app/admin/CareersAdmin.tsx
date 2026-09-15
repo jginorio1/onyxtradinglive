@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 // Admin de CARRERAS: crea/edita plazas, ajustes de la página pública, y ve las
 // postulaciones (con CV). Vive en el área Equipo.
@@ -13,6 +13,7 @@ export default function CareersAdmin({ canManage = true }: { canManage?: boolean
   const [sub, setSub] = useState<'plazas' | 'postulaciones' | 'ajustes'>('plazas');
   const [msg, setMsg] = useState('');
   const [edit, setEdit] = useState<any>(null);
+  const [share, setShare] = useState<any>(null);
 
   useEffect(() => { load(); }, []);
   async function load() { try { const r = await fetch('/api/admin/careers', { cache: 'no-store' }); setD(await r.json()); } catch {} }
@@ -61,6 +62,7 @@ export default function CareersAdmin({ canManage = true }: { canManage?: boolean
                   <div style={{ fontSize: 11, color: p.status === 'open' ? '#5ed6a0' : p.status === 'draft' ? '#e5b567' : '#9aa6bd' }}>{p.status === 'open' ? 'publicada' : p.status === 'draft' ? 'borrador' : 'cerrada'}</div>
                 </div>
                 {canManage && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button style={{ ...btn, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)' }} onClick={() => setShare(p)}>QR · Compartir</button>
                   <button style={btn} onClick={() => setEdit({ ...p })}>Editar</button>
                   <button style={btn} onClick={() => act({ action: 'set_status', id: p.id, status: p.status === 'open' ? 'closed' : 'open' })}>{p.status === 'open' ? 'Cerrar' : 'Publicar'}</button>
                   <button style={btn} onClick={() => confirm('¿Borrar esta plaza?') && act({ action: 'delete_position', id: p.id })}>✕</button>
@@ -100,7 +102,95 @@ export default function CareersAdmin({ canManage = true }: { canManage?: boolean
         <CompanyBox company={d.company || ''} act={act} inp={inp} btnP={btnP} card={card} canManage={canManage} />
       </>}
 
-      {edit && <PositionModal p={edit} act={act} onClose={() => setEdit(null)} inp={inp} btn={btn} btnP={btnP} />}
+      {edit && <PositionModal p={edit} act={act} onClose={() => setEdit(null)} inp={inp} btn={btn} btnP={btnP} onShare={(pp: any) => setShare(pp)} />}
+      {share && <QrShareModal pos={share} baseLink={d.link} onClose={() => setShare(null)} btn={btn} btnP={btnP} />}
+    </div>
+  );
+}
+
+// Modal de QR + compartir de una plaza. Genera un QR que abre la vacante
+// (deep-link ?job=id), una tarjeta con marca descargable, y botones de compartir.
+function QrShareModal({ pos, baseLink, onClose, btn, btnP }: any) {
+  const [qr, setQr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const canRef = useRef<HTMLCanvasElement>(null);
+  const base = String(baseLink || '').replace(/\?.*$/, '');
+  const url = `${base}?job=${pos.id}`;
+  const title = pos.title || 'Vacante';
+  const desc = (pos.summary || pos.description || '').toString().replace(/\s+/g, ' ').trim().slice(0, 160);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const QR = (await import('qrcode')).default;
+        const d = await QR.toDataURL(url, { margin: 1, width: 480, color: { dark: '#0e1220', light: '#ffffff' } });
+        setQr(d);
+      } catch { setQr(''); }
+    })();
+  }, [url]);
+
+  // Dibuja la tarjeta con marca en un canvas y devuelve el PNG.
+  async function buildCard(): Promise<string> {
+    const W = 620, H = 820;
+    const c: HTMLCanvasElement = canRef.current;
+    c.width = W; c.height = H;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#0e1220'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#e5b567'; g.font = '600 15px system-ui, sans-serif';
+    g.fillText('ONYX TRADING LIVE · CARRERAS', 40, 56);
+    // Título (wrap)
+    g.fillStyle = '#e8ecf5'; g.font = '600 30px system-ui, sans-serif';
+    const wrap = (text: string, max: number, font: string) => { g.font = font; const words = text.split(' '); const lines: string[] = []; let ln = ''; for (const w of words) { const t = ln ? ln + ' ' + w : w; if (g.measureText(t).width > max && ln) { lines.push(ln); ln = w; } else ln = t; } if (ln) lines.push(ln); return lines; };
+    let y = 108;
+    for (const ln of wrap(title, W - 80, '600 30px system-ui, sans-serif').slice(0, 3)) { g.fillText(ln, 40, y); y += 38; }
+    // Descripción
+    g.fillStyle = '#9aa6bd'; g.font = '400 17px system-ui, sans-serif'; y += 6;
+    for (const ln of wrap(desc, W - 80, '400 17px system-ui, sans-serif').slice(0, 4)) { g.fillText(ln, 40, y); y += 26; }
+    // Recuadro blanco con QR
+    const box = 380, bx = (W - box) / 2, by = 340;
+    g.fillStyle = '#ffffff'; if ((g as any).roundRect) { g.beginPath(); (g as any).roundRect(bx, by, box, box, 16); g.fill(); } else g.fillRect(bx, by, box, box);
+    if (qr) { const img = new Image(); await new Promise((res) => { img.onload = res; img.onerror = res; img.src = qr; }); g.drawImage(img, bx + 20, by + 20, box - 40, box - 40); }
+    // Pie
+    g.fillStyle = '#e8ecf5'; g.font = '600 20px system-ui, sans-serif'; g.textAlign = 'center';
+    g.fillText('Escanea y postúlate', W / 2, by + box + 44);
+    g.fillStyle = '#9aa6bd'; g.font = '400 15px system-ui, sans-serif';
+    g.fillText(url.replace(/^https?:\/\//, ''), W / 2, by + box + 72);
+    g.textAlign = 'left';
+    return c.toDataURL('image/png');
+  }
+  function dl(dataUrl: string, name: string) { const a = document.createElement('a'); a.href = dataUrl; a.download = name; a.click(); }
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'plaza';
+
+  async function downloadCard() { setBusy(true); try { dl(await buildCard(), `onyx-carreras-${slug}.png`); } catch {} setBusy(false); }
+  function downloadQr() { if (qr) dl(qr, `qr-${slug}.png`); }
+  async function copyLink() { try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {} }
+  async function nativeShare() {
+    try {
+      if ((navigator as any).share) await (navigator as any).share({ title: `${title} · Onyx Trading Live`, text: desc, url });
+      else copyLink();
+    } catch {}
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 95, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: 24, overflowY: 'auto' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(420px,100%)', background: 'var(--bg,#0e1220)', border: '1px solid var(--line,#2a3350)', borderRadius: 14, padding: 20, textAlign: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}><b style={{ fontSize: 16 }}>QR · Compartir</b><button onClick={onClose} style={btn}>✕</button></div>
+        <div className="muted" style={{ fontSize: 12.5, marginBottom: 12, textAlign: 'left' }}>{title}</div>
+        <div style={{ background: '#fff', borderRadius: 12, padding: 14, display: 'inline-block', minHeight: 200 }}>
+          {qr ? <img src={qr} alt="QR" style={{ width: 200, height: 200, display: 'block' }} /> : <div style={{ width: 200, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888', fontSize: 13 }}>Generando…</div>}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', margin: '10px 0 14px', wordBreak: 'break-all' }}>{url.replace(/^https?:\/\//, '')}</div>
+        <div style={{ display: 'grid', gap: 8 }}>
+          <button style={{ ...btnP }} disabled={busy} onClick={downloadCard}>{busy ? 'Generando tarjeta…' : '⬇ Descargar tarjeta (PNG)'}</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={{ ...btn, flex: 1 }} onClick={downloadQr}>Solo QR</button>
+            <button style={{ ...btn, flex: 1 }} onClick={copyLink}>{copied ? 'Copiado ✓' : 'Copiar enlace'}</button>
+            <button style={{ ...btn, flex: 1 }} onClick={nativeShare}>Compartir</button>
+          </div>
+        </div>
+        <canvas ref={canRef} style={{ display: 'none' }} />
+      </div>
     </div>
   );
 }
@@ -125,7 +215,7 @@ function MatchButton({ appId, has, act, btn }: any) {
   );
 }
 
-function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
+function PositionModal({ p, act, onClose, inp, btn, btnP, onShare }: any) {
   const [f, setF] = useState<any>({ ...p, tags: (p.tags || []).join(', '), tags_en: (p.tags_en || []).join(', ') });
   const [lang, setLang] = useState<'es' | 'en'>('es');
   const [busyT, setBusyT] = useState(false);
@@ -314,7 +404,10 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
           </div>}
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end' }}><button style={btn} onClick={onClose}>Cancelar</button><button style={btnP} onClick={save}>Guardar</button></div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+          {f.id ? <button style={{ ...btn, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)' }} onClick={() => onShare && onShare(f)}>QR · Compartir</button> : <span className="muted" style={{ fontSize: 11 }}>Guarda para generar el QR</span>}
+          <div style={{ display: 'flex', gap: 8 }}><button style={btn} onClick={onClose}>Cancelar</button><button style={btnP} onClick={save}>Guardar</button></div>
+        </div>
       </div>
     </div>
   );

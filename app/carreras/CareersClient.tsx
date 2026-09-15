@@ -43,6 +43,15 @@ export default function CareersClient() {
 
   useEffect(() => { (async () => { try { const r = await fetch('/api/careers', { cache: 'no-store' }); setD(await r.json()); } catch { setD({ enabled: false }); } })(); }, []);
 
+  // Deep-link: si la URL trae ?job=<id> (del QR), abre esa vacante directo.
+  useEffect(() => {
+    if (!d?.positions?.length) return;
+    try {
+      const id = new URLSearchParams(window.location.search).get('job');
+      if (id) { const p = d.positions.find((x: any) => x.id === id); if (p) setApply(p); }
+    } catch {}
+  }, [d]);
+
   // Toma el campo en el idioma actual; si falta, cae al que exista.
   const T = (o: any, f: string) => (lang === 'en' ? (o[f + '_en'] || o[f]) : (o[f] || o[f + '_en']));
   const TG = (o: any) => (lang === 'en' ? ((o.tags_en && o.tags_en.length) ? o.tags_en : o.tags) : (o.tags && o.tags.length ? o.tags : o.tags_en)) || [];
