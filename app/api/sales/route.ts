@@ -100,6 +100,13 @@ export async function POST(req: Request) {
     // Dar descuento: genera un código de cupón para compartir (tope %).
     if (action === 'grant_discount') {
       const s = await salesSettings();
+      // Candado anti-abuso: tope de cupones por vendedor en 24h (0 = ilimitado).
+      const dCap = Number(s.discount_daily_cap) || 0;
+      if (dCap > 0) {
+        const since = new Date(Date.now() - 86400000).toISOString();
+        const { count } = await supabaseAdmin.from('sales_grants').select('*', { count: 'exact', head: true }).eq('rep_id', rep.id).eq('kind', 'discount').gte('created_at', since);
+        if ((count || 0) >= dCap) return NextResponse.json({ ok: false, error: `Llegaste al límite de ${dCap} cupones en 24 horas.` }, { status: 429 });
+      }
       const pct = Math.max(1, Math.min(Number(b.pct) || 0, s.discount_max_pct || 20));
       const { stripe } = await import('@/lib/stripe');
       const coupon = await stripe.coupons.create({ percent_off: pct, duration: 'once', name: `Onyx ${pct}% · ${rep.code}` });

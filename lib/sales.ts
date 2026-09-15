@@ -16,6 +16,11 @@ export type SalesSettings = {
   min_payout: number;         // mínimo para pagar
   trial_max_days: number;     // tope de días de prueba que puede dar un vendedor
   discount_max_pct: number;   // tope de descuento (%) que puede dar un vendedor
+  // Candados anti-abuso (0 = ilimitado):
+  trial_max_per_client: number;   // máx. veces que un cliente puede recibir prueba (de cualquier vendedor)
+  trial_max_total_days: number;   // tope de días gratis acumulados por cliente (suma de todas sus pruebas)
+  trial_daily_cap: number;        // máx. pruebas que un vendedor puede dar en 24h
+  discount_daily_cap: number;     // máx. cupones que un vendedor puede generar en 24h
   auto_payout: boolean;       // paga solo cuando el saldo madura
   review_before_pay: boolean; // freno global: encola pero apruebas tú
   allow_recruit: boolean;     // los supervisores pueden reclutar su equipo
@@ -53,6 +58,7 @@ const DEFAULTS: SalesSettings = {
   enabled: true, direct_rate: 20, override1_rate: 7, override2_rate: 4,
   commission_months: 0, hold_days: 30, min_payout: 50,
   trial_max_days: 14, discount_max_pct: 20,
+  trial_max_per_client: 1, trial_max_total_days: 21, trial_daily_cap: 10, discount_daily_cap: 10,
   auto_payout: true, review_before_pay: false, allow_recruit: true,
   level_names: { l2: 'Director', l1: 'Lead', vendedor: 'Advisor' },
   commission_scope: { subscriptions: true, addons: true, guardian: true, academy: false, botlab: false, copy: false },
@@ -293,10 +299,39 @@ export async function teamRollup(rootId: string): Promise<any[]> {
 // (comp_until) hasta N días, con tope trial_max_days. Registra el grant.
 export async function grantTrial(repId: string, clientUserId: string, days: number): Promise<{ ok: boolean; error?: string; until?: string }> {
   const s = await salesSettings();
-  const d = Math.max(1, Math.min(Number(days) || 0, s.trial_max_days || 14));
   // El cliente debe pertenecer a este rep.
   const { data: sc } = await supabaseAdmin.from('sales_clients').select('id').eq('rep_id', repId).eq('user_id', clientUserId).maybeSingle();
   if (!sc) return { ok: false, error: 'no es tu cliente' };
+
+  // --- Candados anti-abuso (0 = ilimitado) ---
+  const maxPer = Number(s.trial_max_per_client) || 0;
+  const maxTotal = Number(s.trial_max_total_days) || 0;
+  const dailyCap = Number(s.trial_daily_cap) || 0;
+
+  // Pruebas previas de ESTE cliente (de cualquier vendedor) → nº y días acumulados.
+  let priorCount = 0, priorDays = 0;
+  if (maxPer > 0 || maxTotal > 0) {
+    const { data: prev } = await supabaseAdmin.from('sales_grants').select('value').eq('client_user_id', clientUserId).eq('kind', 'trial');
+    priorCount = (prev || []).length;
+    priorDays = (prev || []).reduce((a: number, g: any) => a + (Number(g.value) || 0), 0);
+  }
+  if (maxPer > 0 && priorCount >= maxPer) return { ok: false, error: `Este cliente ya recibió el máximo de ${maxPer} prueba${maxPer === 1 ? '' : 's'}.` };
+
+  // Límite diario de pruebas de ESTE vendedor (ventana de 24h).
+  if (dailyCap > 0) {
+    const since = new Date(Date.now() - 86400000).toISOString();
+    const { count } = await supabaseAdmin.from('sales_grants').select('*', { count: 'exact', head: true }).eq('rep_id', repId).eq('kind', 'trial').gte('created_at', since);
+    if ((count || 0) >= dailyCap) return { ok: false, error: `Llegaste al límite de ${dailyCap} pruebas en 24 horas.` };
+  }
+
+  // Días a conceder: tope por prueba + que la suma no pase el tope total del cliente.
+  let d = Math.max(1, Math.min(Number(days) || 0, s.trial_max_days || 14));
+  if (maxTotal > 0) {
+    const remaining = maxTotal - priorDays;
+    if (remaining <= 0) return { ok: false, error: `Este cliente ya alcanzó el máximo de ${maxTotal} días gratis acumulados.` };
+    if (d > remaining) d = remaining;   // recorta para no pasar el tope total
+  }
+
   const { data: prof } = await supabaseAdmin.from('profiles').select('plan,comp_plan,comp_until').eq('id', clientUserId).maybeSingle();
   const now = Date.now();
   const base = (prof as any)?.comp_until ? Math.max(now, new Date((prof as any).comp_until).getTime()) : now;

@@ -358,6 +358,19 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           {num('hold_days', 'Retención (días)')}
           {num('min_payout', 'Mínimo para pagar', '$')}
         </div>
+
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line,#2a3350)' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>Candados anti-abuso</div>
+          <div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', margin: '3px 0 10px', lineHeight: 1.5 }}>
+            Evita que un vendedor deje a un cliente gratis para siempre o inunde de cupones. <b>0 = sin límite.</b> Se aplican en el servidor, no solo en la pantalla.
+          </div>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {num('trial_max_per_client', 'Máx. pruebas por cliente')}
+            {num('trial_max_total_days', 'Máx. días gratis por cliente')}
+            {num('trial_daily_cap', 'Máx. pruebas por día (vendedor)')}
+            {num('discount_daily_cap', 'Máx. cupones por día (vendedor)')}
+          </div>
+        </div>
         <div style={{ display: 'grid', gap: 6, marginTop: 14, maxWidth: 460 }}>
           {tog('enabled', 'Programa activo')}
           {tog('auto_payout', 'Pago automático cuando el saldo madura')}
