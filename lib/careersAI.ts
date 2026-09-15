@@ -38,14 +38,20 @@ export async function matchCv(
     ? 'Eres reclutador senior. Compara el CV adjunto con la vacante y evalúa el ENCAJE. Responde SOLO con JSON: {"score":0-100,"summary":"1-2 frases","strengths":["",""],"gaps":["",""]}. Sé objetivo: score alto solo si cumple requisitos clave. strengths y gaps: 2-4 items cortos. No inventes datos que no estén en el CV.'
     : 'You are a senior recruiter. Compare the attached CV with the job and rate the FIT. Reply ONLY with JSON: {"score":0-100,"summary":"1-2 sentences","strengths":["",""],"gaps":["",""]}. Be objective: high score only if key requirements are met. strengths and gaps: 2-4 short items. Do not invent data not in the CV.';
   const jobText = `${es ? 'VACANTE' : 'JOB'}: ${job.title || ''}\n${es ? 'Etiquetas' : 'Tags'}: ${(job.tags || []).join(', ')}\n\n${job.description || ''}`.slice(0, 6000);
+  const mt = isPdf ? 'application/pdf' : (file.mediaType || 'image/png');
   const doc = isPdf
     ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: file.base64 } }
-    : { type: 'image', source: { type: 'base64', media_type: file.mediaType || 'image/png', data: file.base64 } };
+    : { type: 'image', source: { type: 'base64', media_type: mt, data: file.base64 } };
+  // Modelo con visión/documentos (haiku a veces no lee PDF); permite override.
+  const model = process.env.ONYX_AI_CV_MODEL || process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
+  // Timeout para que el servidor nunca se quede colgado.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 45000);
   try {
-    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
+    const headers: any = { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' };
+    if (isPdf) headers['anthropic-beta'] = 'pdfs-2024-09-25';
     const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      method: 'POST', signal: ctrl.signal, headers,
       body: JSON.stringify({ model, max_tokens: 900, system, messages: [{ role: 'user', content: [doc, { type: 'text', text: jobText }] }] }),
     });
     if (!r.ok) return null;
@@ -60,7 +66,7 @@ export async function matchCv(
       strengths: Array.isArray(j.strengths) ? j.strengths.map((x: any) => String(x)).slice(0, 5) : [],
       gaps: Array.isArray(j.gaps) ? j.gaps.map((x: any) => String(x)).slice(0, 5) : [],
     };
-  } catch { return null; }
+  } catch { return null; } finally { clearTimeout(timer); }
 }
 
 // Traduce los campos de la plaza al idioma destino ('en' o 'es').

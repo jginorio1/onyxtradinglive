@@ -107,8 +107,17 @@ export default function CareersAdmin({ canManage = true }: { canManage?: boolean
 // Botón para analizar el CV de una postulación contra su vacante (IA).
 function MatchButton({ appId, has, act, btn }: any) {
   const [busy, setBusy] = useState(false);
+  async function run() {
+    setBusy(true);
+    try {
+      const r = await act({ action: 'match_cv', app_id: appId });
+      if (r && r.ok === false) alert(r.error || 'No se pudo analizar el CV.');
+    } catch (e: any) {
+      alert('El análisis falló o tardó demasiado. Intenta de nuevo. ' + (e?.message || ''));
+    } finally { setBusy(false); }
+  }
   return (
-    <button disabled={busy} onClick={async () => { setBusy(true); await act({ action: 'match_cv', app_id: appId }); setBusy(false); }}
+    <button disabled={busy} onClick={run}
       style={{ ...btn, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)' }}>
       {busy ? 'Analizando…' : has ? '↻ Re-analizar' : '🎯 Analizar CV'}
     </button>

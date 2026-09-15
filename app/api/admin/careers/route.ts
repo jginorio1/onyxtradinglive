@@ -6,6 +6,7 @@ import { companyContext, saveCompanyContext } from '@/lib/companyContext';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const maxDuration = 60; // leer un CV con IA puede tardar; evita cortes tempranos
 
 // GET · plazas + postulaciones + ajustes.
 export async function GET() {
