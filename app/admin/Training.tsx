@@ -548,6 +548,14 @@ function Ajustes({ s, canManage, L, post, reload, flash }: any) {
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 6 }}>{L('Consejo: para que barajar y elegir al azar sean efectivos, carga más preguntas por ruta y usa “Preguntas al azar” en el examen.', 'Tip: for shuffling/random to matter, add more questions per track and use “Random questions”.')}</div>
       <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 8 }}>{L('Con el gating activo, un vendedor no recibe leads automáticos hasta aprobar las rutas marcadas como “requisito para leads”.', 'With gating on, a rep gets no auto-assigned leads until they pass the tracks marked as lead requirements.')}</div>
+
+      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', margin: '16px 0 4px' }}>{L('Certificado', 'Certificate')}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10 }}>
+        <div><span style={lab}>{L('Firmante del certificado', 'Certificate signer')}<Hint text={L('Nombre que aparece firmando el certificado (bloque “Emisor · Firma autorizada”). Suele ser el responsable de formación o el nombre de la empresa.', 'Name shown signing the certificate (the “Issuer · Authorized signature” block). Usually the training lead or the company name.')} /></span><input style={inp} value={f.signer_name || ''} placeholder="Onyx Trading Live" onChange={(e) => up('signer_name', e.target.value)} /></div>
+        <div><span style={lab}>{L('Cargo del firmante', 'Signer role')}<Hint text={L('Cargo que se imprime bajo la firma. Ej: “Dirección de Formación”.', 'Job title printed under the signature. E.g. “Training Department”.')} /></span><input style={inp} value={f.signer_role || ''} placeholder={L('Dirección de Formación', 'Training Department')} onChange={(e) => up('signer_role', e.target.value)} /></div>
+      </div>
+      <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 6 }}>{L('El certificado incluye un QR de verificación que apunta a una página pública donde cualquiera puede comprobar el folio.', 'The certificate includes a verification QR that points to a public page where anyone can check the folio.')}</div>
+
       {canManage && <button style={{ ...btnP, marginTop: 14 }} onClick={save}>{L('Guardar ajustes', 'Save settings')}</button>}
     </div>
   );
