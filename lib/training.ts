@@ -28,6 +28,9 @@ export type TrainingSettings = {
   require_attestation: boolean; // exige la casilla "respondí yo mismo" al enviar
   min_read_sec: number;      // segundos mínimos en una lección antes de marcarla
   onboarding_block: boolean; // muestra aviso de onboarding obligatorio hasta certificar
+  // --- certificado ---
+  signer_name: string;       // nombre de quien firma el certificado
+  signer_role: string;       // cargo del firmante (p. ej. "Dirección de Formación")
 };
 
 const DEFAULTS: TrainingSettings = {
@@ -48,6 +51,8 @@ const DEFAULTS: TrainingSettings = {
   require_attestation: true,
   min_read_sec: 15,
   onboarding_block: false,
+  signer_name: 'Onyx Trading Live',
+  signer_role: 'Dirección de Formación',
 };
 
 export async function trainingSettings(): Promise<TrainingSettings> {
@@ -312,20 +317,52 @@ export async function competencyOk(userId: string): Promise<boolean> {
 }
 
 // -------- DATOS DEL CERTIFICADO (para el PDF) --------
-export async function certData(userId: string, trackId: string, lang: Lang = 'es'): Promise<{ brand: string; personName: string; trackTitle: string; score: number; code: string; issuedAt: string; expiresAt: string | null } | null> {
+export async function certData(userId: string, trackId: string, lang: Lang = 'es'): Promise<{ brand: string; personName: string; trackTitle: string; score: number; code: string; issuedAt: string; expiresAt: string | null; signerName: string; signerRole: string; verifyUrl: string } | null> {
   const { data: cert } = await supabaseAdmin.from('training_certificates').select('*').eq('user_id', userId).eq('track_id', trackId).maybeSingle();
   if (!cert) return null;
   const s = await trainingSettings();
   const { data: t } = await supabaseAdmin.from('training_tracks').select('title_es,title_en').eq('id', trackId).maybeSingle();
   const { data: p } = await supabaseAdmin.from('profiles').select('name,email').eq('id', userId).maybeSingle();
+  const app = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
+  const code = (cert as any).code || '';
+  // El emisor es la marca; el nombre del alumno cae al email antes que a "Onyx".
+  const person = (p as any)?.name || (p as any)?.email || '';
   return {
     brand: s.brand_name,
-    personName: (p as any)?.name || (p as any)?.email || 'Onyx',
+    personName: person,
     trackTitle: t ? T(t, 'title', lang) : '',
     score: (cert as any).score || 0,
-    code: (cert as any).code || '',
+    code,
     issuedAt: (cert as any).issued_at,
     expiresAt: (cert as any).expires_at || null,
+    signerName: s.signer_name || s.brand_name || 'Onyx Trading Live',
+    signerRole: s.signer_role || 'Dirección de Formación',
+    verifyUrl: `${app}/verificar-certificado?folio=${encodeURIComponent(code)}`,
+  };
+}
+
+// Verificación pública de un folio de certificado (sin exponer datos sensibles).
+export async function verifyCertificate(code: string): Promise<{ valid: boolean; personName?: string; trackTitle?: string; score?: number; issuedAt?: string; expiresAt?: string | null; expired?: boolean; brand?: string } | null> {
+  const folio = String(code || '').trim();
+  if (!folio) return { valid: false };
+  const { data: cert } = await supabaseAdmin.from('training_certificates').select('*').eq('code', folio).maybeSingle();
+  if (!cert) return { valid: false };
+  const s = await trainingSettings();
+  const [{ data: t }, { data: p }] = await Promise.all([
+    supabaseAdmin.from('training_tracks').select('title_es,title_en').eq('id', (cert as any).track_id).maybeSingle(),
+    supabaseAdmin.from('profiles').select('name,email').eq('id', (cert as any).user_id).maybeSingle(),
+  ]);
+  const exp = (cert as any).expires_at || null;
+  const expired = !!exp && new Date(exp).getTime() < Date.now();
+  return {
+    valid: true,
+    brand: s.brand_name,
+    personName: (p as any)?.name || (p as any)?.email || '—',
+    trackTitle: t ? (t.title_es || t.title_en || '') : '',
+    score: (cert as any).score || 0,
+    issuedAt: (cert as any).issued_at,
+    expiresAt: exp,
+    expired,
   };
 }
 

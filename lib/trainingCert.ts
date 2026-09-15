@@ -1,52 +1,134 @@
 // Certificado de formación en PDF (horizontal) con marca Onyx. pdf-lib dinámico.
 // Es un comprobante interno de aprobación de una ruta del centro de formación.
+// Diseño: orla doble (oro + púrpura) con floreados en las esquinas, sello de
+// laurel con "OFICIAL", nombre en serif, bloque de firma del emisor, acentos
+// preservados (WinAnsi) y QR de verificación del folio.
 
 export async function certificatePdf(opts: {
   brand: string; personName: string; trackTitle: string; score: number;
   code: string; issuedAt: string; expiresAt?: string | null; lang?: 'es' | 'en';
+  signerName?: string; signerRole?: string; verifyUrl?: string;
 }): Promise<Uint8Array> {
   const en = opts.lang === 'en';
   // @ts-ignore
-  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+  const { PDFDocument, StandardFonts, rgb, degrees } = await import('pdf-lib');
   const doc = await PDFDocument.create();
-  const page = doc.addPage([842, 595]); // A4 horizontal
+  const W = 842, H = 595;
+  const page = doc.addPage([W, H]); // A4 horizontal
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const italic = await doc.embedFont(StandardFonts.HelveticaOblique);
-  const brand = rgb(0.486, 0.549, 1);
-  const dark = rgb(0.06, 0.075, 0.14);
+  const serif = await doc.embedFont(StandardFonts.TimesRomanBold);        // nombre elegante
+  const serifIt = await doc.embedFont(StandardFonts.TimesRomanItalic);
+
+  const purple = rgb(0.33, 0.29, 0.72);   // púrpura profundo (orla exterior)
+  const brand = rgb(0.486, 0.549, 1);     // acento Onyx
+  const gold = rgb(0.76, 0.60, 0.24);     // oro (orla interior + sello)
+  const goldLt = rgb(0.90, 0.79, 0.46);
+  const dark = rgb(0.07, 0.08, 0.15);
   const gray = rgb(0.42, 0.45, 0.5);
-  const clean = (s: string) => String(s || '').replace(/[^\x00-\xFF]/g, '-');
-  const W = 842;
+  const cream = rgb(0.995, 0.98, 0.945);  // fondo del sello
 
-  // Marco.
-  page.drawRectangle({ x: 24, y: 24, width: W - 48, height: 595 - 48, borderColor: brand, borderWidth: 2, color: rgb(1, 1, 1) });
-  page.drawRectangle({ x: 34, y: 34, width: W - 68, height: 595 - 68, borderColor: rgb(0.85, 0.87, 1), borderWidth: 1 });
+  // WinAnsi cubre á é í ó ú ñ ¡ ¿ etc.; solo quitamos lo que quede fuera de 0x00–0xFF.
+  const clean = (s: string) => String(s || '').replace(/[^\x00-\xFF]/g, '');
 
-  // Centrado horizontal.
-  const center = (s: string, y: number, size: number, f = font, color = dark) => {
-    const t = clean(s); const w = f.widthOfTextAtSize(t, size);
-    page.drawText(t, { x: (W - w) / 2, y, size, font: f, color });
+  // Texto centrado con auto-ajuste de tamaño para no desbordar el marco.
+  const centerFit = (s: string, y: number, size: number, f = font, color = dark, maxW = W - 200) => {
+    const t = clean(s) || '—'; let sz = size;
+    while (sz > 8 && f.widthOfTextAtSize(t, sz) > maxW) sz -= 0.5;
+    const w = f.widthOfTextAtSize(t, sz);
+    page.drawText(t, { x: (W - w) / 2, y, size: sz, font: f, color });
+    return sz;
   };
+  const textW = (s: string, sz: number, f = font) => f.widthOfTextAtSize(clean(s), sz);
 
-  center(opts.brand || 'Onyx Trading Live', 520, 16, bold, brand);
-  center(en ? 'CERTIFICATE OF COMPLETION' : 'CERTIFICADO DE FORMACION', 470, 30, bold);
-  center(en ? 'This certifies that' : 'Se certifica que', 420, 13, italic, gray);
-  center(opts.personName || '-', 385, 26, bold);
-  center(en ? 'has successfully completed the track' : 'ha completado satisfactoriamente la ruta', 345, 13, italic, gray);
-  center(opts.trackTitle || '-', 312, 20, bold, brand);
-  center(`${en ? 'Score' : 'Calificacion'}: ${opts.score}/100`, 275, 14, bold);
+  // ---- Fondo + orla doble ----
+  page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: rgb(1, 1, 1) });
+  page.drawRectangle({ x: 20, y: 20, width: W - 40, height: H - 40, borderColor: purple, borderWidth: 3 });
+  page.drawRectangle({ x: 30, y: 30, width: W - 60, height: H - 60, borderColor: gold, borderWidth: 1.4 });
 
-  // Pie: folio + fechas.
+  // ---- Floreados en las 4 esquinas ----
+  const flourish = (cx: number, cy: number, sx: number, sy: number) => {
+    // dos trazos en L + diamante interior
+    page.drawLine({ start: { x: cx, y: cy }, end: { x: cx + 34 * sx, y: cy }, thickness: 1.4, color: gold });
+    page.drawLine({ start: { x: cx, y: cy }, end: { x: cx, y: cy + 34 * sy }, thickness: 1.4, color: gold });
+    page.drawLine({ start: { x: cx + 8 * sx, y: cy + 8 * sy }, end: { x: cx + 24 * sx, y: cy + 8 * sy }, thickness: 0.8, color: goldLt });
+    page.drawLine({ start: { x: cx + 8 * sx, y: cy + 8 * sy }, end: { x: cx + 8 * sx, y: cy + 24 * sy }, thickness: 0.8, color: goldLt });
+    page.drawEllipse({ x: cx + 8 * sx, y: cy + 8 * sy, xScale: 3, yScale: 3, color: gold });
+  };
+  flourish(40, 40, 1, 1); flourish(W - 40, 40, -1, 1); flourish(40, H - 40, 1, -1); flourish(W - 40, H - 40, -1, -1);
+
+  // ---- Cabecera ----
+  centerFit((opts.brand || 'Onyx Academy · Formación interna').toUpperCase(), 536, 12, bold, brand, W - 260);
+  page.drawLine({ start: { x: W / 2 - 60, y: 528 }, end: { x: W / 2 + 60, y: 528 }, thickness: 0.8, color: goldLt });
+
+  centerFit(en ? 'CERTIFICATE' : 'CERTIFICADO', 476, 46, serif, dark, W - 200);
+  centerFit(en ? 'of completion' : 'de finalización', 450, 16, serifIt, gold, W - 200);
+
+  centerFit(en ? 'Proudly awarded to' : 'Se otorga con orgullo a', 410, 12.5, italic, gray);
+  centerFit(opts.personName, 372, 30, serif, dark, W - 220);
+  // Regla decorativa bajo el nombre.
+  { const w = Math.min(360, Math.max(160, textW(opts.personName, 30, serif) + 60));
+    page.drawLine({ start: { x: (W - w) / 2, y: 360 }, end: { x: (W + w) / 2, y: 360 }, thickness: 1, color: goldLt }); }
+
+  centerFit(en ? 'for successfully completing the track' : 'por completar satisfactoriamente la ruta', 336, 12.5, italic, gray);
+  centerFit(opts.trackTitle, 306, 20, bold, brand, W - 240);
+
+  // ---- Píldora de calificación ----
+  { const label = `${en ? 'SCORE' : 'CALIFICACIÓN'}  ${opts.score} / 100`;
+    const sz = 12; const pw = textW(label, sz, bold) + 34; const px = (W - pw) / 2; const py = 262;
+    page.drawRectangle({ x: px, y: py, width: pw, height: 26, color: rgb(0.96, 0.97, 1), borderColor: brand, borderWidth: 1 });
+    page.drawText(clean(label), { x: px + 17, y: py + 8, size: sz, font: bold, color: brand }); }
+
+  // ---- Sello de laurel (centro-inferior) ----
+  const cx = W / 2, cy = 168, R = 46;
+  page.drawEllipse({ x: cx, y: cy, xScale: R, yScale: R, color: cream, borderColor: gold, borderWidth: 2 });
+  page.drawEllipse({ x: cx, y: cy, xScale: R - 6, yScale: R - 6, borderColor: goldLt, borderWidth: 1 });
+  // Corona de laurel: hojas (elipses) a lo largo de dos arcos laterales.
+  const leaf = (ang: number) => {
+    const rad = ang * Math.PI / 180; const lr = R - 3;
+    const x = cx + lr * Math.cos(rad), y = cy + lr * Math.sin(rad);
+    page.drawEllipse({ x, y, xScale: 6, yScale: 2.6, rotate: degrees(ang + 90), color: gold });
+  };
+  [250, 236, 222, 208, 194, 180, 166].forEach(leaf);            // rama izquierda
+  [290, 304, 318, 332, 346, 360, 14].forEach(leaf);             // rama derecha
+  // Check central (drawSvgPath usa Y hacia abajo, así que el vértice va abajo).
+  page.drawSvgPath('M -12 0 L -3 10 L 15 -11', { x: cx, y: cy + 2, borderColor: purple, borderWidth: 3.4, scale: 1 });
+  // "OFICIAL" + cinta.
+  { const t = 'OFICIAL'; const sz = 8; const w = textW(t, sz, bold);
+    page.drawText(t, { x: cx - w / 2, y: cy - R - 4, size: sz, font: bold, color: purple }); }
+
+  // ---- Bloques de firma (izquierda: emisor · derecha: fechas) ----
   const issued = new Date(opts.issuedAt).toLocaleDateString(en ? 'en-US' : 'es-ES');
   const exp = opts.expiresAt ? new Date(opts.expiresAt).toLocaleDateString(en ? 'en-US' : 'es-ES') : (en ? 'No expiry' : 'No caduca');
-  page.drawLine({ start: { x: 120, y: 150 }, end: { x: 340, y: 150 }, thickness: 1, color: gray });
-  page.drawText(clean(en ? 'Issued' : 'Emitido'), { x: 120, y: 132, size: 10, font, color: gray });
-  page.drawText(clean(issued), { x: 120, y: 116, size: 12, font: bold, color: dark });
-  page.drawLine({ start: { x: 500, y: 150 }, end: { x: 720, y: 150 }, thickness: 1, color: gray });
-  page.drawText(clean(en ? 'Valid until' : 'Valido hasta'), { x: 500, y: 132, size: 10, font, color: gray });
-  page.drawText(clean(exp), { x: 500, y: 116, size: 12, font: bold, color: dark });
-  center(`${en ? 'Certificate ID' : 'Folio'}: ${opts.code || '-'}`, 70, 10, font, gray);
+
+  // Emisor / firma (izquierda).
+  const lx = 92;
+  page.drawText(clean(opts.signerName || opts.brand || 'Onyx Trading Live'), { x: lx, y: 128, size: 13, font: serif, color: dark });
+  page.drawLine({ start: { x: lx, y: 122 }, end: { x: lx + 220, y: 122 }, thickness: 1, color: gray });
+  page.drawText(clean(en ? 'Issuer · Authorized signature' : 'Emisor · Firma autorizada'), { x: lx, y: 108, size: 8.5, font, color: gray });
+  page.drawText(clean(opts.signerRole || (en ? 'Training Dept.' : 'Dirección de Formación')), { x: lx, y: 95, size: 8.5, font: bold, color: gray });
+
+  // Fechas (derecha).
+  const rx = 530;
+  page.drawText(clean(issued), { x: rx, y: 128, size: 13, font: serif, color: dark });
+  page.drawLine({ start: { x: rx, y: 122 }, end: { x: rx + 200, y: 122 }, thickness: 1, color: gray });
+  page.drawText(clean(en ? 'Issued' : 'Emitido') + `   ·   ${en ? 'Valid until' : 'Válido hasta'}: ${exp}`, { x: rx, y: 108, size: 8.5, font, color: gray });
+  page.drawText(clean(`${en ? 'Certificate ID' : 'Folio'}: ${opts.code || '—'}`), { x: rx, y: 95, size: 8.5, font: bold, color: dark });
+
+  // ---- QR de verificación (esquina inferior derecha) ----
+  if (opts.verifyUrl) {
+    try {
+      // @ts-ignore
+      const QRCode = (await import('qrcode')).default || (await import('qrcode'));
+      const buf: Buffer = await QRCode.toBuffer(opts.verifyUrl, { type: 'png', margin: 0, width: 132, errorCorrectionLevel: 'M', color: { dark: '#1a1830', light: '#ffffff' } });
+      const png = await doc.embedPng(new Uint8Array(buf));
+      const qs = 56; const qx = W - 56 - qs, qy = 44;
+      page.drawImage(png, { x: qx, y: qy, width: qs, height: qs });
+      const cap = en ? 'Verify' : 'Verifica';
+      page.drawText(cap, { x: qx + (qs - textW(cap, 7, font)) / 2, y: qy - 10, size: 7, font, color: gray });
+    } catch { /* si falta qrcode, seguimos sin QR */ }
+  }
 
   return await doc.save();
 }
