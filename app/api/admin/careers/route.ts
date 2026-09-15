@@ -43,11 +43,38 @@ export async function POST(req: Request) {
       if (!r) return NextResponse.json({ ok: false, error: 'IA no disponible (falta ANTHROPIC_API_KEY)' }, { status: 400 });
       return NextResponse.json({ ok: true, draft: r });
     }
+    // Sugerir SOLO las etiquetas/skills del puesto.
+    if (action === 'suggest_skills') {
+      const { suggestSkills } = await import('@/lib/careersAI');
+      const r = await suggestSkills(b.ctx || {}, b.lang === 'en' ? 'en' : 'es');
+      if (!r) return NextResponse.json({ ok: false, error: 'IA no disponible (falta ANTHROPIC_API_KEY)' }, { status: 400 });
+      return NextResponse.json({ ok: true, tags: r });
+    }
     // Auditar la plaza con IA (puntaje + sugerencias).
     if (action === 'audit') {
       const { auditJob } = await import('@/lib/careersAI');
       const r = await auditJob(b.job || {}, b.lang === 'en' ? 'en' : 'es');
       return NextResponse.json({ ok: true, audit: r });
+    }
+    // Analizar el CV de una postulación contra su vacante (IA lee el archivo).
+    if (action === 'match_cv' && b.app_id) {
+      const { data: app } = await supabaseAdmin.from('job_applications').select('id, job_id, resume_url').eq('id', b.app_id).maybeSingle();
+      if (!app || !(app as any).resume_url) return NextResponse.json({ ok: false, error: 'La postulación no tiene CV adjunto.' }, { status: 400 });
+      // Descargar el CV del bucket privado.
+      const { data: blob, error: dlErr } = await supabaseAdmin.storage.from('careers-cv').download((app as any).resume_url);
+      if (dlErr || !blob) return NextResponse.json({ ok: false, error: 'No se pudo leer el CV.' }, { status: 400 });
+      const buf = Buffer.from(await blob.arrayBuffer());
+      if (buf.length > 8 * 1024 * 1024) return NextResponse.json({ ok: false, error: 'El CV es muy grande para analizar (máx 8 MB).' }, { status: 400 });
+      const mediaType = (blob as any).type || (/\.pdf$/i.test((app as any).resume_url) ? 'application/pdf' : 'image/png');
+      // Traer la vacante ligada.
+      let job: any = {};
+      if ((app as any).job_id) { const { data: j } = await supabaseAdmin.from('job_openings').select('title, description, tags').eq('id', (app as any).job_id).maybeSingle(); job = j || {}; }
+      const { matchCv } = await import('@/lib/careersAI');
+      const r = await matchCv(job, { base64: buf.toString('base64'), mediaType }, b.lang === 'en' ? 'en' : 'es');
+      if (!r) return NextResponse.json({ ok: false, error: 'IA no disponible o no pudo leer el CV.' }, { status: 400 });
+      const summary = [r.summary, r.strengths?.length ? '✓ ' + r.strengths.join(' · ') : '', r.gaps?.length ? '△ ' + r.gaps.join(' · ') : ''].filter(Boolean).join('\n');
+      await supabaseAdmin.from('job_applications').update({ match_score: r.score, match_summary: summary, match_at: new Date().toISOString() }).eq('id', b.app_id);
+      return NextResponse.json({ ok: true, match: { score: r.score, summary } });
     }
     return NextResponse.json({ ok: false, error: 'acción desconocida' }, { status: 400 });
   } catch (e: any) {

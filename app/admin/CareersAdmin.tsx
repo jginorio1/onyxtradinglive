@@ -75,14 +75,19 @@ export default function CareersAdmin({ canManage = true }: { canManage?: boolean
           apps.map((a) => (
             <div key={a.id} style={{ ...card, marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                <div><b>{a.name}</b> <span className="muted" style={{ fontSize: 12 }}>· {a.email} · {a.country || '—'} · {a.job_title || 'general'}</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {typeof a.match_score === 'number' && <span title="Encaje con la vacante (IA)" style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, color: '#fff', background: a.match_score >= 75 ? '#5ed6a0' : a.match_score >= 50 ? '#e5a53a' : '#f0736f' }}>{a.match_score}%</span>}
+                  <div><b>{a.name}</b> <span className="muted" style={{ fontSize: 12 }}>· {a.email} · {a.country || '—'} · {a.job_title || 'general'}</span></div>
+                </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   {a.resume_signed ? <a href={a.resume_signed} target="_blank" rel="noopener" style={{ ...btn, textDecoration: 'none' }}>Ver CV</a> : <span className="muted" style={{ fontSize: 11 }}>sin CV</span>}
+                  {canManage && a.resume_signed && <MatchButton appId={a.id} has={typeof a.match_score === 'number'} act={act} btn={btn} />}
                   {canManage && <select value={a.status} onChange={(e) => act({ action: 'set_app_status', app_id: a.id, status: e.target.value })} style={{ ...inp, borderColor: (APPST[a.status] || APPST.new).c }}>
                     {Object.entries(APPST).map(([k, v]) => <option key={k} value={k}>{v.l}</option>)}
                   </select>}
                 </div>
               </div>
+              {a.match_summary && <div style={{ fontSize: 12.5, marginTop: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--bg,#0e1220)', border: '1px solid var(--line,#2a3350)', whiteSpace: 'pre-wrap', color: 'var(--tx,#e8ecf5)' }}><b style={{ fontSize: 11, color: 'var(--accent,#8b93ff)' }}>Onyx AI · análisis del CV</b>{'\n'}{a.match_summary}</div>}
               {a.message && <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>{a.message}</div>}
             </div>
           ))}
@@ -96,6 +101,17 @@ export default function CareersAdmin({ canManage = true }: { canManage?: boolean
   );
 }
 
+// Botón para analizar el CV de una postulación contra su vacante (IA).
+function MatchButton({ appId, has, act, btn }: any) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button disabled={busy} onClick={async () => { setBusy(true); await act({ action: 'match_cv', app_id: appId }); setBusy(false); }}
+      style={{ ...btn, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)' }}>
+      {busy ? 'Analizando…' : has ? '↻ Re-analizar' : '🎯 Analizar CV'}
+    </button>
+  );
+}
+
 function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
   const [f, setF] = useState<any>({ ...p, tags: (p.tags || []).join(', '), tags_en: (p.tags_en || []).join(', ') });
   const [lang, setLang] = useState<'es' | 'en'>('es');
@@ -103,6 +119,7 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
   const [audit, setAudit] = useState<any>(null);
   const [busyA, setBusyA] = useState(false);
   const [busyG, setBusyG] = useState(false);
+  const [busyS, setBusyS] = useState(false);
   const u = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
   const lbl: React.CSSProperties = { fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'block', marginBottom: 4 };
   // Sufijo de campo según idioma que se edita.
@@ -145,6 +162,18 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
       }));
     }
     setBusyG(false);
+  }
+  async function suggest() {
+    if (!String(f[F('title')] || '').trim()) { alert(lang === 'es' ? 'Escribe primero el título de la plaza.' : 'Write the job title first.'); return; }
+    setBusyS(true);
+    const r = await act({ action: 'suggest_skills', lang, ctx: { title: f[F('title')], department: f.department, description: f[F('description')] } });
+    if (r?.tags?.length) {
+      const key = lang === 'en' ? 'tags_en' : 'tags';
+      const have = String(f[key] || '').split(',').map((t: string) => t.trim()).filter(Boolean);
+      const merged = Array.from(new Set([...have, ...r.tags])).slice(0, 12);
+      setF((x: any) => ({ ...x, [key]: merged.join(', ') }));
+    }
+    setBusyS(false);
   }
   async function runAudit() {
     setBusyA(true);
@@ -189,7 +218,13 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
           <label><span style={lbl}>Rango salarial (opcional)</span><input style={{ ...inp, width: '100%' }} value={f.salary_range || ''} onChange={(e) => u('salary_range', e.target.value)} placeholder="$1500 - $2500" /></label>
           <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Resumen {lang === 'en' ? '(EN)' : ''} (sale en la tarjeta)</span><textarea style={{ ...inp, width: '100%', minHeight: 50, resize: 'vertical' }} value={f[F('summary')] || ''} onChange={(e) => u(F('summary'), e.target.value)} /></label>
           <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Descripción completa {lang === 'en' ? '(EN)' : ''}</span><textarea style={{ ...inp, width: '100%', minHeight: 120, resize: 'vertical' }} value={f[F('description')] || ''} onChange={(e) => u(F('description'), e.target.value)} placeholder="Responsabilidades, requisitos, beneficios…" /></label>
-          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Etiquetas {lang === 'en' ? '(EN)' : ''} (separadas por coma)</span><input style={{ ...inp, width: '100%' }} value={(lang === 'en' ? f.tags_en : f.tags) || ''} onChange={(e) => u(lang === 'en' ? 'tags_en' : 'tags', e.target.value)} placeholder="React, Node, Remoto" /></label>
+          <label style={{ gridColumn: '1 / -1' }}>
+            <span style={{ ...lbl, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Etiquetas {lang === 'en' ? '(EN)' : ''} (separadas por coma)</span>
+              <button type="button" onClick={suggest} disabled={busyS} style={{ ...btn, padding: '3px 9px', fontSize: 11, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)' }}>{busyS ? (lang === 'es' ? 'Sugiriendo…' : 'Suggesting…') : (lang === 'es' ? '✨ Sugerir skills' : '✨ Suggest skills')}</button>
+            </span>
+            <input style={{ ...inp, width: '100%' }} value={(lang === 'en' ? f.tags_en : f.tags) || ''} onChange={(e) => u(lang === 'en' ? 'tags_en' : 'tags', e.target.value)} placeholder="React, Node, Remoto" />
+          </label>
           <label><span style={lbl}>Estado</span><select style={{ ...inp, width: '100%' }} value={f.status} onChange={(e) => u('status', e.target.value)}><option value="open">Publicada</option><option value="draft">Borrador</option><option value="closed">Cerrada</option></select></label>
           <label><span style={lbl}>Orden (menor = arriba)</span><input type="number" style={{ ...inp, width: '100%' }} value={f.sort ?? 0} onChange={(e) => u('sort', Number(e.target.value))} /></label>
         </div>
