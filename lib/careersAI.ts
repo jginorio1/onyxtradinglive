@@ -130,6 +130,42 @@ export async function suggestSkills(
 
 export type AuditItem = { level: 'good' | 'warn' | 'info'; text: string };
 
+// Reescribe la plaza APLICANDO las sugerencias de la auditoría. No inventa datos
+// (salario exacto, métricas, fechas): para eso deja un marcador claro entre
+// corchetes para que el dueño lo complete. Mejora estructura, claridad, cómo
+// postularse, y nombra herramientas reales del stack.
+export async function applyAudit(
+  job: { title?: string; summary?: string; description?: string; tags?: string[]; salary_range?: string; location?: string; type?: string; department?: string },
+  items: AuditItem[],
+  lang: 'es' | 'en' = 'es',
+  company = '',
+): Promise<{ title: string; summary: string; description: string; tags: string[] } | null> {
+  const es = lang === 'es';
+  const sugg = (items || []).map((it) => `- ${it.text}`).join('\n').slice(0, 3000);
+  const ctxLine = company ? `\n\nEmpresa (nombra sus herramientas/stack reales cuando aplique):\n${company}` : '';
+  const system = (es
+    ? `Eres reclutador senior. Reescribe la vacante APLICANDO las sugerencias de auditoría. Responde SOLO con JSON: {"title":"","summary":"","description":"","tags":["",""]}.
+REGLAS:
+- Aplica cada sugerencia que se pueda con el texto (estructura, claridad, responsabilidades, requisitos, cómo postularse, lenguaje inclusivo, skills del stack).
+- NO inventes datos que no tengas: salario exacto, métricas, fechas o hechos. Para esos, escribe un marcador entre corchetes que el dueño rellenará, p. ej. "[definir rango]", "[meta: reducir CAC en X%]".
+- Conserva lo que ya está bien. description con saltos de línea reales y secciones. tags 4-10, nombres técnicos como están.`
+    : `You are a senior recruiter. Rewrite the job posting APPLYING the audit suggestions. Reply ONLY with JSON: {"title":"","summary":"","description":"","tags":["",""]}.
+RULES:
+- Apply every suggestion you can with text (structure, clarity, responsibilities, requirements, how to apply, inclusive language, stack skills).
+- Do NOT invent data you don't have: exact salary, metrics, dates or facts. For those, write a bracketed placeholder for the owner to fill, e.g. "[set range]", "[goal: cut CAC by X%]".
+- Keep what's already good. description with real line breaks and sections. tags 4-10, keep tech names as-is.`) + ctxLine;
+  const user = JSON.stringify({
+    current: { title: job.title || '', summary: job.summary || '', description: job.description || '', tags: job.tags || [], salary_range: job.salary_range || '', location: job.location || '', type: job.type || '', department: job.department || '' },
+    suggestions: sugg,
+  });
+  const j = parseJson(await anthropic(system, user, 2000));
+  if (!j) return null;
+  return {
+    title: String(j.title || job.title || ''), summary: String(j.summary || ''),
+    description: String(j.description || ''), tags: Array.isArray(j.tags) ? j.tags.map((t: any) => String(t)).slice(0, 12) : (job.tags || []),
+  };
+}
+
 // Audita la plaza: puntaje 0-100 + sugerencias según el rol.
 export async function auditJob(job: any, lang: 'es' | 'en' = 'es', company = ''): Promise<{ score: number; items: AuditItem[]; ai: boolean }> {
   const es = lang === 'es';

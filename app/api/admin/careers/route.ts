@@ -60,6 +60,13 @@ export async function POST(req: Request) {
       const r = await auditJob(b.job || {}, b.lang === 'en' ? 'en' : 'es', await companyContext());
       return NextResponse.json({ ok: true, audit: r });
     }
+    // Aplicar las sugerencias de la auditoría a la plaza (reescribe con IA).
+    if (action === 'apply_audit') {
+      const { applyAudit } = await import('@/lib/careersAI');
+      const r = await applyAudit(b.job || {}, Array.isArray(b.items) ? b.items : [], b.lang === 'en' ? 'en' : 'es', await companyContext());
+      if (!r) return NextResponse.json({ ok: false, error: 'IA no disponible (falta ANTHROPIC_API_KEY)' }, { status: 400 });
+      return NextResponse.json({ ok: true, applied: r });
+    }
     // Analizar el CV de una postulación contra su vacante (IA lee el archivo).
     if (action === 'match_cv' && b.app_id) {
       const { data: app } = await supabaseAdmin.from('job_applications').select('id, job_id, resume_url').eq('id', b.app_id).maybeSingle();

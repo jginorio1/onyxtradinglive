@@ -123,6 +123,8 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
   const [busyA, setBusyA] = useState(false);
   const [busyG, setBusyG] = useState(false);
   const [busyS, setBusyS] = useState(false);
+  const [busyAp, setBusyAp] = useState(false);
+  const [prevScore, setPrevScore] = useState<number | null>(null);
   const u = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
   const lbl: React.CSSProperties = { fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'block', marginBottom: 4 };
   // Sufijo de campo según idioma que se edita.
@@ -178,13 +180,38 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
     }
     setBusyS(false);
   }
-  async function runAudit() {
+  // Arma el objeto de la plaza en el idioma activo (para auditar/aplicar).
+  const jobNow = (src: any = f) => ({
+    title: src[F('title')], department: src.department, type: src.type, location: src.location, salary_range: src.salary_range,
+    summary: src[F('summary')], description: src[F('description')],
+    tags: String((lang === 'en' ? src.tags_en : src.tags) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
+  });
+  async function runAudit(jobOverride?: any) {
     setBusyA(true);
-    const r = await act({ action: 'audit', lang, job: {
-      title: f[F('title')], department: f.department, type: f.type, location: f.location, salary_range: f.salary_range,
-      summary: f[F('summary')], description: f[F('description')], tags: String((lang === 'en' ? f.tags_en : f.tags) || '').split(',').map((t: string) => t.trim()).filter(Boolean),
-    } });
+    if (!jobOverride) setPrevScore(null); // auditoría manual: sin comparación
+    const r = await act({ action: 'audit', lang, job: jobOverride || jobNow() });
     setAudit(r?.audit || null); setBusyA(false);
+    return r?.audit || null;
+  }
+  // Aplica las sugerencias con IA, rellena los campos y vuelve a auditar.
+  async function applyAndReaudit() {
+    if (!audit || !(audit.items || []).length) return;
+    setBusyAp(true);
+    const before = audit.score;
+    const r = await act({ action: 'apply_audit', lang, items: audit.items, job: jobNow() });
+    if (r?.applied) {
+      const a = r.applied;
+      const next = { ...f,
+        [F('title')]: a.title || f[F('title')],
+        [F('summary')]: a.summary,
+        [F('description')]: a.description,
+        [lang === 'en' ? 'tags_en' : 'tags']: (a.tags || []).join(', '),
+      };
+      setF(next);
+      setPrevScore(before);
+      await runAudit(jobNow(next));
+    }
+    setBusyAp(false);
   }
   async function save() {
     const r = await act({ action: 'save_position', position: { ...f,
@@ -242,10 +269,15 @@ function PositionModal({ p, act, onClose, inp, btn, btnP }: any) {
             </div>
           </div>
           {audit && <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+            {prevScore != null && <div style={{ fontSize: 12, fontWeight: 600, color: audit.score > prevScore ? '#5ed6a0' : audit.score < prevScore ? '#f0736f' : 'var(--mut,#9aa6bd)' }}>
+              {audit.score > prevScore ? `▲ Subió de ${prevScore} a ${audit.score} (+${audit.score - prevScore})` : audit.score < prevScore ? `▼ Bajó de ${prevScore} a ${audit.score}` : `Sin cambio (${audit.score})`}
+            </div>}
             {(audit.items || []).map((it: any, i: number) => (
               <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12.5, alignItems: 'flex-start' }}><span style={{ color: AC[it.level] || AC.info }}>{AI[it.level] || AI.info}</span><span>{it.text}</span></div>
             ))}
-            <div style={{ fontSize: 10.5, color: 'var(--mut,#9aa6bd)', marginTop: 2 }}>{audit.ai ? 'Sugerencias de IA según el rol.' : 'Sugerencias por reglas (IA no disponible).'}</div>
+            {/* Aplicar las sugerencias con IA y re-auditar en un clic. */}
+            {(audit.items || []).some((it: any) => it.level !== 'good') && <button onClick={applyAndReaudit} disabled={busyAp || busyA} style={{ ...btnP, marginTop: 6, alignSelf: 'flex-start', padding: '7px 14px' }}>{busyAp ? 'Aplicando y re-auditando…' : '✨ Aplicar sugerencias y re-auditar'}</button>}
+            <div style={{ fontSize: 10.5, color: 'var(--mut,#9aa6bd)', marginTop: 2 }}>{audit.ai ? 'Sugerencias de IA según el rol.' : 'Sugerencias por reglas (IA no disponible).'} Los datos que la IA no sabe (salario, métricas) los deja como [marcador] para que los completes.</div>
           </div>}
         </div>
 
