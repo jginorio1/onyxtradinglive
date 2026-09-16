@@ -1,9 +1,12 @@
 :root{
   --bg:#080a10; --bg2:#121829; --card:#1a2133; --card2:#232c42; --line:#38455f;
   --tx:#f2f5fb; --mut:#9aa6bd;
-  --brand:#7c8cff; --brand2:#a06bff;
-  --green:#34e2a0; --green2:#12b981; --red:#ff6b7d; --red2:#e23b55; --amber:#ffc04d; --cyan:#3ad0ff; --gold:#ffd45e; --purple:#b98bff;
-  --grad:linear-gradient(120deg,#7c8cff,#a06bff);
+  /* Violeta de marca (tema oscuro): subido en brillo/saturación para que resalte
+     sobre el fondo oscuro y no se vea apagado. Los botones usan texto oscuro
+     sobre este color, así que aclararlo mejora el contraste (no lo rompe). */
+  --brand:#8f9dff; --brand2:#b27dff;
+  --green:#34e2a0; --green2:#12b981; --red:#ff6b7d; --red2:#e23b55; --amber:#ffc04d; --cyan:#3ad0ff; --gold:#ffd45e; --purple:#c49bff;
+  --grad:linear-gradient(120deg,#8f9dff,#b27dff);
   --grad-green:linear-gradient(120deg,#34e2a0,#12b981);
   --grad-red:linear-gradient(120deg,#ff6b7d,#e23b55);
   /* Tonos "suaves" (texto claro sobre oscuro). Valor oscuro = el actual, para
@@ -942,6 +945,15 @@ html.native-app footer.site-footer{ display:none !important; }
    barra sobra y se veía como un destello al abrir. La barra CON sesión (.app),
    con las pestañas del panel, no se toca. */
 html.native-app .topbar:not(.app){ display:none !important; }
+/* App nativa: el login ocupa toda la pantalla (de borde a borde, respetando el
+   notch), no una tarjeta flotante. La tarjeta se vuelve transparente y sin borde
+   para que se sienta como app, y el contenido se centra vertical en el alto real. */
+html.native-app .auth-center{
+  max-width:none !important; margin:0 !important;
+  min-height:100dvh; display:flex; flex-direction:column; justify-content:center;
+  padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom)) !important;
+}
+html.native-app .auth-center .card{ background:transparent; border:none; box-shadow:none; padding:0; }
 /* App nativa: en la pantalla de login no se puede "salir" a la web de marketing.
    Se oculta el enlace "Volver al inicio" y los logos (cabecera + sobre el
    formulario) dejan de responder al clic — siguen visibles como marca. */

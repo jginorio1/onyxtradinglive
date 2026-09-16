@@ -347,7 +347,7 @@ function LoginInner() {
   // ── Formulario de entrar / crear cuenta ──────────────────────
   const barColors = ['#e2531f', '#e2531f', '#f0a020', 'var(--green)', 'var(--green)'];
   return (
-    <div className="center">
+    <div className="center auth-center">
       <Link className="logo" href="/" style={{ justifyContent: 'center', marginBottom: 24 }}>
         <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 30, height: 30, objectFit: 'contain' }} /> Onyx Trading Live
       </Link>
