@@ -147,7 +147,7 @@ export default function PromoBar({
   const px = { paddingLeft: 'max(12px, env(safe-area-inset-left, 0px))', paddingRight: 'max(8px, env(safe-area-inset-right, 0px))' } as any;
 
   return (
-    <div ref={wrapRef} style={wrapStyle} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+    <div ref={wrapRef} className="promobar" style={wrapStyle} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <style>{`@keyframes onyxMarq{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}@keyframes onyxSheen{0%{transform:translateX(-140%)}60%,100%{transform:translateX(240%)}}@keyframes onyxDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.7)}}@keyframes onyxPulse{0%,100%{opacity:1}50%{opacity:.72}}@keyframes onyxUrg{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.85}}`}</style>
       {/* Brillo que barre (solo si hay movimiento) */}
       {!reduce && <div aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: '38%', background: 'linear-gradient(90deg,transparent,rgba(255,255,255,.30),transparent)', animation: 'onyxSheen 6s ease-in-out infinite', pointerEvents: 'none' }} />}

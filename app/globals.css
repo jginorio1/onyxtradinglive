@@ -923,3 +923,14 @@ html.native-app .sessionbar,
 html.native-app header.topbar{ padding-top:env(safe-area-inset-top,0px); }
 /* La barra inferior de la academia se despega del borde por los gestos. */
 html.native-app .sk-bottom{ padding-bottom:calc(8px + env(safe-area-inset-bottom,0px)); }
+
+/* ---- App nativa: quitar el "cromado" de web para que se sienta app ----
+   En la app no queremos que se navegue el sitio de marketing. Ocultamos:
+   - la navegación pública del header (links y hamburguesa) SOLO cuando NO hay
+     sesión (.topbar sin .app), para no tocar la barra de la app logueada;
+   - la barra de promociones; y el pie de página de marketing.
+   La web en el navegador no se ve afectada (no lleva .native-app). */
+html.native-app .topbar:not(.app) .navl,
+html.native-app .topbar:not(.app) .navburger-wrap,
+html.native-app .promobar,
+html.native-app footer.site-footer{ display:none !important; }

@@ -71,7 +71,7 @@ export default function SiteFooter() {
   const lnk = { color: 'var(--mut)', fontSize: 13.5, textDecoration: 'none' };
 
   return (
-    <footer style={{ borderTop: '1px solid var(--line)', marginTop: 24 }}>
+    <footer className="site-footer" style={{ borderTop: '1px solid var(--line)', marginTop: 24 }}>
       <div className="wrap" style={{ padding: '30px 0 22px', display: 'flex', flexDirection: 'column', gap: 24 }}>
 
         {/* Fila de marca + CTA */}
