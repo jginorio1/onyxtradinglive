@@ -191,7 +191,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
             <ThemeToggle />
             <LangToggle compact />
             <Link className="btn btn-ghost btn-login" href="/login">{t.login}</Link>
-            <Link className="btn btn-primary" href="/login?mode=signup">{t.signup}</Link>
+            <Link className="btn btn-primary btn-signup" href="/login?mode=signup">{t.signup}</Link>
           </div>
         </>)}
       </div>

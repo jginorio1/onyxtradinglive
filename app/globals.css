@@ -933,9 +933,14 @@ html.native-app .sk-bottom{ padding-bottom:calc(8px + env(safe-area-inset-bottom
 html.native-app .topbar:not(.app) .navl,
 html.native-app .topbar:not(.app) .navburger-wrap,
 html.native-app .promobar,
+html.native-app .topbar:not(.app) .btn-login,
+html.native-app .topbar:not(.app) .btn-signup,
 html.native-app footer.site-footer{ display:none !important; }
 /* App nativa: en la pantalla de login no se puede "salir" a la web de marketing.
    Se oculta el enlace "Volver al inicio" y los logos (cabecera + sobre el
    formulario) dejan de responder al clic — siguen visibles como marca. */
 html.native-app .home-back{ display:none !important; }
 html.native-app a.logo{ pointer-events:none !important; cursor:default !important; }
+/* App nativa: sin burbuja de chat de soporte flotante (se siente más "app" y no
+   tapa botones al hacer scroll). En la web sigue apareciendo normal. */
+html.native-app .onyx-support-root{ display:none !important; }

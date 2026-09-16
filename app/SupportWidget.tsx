@@ -287,7 +287,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     : <span style={{ width: sz, height: sz, borderRadius: 8, background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', color: '#fff' }}><OnyxIcon emoji={human ? '🙋' : (cfg.headerEmoji || '🤖')} size={Math.round(sz * 0.6)} glow={false} /></span>;
 
   return (
-    <div style={themeVars}>
+    <div className="onyx-support-root" style={themeVars}>
       <style>{`
         @keyframes onyxPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
         @keyframes onyxType{0%,80%,100%{opacity:.3}40%{opacity:1}}
