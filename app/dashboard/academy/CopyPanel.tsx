@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { payRedirect } from '@/lib/nativePay';
 import SectionCard from './SectionCard';
 
 // ============================================================
@@ -183,7 +184,7 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
     setBusy('sub'); setRiskOpen(false);
     const r = await fetch('/api/academy/copy/checkout', { method: 'POST', body: JSON.stringify({ mentor_id: mentorId }) });
     const j = await r.json(); setBusy('');
-    if (j.url) window.location.href = j.url;
+    if (j.url) payRedirect(j.url);
   }
   async function connect() {
     if (!w.slave || cTyped.trim() !== ACCEPT_WORD) return;

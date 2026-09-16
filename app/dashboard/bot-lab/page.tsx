@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 import { checkWallet, lastChars } from '@/lib/walletChecksum';
+import { payRedirect } from '@/lib/nativePay';
 import VpsCallout from '@/app/components/VpsCallout';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -85,7 +86,7 @@ export default function BotLabDashboard() {
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'error');
       if (j.chooseNetwork) { setNetPick({ product: p, networks: j.chooseNetwork }); return; } // el cliente elige red
-      if (j.url) { window.location.href = j.url; return; }
+      if (j.url) { payRedirect(j.url); return; } // en la app nativa abre el pago en el navegador (Play Billing)
       if (j.crypto) { setNetPick(null); setCrypto({ ...j.crypto, product: p }); }
     } catch (e: any) { toastErr(e?.message || 'error'); }
   }

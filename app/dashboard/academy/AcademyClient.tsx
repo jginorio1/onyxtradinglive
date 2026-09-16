@@ -1,5 +1,6 @@
 'use client';
 import { toast, confirmDialog } from '@/lib/toast';
+import { payRedirect } from '@/lib/nativePay';
 import { mkL } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -582,7 +583,7 @@ function Paywall({ pw, lang, onBack }: any) {
     setBusy(true);
     const r = await fetch('/api/academy/membership', { method: 'POST', body: JSON.stringify({ code: pw.code, plan: plan || 'month' }) });
     const j = await r.json();
-    if (j.url) window.location.href = j.url;
+    if (j.url) payRedirect(j.url);
     else if (j.free || j.already) window.location.reload();
     else if (j.closed) { setBusy(false); setClosed(j); }
     else { setBusy(false); toast(j.error === 'mentor_not_ready' ? L('El mentor aún no ha activado los cobros.', 'The mentor has not enabled payments yet.') : L('No se pudo iniciar el pago.', 'Could not start checkout.')); }
@@ -711,7 +712,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
   async function buy(productId: string) {
     const r = await fetch('/api/academy/checkout', { method: 'POST', body: JSON.stringify({ product_id: productId }) });
     const j = await r.json();
-    if (j.url) window.location.href = j.url;
+    if (j.url) payRedirect(j.url);
     else toast(j.error === 'mentor_not_ready' ? L('El mentor aún no ha activado los cobros.', 'The mentor has not enabled payments yet.') : L('No se pudo iniciar el pago.', 'Could not start checkout.'));
   }
   // Clic en un nombre: si soy el mentor de esta academia, abro el panel de gestión

@@ -1,6 +1,7 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
 import { toast, confirmDialog } from '@/lib/toast';
+import { payRedirect } from '@/lib/nativePay';
 import { fmtDate, fmtDateTime } from '@/lib/fmtDate';
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -346,7 +347,7 @@ export default function AccountClient({ email }: { email: string }) {
       const r = await fetch('/api/stripe/portal', { method: 'POST' });
       const txt = await r.text(); let j: any = {};
       try { j = JSON.parse(txt); } catch { j = { code: 'generic' }; }
-      if (j.url) { window.location.href = j.url; return; }
+      if (j.url) { payRedirect(j.url); return; }
       toast(errMsg(j, lang));
     } catch (e: any) { toast(errMsg({ code: 'network' }, lang)); }
     setBusy('');
