@@ -160,6 +160,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={lang} data-theme={theme || undefined} suppressHydrationWarning>
       <body>
+        {/* Login-first SIN parpadeo (solo app nativa Capacitor): este script corre
+            mientras el HTML se está parseando, ANTES de que el landing se pinte. Si
+            la app abre en la raíz o /en, redirige a /dashboard de inmediato (y el
+            servidor manda a /login si no hay sesión). Pinta un fondo oscuro de marca
+            para que no se vea ningún destello blanco durante el salto. En el
+            navegador no hace nada (no existe window.Capacitor nativo). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var C=window.Capacitor;if(C&&C.isNativePlatform&&C.isNativePlatform()){var p=(location.pathname||'/').replace(/\\/+$/,'')||'/';if(p===''||p==='/'||p==='/en'){document.documentElement.style.background='#0b1020';location.replace('/dashboard');}}}catch(e){}",
+          }}
+        />
         {/* Arranque nativo (Capacitor): no hace nada en el navegador. */}
         <NativeInit />
         {/* Google Analytics 4 (solo si hay NEXT_PUBLIC_GA_ID). Mide tráfico y conversión. */}

@@ -934,3 +934,8 @@ html.native-app .topbar:not(.app) .navl,
 html.native-app .topbar:not(.app) .navburger-wrap,
 html.native-app .promobar,
 html.native-app footer.site-footer{ display:none !important; }
+/* App nativa: en la pantalla de login no se puede "salir" a la web de marketing.
+   Se oculta el enlace "Volver al inicio" y los logos (cabecera + sobre el
+   formulario) dejan de responder al clic — siguen visibles como marca. */
+html.native-app .home-back{ display:none !important; }
+html.native-app a.logo{ pointer-events:none !important; cursor:default !important; }

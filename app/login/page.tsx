@@ -310,7 +310,7 @@ function LoginInner() {
           {resent && <p className="muted" style={{ marginTop: 12, fontSize: 13 }}>{t.resent}</p>}
         </div>
         <p className="muted" style={{ textAlign: 'center', marginTop: 18, fontSize: 13 }}>
-          <Link href="/">{t.back}</Link>
+          <Link href="/" className="home-back">{t.back}</Link>
         </p>
       </div>
     );
@@ -442,7 +442,7 @@ function LoginInner() {
         </p>
       </div>
       <p className="muted" style={{ textAlign: 'center', marginTop: 18, fontSize: 13 }}>
-        <Link href="/">{t.back}</Link>
+        <Link href="/" className="home-back">{t.back}</Link>
       </p>
     </div>
   );
