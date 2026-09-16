@@ -11,9 +11,21 @@ import { isNativeApp } from '@/lib/native';
 // - Oculta el splash cuando la web ya cargó.
 // - Botón atrás de Android: retrocede en la web; si no hay a dónde, minimiza la
 //   app en vez de cerrarla de golpe.
+// - Login-first: al abrir la app (o si el usuario cae en el landing de marketing)
+//   salta directo a /dashboard. /dashboard manda a /login si no hay sesión, así
+//   que el usuario ve login/registro o su panel — nunca la página de ventas.
+//   Esto hace la app más "app" y ayuda a pasar la revisión de Apple (regla 4.2).
 export default function NativeInit() {
   useEffect(() => {
     if (!isNativeApp()) return;
+
+    // Redirección login-first: solo desde el landing público (raíz o /en).
+    const p = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (p === '' || p === '/' || p === '/en') {
+      window.location.replace('/dashboard');
+      return;
+    }
+
     let removeBack: (() => void) | undefined;
 
     (async () => {
