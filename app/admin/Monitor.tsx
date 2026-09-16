@@ -19,6 +19,7 @@ const KIND_COL: Record<string, string> = {
 const col = (k: string) => KIND_COL[k] || '#8ea0c4';
 const initials = (s: string) => (s || '?').trim().split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('') || '?';
 const ago = (iso: string) => { const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000); if (s < 60) return `${s | 0}s`; if (s < 3600) return `${s / 60 | 0}m`; if (s < 86400) return `${s / 3600 | 0}h`; return `${s / 86400 | 0}d`; };
+const flag = (cc: string) => { const c = (cc || '').toUpperCase(); if (!/^[A-Z]{2}$/.test(c)) return '🏳️'; return String.fromCodePoint(...[...c].map((k) => 127397 + k.charCodeAt(0))); };
 const nicePath = (p?: string) => { if (!p) return '—'; const map: [RegExp, string][] = [[/^\/dashboard\/academy/, 'Academia'], [/^\/dashboard\/bot-lab/, 'Bot Lab'], [/^\/dashboard\/onyx-copy/, 'Onyx Copy'], [/^\/dashboard/, 'Dashboard'], [/^\/admin/, 'Panel admin'], [/^\/login/, 'Login'], [/^\/pricing/, 'Precios'], [/^\/checkout|stripe/, 'Checkout'], [/^\/account/, 'Mi cuenta'], [/^\/academia/, 'Academia'], [/^\/bot-lab/, 'Bot Lab'], [/^\/$/, 'Inicio']]; for (const [re, name] of map) if (re.test(p)) return name; return p; };
 
 export default function Monitor() {
@@ -27,9 +28,11 @@ export default function Monitor() {
   const [live, setLive] = useState<Pres[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [feed, setFeed] = useState<Ev[]>([]);
-  const [view, setView] = useState<'live' | 'history' | 'emps' | 'alerts'>('live');
+  const [view, setView] = useState<'live' | 'history' | 'emps' | 'geo' | 'alerts'>('live');
   // empleados
   const [emps, setEmps] = useState<any[]>([]); const [eLoad, setELoad] = useState(false);
+  // geo + embudo
+  const [geo, setGeo] = useState<any[]>([]); const [funnel, setFunnel] = useState<any[]>([]); const [gLoad, setGLoad] = useState(false);
   // alertas
   const [acfg, setAcfg] = useState<any>(null); const [aSaving, setASaving] = useState(false);
   // historial
@@ -70,6 +73,11 @@ export default function Monitor() {
     setELoad(true);
     try { const r = await fetch('/api/admin/monitor?mode=employees', { cache: 'no-store' }).then((x) => x.json()); setEmps(r.employees || []); } catch {}
     setELoad(false);
+  }
+  async function loadGeo() {
+    setGLoad(true);
+    try { const r = await fetch('/api/admin/monitor?mode=geo&hours=24', { cache: 'no-store' }).then((x) => x.json()); setGeo(r.geo || []); setFunnel(r.funnel || []); } catch {}
+    setGLoad(false);
   }
   async function loadAlerts() {
     try { const r = await fetch('/api/admin/monitor?mode=alertcfg', { cache: 'no-store' }).then((x) => x.json()); setAcfg(r.cfg || null); } catch {}
@@ -128,6 +136,7 @@ export default function Monitor() {
         <button className={'btn ' + (view === 'live' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5 }} onClick={() => setView('live')}>🟢 {T.tabLive}</button>
         <button className={'btn ' + (view === 'history' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5 }} onClick={() => { setView('history'); loadHistory(); }}>🗂️ {T.tabHist}</button>
         <button className={'btn ' + (view === 'emps' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5 }} onClick={() => { setView('emps'); loadEmps(); }}>👔 {es ? 'Empleados' : 'Employees'}</button>
+        <button className={'btn ' + (view === 'geo' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5 }} onClick={() => { setView('geo'); loadGeo(); }}>🌎 {es ? 'Geo & Embudo' : 'Geo & Funnel'}</button>
         <button className={'btn ' + (view === 'alerts' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5 }} onClick={() => { setView('alerts'); loadAlerts(); }}>🔔 {es ? 'Alertas' : 'Alerts'}</button>
       </div>
 
@@ -198,6 +207,40 @@ export default function Monitor() {
         </section>
       )}
 
+      {view === 'geo' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <section style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--mut)', marginBottom: 10 }}>🌎 {es ? 'Por país (24 h)' : 'By country (24h)'}</div>
+            {gLoad && <div className="muted" style={{ fontSize: 12.5 }}>…</div>}
+            {(() => { const max = Math.max(1, ...geo.map((g) => g.users)); return geo.map((g) => (
+              <div key={g.country} style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8, fontSize: 12.5 }}>
+                <span style={{ width: 74, flex: 'none' }}>{flag(g.country)} {g.country}</span>
+                <span style={{ flex: 1, height: 8, background: 'var(--card2)', borderRadius: 5, overflow: 'hidden' }}>
+                  <i style={{ display: 'block', height: '100%', width: Math.round((g.users / max) * 100) + '%', background: 'var(--cyan, #3ad0ff)', borderRadius: 5 }} />
+                </span>
+                <span style={{ width: 96, textAlign: 'right', flex: 'none' }}><b>{g.users}</b> <span className="muted">{es ? 'usuarios' : 'users'}</span></span>
+              </div>
+            )); })()}
+            {!gLoad && geo.length === 0 && <div className="muted" style={{ fontSize: 12.5, padding: '10px 2px' }}>{es ? 'Aún sin datos de país.' : 'No country data yet.'}</div>}
+          </section>
+          <section style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--mut)', marginBottom: 10 }}>🎯 {es ? 'Embudo de conversión (24 h)' : 'Conversion funnel (24h)'}</div>
+            {funnel.map((s, i) => (
+              <div key={s.key} style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 3 }}>
+                  <span>{s.label}</span><span><b>{s.users}</b> <span className="muted">· {s.pct}%</span></span>
+                </div>
+                <div style={{ height: 22, background: 'var(--card2)', borderRadius: 6, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: Math.max(4, s.pct) + '%', background: i === funnel.length - 1 ? 'var(--green, #34e2a0)' : 'var(--grad)', borderRadius: 6 }} />
+                </div>
+              </div>
+            ))}
+            {funnel.length === 0 && <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Sin datos de embudo aún.' : 'No funnel data yet.'}</div>}
+            <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{es ? 'Usuarios únicos que llegaron a cada pantalla clave.' : 'Unique users reaching each key screen.'}</div>
+          </section>
+        </div>
+      )}
+
       {view === 'emps' && (
         <section style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--mut)', marginBottom: 9 }}>👔 {es ? 'Productividad del equipo (hoy)' : 'Team productivity (today)'}</div>
@@ -258,6 +301,10 @@ export default function Monitor() {
               <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13 }}>
                 <input type="checkbox" checked={!!acfg.activityDrop} onChange={(e) => saveAlerts({ activityDrop: e.target.checked })} />
                 {es ? 'Avisar si la actividad del sitio cae a cero de golpe' : 'Alert if site activity drops to zero'}
+              </label>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 13 }}>
+                <input type="checkbox" checked={!!acfg.anomaly} onChange={(e) => saveAlerts({ anomaly: e.target.checked })} style={{ marginTop: 3 }} />
+                <span>🧠 {es ? 'Detección de anomalías con IA' : 'AI anomaly detection'}<br /><span className="muted" style={{ fontSize: 11 }}>{es ? 'Aprende lo "normal" de cada hora y avisa si sube o baja demasiado.' : 'Learns each hour’s "normal" and alerts on big deviations.'}</span></span>
               </label>
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                 <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={testAlerts} disabled={aSaving}>{aSaving ? '…' : (es ? 'Probar ahora' : 'Test now')}</button>

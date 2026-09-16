@@ -18,13 +18,14 @@ export type MonitorAlerts = {
   empIdleHours: number;      // empleado sin actividad > N h (en el día)
   errorSpike: number;        // errores en la última hora > N
   activityDrop: boolean;     // avisar si la actividad general cae a 0 de golpe
+  anomaly: boolean;          // detección de anomalías (aprende lo "normal" por hora)
   cooldownH: number;         // no repetir la MISMA alerta antes de N horas
   _sent?: Record<string, string>;   // interno: última vez enviada por clave (ISO)
 };
 
 export const ALERTS_DEFAULT: MonitorAlerts = {
   enabled: true, chat: '', toAdmins: true,
-  blogStuckHours: 36, empIdleHours: 5, errorSpike: 15, activityDrop: true,
+  blogStuckHours: 36, empIdleHours: 5, errorSpike: 15, activityDrop: true, anomaly: true,
   cooldownH: 3, _sent: {},
 };
 
@@ -109,7 +110,35 @@ export async function runAlerts(): Promise<{ checked: number; fired: string[] }>
     }
   } catch {}
 
+  // 5) ANOMALÍA (Fase 3): compara la última hora con lo "normal" de esa MISMA hora
+  //    del reloj en los últimos 7 días. Si se desvía mucho, avisa. Sin librerías:
+  //    media + desviación estándar sobre 7 muestras (una por día).
+  if (cfg.anomaly) {
+    try {
+      const now = Date.now();
+      const countIn = async (fromMs: number, toMs: number) => {
+        const { count } = await supabaseAdmin.from('activity_events').select('id', { count: 'exact', head: true })
+          .gte('created_at', new Date(fromMs).toISOString()).lt('created_at', new Date(toMs).toISOString());
+        return count || 0;
+      };
+      const cur = await countIn(now - H, now);
+      const samples: number[] = [];
+      for (let d = 1; d <= 7; d++) { samples.push(await countIn(now - H - d * 24 * H, now - d * 24 * H)); }
+      const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
+      const varr = samples.reduce((a, b) => a + (b - mean) ** 2, 0) / samples.length;
+      const std = Math.sqrt(varr);
+      // Solo con suficiente historial "normal" (evita falsos positivos al arrancar).
+      if (mean >= 12) {
+        if (cur < mean - 2 * std && cur < mean * 0.45) {
+          if (await fire(cfg, 'anomaly_low', `🧠 *Actividad anormalmente baja*: ${cur} en la última hora vs ~${Math.round(mean)} habitual a esta hora. Algo podría estar roto.`)) fired.push('anomaly_low');
+        } else if (cur > mean + 3 * std && cur > mean * 2.5) {
+          if (await fire(cfg, 'anomaly_high', `🚀 *Pico inusual de actividad*: ${cur} en la última hora vs ~${Math.round(mean)} habitual. ¿Viralización, campaña o abuso?`)) fired.push('anomaly_high');
+        }
+      }
+    } catch {}
+  }
+
   // Persistir los "_sent" actualizados (enfriamientos).
   try { await saveSetting('monitor_alerts', cfg); } catch {}
-  return { checked: 4, fired };
+  return { checked: 5, fired };
 }

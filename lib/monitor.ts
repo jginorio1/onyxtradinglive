@@ -123,6 +123,45 @@ export async function employeeBoard(idleHours = 5) {
   return rows;
 }
 
+// Distribución por PAÍS (Fase 3). Agrupa la actividad reciente por país y cuenta
+// eventos y usuarios únicos. Devuelve el top ordenado por usuarios.
+export async function geoStats(hours = 24) {
+  const since = new Date(Date.now() - hours * HOUR).toISOString();
+  const { data } = await supabaseAdmin.from('activity_events').select('country,actor_email')
+    .gte('created_at', since).not('country', 'is', null).limit(8000);
+  const byC: Record<string, { events: number; users: Set<string> }> = {};
+  (data || []).forEach((r: any) => {
+    const c = (r.country || '').toUpperCase(); if (!c) return;
+    const cur = byC[c] || { events: 0, users: new Set<string>() };
+    cur.events++; if (r.actor_email) cur.users.add(r.actor_email);
+    byC[c] = cur;
+  });
+  const rows = Object.entries(byC).map(([country, v]) => ({ country, events: v.events, users: v.users.size }));
+  rows.sort((a, b) => b.users - a.users || b.events - a.events);
+  return rows.slice(0, 15);
+}
+
+// Embudo de conversión EN VIVO (Fase 3). Cuenta usuarios únicos que llegaron a
+// cada pantalla clave en la ventana dada. Aproximación honesta por navegación.
+export async function funnelStats(hours = 24) {
+  const since = new Date(Date.now() - hours * HOUR).toISOString();
+  const { data } = await supabaseAdmin.from('activity_events').select('actor_email,path,kind')
+    .gte('created_at', since).limit(12000);
+  const steps: { key: string; label: string; test: (p: string, k: string) => boolean }[] = [
+    { key: 'visit', label: 'Entró a la app', test: (p) => /^\/(dashboard|$|en$)/.test(p) || p === '/' },
+    { key: 'pricing', label: 'Vio precios', test: (p) => /^\/pricing/.test(p) },
+    { key: 'checkout', label: 'Abrió checkout', test: (p) => /checkout|stripe|account\/billing|\/pay/i.test(p) },
+    { key: 'purchase', label: 'Compró', test: (_p, k) => k === 'purchase' },
+  ];
+  const sets = steps.map(() => new Set<string>());
+  (data || []).forEach((r: any) => {
+    const who = r.actor_email || ''; if (!who) return;
+    steps.forEach((s, i) => { if (s.test(r.path || '', r.kind || '')) sets[i].add(who); });
+  });
+  const base = sets[0].size || 1;
+  return steps.map((s, i) => ({ key: s.key, label: s.label, users: sets[i].size, pct: Math.round((sets[i].size / base) * 100) }));
+}
+
 // Retención: borra el detalle fino más viejo que `days`. Lo llama un cron diario.
 export async function pruneActivity(days = 90): Promise<number> {
   const cut = new Date(Date.now() - days * 24 * HOUR).toISOString();

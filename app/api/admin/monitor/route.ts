@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
-import { listEvents, userTimeline, monitorStats, employeeBoard } from '@/lib/monitor';
+import { listEvents, userTimeline, monitorStats, employeeBoard, geoStats, funnelStats } from '@/lib/monitor';
 import { getAlertCfg, saveAlertCfg, runAlerts } from '@/lib/monitorAlerts';
 
 export const dynamic = 'force-dynamic';
@@ -37,6 +37,11 @@ export async function GET(req: Request) {
     }
     if (mode === 'alertcfg') {
       return NextResponse.json({ cfg: await getAlertCfg() });
+    }
+    if (mode === 'geo') {
+      const hours = Number(u.searchParams.get('hours') || 24);
+      const [geo, funnel] = await Promise.all([geoStats(hours), funnelStats(hours)]);
+      return NextResponse.json({ geo, funnel });
     }
     const [stats, feed] = await Promise.all([monitorStats(), listEvents({ hours: 2, limit: 40 })]);
     return NextResponse.json({ stats, feed });
