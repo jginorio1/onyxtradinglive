@@ -27,7 +27,11 @@ export default function Monitor() {
   const [live, setLive] = useState<Pres[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [feed, setFeed] = useState<Ev[]>([]);
-  const [view, setView] = useState<'live' | 'history'>('live');
+  const [view, setView] = useState<'live' | 'history' | 'emps' | 'alerts'>('live');
+  // empleados
+  const [emps, setEmps] = useState<any[]>([]); const [eLoad, setELoad] = useState(false);
+  // alertas
+  const [acfg, setAcfg] = useState<any>(null); const [aSaving, setASaving] = useState(false);
   // historial
   const [hActor, setHActor] = useState(''); const [hKind, setHKind] = useState(''); const [hRole, setHRole] = useState(''); const [hHours, setHHours] = useState(24);
   const [hist, setHist] = useState<Ev[]>([]); const [hLoad, setHLoad] = useState(false);
@@ -61,6 +65,25 @@ export default function Monitor() {
     setHLoad(true);
     try { const q = new URLSearchParams({ mode: 'history', hours: String(hHours), actor: hActor, kind: hKind, role: hRole }); const r = await fetch('/api/admin/monitor?' + q, { cache: 'no-store' }).then((x) => x.json()); setHist(r.events || []); } catch {}
     setHLoad(false);
+  }
+  async function loadEmps() {
+    setELoad(true);
+    try { const r = await fetch('/api/admin/monitor?mode=employees', { cache: 'no-store' }).then((x) => x.json()); setEmps(r.employees || []); } catch {}
+    setELoad(false);
+  }
+  async function loadAlerts() {
+    try { const r = await fetch('/api/admin/monitor?mode=alertcfg', { cache: 'no-store' }).then((x) => x.json()); setAcfg(r.cfg || null); } catch {}
+  }
+  async function saveAlerts(patch: any) {
+    setASaving(true);
+    const next = { ...acfg, ...patch }; setAcfg(next);
+    try { await fetch('/api/admin/monitor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cfg: next }) }); } catch {}
+    setASaving(false);
+  }
+  async function testAlerts() {
+    setASaving(true);
+    try { const r = await fetch('/api/admin/monitor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'test' }) }).then((x) => x.json()); alert((es ? 'Alertas revisadas. Disparadas: ' : 'Alerts checked. Fired: ') + ((r.fired || []).join(', ') || (es ? 'ninguna' : 'none'))); } catch {}
+    setASaving(false);
   }
   async function openTimeline(key: string, name: string) {
     setWho({ key, name }); setTLoad(true); setTimeline([]);
@@ -104,6 +127,8 @@ export default function Monitor() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <button className={'btn ' + (view === 'live' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5 }} onClick={() => setView('live')}>🟢 {T.tabLive}</button>
         <button className={'btn ' + (view === 'history' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5 }} onClick={() => { setView('history'); loadHistory(); }}>🗂️ {T.tabHist}</button>
+        <button className={'btn ' + (view === 'emps' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5 }} onClick={() => { setView('emps'); loadEmps(); }}>👔 {es ? 'Empleados' : 'Employees'}</button>
+        <button className={'btn ' + (view === 'alerts' ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12.5 }} onClick={() => { setView('alerts'); loadAlerts(); }}>🔔 {es ? 'Alertas' : 'Alerts'}</button>
       </div>
 
       {view === 'live' && (
@@ -170,6 +195,76 @@ export default function Monitor() {
             ))}
             {!hLoad && hist.length === 0 && <div className="muted" style={{ fontSize: 12.5, padding: '10px 2px' }}>{T.empty}</div>}
           </div>
+        </section>
+      )}
+
+      {view === 'emps' && (
+        <section style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--mut)', marginBottom: 9 }}>👔 {es ? 'Productividad del equipo (hoy)' : 'Team productivity (today)'}</div>
+          {eLoad && <div className="muted" style={{ fontSize: 12.5 }}>…</div>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {emps.map((e) => (
+              <div key={e.email} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 11px' }}>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', background: e.active ? 'var(--green)' : 'var(--mut)', flex: 'none' }} title={e.active ? (es ? 'Activo' : 'Active') : (es ? 'Inactivo' : 'Idle')} />
+                <span style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--grad)', color: '#0b1020', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 11, flex: 'none' }}>{initials(e.name)}</span>
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <button onClick={() => openTimeline(e.email, e.name)} style={{ fontWeight: 700, fontSize: 12.5, background: 'none', border: 'none', color: 'var(--tx)', cursor: 'pointer', padding: 0 }}>{e.name}</button>
+                  <div className="muted" style={{ fontSize: 11 }}>{e.role} · {es ? 'visto' : 'seen'} {e.lastSeen ? ago(e.lastSeen) : '—'}</div>
+                </span>
+                <span style={{ textAlign: 'right', fontSize: 11 }}>
+                  <div><b>{e.actions}</b> <span className="muted">{es ? 'acciones' : 'actions'}</span></div>
+                  <div className="muted">{e.events} {es ? 'pantallas' : 'screens'}</div>
+                </span>
+              </div>
+            ))}
+            {!eLoad && emps.length === 0 && <div className="muted" style={{ fontSize: 12.5, padding: '10px 2px' }}>{es ? 'Sin empleados con actividad hoy.' : 'No employees active today.'}</div>}
+          </div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 10 }}>{es ? 'Acciones = tareas en el panel (admin_log). Pantallas = navegación registrada. Clic en el nombre para rebobinar su sesión.' : 'Actions = admin tasks. Screens = tracked navigation. Click a name to rewind their session.'}</div>
+        </section>
+      )}
+
+      {view === 'alerts' && (
+        <section style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 14, maxWidth: 620 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--mut)', marginBottom: 4 }}>🔔 {es ? 'Alertas automáticas (Telegram)' : 'Automatic alerts (Telegram)'}</div>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{es ? 'El sistema revisa cada 15 min y te avisa si algo va mal. También queda registrado en el flujo.' : 'The system checks every 15 min and pings you if something breaks. Also logged in the stream.'}</div>
+          {!acfg && <div className="muted" style={{ fontSize: 12.5 }}>…</div>}
+          {acfg && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13 }}>
+                <input type="checkbox" checked={!!acfg.enabled} onChange={(e) => saveAlerts({ enabled: e.target.checked })} />
+                <b>{es ? 'Alertas activadas' : 'Alerts enabled'}</b>
+              </label>
+              <div>
+                <label style={{ fontSize: 12.5, fontWeight: 700 }}>{es ? 'Chat de Telegram del dueño' : 'Owner Telegram chat id'}</label>
+                <input value={acfg.chat || ''} onChange={(e) => setAcfg({ ...acfg, chat: e.target.value })} onBlur={(e) => saveAlerts({ chat: e.target.value.trim() })} placeholder="123456789" style={{ fontSize: 12.5, width: '100%', marginTop: 4 }} />
+                <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>{es ? 'Opcional. Si lo dejas vacío, avisa a los admins con Telegram vinculado.' : 'Optional. If empty, alerts go to admins with Telegram linked.'}</div>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13 }}>
+                <input type="checkbox" checked={!!acfg.toAdmins} onChange={(e) => saveAlerts({ toAdmins: e.target.checked })} />
+                {es ? 'También a los admins con Telegram vinculado' : 'Also to admins with Telegram linked'}
+              </label>
+              <div style={{ height: 1, background: 'var(--line)', margin: '2px 0' }} />
+              {[
+                ['blogStuckHours', es ? 'Avisar si el blog no publica en (horas)' : 'Alert if blog idle for (hours)'],
+                ['empIdleHours', es ? 'Empleado inactivo por más de (horas)' : 'Employee idle over (hours)'],
+                ['errorSpike', es ? 'Pico de errores en 1 h mayor a' : 'Error spike in 1h over'],
+                ['cooldownH', es ? 'No repetir la misma alerta antes de (horas)' : 'Cooldown per alert (hours)'],
+              ].map(([k, label]) => (
+                <div key={k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <span style={{ fontSize: 12.5 }}>{label}</span>
+                  <input type="number" value={acfg[k] ?? 0} onChange={(e) => setAcfg({ ...acfg, [k]: Number(e.target.value) })} onBlur={(e) => saveAlerts({ [k]: Number(e.target.value) })} style={{ fontSize: 12.5, width: 80 }} />
+                </div>
+              ))}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13 }}>
+                <input type="checkbox" checked={!!acfg.activityDrop} onChange={(e) => saveAlerts({ activityDrop: e.target.checked })} />
+                {es ? 'Avisar si la actividad del sitio cae a cero de golpe' : 'Alert if site activity drops to zero'}
+              </label>
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={testAlerts} disabled={aSaving}>{aSaving ? '…' : (es ? 'Probar ahora' : 'Test now')}</button>
+                <span className="muted" style={{ fontSize: 11, alignSelf: 'center' }}>{es ? 'Se guarda automáticamente.' : 'Saved automatically.'}</span>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
-import { listEvents, userTimeline, monitorStats } from '@/lib/monitor';
+import { listEvents, userTimeline, monitorStats, employeeBoard } from '@/lib/monitor';
+import { getAlertCfg, saveAlertCfg, runAlerts } from '@/lib/monitorAlerts';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -31,8 +32,28 @@ export async function GET(req: Request) {
       });
       return NextResponse.json({ events });
     }
+    if (mode === 'employees') {
+      return NextResponse.json({ employees: await employeeBoard() });
+    }
+    if (mode === 'alertcfg') {
+      return NextResponse.json({ cfg: await getAlertCfg() });
+    }
     const [stats, feed] = await Promise.all([monitorStats(), listEvents({ hours: 2, limit: 40 })]);
     return NextResponse.json({ stats, feed });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+  }
+}
+
+// POST · guardar la configuración de alertas o dispararlas manualmente ("probar").
+export async function POST(req: Request) {
+  try {
+    const { ok } = await requirePerm('diag', 'manage');
+    if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const b = await req.json().catch(() => ({} as any));
+    if (b.action === 'test') { const r = await runAlerts(); return NextResponse.json({ ok: true, ...r }); }
+    await saveAlertCfg(b.cfg || {});
+    return NextResponse.json({ ok: true, cfg: await getAlertCfg() });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
