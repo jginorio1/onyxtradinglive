@@ -20,6 +20,7 @@ import { BetaProvider } from '@/lib/beta';
 import BetaBanner from './BetaBanner';
 import EnvBanner from './EnvBanner';
 import NativeInit from './NativeInit';
+import MonitorBeacon from './MonitorBeacon';
 import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
 import OnlineNow from './OnlineNow';
@@ -244,6 +245,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <PendingCheckoutGate />
             {!path.startsWith('/admin') && !path.startsWith('/dashboard') && <RepInviteBanner />}
             <VisitorBeacon />
+            {loggedIn && <MonitorBeacon />}
             <TzSync />
             <Toaster />
             <PWARegister />
