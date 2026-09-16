@@ -274,7 +274,7 @@ export default function Monitor() {
           {acfg && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13 }}>
-                <input type="checkbox" checked={!!acfg.enabled} onChange={(e) => saveAlerts({ enabled: e.target.checked })} />
+                <input type="checkbox" checked={!!acfg.enabled} onChange={(e) => saveAlerts({ enabled: e.target.checked })} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} />
                 <b>{es ? 'Alertas activadas' : 'Alerts enabled'}</b>
               </label>
               <div>
@@ -283,7 +283,7 @@ export default function Monitor() {
                 <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>{es ? 'Opcional. Si lo dejas vacío, avisa a los admins con Telegram vinculado.' : 'Optional. If empty, alerts go to admins with Telegram linked.'}</div>
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13 }}>
-                <input type="checkbox" checked={!!acfg.toAdmins} onChange={(e) => saveAlerts({ toAdmins: e.target.checked })} />
+                <input type="checkbox" checked={!!acfg.toAdmins} onChange={(e) => saveAlerts({ toAdmins: e.target.checked })} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} />
                 {es ? 'También a los admins con Telegram vinculado' : 'Also to admins with Telegram linked'}
               </label>
               <div style={{ height: 1, background: 'var(--line)', margin: '2px 0' }} />
@@ -299,12 +299,12 @@ export default function Monitor() {
                 </div>
               ))}
               <label style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13 }}>
-                <input type="checkbox" checked={!!acfg.activityDrop} onChange={(e) => saveAlerts({ activityDrop: e.target.checked })} />
+                <input type="checkbox" checked={!!acfg.activityDrop} onChange={(e) => saveAlerts({ activityDrop: e.target.checked })} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} />
                 {es ? 'Avisar si la actividad del sitio cae a cero de golpe' : 'Alert if site activity drops to zero'}
               </label>
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 13 }}>
-                <input type="checkbox" checked={!!acfg.anomaly} onChange={(e) => saveAlerts({ anomaly: e.target.checked })} style={{ marginTop: 3 }} />
-                <span>🧠 {es ? 'Detección de anomalías con IA' : 'AI anomaly detection'}<br /><span className="muted" style={{ fontSize: 11 }}>{es ? 'Aprende lo "normal" de cada hora y avisa si sube o baja demasiado.' : 'Learns each hour’s "normal" and alerts on big deviations.'}</span></span>
+                <input type="checkbox" checked={!!acfg.anomaly} onChange={(e) => saveAlerts({ anomaly: e.target.checked })} style={{ width: 16, height: 16, flex: 'none', margin: '3px 0 0' }} />
+                <span style={{ flex: 1, minWidth: 0 }}>🧠 {es ? 'Detección de anomalías con IA' : 'AI anomaly detection'}<br /><span className="muted" style={{ fontSize: 11 }}>{es ? 'Aprende lo "normal" de cada hora y avisa si sube o baja demasiado.' : 'Learns each hour’s "normal" and alerts on big deviations.'}</span></span>
               </label>
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                 <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={testAlerts} disabled={aSaving}>{aSaving ? '…' : (es ? 'Probar ahora' : 'Test now')}</button>
