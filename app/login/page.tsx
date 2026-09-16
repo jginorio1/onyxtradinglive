@@ -8,6 +8,7 @@ import { supabaseBrowser, passkeySupported } from '@/lib/supabaseBrowser';
 import TwoFactor from '@/app/TwoFactor';
 import Turnstile, { TURNSTILE_KEY, type TurnstileHandle } from '@/app/Turnstile';
 import { setPending } from '@/lib/pendingCheckout';
+import { isNativeApp } from '@/lib/native';
 
 type Lang = 'es' | 'en';
 
@@ -133,7 +134,13 @@ function LoginInner() {
   const [showPass, setShowPass] = useState(false); // mostrar/ocultar contraseña
   const [pkOk, setPkOk] = useState(false);         // navegador+SDK soportan passkey
   useEffect(() => { setPkOk(passkeySupported()); }, []);
-  const { lang } = useLang();
+  const { lang: ctxLang } = useLang();
+  // En la app nativa (Android/iPhone) el login SIEMPRE va en inglés. En el
+  // navegador respeta el idioma del usuario. Se fija tras montar para no romper
+  // la hidratación (SSR no sabe si es nativo).
+  const [nativeApp, setNativeApp] = useState(false);
+  useEffect(() => { try { setNativeApp(isNativeApp()); } catch {} }, []);
+  const lang = nativeApp ? 'en' : ctxLang;
   const t = dictFor(T, lang);
   const sb = supabaseBrowser();
 

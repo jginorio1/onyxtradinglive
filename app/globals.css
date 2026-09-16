@@ -954,6 +954,9 @@ html.native-app .auth-center{
   padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom)) !important;
 }
 html.native-app .auth-center .card{ background:transparent; border:none; box-shadow:none; padding:0; }
+/* App nativa: logo del login (arriba, centrado) más grande y con más aire. */
+html.native-app .auth-center>.logo{ font-size:24px; gap:12px; margin-bottom:30px; }
+html.native-app .auth-center>.logo img{ width:52px !important; height:52px !important; }
 /* App nativa: en la pantalla de login no se puede "salir" a la web de marketing.
    Se oculta el enlace "Volver al inicio" y los logos (cabecera + sobre el
    formulario) dejan de responder al clic — siguen visibles como marca. */
