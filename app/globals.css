@@ -951,12 +951,22 @@ html.native-app .topbar:not(.app){ display:none !important; }
 html.native-app .auth-center{
   max-width:none !important; margin:0 !important;
   min-height:100dvh; display:flex; flex-direction:column; justify-content:center;
-  padding:calc(24px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom)) !important;
+  /* Más aire arriba que abajo: con el contenido centrado, esto baja un poco el
+     bloque para que quede mejor equilibrado en pantalla alta. */
+  padding:calc(10vh + env(safe-area-inset-top)) 22px calc(5vh + env(safe-area-inset-bottom)) !important;
 }
 html.native-app .auth-center .card{ background:transparent; border:none; box-shadow:none; padding:0; }
 /* App nativa: logo del login (arriba, centrado) más grande y con más aire. */
 html.native-app .auth-center>.logo{ font-size:24px; gap:12px; margin-bottom:30px; }
 html.native-app .auth-center>.logo img{ width:52px !important; height:52px !important; }
+/* Título "Sign in" / "Create account" centrado bajo el logo (coherente). */
+html.native-app .auth-center .card>h2{ text-align:center; }
+/* Botón primario con el degradado de marca: más vivo y premium (texto oscuro
+   se mantiene por contraste). */
+html.native-app .auth-center .btn-primary{ background:var(--grad); }
+/* Verificación de Cloudflare: centrada y un punto más pequeña para que no domine
+   la pantalla. Sigue siendo funcional; al verificar desaparece. */
+html.native-app .cf-wrap{ display:flex; justify-content:center; transform:scale(.94); transform-origin:top center; }
 /* App nativa: en la pantalla de login no se puede "salir" a la web de marketing.
    Se oculta el enlace "Volver al inicio" y los logos (cabecera + sobre el
    formulario) dejan de responder al clic — siguen visibles como marca. */

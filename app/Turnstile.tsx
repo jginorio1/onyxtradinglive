@@ -81,7 +81,7 @@ const Turnstile = forwardRef<TurnstileHandle, { onToken: (t: string) => void }>(
   }, []);
 
   if (!TURNSTILE_KEY) return null;
-  return <div ref={box} style={{ marginTop: 12 }} />;
+  return <div ref={box} className="cf-wrap" style={{ marginTop: 12 }} />;
 });
 
 export default Turnstile;
