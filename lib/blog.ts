@@ -239,10 +239,25 @@ export async function savePost(b: any) {
   const base = shortSlug(b.slug || '', b.title_es || b.title_en || 'articulo', b.keyword);
   row.slug = await uniqueSlug(base);
   row.author = b.author ? String(b.author).slice(0, 120) : null;
+  // Inserta con reintentos ante CHOQUE DE SLUG. uniqueSlug() ya elige un slug libre,
+  // pero entre ese chequeo y el insert otro cron (p.ej. el piloto de noticias, que
+  // corre cada pocos minutos) puede tomar el mismo slug → error de clave única
+  // "blog_posts_slug_key"/"blog_posts_slug_en_key". Antes eso tumbaba TODA la corrida
+  // y el blog dejaba de publicar. Ahora, si choca, sube el sufijo (-2, -3…) y reintenta.
+  const rootEs = row.slug as string;
+  const rootEn = row.slug_en as (string | null | undefined);
   let ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single();
   // Reintento tolerante: si falla por columnas opcionales aún no creadas (slug_en,
   // author_id o las de email), reintenta sin ellas para no romper el guardado.
   if (ins.error && OPTIONAL_COLS.some((k) => k in row)) ins = await supabaseAdmin.from('blog_posts').insert(stripOptional(row)).select('id').single();
+  for (let attempt = 2; ins.error && attempt <= 7; attempt++) {
+    const msg = String(ins.error.message || '');
+    if (!/duplicate key/i.test(msg) || !/blog_posts_slug/i.test(msg)) break;   // otro error → sale
+    if (/blog_posts_slug_en/i.test(msg) && rootEn) row.slug_en = `${rootEn}-${attempt}`;
+    else row.slug = `${rootEs}-${attempt}`;
+    ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single();
+    if (ins.error && OPTIONAL_COLS.some((k) => k in row)) ins = await supabaseAdmin.from('blog_posts').insert(stripOptional(row)).select('id').single();
+  }
   if (ins.error) throw new Error(ins.error.message);
   try { revalidateTag('blog_posts'); } catch {}
   return { id: (ins.data as any).id, slug: row.slug };
