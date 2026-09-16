@@ -936,6 +936,12 @@ html.native-app .promobar,
 html.native-app .topbar:not(.app) .btn-login,
 html.native-app .topbar:not(.app) .btn-signup,
 html.native-app footer.site-footer{ display:none !important; }
+/* App nativa: la barra de header de "visitante" (logo + Entrar/Empieza gratis +
+   toggles) se oculta por completo en pantallas sin sesión (login/registro). La
+   app abre login-first y el login ya trae su propio logo centrado, así que esa
+   barra sobra y se veía como un destello al abrir. La barra CON sesión (.app),
+   con las pestañas del panel, no se toca. */
+html.native-app .topbar:not(.app){ display:none !important; }
 /* App nativa: en la pantalla de login no se puede "salir" a la web de marketing.
    Se oculta el enlace "Volver al inicio" y los logos (cabecera + sobre el
    formulario) dejan de responder al clic — siguen visibles como marca. */

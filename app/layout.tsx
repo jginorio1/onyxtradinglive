@@ -169,7 +169,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var C=window.Capacitor;if(C&&C.isNativePlatform&&C.isNativePlatform()){var p=(location.pathname||'/').replace(/\\/+$/,'')||'/';if(p===''||p==='/'||p==='/en'){document.documentElement.style.background='#0b1020';location.replace('/dashboard');}}}catch(e){}",
+              "try{var C=window.Capacitor;if(C&&C.isNativePlatform&&C.isNativePlatform()){document.documentElement.classList.add('native-app');var p=(location.pathname||'/').replace(/\\/+$/,'')||'/';if(p===''||p==='/'||p==='/en'){document.documentElement.style.background='#0b1020';location.replace('/dashboard');}}}catch(e){}",
           }}
         />
         {/* Arranque nativo (Capacitor): no hace nada en el navegador. */}
