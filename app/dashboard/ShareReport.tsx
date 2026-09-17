@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { shareImage, saveImage, openExternal } from '@/lib/nativeShare';
 
 // ============================================================
 // Compartir el rendimiento del trader desde el dashboard, SIN salir de Onyx.
@@ -28,6 +29,9 @@ export default function ShareReport({
 
   const flash = (m: string) => { setNote(m); setTimeout(() => setNote(''), 1800); };
   const jsonHref = `/api/dashboard/report?export=json&from=${from}&to=${to}&lang=${lang}`;
+  // Abrir el reporte/PDF: en la app usa el navegador del sistema (un <a target=_blank>
+  // no siempre abre dentro del WebView). En web abre pestaña nueva.
+  const openReport = () => openExternal(pdfHref.startsWith('http') ? pdfHref : (typeof location !== 'undefined' ? location.origin : '') + pdfHref);
 
   useEffect(() => {
     if (!open || data) return;
@@ -140,24 +144,13 @@ export default function ShareReport({
     return await new Promise<Blob | null>((res) => (cvRef.current || document.createElement('canvas')).toBlob((b) => res(b), 'image/png'));
   }
   async function download() {
-    const b = await blobFromCanvas(); if (!b) return;
-    const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `onyx-rendimiento-${from}.png`; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    const b = await blobFromCanvas(); if (!b) { flash(es ? 'No se pudo generar' : 'Could not generate'); return; }
+    const r = await saveImage(b, `onyx-rendimiento-${from}.png`, { title: 'Onyx Trading Live', text: es ? 'Mi rendimiento' : 'My performance' });
+    if (r === 'downloaded') flash(es ? 'Imagen descargada' : 'Image downloaded');
   }
   async function share() {
-    const b = await blobFromCanvas();
-    const file = b ? new File([b], 'onyx-rendimiento.png', { type: 'image/png' }) : null;
-    const nav = navigator as any;
-    try {
-      if (file && nav.canShare && nav.canShare({ files: [file] })) {
-        await nav.share({ files: [file], title: 'Onyx Trading Live', text: es ? 'Mi rendimiento en Onyx Trading Live' : 'My performance on Onyx Trading Live' });
-        return;
-      }
-      if (nav.share) { await nav.share({ title: 'Onyx Trading Live', text: es ? 'Mi rendimiento' : 'My performance', url: location.origin }); return; }
-    } catch { /* usuario canceló */ }
-    // PC sin Web Share: copia la imagen al portapapeles.
-    try { if (b) { await (navigator as any).clipboard.write([new (window as any).ClipboardItem({ 'image/png': b })]); flash(es ? 'Imagen copiada' : 'Image copied'); return; } } catch {}
-    download();
+    const b = await blobFromCanvas(); if (!b) { flash(es ? 'No se pudo generar' : 'Could not generate'); return; }
+    await shareImage(b, 'onyx-rendimiento.png', { title: 'Onyx Trading Live', text: es ? 'Mi rendimiento en Onyx Trading Live' : 'My performance on Onyx Trading Live' });
   }
 
   return (
@@ -178,7 +171,7 @@ export default function ShareReport({
             {failed ? (
               <div style={{ textAlign: 'center', padding: '24px 6px' }}>
                 <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{es ? 'No se pudo preparar la tarjeta. Puedes ver el reporte completo:' : 'Could not prepare the card. You can view the full report:'}</div>
-                <a className="btn btn-primary" href={pdfHref} target="_blank" rel="noopener noreferrer">{es ? 'Ver reporte' : 'View report'}</a>
+                <button className="btn btn-primary" onClick={openReport}>{es ? 'Ver reporte' : 'View report'}</button>
               </div>
             ) : !data ? (
               <div className="muted" style={{ textAlign: 'center', padding: '30px 0', fontSize: 13 }}>{es ? 'Preparando tu tarjeta…' : 'Preparing your card…'}</div>
@@ -201,9 +194,8 @@ export default function ShareReport({
               {/* Acciones */}
               <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 12 }}>
                 <button className="btn btn-primary" onClick={share}><OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir' : 'Share'}</button>
-                <button className="btn btn-ghost" onClick={download}><OnyxIcon emoji="⬇" size={15} />️ {es ? 'Imagen' : 'Image'}</button>
-                <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer"><OnyxIcon emoji="🖨️" size={15} /> {es ? 'Imprimir / PDF' : 'Print / PDF'}</a>
-                <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer">📄 {es ? 'Reporte completo' : 'Full report'}</a>
+                <button className="btn btn-ghost" onClick={download}><OnyxIcon emoji="⬇" size={15} /> {es ? 'Imagen' : 'Image'}</button>
+                <button className="btn btn-ghost" onClick={openReport}><OnyxIcon emoji="🖨️" size={15} /> {es ? 'Imprimir / PDF' : 'Print / PDF'}</button>
               </div>
               {note && <div className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 8, color: 'var(--green)' }}>{note}</div>}
             </>)}

@@ -1,6 +1,7 @@
 'use client';
 import { toast, confirmDialog } from '@/lib/toast';
 import { payRedirect } from '@/lib/nativePay';
+import { openExternal } from '@/lib/nativeShare';
 import { mkL } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
@@ -1278,6 +1279,7 @@ function PdfViewer({ url, allowDownload = true, L }: { url: string; allowDownloa
   const [pages, setPages] = useState(0);
   const [err, setErr] = useState(false);
   const [ready, setReady] = useState(false);
+  const [zoom, setZoom] = useState(1);   // 1 = ajustado al ancho; sube para acercar
 
   // Carga pdf.js una sola vez.
   useEffect(() => {
@@ -1311,7 +1313,9 @@ function PdfViewer({ url, allowDownload = true, L }: { url: string; allowDownloa
       const base = pg.getViewport({ scale: 1 });
       // Escala CSS: ocupar el ancho disponible. Súper-muestreo por DPR (y algo extra)
       // para que se vea nítido al hacer zoom con los dedos en el móvil.
-      const cssScale = Math.max(0.5, wrapW / base.width);
+      // Ajuste al ancho × zoom del usuario. Con zoom>1 el canvas supera el contenedor
+      // y este hace scroll (overflow:auto), así el PDF se ve grande y legible.
+      const cssScale = Math.max(0.4, (wrapW / base.width)) * zoom;
       const dpr = (typeof window !== 'undefined' ? window.devicePixelRatio : 1) || 1;
       const render = Math.min(6, cssScale * Math.max(2, dpr));  // resolución interna alta
       const vp = pg.getViewport({ scale: render });
@@ -1322,19 +1326,27 @@ function PdfViewer({ url, allowDownload = true, L }: { url: string; allowDownloa
       pg.render({ canvasContext: ctx, viewport: vp });
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [page, ready]);
+  }, [page, ready, zoom]);
 
   if (err) return (
     <div className="sk-card" style={{ margin: '0 0 12px', textAlign: 'center' }}>
       <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{L('No se pudo mostrar el PDF aquí.', 'Could not display the PDF here.')}</p>
-      {allowDownload && <a className="btn btn-primary" href={url} target="_blank" rel="noreferrer">{L('Abrir PDF', 'Open PDF')}</a>}
+      <button className="btn btn-primary" onClick={() => openExternal(url)}>{L('Abrir PDF', 'Open PDF')}</button>
     </div>
   );
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, overflow: 'auto', textAlign: 'center', minHeight: 200 }}>
+      <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, overflow: 'auto', WebkitOverflowScrolling: 'touch', textAlign: 'center', minHeight: 200, maxHeight: '80vh' }}>
         {!ready && <div className="muted" style={{ fontSize: 13, padding: 24 }}>{L('Cargando PDF…', 'Loading PDF…')}</div>}
-        <canvas ref={canvasRef} onContextMenu={(e) => { if (!allowDownload) e.preventDefault(); }} style={{ maxWidth: '100%', borderRadius: 8, display: ready ? 'inline-block' : 'none' }} />
+        <canvas ref={canvasRef} onContextMenu={(e) => { if (!allowDownload) e.preventDefault(); }} style={{ borderRadius: 8, display: ready ? 'inline-block' : 'none' }} />
+      </div>
+      {/* Zoom + abrir a pantalla completa (visor del teléfono/navegador). */}
+      <div className="row" style={{ alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+        <button className="btn btn-ghost" style={{ fontSize: 15, padding: '4px 12px', fontWeight: 700 }} disabled={zoom <= 0.6} onClick={() => setZoom((z) => Math.max(0.6, +(z - 0.25).toFixed(2)))} aria-label="Zoom out">−</button>
+        <span className="muted" style={{ fontSize: 12.5, minWidth: 46, textAlign: 'center' }}>{Math.round(zoom * 100)}%</span>
+        <button className="btn btn-ghost" style={{ fontSize: 15, padding: '4px 12px', fontWeight: 700 }} disabled={zoom >= 3} onClick={() => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)))} aria-label="Zoom in">+</button>
+        <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setZoom(1)}>{L('Ajustar', 'Fit')}</button>
+        <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => openExternal(url)}>⛶ {L('Pantalla completa', 'Fullscreen')}</button>
       </div>
       <div className="row between" style={{ alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
         <div className="row" style={{ gap: 6 }}>
@@ -1343,7 +1355,7 @@ function PdfViewer({ url, allowDownload = true, L }: { url: string; allowDownloa
         </div>
         <span className="muted" style={{ fontSize: 12.5 }}>{L('Página', 'Page')} {page} / {pages || '…'}</span>
         {allowDownload
-          ? <a className="sk-chip" href={url} target="_blank" rel="noreferrer">⤓ {L('Descargar', 'Download')}</a>
+          ? <button className="sk-chip" onClick={() => openExternal(url)}>⤓ {L('Descargar', 'Download')}</button>
           : <span className="sk-chip muted" style={{ opacity: .8 }}><OnyxIcon emoji="🔒" size={15} /> {L('Solo lectura', 'View only')}</span>}
       </div>
     </div>

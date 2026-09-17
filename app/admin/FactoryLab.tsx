@@ -665,7 +665,7 @@ export default function FactoryLab({ es, canManage, post, reload, bots, datasets
                 </div>
                 {canManage && (
                   <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <button onClick={advance} disabled={busy || !cmp.similar || r.verdict === 'fragil'} style={{ ...btn(GREEN), padding: '11px 20px', fontSize: 14, opacity: (!cmp.similar || r.verdict === 'fragil') ? 0.5 : 1 }}>{es ? '<OnyxIcon emoji="🚀" size={15} /> Pasar a demo (pipeline)' : '<OnyxIcon emoji="🚀" size={15} /> Advance to demo (pipeline)'}</button>
+                    <button onClick={advance} disabled={busy || !cmp.similar || r.verdict === 'fragil'} style={{ ...btn(GREEN), padding: '11px 20px', fontSize: 14, opacity: (!cmp.similar || r.verdict === 'fragil') ? 0.5 : 1 }}>{es ? '🚀 Pasar a demo (pipeline)' : '🚀 Advance to demo (pipeline)'}</button>
                     {(r.verdict === 'fragil') && <span style={{ fontSize: 12, color: RED }}>{es ? 'Frágil: no puede pasar.' : 'Fragile: cannot advance.'}</span>}
                     {r.verdict !== 'fragil' && !cmp.similar && <span style={{ fontSize: 12, color: AMBER }}>{es ? 'El backtest debe parecerse antes de pasar.' : 'Backtest must match before advancing.'}</span>}
                   </div>

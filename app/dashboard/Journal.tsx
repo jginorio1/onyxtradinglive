@@ -300,9 +300,9 @@ export default function Journal({ trades, lang, focusUndoc = false, accounts = [
     <>
       {/* Lotaje */}
       <div className="card">
-        <h3 style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="📦" size={16} /></span> {t.lotTitle.replace('<OnyxIcon emoji="📦" size={15} /> ', '')}</h3>
+        <h3 style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="📦" size={16} /></span> {t.lotTitle.replace(/^📦\s*/, '')}</h3>
         <div className="grid g4" style={{ marginBottom: 14 }}>
-          {([[t.volToday, lot.today, '<OnyxIcon emoji="📅" size={15} />', 'var(--brand)'], [t.volWeek, lot.week, '<OnyxIcon emoji="🗓" size={15} />️', GREEN], [t.volMonth, lot.month, '<OnyxIcon emoji="📆" size={15} />', 'var(--gold)'], [t.volYear, lot.year, '<OnyxIcon emoji="🎯" size={15} />', 'var(--cyan)']] as const).map(([l, v, ic, ac], i) => (
+          {([[t.volToday, lot.today, '📅', 'var(--brand)'], [t.volWeek, lot.week, '🗓', GREEN], [t.volMonth, lot.month, '📆', 'var(--gold)'], [t.volYear, lot.year, '🎯', 'var(--cyan)']] as const).map(([l, v, ic, ac], i) => (
             <StatCard key={i} icon={ic} label={l as string} value={(v as number).toFixed(2)} accent={ac as string} sub={t.lots} />
           ))}
         </div>
@@ -322,7 +322,7 @@ export default function Journal({ trades, lang, focusUndoc = false, accounts = [
 
       {/* Heatmap */}
       <div className="card">
-        <div className="row between" style={{ marginBottom: 6 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="🔥" size={16} /></span> {t.heat.replace('<OnyxIcon emoji="🔥" size={15} /> ', '')}</h3></div>
+        <div className="row between" style={{ marginBottom: 6 }}><h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="🔥" size={16} /></span> {t.heat.replace(/^🔥\s*/, '')}</h3></div>
         <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{t.heatNote}</p>
         <div style={{ overflowX: 'auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '38px repeat(24, 1fr)', gap: 3, minWidth: 640 }}>
@@ -341,7 +341,7 @@ export default function Journal({ trades, lang, focusUndoc = false, accounts = [
       {/* Operaciones + filtros */}
       <div className="card">
         <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="📋" size={16} /></span> {t.trades.replace('<OnyxIcon emoji="📋" size={15} /> ', '')} <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>· {t.showing} {view.length}</span></h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 9 }}><span className="card-ic"><OnyxIcon emoji="📋" size={16} /></span> {t.trades.replace(/^📋\s*/, '')} <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>· {t.showing} {view.length}</span></h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {streak > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 999, fontSize: 13, fontWeight: 600, background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)' }}><OnyxIcon emoji="🔥" size={14} /> {t.streak}: {streak} {streak === 1 ? t.day : t.days}</span>}
             <button className="btn btn-ghost" onClick={exportCSV}>⬇ {t.export}</button>
@@ -651,7 +651,7 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
             {/* Chequeo de reglas */}
             <div style={{ marginTop: 14, borderRadius: 12, border: '1px solid ' + (rules.has && rules.alerts.length ? RED : 'var(--line)'), background: rules.has && rules.alerts.length ? 'rgba(255,107,125,.08)' : 'var(--bg2)', padding: '10px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: rules.has ? 6 : 0 }}>
-                <OnyxIcon emoji={rules.has && rules.alerts.length ? '<OnyxIcon emoji="⚠️" size={15} />' : '<OnyxIcon emoji="🛡" size={15} />️'} size={16} />
+                <OnyxIcon emoji={rules.has && rules.alerts.length ? '⚠️' : '🛡'} size={16} />
                 <b style={{ fontSize: 13 }}>{t.rulesTitle}</b>
               </div>
               {!rules.has ? (
@@ -665,7 +665,7 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
 
             {/* Coach IA por trade */}
             <div style={{ marginTop: 12 }}>
-              <button className="btn btn-ghost" onClick={askCoach} disabled={coaching} style={{ fontSize: 13 }}>{coaching ? t.coaching : '<OnyxIcon emoji="✨" size={15} /> ' + t.coach}</button>
+              <button className="btn btn-ghost" onClick={askCoach} disabled={coaching} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>{coaching ? t.coaching : (<><OnyxIcon emoji="✨" size={15} /> {t.coach}</>)}</button>
               {coach && (
                 <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 12, background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', fontSize: 13.5, lineHeight: 1.6, color: 'var(--tx)' }}>{coach}</div>
               )}

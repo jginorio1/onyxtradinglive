@@ -40,9 +40,16 @@ export default function NativeInit() {
 
       try {
         const { App } = await import('@capacitor/app');
+        // Botón atrás de Android:
+        //  · En la HOME de la app (el panel /dashboard) o en /login → minimiza la
+        //    app (no retrocede al login ni la cierra de golpe).
+        //  · En cualquier otra pantalla → retrocede en la web con normalidad.
+        // Antes, estando logueado, "atrás" caía en /login con el menú visible.
         const h = await App.addListener('backButton', ({ canGoBack }) => {
-          if (canGoBack) window.history.back();
-          else App.minimizeApp();
+          const p = window.location.pathname.replace(/\/+$/, '') || '/';
+          const isHome = p === '/dashboard' || p === '/' || p.startsWith('/login');
+          if (isHome || !canGoBack) { App.minimizeApp(); return; }
+          window.history.back();
         });
         removeBack = () => { try { h.remove(); } catch {} };
       } catch {}

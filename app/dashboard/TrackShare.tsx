@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { shareLink, shareImage, saveImage } from '@/lib/nativeShare';
 
 // Compartir tu trackrecord desde el saludo del dashboard: activar/desactivar la
 // página pública, copiar el enlace, abrir el QR (escanear/copiar/descargar con
@@ -33,10 +34,8 @@ export default function TrackShare({ lang = 'es', name = '' }: { lang?: string; 
   }
   async function copyLink() { try { await navigator.clipboard.writeText(url); flash(es ? 'Enlace copiado' : 'Link copied'); } catch {} }
   async function share() {
-    try {
-      if ((navigator as any).share) await (navigator as any).share({ title: 'Onyx Trading', text: es ? 'Mi trackrecord real' : 'My real trackrecord', url });
-      else copyLink();
-    } catch {}
+    const r = await shareLink({ title: 'Onyx Trading', text: es ? 'Mi trackrecord real' : 'My real trackrecord', url });
+    if (r === 'copied') flash(es ? 'Enlace copiado' : 'Link copied');
   }
 
   // Compone un PNG de marca (tarjeta blanca + logo + QR + url) para descargar/copiar.
@@ -77,16 +76,14 @@ export default function TrackShare({ lang = 'es', name = '' }: { lang?: string; 
     return await new Promise<Blob | null>((res) => cv.toBlob((b) => res(b), 'image/png'));
   }
   async function downloadQR() {
-    const b = await buildBranded(); if (!b) return;
-    const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'onyx-trackrecord-qr.png'; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    const b = await buildBranded(); if (!b) { flash(es ? 'No se pudo generar' : 'Could not generate'); return; }
+    const r = await saveImage(b, 'onyx-trackrecord-qr.png', { title: 'Onyx Trading', text: es ? 'Mi trackrecord' : 'My trackrecord' });
+    if (r === 'downloaded') flash(es ? 'Imagen descargada' : 'Image downloaded');
+    else if (r === 'shared') flash(es ? 'Listo' : 'Done');
   }
-  async function copyQR() {
-    try {
-      const b = await buildBranded(); if (!b) return;
-      await (navigator as any).clipboard.write([new (window as any).ClipboardItem({ 'image/png': b })]);
-      flash(es ? 'Imagen copiada' : 'Image copied');
-    } catch { flash(es ? 'Usa Descargar' : 'Use Download'); }
+  async function shareQR() {
+    const b = await buildBranded(); if (!b) { flash(es ? 'No se pudo generar' : 'Could not generate'); return; }
+    await shareImage(b, 'onyx-trackrecord-qr.png', { title: 'Onyx Trading', text: es ? 'Mi trackrecord real' : 'My real trackrecord' });
   }
 
   return (
@@ -126,9 +123,9 @@ export default function TrackShare({ lang = 'es', name = '' }: { lang?: string; 
               </div>
 
               <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button className="btn btn-ghost" onClick={copyQR}>🖼️ {es ? 'Copiar QR' : 'Copy QR'}</button>
-                <button className="btn btn-ghost" onClick={downloadQR}><OnyxIcon emoji="⬇" size={15} />️ {es ? 'Descargar QR' : 'Download QR'}</button>
-                <button className="btn btn-primary" onClick={share}><OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir' : 'Share'}</button>
+                <button className="btn btn-ghost" onClick={downloadQR}><OnyxIcon emoji="⬇" size={15} /> {es ? 'Descargar QR' : 'Download QR'}</button>
+                <button className="btn btn-ghost" onClick={shareQR}><OnyxIcon emoji="🖼️" size={15} /> {es ? 'Compartir QR' : 'Share QR'}</button>
+                <button className="btn btn-primary" onClick={share}><OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir enlace' : 'Share link'}</button>
                 <a className="btn btn-ghost" href={url} target="_blank" rel="noopener noreferrer">{es ? 'Ver' : 'View'}</a>
               </div>
               {note && <div className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 8, color: 'var(--green)' }}>{note}</div>}

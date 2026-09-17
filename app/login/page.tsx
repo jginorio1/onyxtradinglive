@@ -144,6 +144,19 @@ function LoginInner() {
   const t = dictFor(T, lang);
   const sb = supabaseBrowser();
 
+  // Si YA hay sesión no mostramos el login. Pasa sobre todo en la app: al pulsar
+  // "atrás" del teléfono el usuario caía en /login (con el menú visible) aunque
+  // seguía logueado. Aquí lo rebotamos directo a su panel. `replace` evita que el
+  // login quede en el historial y se repita el rebote.
+  useEffect(() => {
+    let alive = true;
+    sb.auth.getSession().then(({ data }) => {
+      if (alive && data?.session) { router.replace(nextDest || '/dashboard'); }
+    }).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Validación antes de llamar a Supabase, para dar el mensaje en su idioma
   const mailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
   const passOk = pass.length >= 8;                 // login: mínimo histórico
