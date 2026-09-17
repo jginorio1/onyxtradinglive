@@ -1,35 +1,44 @@
 'use client';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useLang } from '@/lib/lang';
 
-// Logo + botón "Panel": un solo botón (icono | Panel) que SIEMPRE lleva al panel.
-// Si ya estás en /dashboard (aunque en una sub-vista: rendimiento, plan, etc.),
-// navegar a la misma URL no haría nada; por eso avisamos al panel para que vuelva
-// al hub y subimos arriba. Desde otra sección, el Link navega normal.
+// Logo + botón "ir al panel". Es un solo botón (icono Onyx | casita) que SIEMPRE
+// lleva al panel. Sin texto: usa un símbolo (casita) para que sea igual en
+// cualquier idioma. El clic se maneja por completo en JS con router.push, así
+// funciona igual en el navegador y dentro de la app nativa (Capacitor):
+//  - Si ya estás en /dashboard (aunque sea una sub-vista), avisa al panel para
+//    volver al hub y sube arriba (navegar a la misma URL no haría nada).
+//  - Desde cualquier otra sección, navega al panel.
 export default function PanelLogo() {
   const { lang } = useLang();
   const en = lang === 'en';
-  const pathname = usePathname() || '';
+  const router = useRouter();
+  const pathname = (usePathname() || '').replace(/\/+$/, '') || '/';
   const onDash = pathname === '/dashboard' || pathname === '/en/dashboard';
+  const dest = pathname.startsWith('/en') ? '/en/dashboard' : '/dashboard';
+  const label = en ? 'Go to panel' : 'Ir al panel';
 
   const go = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (onDash) {
-      e.preventDefault();
       try { window.dispatchEvent(new CustomEvent('onyx:panel-home')); } catch {}
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+      return;
     }
+    try { router.push(dest); } catch { try { window.location.assign(dest); } catch {} }
   };
 
   return (
-    <Link className="logo" href="/dashboard" onClick={go} aria-label={en ? 'Go to panel' : 'Ir al panel'} title={en ? 'Go to panel' : 'Ir al panel'} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-      {/* Icono + "Panel" son UN solo botón, con una línea de separación entre ambos. */}
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(124,140,255,.14)', border: '1px solid rgba(124,140,255,.4)', borderRadius: 999, padding: '3px 11px 3px 5px' }}>
+    <a href={dest} onClick={go} className="logo" role="button" aria-label={label} title={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+      {/* Icono Onyx + casita = UN solo botón, con una línea de separación entre ambos. */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(124,140,255,.14)', border: '1px solid rgba(124,140,255,.4)', borderRadius: 999, padding: '4px 10px 4px 5px' }}>
         <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }} />
         <span style={{ width: 1, height: 16, background: 'rgba(124,140,255,.45)', flex: '0 0 auto' }} />
-        <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--soft-brand)', whiteSpace: 'nowrap' }}>Panel</span>
+        <span aria-hidden="true" style={{ display: 'inline-flex', color: 'var(--soft-brand)' }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M4 11 L12 4 l8 7 M6 10 v9 h12 v-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </span>
       </span>
       <span className="logo-text">Onyx Trading Live</span>
-    </Link>
+    </a>
   );
 }
