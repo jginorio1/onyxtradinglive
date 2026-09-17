@@ -9,12 +9,16 @@
     "start": "next start",
     "lint": "next lint",
     "cap:add:android": "cap add android",
+    "cap:add:ios": "cap add ios",
     "cap:sync": "cap sync",
+    "cap:sync:ios": "cap sync ios",
     "cap:open:android": "cap open android",
+    "cap:open:ios": "cap open ios",
     "cap:assets": "capacitor-assets generate --iconBackgroundColor #0b0f1a --splashBackgroundColor #0b0f1a"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
     "@capacitor/app": "^6.0.1",
     "@capacitor/browser": "^6.0.2",
     "@capacitor/core": "^6.1.2",
