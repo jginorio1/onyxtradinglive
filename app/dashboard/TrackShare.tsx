@@ -77,13 +77,14 @@ export default function TrackShare({ lang = 'es', name = '' }: { lang?: string; 
   }
   async function downloadQR() {
     const b = await buildBranded(); if (!b) { flash(es ? 'No se pudo generar' : 'Could not generate'); return; }
-    const r = await saveImage(b, 'onyx-trackrecord-qr.png', { title: 'Onyx Trading', text: es ? 'Mi trackrecord' : 'My trackrecord' });
+    const r = await saveImage(b, 'onyx-trackrecord-qr.png', { title: 'Onyx Trading', text: es ? 'Mi trackrecord' : 'My trackrecord', url });
     if (r === 'downloaded') flash(es ? 'Imagen descargada' : 'Image downloaded');
-    else if (r === 'shared') flash(es ? 'Listo' : 'Done');
+    else if (r === 'error') flash(es ? 'No se pudo compartir' : 'Could not share');
   }
   async function shareQR() {
     const b = await buildBranded(); if (!b) { flash(es ? 'No se pudo generar' : 'Could not generate'); return; }
-    await shareImage(b, 'onyx-trackrecord-qr.png', { title: 'Onyx Trading', text: es ? 'Mi trackrecord real' : 'My real trackrecord' });
+    const r = await shareImage(b, 'onyx-trackrecord-qr.png', { title: 'Onyx Trading', text: es ? 'Mi trackrecord real' : 'My real trackrecord', url });
+    if (r === 'error') flash(es ? 'No se pudo compartir' : 'Could not share');
   }
 
   return (

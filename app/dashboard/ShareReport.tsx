@@ -143,14 +143,18 @@ export default function ShareReport({
     await buildCard();
     return await new Promise<Blob | null>((res) => (cvRef.current || document.createElement('canvas')).toBlob((b) => res(b), 'image/png'));
   }
+  const shareUrl = typeof location !== 'undefined' ? location.origin : 'https://onyxtradinglive.com';
   async function download() {
     const b = await blobFromCanvas(); if (!b) { flash(es ? 'No se pudo generar' : 'Could not generate'); return; }
-    const r = await saveImage(b, `onyx-rendimiento-${from}.png`, { title: 'Onyx Trading Live', text: es ? 'Mi rendimiento' : 'My performance' });
+    const r = await saveImage(b, `onyx-rendimiento-${from}.png`, { title: 'Onyx Trading Live', text: es ? 'Mi rendimiento' : 'My performance', url: shareUrl });
     if (r === 'downloaded') flash(es ? 'Imagen descargada' : 'Image downloaded');
+    else if (r === 'error') flash(es ? 'No se pudo compartir' : 'Could not share');
   }
   async function share() {
     const b = await blobFromCanvas(); if (!b) { flash(es ? 'No se pudo generar' : 'Could not generate'); return; }
-    await shareImage(b, 'onyx-rendimiento.png', { title: 'Onyx Trading Live', text: es ? 'Mi rendimiento en Onyx Trading Live' : 'My performance on Onyx Trading Live' });
+    const r = await shareImage(b, 'onyx-rendimiento.png', { title: 'Onyx Trading Live', text: es ? 'Mi rendimiento en Onyx Trading Live' : 'My performance on Onyx Trading Live', url: shareUrl });
+    if (r === 'error') flash(es ? 'No se pudo compartir' : 'Could not share');
+    else if (r === 'downloaded') flash(es ? 'Imagen descargada' : 'Image downloaded');
   }
 
   return (
