@@ -46,7 +46,7 @@ export default function JoinQR({ url, size = 160, actions = false, L }: { url: s
       </div>
       {actions && (
         <div className="row" style={{ gap: 6 }}>
-          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={download}><OnyxIcon emoji="⬇" size={15} /> {t('Descargar', 'Download')}</button>
+          <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={download}><OnyxIcon emoji="⬇" size={15} /> {t('Guardar', 'Save')}</button>
           <button className="btn btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={copyImg}>⧉ {t('Copiar', 'Copy')}</button>
         </div>
       )}

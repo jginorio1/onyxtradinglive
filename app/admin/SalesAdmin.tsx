@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import SalesPerf from './SalesPerf';
+import { HintPop } from '@/app/components/HintPop';
 
 // Panel ADMIN de la red de ventas · rediseño moderno:
 // tarjetas de color por nivel, arrastrar y soltar para mover vendedores en el
@@ -280,19 +281,9 @@ function PayRow({ r, act, inp, btn, btnP, canManage }: any) {
   );
 }
 
-// Icono "?" con explicación en un globo (clic para abrir/cerrar; title como respaldo).
-function Hint({ text }: { text: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <span style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle', marginLeft: 5 }}>
-      <button type="button" title={text} aria-label="Ayuda"
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        style={{ width: 16, height: 16, borderRadius: '50%', border: '1px solid var(--line,#3a4363)', background: 'var(--card,#1b2338)', color: 'var(--mut,#9aa6bd)', fontSize: 10.5, lineHeight: '14px', cursor: 'pointer', padding: 0, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>?</button>
-      {open && <span style={{ position: 'absolute', bottom: '135%', left: '50%', transform: 'translateX(-50%)', width: 250, maxWidth: '70vw', background: 'var(--panel,#161c2e)', border: '1px solid var(--accent,#8b93ff)', borderRadius: 10, padding: '9px 11px', fontSize: 12, color: 'var(--tx,#e8ecf5)', lineHeight: 1.5, zIndex: 80, boxShadow: '0 8px 30px rgba(0,0,0,.45)', fontWeight: 400, whiteSpace: 'normal', textAlign: 'left' }}>{text}</span>}
-    </span>
-  );
-}
+// Icono "?" con explicación en un globo. Usa el popup robusto compartido
+// (cierra al tocar fuera, con la X o Escape, y no se corta en el borde).
+function Hint({ text }: { text: string }) { return <HintPop text={text} glyph="?" />; }
 
 // ===== KIT: gestión de materiales de venta =====
 function KitBox({ inp, btn, btnP, canManage }: any) {

@@ -112,6 +112,29 @@ export async function saveImage(blob: Blob, filename = 'onyx.png', opts: { title
   return 'downloaded';
 }
 
+// Abrir/guardar un ARCHIVO que requiere sesión (reporte PDF/Excel/CSV). El problema:
+// abrir la URL en el navegador del sistema pierde la sesión → "no autorizado". Aquí
+// lo DESCARGAMOS con la sesión de la app (fetch credentials:'include') y lo guardamos/
+// compartimos por la hoja nativa. En web se descarga normal (mismo origen, con cookie).
+export async function openAuthedFile(url: string, filename: string): Promise<ShareResult> {
+  if (isNative()) {
+    try {
+      const res = await fetch(url, { credentials: 'include', cache: 'no-store' });
+      if (!res.ok) { rec('authfetch', new Error('http ' + res.status)); return 'error'; }
+      const blob = await res.blob();
+      // Reutiliza la ruta de compartir/guardar archivo (sirve para pdf/xlsx/csv/html).
+      const r = await shareImage(blob, filename, { title: 'Onyx Trading Live', url: (typeof location !== 'undefined' ? location.origin : '') });
+      return r;
+    } catch (e: any) { rec('authfile', e); return 'error'; }
+  }
+  try {
+    const res = await fetch(url, { credentials: 'include', cache: 'no-store' });
+    if (res.ok) { downloadBlob(await res.blob(), filename); return 'downloaded'; }
+  } catch {}
+  try { window.open(url, '_blank', 'noopener,noreferrer'); } catch { window.location.href = url; }
+  return 'shared';
+}
+
 // Abrir un enlace externo.
 export async function openExternal(url: string) {
   if (isNative()) {

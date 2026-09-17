@@ -11,6 +11,7 @@ import MarketHours from './MarketHours';
 import HubVitals, { StatCard, type Vital, type Tile } from './HubVitals';
 import SetupGuide from './SetupGuide';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { openAuthedFile } from '@/lib/nativeShare';
 import Achievements from './Achievements';
 import MarketClock from './MarketClock';
 import QuantEdgeCard from './QuantEdgeCard';
@@ -689,6 +690,16 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const a = useMemo(() => analyze(perfTrades), [perfTrades]);
   // Al salir de Rendimiento, quita el filtro para no afectar hub/calendario.
   useEffect(() => { if (view !== 'rendimiento') { setSegSym(''); setSegBot(''); } }, [view]);
+  // Al entrar a cualquier módulo/tarjeta, empezar SIEMPRE desde arriba (antes
+  // quedaba a media página con el scroll anterior y no se veía el título).
+  useEffect(() => {
+    try {
+      window.scrollTo(0, 0);
+      const el: any = document.scrollingElement || document.documentElement;
+      if (el) el.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    } catch {}
+  }, [view]);
   // Guía visual: al elegir una cuenta concreta en Rendimiento, resalta los filtros
   // Activo/Robot unos segundos para invitar al siguiente paso.
   const [nudge, setNudge] = useState(false);
@@ -973,9 +984,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                     <summary className="btn btn-ghost" style={{ listStyle: 'none', padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><OnyxIcon emoji="⬇️" size={15} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span></summary>
                     <div style={{ position: 'absolute', left: 0, right: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 220, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
                       <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
-                      <a className="btn btn-ghost" href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</a>
-                      <a className="btn btn-ghost" href={xlsxHref} download={`onyx-reporte-${expFrom}.xlsx`} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'con gráficas' : 'with charts'}</span></a>
-                      <a className="btn btn-ghost" href={csvHref} download={`onyx-reporte-${expFrom}.csv`} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📋" size={14} /> CSV <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'datos planos' : 'raw data'}</span></a>
+                      <button className="btn btn-ghost" onClick={() => openAuthedFile(pdfHref, `onyx-reporte-${expFrom}.html`)} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
+                      <button className="btn btn-ghost" onClick={() => openAuthedFile(xlsxHref, `onyx-reporte-${expFrom}.xlsx`)} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'con gráficas' : 'with charts'}</span></button>
+                      <button className="btn btn-ghost" onClick={() => openAuthedFile(csvHref, `onyx-reporte-${expFrom}.csv`)} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📋" size={14} /> CSV <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'datos planos' : 'raw data'}</span></button>
                     </div>
                   </details>
                 )}

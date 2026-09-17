@@ -538,8 +538,10 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 /* Ayuda contextual: el "?" junto a un concepto y su globo */
 .helpdot{width:17px;height:17px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--mut);font-size:10px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;transition:.15s;flex:none;}
 .helpdot:hover{border-color:var(--brand);color:var(--tx);}
-.helppop{position:absolute;left:0;top:calc(100% + 8px);width:270px;background:var(--card);border:1px solid var(--brand);border-radius:10px;padding:12px 14px;z-index:70;box-shadow:0 12px 32px rgba(0,0,0,.5);text-align:left;font-weight:400;}
-@media(max-width:520px){ .helppop{left:auto;right:0;width:240px;} }
+.helppop{position:absolute;left:0;top:calc(100% + 8px);width:270px;max-width:calc(100vw - 24px);background:var(--card);border:1px solid var(--brand);border-radius:10px;padding:12px 14px;z-index:70;box-shadow:0 12px 32px rgba(0,0,0,.5);text-align:left;font-weight:400;max-height:60vh;overflow-y:auto;}
+/* En móvil el globo se fija al ancho de la pantalla (con márgenes) para que
+   nunca se corte por el borde, sin importar dónde esté el botón "?". */
+@media(max-width:520px){ .helppop{position:fixed;left:12px;right:12px;top:auto;width:auto;max-width:none;} }
 
 /* ===== Onyx Academy · layout estilo Skool (theme-aware) ===== */
 .sk-wrap{max-width:1280px;margin:0 auto;padding:0 4px;}

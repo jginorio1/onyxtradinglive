@@ -2,6 +2,7 @@
 import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { HintPop } from '@/app/components/HintPop';
 import CopyGuide from './CopyGuide';
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
@@ -427,17 +428,8 @@ export default function CopyClient() {
     symCap: ['Tope de lote acumulado por símbolo en la esclava.', 'Max total lot per symbol on the slave.'],
     dev: ['Desviación máxima de precio permitida al ejecutar (puntos). Si el precio se movió más, no entra.', 'Max allowed price deviation on execution (points). If price moved more, it skips.'],
   };
-  const Hint = ({ id }: { id: string }) => HELP[id] ? (
-    <span style={{ position: 'relative', display: 'inline-block' }}>
-      <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setHelpFor(helpFor === id ? '' : id); }}
-        style={{ width: 15, height: 15, borderRadius: '50%', border: 'none', background: 'rgba(108,123,255,.18)', color: 'var(--accent,#8a97ff)', fontSize: 10.5, fontWeight: 700, cursor: 'help', lineHeight: '15px', padding: 0, marginLeft: 5 }}>?</button>
-      {helpFor === id && (
-        <span onClick={() => setHelpFor('')} style={{ position: 'absolute', zIndex: 40, top: 20, left: 0, width: 250, background: 'var(--card,#12151d)', border: '1px solid var(--accent,#6c7bff)', borderRadius: 8, padding: '9px 11px', fontSize: 12, lineHeight: 1.55, color: 'var(--tx)', boxShadow: '0 8px 24px rgba(0,0,0,.4)' }}>
-          {HELP[id][lang === 'en' ? 1 : 0]}
-        </span>
-      )}
-    </span>
-  ) : null;
+  // Popup robusto compartido (cierra al tocar fuera / X / Escape, no se corta).
+  const Hint = ({ id }: { id: string }) => HELP[id] ? <HintPop text={HELP[id][lang === 'en' ? 1 : 0]} glyph="?" /> : null;
 
   return (
     <div className="wrap" style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 26px 60px', fontSize: 15 }} onClick={() => helpFor && setHelpFor('')}>{head}

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
-import { shareImage, saveImage, openExternal, getLastShareError } from '@/lib/nativeShare';
+import { shareImage, saveImage, openAuthedFile, getLastShareError } from '@/lib/nativeShare';
 
 // ============================================================
 // Compartir el rendimiento del trader desde el dashboard, SIN salir de Onyx.
@@ -31,7 +31,7 @@ export default function ShareReport({
   const jsonHref = `/api/dashboard/report?export=json&from=${from}&to=${to}&lang=${lang}`;
   // Abrir el reporte/PDF: en la app usa el navegador del sistema (un <a target=_blank>
   // no siempre abre dentro del WebView). En web abre pestaña nueva.
-  const openReport = () => openExternal(pdfHref.startsWith('http') ? pdfHref : (typeof location !== 'undefined' ? location.origin : '') + pdfHref);
+  const openReport = () => openAuthedFile(pdfHref.startsWith('http') ? pdfHref : (typeof location !== 'undefined' ? location.origin : '') + pdfHref, `onyx-reporte-${from}.html`);
 
   useEffect(() => {
     if (!open || data) return;
