@@ -68,7 +68,7 @@ export default function NotifBell() {
             {!items.length && <div className="muted" style={{ fontSize: 13, padding: '18px 14px', textAlign: 'center' }}>{L('No tienes mensajes.', 'No messages yet.')}</div>}
             {items.map((n) => (
               <div key={n.id} onClick={() => openOne(n)} style={{ display: 'flex', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', cursor: n.url ? 'pointer' : 'default', background: n.read_at ? 'transparent' : 'rgba(124,140,255,.07)' }}>
-                <span style={{ fontSize: 17, flex: 'none' }}>{ICON[n.kind] || ICON.info}</span>
+                <span style={{ flex: 'none', color: 'var(--soft-brand)', display: 'inline-flex', marginTop: 1 }}><OnyxIcon emoji={ICON[n.kind] || ICON.info} size={17} glow={false} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{n.title}</div>
                   {n.body && <div className="muted" style={{ fontSize: 12 }}>{n.body}</div>}

@@ -983,17 +983,17 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   )}
                 </>)}
               </div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: isMobile ? 'nowrap' : 'wrap', ...(isMobile ? { width: '100%' } : {}) }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: isMobile ? 'stretch' : 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', ...(isMobile ? { width: '100%' } : {}) }}>
                 {/* Período: en móvil, UNA sola fila deslizable (no envuelve). */}
                 <div style={isMobile
-                  ? { display: 'flex', gap: 6, overflowX: 'auto', flexWrap: 'nowrap', flex: 1, minWidth: 0, WebkitOverflowScrolling: 'touch', paddingBottom: 2 }
+                  ? { display: 'flex', gap: 6, overflowX: 'auto', flexWrap: 'nowrap', width: '100%', minWidth: 0, WebkitOverflowScrolling: 'touch', paddingBottom: 2 }
                   : { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                   {(['d1', 'd7', 'd30', 'mo', 'yr', 'all'] as const).map((r) => <button key={r} className={'btn ' + (range === r ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', whiteSpace: 'nowrap', flex: 'none' }} onClick={() => setRange(r)}>{L.ranges[r]}</button>)}
                   {/* En escritorio el calendario va aquí; en móvil se mueve a "Más". */}
-                  {!isMobile && <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', flex: 'none' }} onClick={() => setRange('custom')} title={L.customRange}><OnyxIcon emoji="📅" size={15} /></button>}
+                  {!isMobile && <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', flex: 'none' }} onClick={() => setRange(range === 'custom' ? 'all' : 'custom')} title={L.customRange}><OnyxIcon emoji="📅" size={15} /></button>}
                 </div>
-                {/* Compartir: siempre visible (acción principal). */}
-                {!isFree && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
+                {/* Compartir: en escritorio va suelto; en móvil, junto a "Más" en su propia fila. */}
+                {!isMobile && !isFree && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
                 {/* ESCRITORIO: Demo + Exportar sueltos, como antes. */}
                 {!isMobile && <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>}
                 {!isMobile && !isFree && (
@@ -1010,15 +1010,17 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                     </>)}
                   </span>
                 )}
-                {/* MÓVIL: un solo botón "Más" agrupa Demo · Calendario · Exportar. */}
+                {/* MÓVIL: fila propia con Compartir + un botón "Más" (Demo · Calendario · Exportar). */}
                 {isMobile && (
-                  <span style={{ position: 'relative', display: 'inline-flex', flex: 'none' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
+                  {!isFree && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
+                  <span style={{ position: 'relative', display: 'inline-flex', flex: 'none', marginLeft: 'auto' }}>
                     <button type="button" className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} aria-label={lang === 'es' ? 'Más opciones' : 'More options'} style={{ padding: '7px 11px', display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer' }} onClick={() => setMoreOpen((o) => !o)}>⋯ {lang === 'es' ? 'Más' : 'More'}</button>
                     {moreOpen && (<>
                       <span onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
                       <div style={{ position: 'absolute', right: 0, left: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 230, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
                         <button className="btn btn-ghost" onClick={() => { setDemo(!demo); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="🎬" size={14} /> {L.demo}{demo ? ' ✓' : ''}</button>
-                        <button className="btn btn-ghost" onClick={() => { setRange('custom'); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: !isFree ? 6 : 0 }}><OnyxIcon emoji="📅" size={14} /> {L.customRange}</button>
+                        <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} onClick={() => { setRange(range === 'custom' ? 'all' : 'custom'); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: !isFree ? 6 : 0 }}><OnyxIcon emoji="📅" size={14} /> {L.customRange}{range === 'custom' ? ' ✓' : ''}</button>
                         {!isFree && <>
                           <div className="muted" style={{ fontSize: 11, padding: '6px 8px 6px', borderTop: '1px solid var(--line)', marginTop: 2 }}>{lang === 'es' ? 'Exportar reporte' : 'Export report'}</div>
                           <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(pdfHref, `onyx-reporte-${expFrom}.html`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
@@ -1028,6 +1030,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                       </div>
                     </>)}
                   </span>
+                  </div>
                 )}
               </div>
             </div>
@@ -1048,6 +1051,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <input type="date" value={cFrom} onChange={(e) => setCFrom(e.target.value)} style={{ margin: 0, width: 'auto', padding: '7px 9px' }} />
                 <span className="muted" style={{ fontSize: 13 }}>{L.to}</span>
                 <input type="date" value={cTo} onChange={(e) => setCTo(e.target.value)} style={{ margin: 0, width: 'auto', padding: '7px 9px' }} />
+                <button className="btn btn-ghost" onClick={() => setRange('all')} title={lang === 'es' ? 'Cerrar' : 'Close'} style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13 }}>✕ {lang === 'es' ? 'Cerrar' : 'Close'}</button>
               </div>
             )}
             {demo && <div style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '8px 14px', fontSize: 13, alignSelf: 'flex-start' }}>{L.demoOn}</div>}
