@@ -1,37 +1,43 @@
 'use client';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useLang } from '@/lib/lang';
-import { isNativeApp } from '@/lib/native';
 
 // Logo + botón "ir al panel". Es un solo botón (icono Onyx | casita) que SIEMPRE
 // lleva al panel. Sin texto: usa un símbolo (casita) para que sea igual en
-// cualquier idioma. El clic se maneja por completo en JS:
-//  - Si ya estás en /dashboard (aunque sea una sub-vista), avisa al panel para
-//    volver al hub y sube arriba (navegar a la misma URL no haría nada).
-//  - Desde cualquier otra sección, navega al panel. En el navegador usa la
-//    navegación suave (router). Dentro de la app nativa (Capacitor) la
-//    navegación por router a veces no surte efecto, así que hacemos una
-//    navegación dura (window.location), que es como carga la app y siempre
-//    responde.
+// cualquier idioma.
+//
+// Nota importante (app nativa): en el URL-wrapper (Capacitor) la navegación
+// "suave" de Next (Link / router.push) a veces no surte efecto y el puente de
+// Capacitor puede no estar disponible en las páginas remotas, así que NO
+// dependemos de detectarlo. Para ir al panel hacemos SIEMPRE una navegación
+// dura (window.location), que es exactamente como la app carga sus páginas y
+// por eso siempre responde, igual en el navegador y en la app.
+//  - Si ya estás en /dashboard (aunque sea una sub-vista), primero intentamos el
+//    reset instantáneo al hub sin recargar; si el enlace se activa igual, la
+//    recarga a ?view=hub también deja el hub.
 export default function PanelLogo() {
   const { lang } = useLang();
   const en = lang === 'en';
-  const router = useRouter();
   const pathname = (usePathname() || '').replace(/\/+$/, '') || '/';
   const onDash = pathname === '/dashboard' || pathname === '/en/dashboard';
-  const dest = pathname.startsWith('/en') ? '/en/dashboard' : '/dashboard';
+  const base = pathname.startsWith('/en') ? '/en/dashboard' : '/dashboard';
+  const dest = onDash ? base + '?view=hub' : base;   // recarga al hub si hiciera falta
   const label = en ? 'Go to panel' : 'Ir al panel';
 
   const go = (e: React.MouseEvent) => {
-    e.preventDefault();
-    // Reset instantáneo si el panel ya está montado (sub-vistas del hub).
-    try { window.dispatchEvent(new CustomEvent('onyx:panel-home')); } catch {}
     if (onDash) {
+      // En el panel: reset instantáneo al hub sin recargar. Solo evitamos la
+      // navegación por defecto si el reset por evento funcionó.
+      let ok = false;
+      try { window.dispatchEvent(new CustomEvent('onyx:panel-home')); ok = true; } catch {}
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+      if (ok) { e.preventDefault(); return; }
+      // Si por lo que sea no se pudo, dejamos que el enlace recargue a ?view=hub.
       return;
     }
-    if (isNativeApp()) { try { window.location.assign(dest); return; } catch {} }
-    try { router.push(dest); } catch { try { window.location.assign(dest); } catch {} }
+    // Fuera del panel: navegación dura garantizada (navegador y app nativa).
+    e.preventDefault();
+    try { window.location.assign(base); } catch { try { (window.location as any).href = base; } catch {} }
   };
 
   return (
