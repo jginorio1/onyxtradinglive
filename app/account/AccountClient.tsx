@@ -21,6 +21,7 @@ import TelegramCard from './TelegramCard';
 import NotifPrefs from './NotifPrefs';
 import SalesReviewCard from '@/app/components/SalesReviewCard';
 import BillingCard from './BillingCard';
+import ManageOnWeb, { useIsIOSApp } from './ManageOnWeb';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import InstallApp from '@/app/dashboard/InstallApp';
 import PushToggle from './PushToggle';
@@ -174,6 +175,8 @@ export default function AccountClient({ email }: { email: string }) {
   const ALL_TABS = ['plan', 'perfil', 'cuentas', 'facturas', 'academias', 'avisos', 'seguridad', 'referidos', 'retiros'];
   const CARD_KEYS = ['avisos', 'seguridad', 'referidos', 'retiros'];
   const [tab, setTabState] = useState<Tab>('plan');
+  // En la app de iOS ocultamos los controles de pago (regla 3.1.1 de Apple).
+  const iosApp = useIsIOSApp();
   const [refView, setRefView] = useState<'invita' | 'embajador'>('invita'); // qué programa de referidos se muestra
   const [refInfo, setRefInfo] = useState<{ referrerCredit: number; friendCredit: number } | null>(null); // montos de "Invita y gana" (config admin)
   const [secOpen, setSecOpen] = useState<string | null>(null); // popup secundario abierto: "tab:parte"
@@ -463,10 +466,14 @@ export default function AccountClient({ email }: { email: string }) {
                     </div>
                   )}
 
-                  {sub && <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
+                  {/* En la app de iOS: no se gestiona el pago aquí (regla 3.1.1 de Apple).
+                      Se muestra el aviso para hacerlo en el sitio web. */}
+                  {iosApp && <ManageOnWeb lang={lang} planName={planName(myPlan, lang)} />}
+
+                  {!iosApp && sub && <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
 
                   {/* Cambiar de plan (upgrade / downgrade) sobre la misma suscripción */}
-                  {sub && (plans.length > 0 || allPlans.length > 0) && (() => {
+                  {!iosApp && sub && (plans.length > 0 || allPlans.length > 0) && (() => {
                     const myPlanId = p.plan || 'free';
                     // Fuente robusta: usa los planes que YA vienen con la cuenta (data.plans);
                     // si por alguna razón no están, cae a los del panel (/api/admin/plans).
@@ -532,7 +539,7 @@ export default function AccountClient({ email }: { email: string }) {
                     </div>
                   )}
 
-                  {!sub && (!p.plan || p.plan === 'free') && allPlans.length > 0 && (() => {
+                  {!iosApp && !sub && (!p.plan || p.plan === 'free') && allPlans.length > 0 && (() => {
                     const paid = allPlans.filter((pl: any) => pl.id !== 'free' && Number(pl.price_month) > 0);
                     if (!paid.length) return null;
                     return (
@@ -616,7 +623,7 @@ export default function AccountClient({ email }: { email: string }) {
                   </div>
                 </div>
 
-                {data.addons?.extra_account_enabled && data.addons?.extra_account_price_id && !isUnlimited && (
+                {!iosApp && data.addons?.extra_account_enabled && data.addons?.extra_account_price_id && !isUnlimited && (
                   <div className="card" style={card}>
                     <div className="row between" style={{ flexWrap: 'wrap', gap: 12 }}>
                       <div style={{ flex: 1, minWidth: 200 }}>
@@ -658,7 +665,7 @@ export default function AccountClient({ email }: { email: string }) {
                 )}
 
                 {/* Checkout embebido para crear la suscripción (usuario Free → de pago) */}
-                {coPlan && <EmbeddedCheckoutModal plan={coPlan} annual={false} lang={lang} onClose={() => setCoPlan(null)} />}
+                {!iosApp && coPlan && <EmbeddedCheckoutModal plan={coPlan} annual={false} lang={lang} onClose={() => setCoPlan(null)} />}
               </Section>
             )}
 

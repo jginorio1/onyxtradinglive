@@ -10,6 +10,7 @@ import ThemeToggle from './ThemeToggle';
 import NotifBell from './NotifBell';
 import MainNav from './MainNav';
 import PanelLogo from './PanelLogo';
+import PlanPill from './PlanPill';
 
 // ============================================================
 // Barra de navegación única, en el layout raíz.
@@ -166,7 +167,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
                   <span className="ea-dot-tx">{eaLive ? t.eaOn : t.eaOff}</span>
                 </span>
               )}
-              <Link className={'planpill' + (plan === 'free' ? ' free' : '')} href="/pricing">{planName}</Link>
+              <PlanPill planName={planName} free={plan === 'free'} />
               <span className="topsep" />
               <NotifBell />
               <ThemeToggle />

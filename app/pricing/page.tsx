@@ -8,6 +8,7 @@ import PlansCompareTable from '@/app/PlansCompareTable';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import PlanCards from '@/app/PlanCards';
+import { useIsIOSApp, openOnyxWeb } from '@/app/account/ManageOnWeb';
 import { getPending } from '@/lib/pendingCheckout';
 import { planFacts, trialLine } from '@/lib/planFacts';
 
@@ -121,6 +122,8 @@ export default function Pricing() {
     return () => { window.removeEventListener('pageshow', reset); window.removeEventListener('focus', reset); document.removeEventListener('visibilitychange', reset); };
   }, []);
 
+  // En la app de iOS no se muestra la compra (regla 3.1.1 de Apple).
+  const iosApp = useIsIOSApp();
   // Checkout embebido: se abre dentro de Onyx (mismo diseño), sin redirigir a Stripe.
   const [co, setCo] = useState<{ plan: string } | null>(null);
   // Cupón del enlace ?promo=CODE (descuento "solo por enlace"). Se pasa al checkout.
@@ -131,6 +134,7 @@ export default function Pricing() {
   // abrimos el checkout de ese plan automáticamente. Solo una vez.
   const [autoTried, setAutoTried] = useState(false);
   useEffect(() => {
+    if (iosApp) return;   // en iOS no auto-abrimos checkout
     if (autoTried || typeof window === 'undefined') return;
     const qs = new URLSearchParams(window.location.search);
     // Plan desde la URL o, como respaldo, la intención guardada en el navegador.
@@ -149,6 +153,7 @@ export default function Pricing() {
     if (price > 0) setCo({ plan: p.id });
   }, [plans, autoTried, annual]);
   async function subscribe(plan: string, price: number) {
+    if (iosApp) { openOnyxWeb('/pricing'); return; }   // iOS: la compra se hace en la web
     if (plan === 'free' || price === 0) { window.location.href = '/login?mode=signup'; return; }
     setCo({ plan });
   }
@@ -160,10 +165,12 @@ export default function Pricing() {
         <h1 style={{ fontSize: 30 }}>{t.title}</h1>
         <p className="muted" style={{ margin: '10px 0 22px' }}>{t.sub}</p>
 
+        {!iosApp && (
         <div style={{ display: 'inline-flex', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 30, padding: 4, marginBottom: 30 }}>
           <button className="btn" style={{ borderRadius: 30, background: !annual ? 'var(--grad)' : 'transparent', color: !annual ? '#fff' : 'var(--mut)' }} onClick={() => setAnnual(false)}>{t.monthly}</button>
           <button className="btn" style={{ borderRadius: 30, background: annual ? 'var(--grad)' : 'transparent', color: annual ? '#fff' : 'var(--mut)', display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setAnnual(true)}>{t.annual} · {t.save} {facts.annualPct > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>−{facts.annualPct}%</span>}</button>
         </div>
+        )}
 
         {/* Tira de confianza: sellos rápidos + compatibilidad con prop firms */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', margin: '-8px auto 20px' }}>
@@ -175,6 +182,20 @@ export default function Pricing() {
         </div>
         <p className="muted" style={{ fontSize: 12.5, margin: '-8px auto 22px', maxWidth: 560 }}><OnyxIcon name="shield" size={13} glow={false} /> {t.compat}</p>
 
+        {/* En la app de iOS: no se muestran precios ni compra (regla 3.1.1 de Apple).
+            Se invita a ver/gestionar los planes en el sitio web. */}
+        {iosApp ? (
+          <div style={{ maxWidth: 460, margin: '0 auto', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 20, textAlign: 'center' }}>
+            <div style={{ marginBottom: 10 }}><OnyxIcon emoji="🌐" size={22} /></div>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>{lang === 'es' ? 'Consulta los planes en el sitio web' : 'See the plans on the website'}</div>
+            <div className="muted" style={{ fontSize: 13, lineHeight: 1.55, marginBottom: 14 }}>
+              {lang === 'es'
+                ? 'Para ver los precios y suscribirte, entra a onyxtradinglive.com desde tu navegador. Con tu cuenta ya activa, puedes usar la app con normalidad.'
+                : 'To see prices and subscribe, go to onyxtradinglive.com in your browser. With an active account you can use the app normally.'}
+            </div>
+            <button className="btn btn-ghost" onClick={() => openOnyxWeb('/pricing')}>{lang === 'es' ? 'Abrir en el navegador' : 'Open in browser'}</button>
+          </div>
+        ) : (<>
         {/* Tarjetas (componente compartido con el landing) */}
         <PlanCards plans={shown as any} lang={lang} annual={annual} loadingId={loading} onChoose={(id, price) => subscribe(id, price)} trust anchors={ANCHORS} ctas={CTAS} />
 
@@ -186,6 +207,7 @@ export default function Pricing() {
         {/* Tabla comparativa (misma que el landing, componente compartido) */}
         <PlansCompareTable plans={shown as any} lang={lang} annual={annual} loadingId={loading}
           onChoose={(id, price) => subscribe(id, price)} />
+        </>)}
 
         {/* Mini-FAQ de precios: resuelve objeciones de compra ahí mismo */}
         <div style={{ maxWidth: 720, margin: '44px auto 0', textAlign: 'left' }}>
@@ -205,7 +227,7 @@ export default function Pricing() {
           </div>
         </div>
       </div>
-      {co && <EmbeddedCheckoutModal plan={co.plan} annual={annual} lang={lang} coupon={promo} onClose={() => setCo(null)} />}
+      {!iosApp && co && <EmbeddedCheckoutModal plan={co.plan} annual={annual} lang={lang} coupon={promo} onClose={() => setCo(null)} />}
     </>
   );
 }
