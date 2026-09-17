@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
-import { shareImage, saveImage, openExternal } from '@/lib/nativeShare';
+import { shareImage, saveImage, openExternal, getLastShareError } from '@/lib/nativeShare';
 
 // ============================================================
 // Compartir el rendimiento del trader desde el dashboard, SIN salir de Onyx.
@@ -153,7 +153,7 @@ export default function ShareReport({
   async function share() {
     const b = await blobFromCanvas(); if (!b) { flash(es ? 'No se pudo generar' : 'Could not generate'); return; }
     const r = await shareImage(b, 'onyx-rendimiento.png', { title: 'Onyx Trading Live', text: es ? 'Mi rendimiento en Onyx Trading Live' : 'My performance on Onyx Trading Live', url: shareUrl });
-    if (r === 'error') flash(es ? 'No se pudo compartir' : 'Could not share');
+    if (r === 'error') flash((es ? 'No se pudo compartir · ' : 'Could not share · ') + (getLastShareError() || '?'));
     else if (r === 'downloaded') flash(es ? 'Imagen descargada' : 'Image downloaded');
   }
 

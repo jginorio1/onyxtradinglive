@@ -14,6 +14,11 @@ type ShareResult = 'shared' | 'copied' | 'downloaded' | 'cancel' | 'error';
 
 type CapWin = Window & { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string; Plugins?: any } };
 
+// Último error de compartir (para diagnóstico en pantalla). Se lee con getLastShareError().
+let _lastShareError = '';
+export function getLastShareError(): string { return _lastShareError; }
+function rec(where: string, e: any) { _lastShareError = where + ': ' + String(e?.message || e || 'error').slice(0, 160); }
+
 // ¿Estamos dentro de la app nativa? Tolerante: vale isNativePlatform() O getPlatform()
 // distinto de 'web' O que exista el puente de plugins de Capacitor.
 function isNative(): boolean {
@@ -61,7 +66,9 @@ async function nativeShareText(opts: { title?: string; text?: string; url?: stri
     await Share.share(payload);
     return true;
   } catch (e: any) {
-    return /cancel/i.test(String(e?.message || ''));
+    if (/cancel/i.test(String(e?.message || ''))) return true;
+    rec('text', e);
+    return false;
   }
 }
 
@@ -81,6 +88,7 @@ export async function shareImage(blob: Blob, filename = 'onyx.png', opts: { titl
       return 'shared';
     } catch (e: any) {
       if (/cancel/i.test(String(e?.message || ''))) return 'cancel';
+      rec('file', e);
       // 2) Respaldo nativo: comparte texto+enlace para que la hoja SIEMPRE abra.
       if (await nativeShareText({ title: opts.title, text: opts.text, url: opts.url })) return 'shared';
       return 'error';
