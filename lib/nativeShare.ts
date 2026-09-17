@@ -1,50 +1,45 @@
 // ============================================================
-// Compartir / guardar / abrir — funciona igual en la WEB y en la APP (Capacitor).
+// Compartir / guardar / abrir — funciona en WEB y en la APP (Capacitor).
 //
-// El problema real observado: dentro del WebView de la app, `navigator.share` casi
-// nunca existe y la descarga con <a download> no hace NADA. Además, al cargar la web
-// remota (server.url) la detección `isNativePlatform()` a veces no está lista, así que
-// aquí detectamos lo nativo de forma TOLERANTE: si existe `window.Capacitor` y la
-// plataforma no es 'web', usamos los plugins (Share/Filesystem/Browser). Y si compartir
-// el ARCHIVO falla, caemos a compartir TEXTO+ENLACE con el mismo plugin nativo, para
-// que la hoja de compartir SIEMPRE abra (antes caía al no-op de la web = "no pasa nada").
+// CLAVE (por qué antes fallaba con "Share plugin is not implemented on android"):
+// la app carga la web EN VIVO (server.url), así que el paquete web `@capacitor/share`
+// no siempre engancha con el plugin nativo. La forma FIABLE es llamar al plugin
+// DIRECTAMENTE por el puente que inyecta el APK: `window.Capacitor.Plugins.Share`.
+// Ese objeto ES la implementación nativa registrada en el APK. Solo si no existe,
+// probamos el paquete importado, y por último el comportamiento web.
 // ============================================================
 
 type ShareResult = 'shared' | 'copied' | 'downloaded' | 'cancel' | 'error';
-
 type CapWin = Window & { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string; Plugins?: any } };
 
-// Último error de compartir (para diagnóstico en pantalla). Se lee con getLastShareError().
 let _lastShareError = '';
 export function getLastShareError(): string { return _lastShareError; }
 function rec(where: string, e: any) { _lastShareError = where + ': ' + String(e?.message || e || 'error').slice(0, 160); }
 
-// ¿Estamos dentro de la app nativa? Tolerante: vale isNativePlatform() O getPlatform()
-// distinto de 'web' O que exista el puente de plugins de Capacitor.
+function cap(): CapWin['Capacitor'] | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return (window as CapWin).Capacitor;
+}
 function isNative(): boolean {
-  if (typeof window === 'undefined') return false;
-  const cap = (window as CapWin).Capacitor;
-  if (!cap) return false;
+  const c = cap(); if (!c) return false;
   try {
-    if (typeof cap.isNativePlatform === 'function' && cap.isNativePlatform()) return true;
-    if (typeof cap.getPlatform === 'function' && cap.getPlatform() !== 'web') return true;
-    if (cap.Plugins && (cap.Plugins.Share || cap.Plugins.Filesystem)) return true;
+    if (typeof c.isNativePlatform === 'function' && c.isNativePlatform()) return true;
+    if (typeof c.getPlatform === 'function' && c.getPlatform() !== 'web') return true;
+    if (c.Plugins && (c.Plugins.Share || c.Plugins.Filesystem)) return true;
   } catch {}
   return false;
 }
+// Devuelve el plugin nativo del PUENTE del APK (fiable), o el del paquete importado.
+function bridgePlugin(name: string): any | undefined {
+  const c = cap(); return c && c.Plugins ? c.Plugins[name] : undefined;
+}
 
-// Compartir un ENLACE. App → hoja de compartir nativa. Web → Web Share si existe,
-// si no copia al portapapeles.
+// Compartir un ENLACE.
 export async function shareLink(o: { title?: string; text?: string; url: string }): Promise<ShareResult> {
   const { title, text, url } = o;
   if (isNative()) {
-    try {
-      const { Share } = await import('@capacitor/share');
-      await Share.share({ title, text, url, dialogTitle: title });
-      return 'shared';
-    } catch (e: any) {
-      if (/cancel/i.test(String(e?.message || ''))) return 'cancel';
-    }
+    if (await nativeShare({ title, text, url })) return 'shared';
+    // (si nativeShare devolvió false ya quedó el error grabado)
   }
   if (typeof navigator !== 'undefined' && (navigator as any).share) {
     try { await (navigator as any).share({ title, text, url }); return 'shared'; }
@@ -53,48 +48,53 @@ export async function shareLink(o: { title?: string; text?: string; url: string 
   try { await navigator.clipboard.writeText(url); return 'copied'; } catch { return 'error'; }
 }
 
-// Comparte el TEXTO/ENLACE por el plugin nativo (respaldo cuando falla el archivo).
-async function nativeShareText(opts: { title?: string; text?: string; url?: string }): Promise<boolean> {
+// Llama a Share nativo: primero el puente del APK, luego el paquete. Devuelve true si
+// abrió (o el usuario canceló). Graba el error si no.
+async function nativeShare(payload: { title?: string; text?: string; url?: string; files?: string[] }): Promise<boolean> {
+  const p: any = { ...payload, dialogTitle: payload.title };
+  if (!p.text && !p.url && !(p.files && p.files.length)) p.url = (typeof location !== 'undefined' ? location.origin : 'https://onyxtradinglive.com');
+  const bridge = bridgePlugin('Share');
+  if (bridge && typeof bridge.share === 'function') {
+    try { await bridge.share(p); return true; }
+    catch (e: any) { if (/cancel/i.test(String(e?.message || ''))) return true; rec('share-bridge', e); }
+  }
   try {
     const { Share } = await import('@capacitor/share');
-    const payload: any = { dialogTitle: opts.title };
-    if (opts.title) payload.title = opts.title;
-    if (opts.text) payload.text = opts.text;
-    if (opts.url) payload.url = opts.url;
-    // Share.share exige al menos uno; si no hay nada, mandamos la web como enlace.
-    if (!payload.text && !payload.url) payload.url = (typeof location !== 'undefined' ? location.origin : 'https://onyxtradinglive.com');
-    await Share.share(payload);
-    return true;
-  } catch (e: any) {
-    if (/cancel/i.test(String(e?.message || ''))) return true;
-    rec('text', e);
-    return false;
-  }
+    await Share.share(p); return true;
+  } catch (e: any) { if (/cancel/i.test(String(e?.message || ''))) return true; rec('share-pkg', e); }
+  return false;
 }
 
-// Compartir una IMAGEN (Blob). App → guarda en caché y abre la hoja nativa con el
-// archivo; si el archivo falla, comparte texto+enlace (la hoja abre igual). Web → Web
-// Share con archivo si se puede; si no, descarga directa.
+// Escribe un archivo en caché y devuelve su URI (puente del APK o paquete).
+async function nativeWriteCache(filename: string, base64: string): Promise<string | undefined> {
+  const bridge = bridgePlugin('Filesystem');
+  if (bridge && typeof bridge.writeFile === 'function') {
+    try {
+      await bridge.writeFile({ path: filename, data: base64, directory: 'CACHE' });
+      const r = await bridge.getUri({ path: filename, directory: 'CACHE' });
+      return r?.uri;
+    } catch (e: any) { rec('fs-bridge', e); }
+  }
+  try {
+    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+    await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Cache });
+    const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
+    return uri;
+  } catch (e: any) { rec('fs-pkg', e); }
+  return undefined;
+}
+
+// Compartir / guardar una IMAGEN (Blob).
 export async function shareImage(blob: Blob, filename = 'onyx.png', opts: { title?: string; text?: string; url?: string } = {}): Promise<ShareResult> {
   if (isNative()) {
     // 1) Intento con el ARCHIVO (imagen).
-    try {
-      const base64 = await blobToBase64(blob);
-      const { Filesystem, Directory } = await import('@capacitor/filesystem');
-      const { Share } = await import('@capacitor/share');
-      await Filesystem.writeFile({ path: filename, data: base64, directory: Directory.Cache });
-      const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
-      await Share.share({ title: opts.title, text: opts.text, files: [uri], dialogTitle: opts.title });
-      return 'shared';
-    } catch (e: any) {
-      if (/cancel/i.test(String(e?.message || ''))) return 'cancel';
-      rec('file', e);
-      // 2) Respaldo nativo: comparte texto+enlace para que la hoja SIEMPRE abra.
-      if (await nativeShareText({ title: opts.title, text: opts.text, url: opts.url })) return 'shared';
-      return 'error';
-    }
+    const base64 = await blobToBase64(blob);
+    const uri = await nativeWriteCache(filename, base64);
+    if (uri && await nativeShare({ title: opts.title, text: opts.text, files: [uri] })) return 'shared';
+    // 2) Respaldo: comparte texto+enlace (la hoja abre igual).
+    if (await nativeShare({ title: opts.title, text: opts.text, url: opts.url })) return 'shared';
+    return 'error';
   }
-  // WEB
   try {
     const file = new File([blob], filename, { type: blob.type || 'image/png' });
     if (typeof navigator !== 'undefined' && (navigator as any).canShare?.({ files: [file] })) {
@@ -106,18 +106,18 @@ export async function shareImage(blob: Blob, filename = 'onyx.png', opts: { titl
   return 'downloaded';
 }
 
-// Guardar una imagen. Web → descarga. App → hoja de compartir (el usuario elige
-// "Guardar en Fotos"); si falla, comparte texto+enlace para no quedarse en "nada".
 export async function saveImage(blob: Blob, filename = 'onyx.png', opts: { title?: string; text?: string; url?: string } = {}): Promise<ShareResult> {
   if (isNative()) return shareImage(blob, filename, opts);
   downloadBlob(blob, filename);
   return 'downloaded';
 }
 
-// Abrir un enlace externo. App → navegador del sistema; web → pestaña nueva.
+// Abrir un enlace externo.
 export async function openExternal(url: string) {
   if (isNative()) {
-    try { const { Browser } = await import('@capacitor/browser'); await Browser.open({ url }); return; } catch {}
+    const bridge = bridgePlugin('Browser');
+    if (bridge && typeof bridge.open === 'function') { try { await bridge.open({ url }); return; } catch (e) { rec('browser-bridge', e); } }
+    try { const { Browser } = await import('@capacitor/browser'); await Browser.open({ url }); return; } catch (e) { rec('browser-pkg', e); }
   }
   try { window.open(url, '_blank', 'noopener,noreferrer'); } catch { window.location.href = url; }
 }
