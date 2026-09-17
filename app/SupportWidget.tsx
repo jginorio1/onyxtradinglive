@@ -303,9 +303,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
         <div style={{ position: 'fixed', [side]: ox, bottom: `calc(${oy}px + env(safe-area-inset-bottom))`, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: side === 'left' ? 'flex-start' : 'flex-end', gap: 8 }}>
           {/* Globo proactivo */}
           {tease && x.proactive && (
-            <div onClick={launch} style={{ cursor: 'pointer', maxWidth: 230, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: '9px 12px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 8px 22px rgba(0,0,0,.32)', animation: 'onyxTease .3s ease', position: 'relative' }}>
+            <div onClick={launch} style={{ cursor: 'pointer', maxWidth: 250, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 34px 10px 12px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 8px 22px rgba(0,0,0,.32)', animation: 'onyxTease .3s ease', position: 'relative' }}>
               {x.proactive}
-              <button onClick={(e) => { e.stopPropagation(); dismissTease(); }} aria-label="close" style={{ position: 'absolute', top: 2, right: 5, background: 'none', border: 'none', color: 'var(--mut)', fontSize: 14, cursor: 'pointer', lineHeight: 1 }}>×</button>
+              <button onClick={(e) => { e.stopPropagation(); dismissTease(); }} aria-label={es ? 'Cerrar' : 'Close'} title={es ? 'Cerrar' : 'Close'} style={{ position: 'absolute', top: 4, right: 4, width: 28, height: 28, borderRadius: 8, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--tx)', fontSize: 16, cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
             </div>
           )}
           <button onClick={launch} aria-label={x.help || (es ? 'Abrir el chat de ayuda' : 'Open help chat')}

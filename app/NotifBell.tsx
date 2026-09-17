@@ -60,7 +60,8 @@ export default function NotifBell() {
           <div className="row between" style={{ padding: '11px 14px', borderBottom: '1px solid var(--line)' }}>
             <b style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon name="bell" size={16} /></span>{L('Mensajes', 'Messages')}</b>
             <span className="row" style={{ gap: 4 }}>
-              <button onClick={togglePin} title={L('Fijar', 'Pin')} aria-label={L('Fijar', 'Pin')} style={{ background: pinned ? 'rgba(124,140,255,.14)' : 'transparent', border: 'none', cursor: 'pointer', color: pinned ? 'var(--soft-brand)' : 'var(--mut)', width: 34, height: 34, borderRadius: 9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon name="pin" size={16} glow={pinned} /></button>
+              {/* El pin no aplica en móvil (el panel ya ocupa toda la pantalla). */}
+              {!narrow && <button onClick={togglePin} title={L('Fijar', 'Pin')} aria-label={L('Fijar', 'Pin')} style={{ background: pinned ? 'rgba(124,140,255,.14)' : 'transparent', border: 'none', cursor: 'pointer', color: pinned ? 'var(--soft-brand)' : 'var(--mut)', width: 34, height: 34, borderRadius: 9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon name="pin" size={16} glow={pinned} /></button>}
               <button onClick={() => setOpen(false)} title={L('Cerrar', 'Close')} aria-label={L('Cerrar', 'Close')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--mut)', width: 34, height: 34, borderRadius: 9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>✕</button>
             </span>
           </div>
