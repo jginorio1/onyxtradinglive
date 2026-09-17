@@ -161,11 +161,20 @@ async function runCycle(force = false): Promise<PilotResult> {
 
   const auto = cfg.mode !== 'draft';
   // Publica (auto) o deja borrador. En auto, activa el email inmediato (inglés).
-  const saved = await savePost({
-    ...gen.article,
-    status: auto ? 'published' : 'draft', is_news: true,
-    email_enabled: auto, email_when: 'now', email_segment: cfg.emailSegment || 'all',
-  });
+  // Si por lo que sea el guardado falla, LIBERAMOS la noticia (borramos el "visto")
+  // para que el próximo ciclo la reintente, y no congelamos el piloto.
+  let saved: { id: string; slug?: string };
+  try {
+    saved = await savePost({
+      ...gen.article,
+      status: auto ? 'published' : 'draft', is_news: true,
+      email_enabled: auto, email_when: 'now', email_segment: cfg.emailSegment || 'all',
+    });
+  } catch (e: any) {
+    try { await supabaseAdmin.from('news_seen').delete().eq('hash', pickHash); } catch {}
+    await logError('news_pilot_save', e);
+    return { ran: true, reason: 'save_failed', posted: 0, candidate: pick.title };
+  }
 
   // Marca el registro como publicado (para tope diario y separación).
   try { await supabaseAdmin.from('news_seen').update({ posted: auto, post_id: saved.id }).eq('hash', pickHash); } catch {}

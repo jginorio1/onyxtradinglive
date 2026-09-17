@@ -250,11 +250,17 @@ export async function savePost(b: any) {
   // Reintento tolerante: si falla por columnas opcionales aún no creadas (slug_en,
   // author_id o las de email), reintenta sin ellas para no romper el guardado.
   if (ins.error && OPTIONAL_COLS.some((k) => k in row)) ins = await supabaseAdmin.from('blog_posts').insert(stripOptional(row)).select('id').single();
-  for (let attempt = 2; ins.error && attempt <= 7; attempt++) {
+  // Sufijo único garantizado (base36 de tiempo + azar) para el último recurso: aunque
+  // varios crons choquen a la vez, esto NO puede repetirse → el blog jamás se congela.
+  const rndTok = () => (Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 6));
+  for (let attempt = 2; ins.error && attempt <= 12; attempt++) {
     const msg = String(ins.error.message || '');
     if (!/duplicate key/i.test(msg) || !/blog_posts_slug/i.test(msg)) break;   // otro error → sale
-    if (/blog_posts_slug_en/i.test(msg) && rootEn) row.slug_en = `${rootEn}-${attempt}`;
-    else row.slug = `${rootEs}-${attempt}`;
+    // Intentos 2-4: sufijo bonito (-2, -3, -4). Del 5 en adelante: token aleatorio
+    // único, que hace imposible otro choque por más carreras que haya entre crons.
+    const suf = attempt <= 4 ? String(attempt) : rndTok();
+    if (/blog_posts_slug_en/i.test(msg) && rootEn) row.slug_en = `${rootEn}-${suf}`;
+    else row.slug = `${rootEs}-${suf}`;
     ins = await supabaseAdmin.from('blog_posts').insert(row).select('id').single();
     if (ins.error && OPTIONAL_COLS.some((k) => k in row)) ins = await supabaseAdmin.from('blog_posts').insert(stripOptional(row)).select('id').single();
   }
