@@ -945,15 +945,12 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {/* Selector de cuenta CON el balance dentro (una sola tarjeta). */}
-                <PickerMenu search accent width={280} ph={L.searchAcc}
+                <PickerMenu search width={280} ph={L.searchAcc}
                   trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}>
                     <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="💼" size={15} /></span>
-                    <span style={{ lineHeight: 1.12, textAlign: 'left' }}>
-                      <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                        <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.5px' }}>${(sel === 'all' ? totalBalance : Number(cur?.balance || 0)).toLocaleString()}</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: GREEN, whiteSpace: 'nowrap' }}><span className="livedot" style={{ width: 6, height: 6 }} /> {updatedTxt}</span>
-                      </span>
-                      <span className="muted" style={{ fontSize: 10.5, display: 'block', whiteSpace: 'nowrap' }}>{sel === 'all' ? L.portfolio : (cur ? accName(cur) : L.portfolio)} · {sel === 'all' ? accounts.length : 1} {L.accountsWord}</span>
+                    <span style={{ lineHeight: 1.15, textAlign: 'left' }}>
+                      <span style={{ display: 'block', fontSize: 18, fontWeight: 800, letterSpacing: '-.5px', color: 'var(--tx)' }}>${(sel === 'all' ? totalBalance : Number(cur?.balance || 0)).toLocaleString()}</span>
+                      <span style={{ fontSize: 11, display: 'block', whiteSpace: 'nowrap', color: 'var(--mut)' }}>{sel === 'all' ? L.portfolio : (cur ? accName(cur) : L.portfolio)} · {sel === 'all' ? accounts.length : 1} {L.accountsWord}</span>
                     </span>
                   </span>}
                   items={[
@@ -981,35 +978,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                     <span className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: .5, cursor: 'default', borderColor: 'var(--line)' }} title={L.noRobotsHint}><OnyxIcon emoji="🤖" size={14} /> <span style={{ fontSize: 12, color: 'var(--mut)' }}>{L.segRobot}:</span> {L.noRobots}</span>
                   )}
                 </>)}
-                {/* MÓVIL: Activo/Robot dentro de un botón "Filtros". */}
-                {view === 'rendimiento' && isMobile && (
-                  <span style={{ position: 'relative', display: 'inline-flex' }}>
-                    <button type="button" className={'btn ' + ((segSym || segBot) ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => setFiltOpen((o) => !o)}><OnyxIcon emoji="🔎" size={14} /> {L.filterBy}{(segSym || segBot) ? ' ·' : ''}{segSym ? ' ' + segSym : ''}{segBot ? ' ' + (segBot === '__manual' ? L.manual : nameOf(segBot, '#' + segBot)) : ''} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span></button>
-                    {filtOpen && (<>
-                      <span onClick={() => setFiltOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
-                      <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, width: 250, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div className="muted" style={{ fontSize: 11 }}>{L.filterBy}</div>
-                        <PickerMenu search width={230} ph={L.searchAsset} btnStyle={{ borderColor: 'var(--brand)', width: '100%', justifyContent: 'flex-start' }}
-                          trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💱" size={14} /> <span style={{ color: 'var(--mut)', fontSize: 12 }}>{L.segAsset}:</span> {segSym || L.segAll} <span style={pillCnt}>{perfBk.symbols.length}</span></span>}
-                          items={[{ key: '', text: L.segAll, active: !segSym }, ...perfBk.symbols.map((s) => ({ key: s.key, text: s.key, net: s.net, dot: s.net >= 0 ? GREEN : RED, active: segSym === s.key }))]}
-                          onPick={(k) => setSegSym(k)} />
-                        {perfBk.robots.length > 0 ? (
-                          <PickerMenu search width={230} accent={!!segBot} ph={L.searchRobot} empty={L.noBots} btnStyle={{ borderColor: 'var(--brand)', width: '100%', justifyContent: 'flex-start' }}
-                            trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🤖" size={14} /> <span style={{ color: segBot ? undefined : 'var(--mut)', fontSize: 12 }}>{L.segRobot}:</span> {segBot ? (segBot === '__manual' ? L.manual : nameOf(segBot, '#' + segBot)) : L.segAll} <span style={pillCnt}>{perfBk.robots.length}</span></span>}
-                            items={[
-                              { key: '', text: L.segAll, active: !segBot },
-                              ...(perfBk.manual.present ? [{ key: '__manual', text: L.manual, sub: L.manualSub, net: perfBk.manual.net, dot: perfBk.manual.net >= 0 ? GREEN : RED, active: segBot === '__manual' }] : []),
-                              ...perfBk.robots.map((r) => ({ key: r.key, text: nameOf(r.key, r.label), sub: `magic ${r.key}`, net: r.net, dot: r.net >= 0 ? GREEN : RED, active: segBot === r.key })),
-                            ]}
-                            onPick={(k) => setSegBot(k)} />
-                        ) : (
-                          <span className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: .5, cursor: 'default', borderColor: 'var(--line)', width: '100%', justifyContent: 'flex-start' }} title={L.noRobotsHint}><OnyxIcon emoji="🤖" size={14} /> <span style={{ fontSize: 12, color: 'var(--mut)' }}>{L.segRobot}:</span> {L.noRobots}</span>
-                        )}
-                        {(segSym || segBot) && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { setSegSym(''); setSegBot(''); }}>{L.segClear}</button>}
-                      </div>
-                    </>)}
-                  </span>
-                )}
+                {/* En móvil, Activo/Robot van dentro del botón "Filtros" de la fila de acciones. */}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: isMobile ? 'stretch' : 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', ...(isMobile ? { width: '100%' } : {}) }}>
                 {/* Período: en móvil, UNA sola fila deslizable (no envuelve). */}
@@ -1042,6 +1011,35 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 {isMobile && (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
                   {!isFree && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
+                  {/* Filtros (Activo/Robot) solo en Rendimiento. */}
+                  {view === 'rendimiento' && (
+                    <span style={{ position: 'relative', display: 'inline-flex', flex: 'none' }}>
+                      <button type="button" className={'btn ' + ((segSym || segBot) ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 11px', display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', maxWidth: 160 }} onClick={() => setFiltOpen((o) => !o)}><OnyxIcon emoji="🔎" size={14} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(segSym || segBot) ? (segSym || (segBot === '__manual' ? L.manual : nameOf(segBot, '#' + segBot))) : L.filterBy}</span> <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span></button>
+                      {filtOpen && (<>
+                        <span onClick={() => setFiltOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
+                        <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, width: 250, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div className="muted" style={{ fontSize: 11 }}>{L.filterBy}</div>
+                          <PickerMenu search width={230} ph={L.searchAsset} btnStyle={{ borderColor: 'var(--brand)', width: '100%', justifyContent: 'flex-start' }}
+                            trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💱" size={14} /> <span style={{ color: 'var(--mut)', fontSize: 12 }}>{L.segAsset}:</span> {segSym || L.segAll} <span style={pillCnt}>{perfBk.symbols.length}</span></span>}
+                            items={[{ key: '', text: L.segAll, active: !segSym }, ...perfBk.symbols.map((s) => ({ key: s.key, text: s.key, net: s.net, dot: s.net >= 0 ? GREEN : RED, active: segSym === s.key }))]}
+                            onPick={(k) => setSegSym(k)} />
+                          {perfBk.robots.length > 0 ? (
+                            <PickerMenu search width={230} accent={!!segBot} ph={L.searchRobot} empty={L.noBots} btnStyle={{ borderColor: 'var(--brand)', width: '100%', justifyContent: 'flex-start' }}
+                              trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🤖" size={14} /> <span style={{ color: segBot ? undefined : 'var(--mut)', fontSize: 12 }}>{L.segRobot}:</span> {segBot ? (segBot === '__manual' ? L.manual : nameOf(segBot, '#' + segBot)) : L.segAll} <span style={pillCnt}>{perfBk.robots.length}</span></span>}
+                              items={[
+                                { key: '', text: L.segAll, active: !segBot },
+                                ...(perfBk.manual.present ? [{ key: '__manual', text: L.manual, sub: L.manualSub, net: perfBk.manual.net, dot: perfBk.manual.net >= 0 ? GREEN : RED, active: segBot === '__manual' }] : []),
+                                ...perfBk.robots.map((r) => ({ key: r.key, text: nameOf(r.key, r.label), sub: `magic ${r.key}`, net: r.net, dot: r.net >= 0 ? GREEN : RED, active: segBot === r.key })),
+                              ]}
+                              onPick={(k) => setSegBot(k)} />
+                          ) : (
+                            <span className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: .5, cursor: 'default', borderColor: 'var(--line)', width: '100%', justifyContent: 'flex-start' }} title={L.noRobotsHint}><OnyxIcon emoji="🤖" size={14} /> <span style={{ fontSize: 12, color: 'var(--mut)' }}>{L.segRobot}:</span> {L.noRobots}</span>
+                          )}
+                          {(segSym || segBot) && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { setSegSym(''); setSegBot(''); }}>{L.segClear}</button>}
+                        </div>
+                      </>)}
+                    </span>
+                  )}
                   <span style={{ position: 'relative', display: 'inline-flex', flex: 'none', marginLeft: 'auto' }}>
                     <button type="button" className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} aria-label={lang === 'es' ? 'Más opciones' : 'More options'} style={{ padding: '7px 11px', display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer' }} onClick={() => setMoreOpen((o) => !o)}>⋯ {lang === 'es' ? 'Más' : 'More'}</button>
                     {moreOpen && (<>
