@@ -64,7 +64,19 @@ async function load(country?: string): Promise<Weather | null> {
     });
     if (geo) { lat = geo.coords.latitude; lon = geo.coords.longitude; }
 
-    // 2) Respaldo: geocodifica el país del perfil.
+    // 1.5) Respaldo por IP (NO pide permiso → funciona dentro de la app, donde el
+    // WebView suele bloquear la geolocalización del navegador). Servicio gratis con
+    // CORS. Si falla, seguimos al país del perfil.
+    if (lat == null) {
+      try {
+        const ip = await fetch('https://ipapi.co/json/').then((r) => r.ok ? r.json() : null).catch(() => null);
+        if (ip && typeof ip.latitude === 'number' && typeof ip.longitude === 'number') {
+          lat = ip.latitude; lon = ip.longitude; city = ip.city || ip.region || undefined;
+        }
+      } catch {}
+    }
+
+    // 2) Respaldo final: geocodifica el país del perfil.
     if (lat == null && country) {
       const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(country)}&count=1`).then((r) => r.json()).catch(() => null);
       const r0 = g?.results?.[0];
