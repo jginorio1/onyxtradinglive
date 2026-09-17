@@ -520,6 +520,13 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
     } catch {}
   }, []);
 
+  // El botón "Panel" de la barra (estando ya en /dashboard) pide volver al hub.
+  useEffect(() => {
+    const h = () => { setView('hub'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {} };
+    window.addEventListener('onyx:panel-home', h);
+    return () => window.removeEventListener('onyx:panel-home', h);
+  }, []);
+
   // Diario: set de operaciones YA documentadas (para la bandeja "sin diario").
   const [docIds, setDocIds] = useState<Set<string>>(new Set());
   const [journalUndoc, setJournalUndoc] = useState(false);

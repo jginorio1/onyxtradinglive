@@ -9,6 +9,7 @@ import LangToggle from './LangToggle';
 import ThemeToggle from './ThemeToggle';
 import NotifBell from './NotifBell';
 import MainNav from './MainNav';
+import PanelLogo from './PanelLogo';
 
 // ============================================================
 // Barra de navegación única, en el layout raíz.
@@ -155,16 +156,9 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         {user ? (<>
           {/* Fila 1: logo (solo símbolo) + estado/acciones/avatar (siempre visibles). */}
           <div className="tb-row1">
-            {/* El logo lleva al PANEL (inicio de la app). La casita "Panel" lo hace obvio. */}
-            <Link className="logo" href="/dashboard" aria-label={lang === 'en' ? 'Go to panel' : 'Ir al panel'} title={lang === 'en' ? 'Go to panel' : 'Ir al panel'} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              {/* Icono + "Panel" son UN solo botón, con una línea de separación entre ambos. */}
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(124,140,255,.14)', border: '1px solid rgba(124,140,255,.4)', borderRadius: 999, padding: '3px 11px 3px 5px' }}>
-                <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }} />
-                <span style={{ width: 1, height: 16, background: 'rgba(124,140,255,.45)', flex: '0 0 auto' }} />
-                <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--soft-brand)', whiteSpace: 'nowrap' }}>{lang === 'en' ? 'Panel' : 'Panel'}</span>
-              </span>
-              <span className="logo-text">Onyx Trading Live</span>
-            </Link>
+            {/* El logo lleva al PANEL (inicio de la app). "Panel" lo hace obvio y,
+                estando ya en el panel, vuelve al hub (sub-vistas incluidas). */}
+            <PanelLogo />
             <div className="row tb-cluster" style={{ gap: 6 }}>
               {eaLive !== null && (
                 <span className="ea-dot" title={eaLive ? t.eaOnTitle : t.eaOffTitle}>

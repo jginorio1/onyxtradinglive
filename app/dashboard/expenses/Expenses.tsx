@@ -138,7 +138,6 @@ export default function Expenses() {
 
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 22px', fontSize: 15 }}>
-      <Link href="/dashboard" className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 13, marginBottom: 12, display: 'inline-flex' }}>← {L('Dashboard', 'Dashboard')}</Link>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
         <div className="row" style={{ gap: 10, alignItems: 'center' }}>
           <span style={{ display: "inline-flex", color: "var(--brand)" }}><OnyxIcon emoji="🧮" size={22} /></span>
