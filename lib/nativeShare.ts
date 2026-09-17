@@ -1,24 +1,38 @@
 // ============================================================
 // Compartir / guardar / abrir — funciona igual en la WEB y en la APP (Capacitor).
 //
-// El problema: dentro del WebView de la app, `navigator.share` casi nunca existe
-// (por eso "Compartir" solo copiaba el enlace) y la descarga de archivos con un
-// <a download> no hace NADA (por eso "Descargar" no respondía). La solución es usar
-// los plugins nativos de Capacitor (Share + Filesystem) cuando corremos dentro de
-// la app, y quedarnos con el comportamiento web normal en el navegador.
-//
-// Todo se importa de forma perezosa (dynamic import) para NO cargar los plugins en
-// la web ni romper el build. Si algo falla, siempre hay un respaldo razonable.
+// El problema real observado: dentro del WebView de la app, `navigator.share` casi
+// nunca existe y la descarga con <a download> no hace NADA. Además, al cargar la web
+// remota (server.url) la detección `isNativePlatform()` a veces no está lista, así que
+// aquí detectamos lo nativo de forma TOLERANTE: si existe `window.Capacitor` y la
+// plataforma no es 'web', usamos los plugins (Share/Filesystem/Browser). Y si compartir
+// el ARCHIVO falla, caemos a compartir TEXTO+ENLACE con el mismo plugin nativo, para
+// que la hoja de compartir SIEMPRE abra (antes caía al no-op de la web = "no pasa nada").
 // ============================================================
-import { isNativeApp } from '@/lib/native';
 
 type ShareResult = 'shared' | 'copied' | 'downloaded' | 'cancel' | 'error';
 
+type CapWin = Window & { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string; Plugins?: any } };
+
+// ¿Estamos dentro de la app nativa? Tolerante: vale isNativePlatform() O getPlatform()
+// distinto de 'web' O que exista el puente de plugins de Capacitor.
+function isNative(): boolean {
+  if (typeof window === 'undefined') return false;
+  const cap = (window as CapWin).Capacitor;
+  if (!cap) return false;
+  try {
+    if (typeof cap.isNativePlatform === 'function' && cap.isNativePlatform()) return true;
+    if (typeof cap.getPlatform === 'function' && cap.getPlatform() !== 'web') return true;
+    if (cap.Plugins && (cap.Plugins.Share || cap.Plugins.Filesystem)) return true;
+  } catch {}
+  return false;
+}
+
 // Compartir un ENLACE. App → hoja de compartir nativa. Web → Web Share si existe,
-// si no copia al portapapeles. Devuelve qué pasó para poder mostrar un aviso.
+// si no copia al portapapeles.
 export async function shareLink(o: { title?: string; text?: string; url: string }): Promise<ShareResult> {
   const { title, text, url } = o;
-  if (isNativeApp()) {
+  if (isNative()) {
     try {
       const { Share } = await import('@capacitor/share');
       await Share.share({ title, text, url, dialogTitle: title });
@@ -34,11 +48,29 @@ export async function shareLink(o: { title?: string; text?: string; url: string 
   try { await navigator.clipboard.writeText(url); return 'copied'; } catch { return 'error'; }
 }
 
-// Compartir / guardar una IMAGEN (Blob). App → guarda el archivo en caché y abre la
-// hoja de compartir nativa (desde ahí el usuario elige "Guardar en Fotos", WhatsApp,
-// etc.). Web → Web Share con archivo si se puede; si no, descarga directa.
-export async function shareImage(blob: Blob, filename = 'onyx.png', opts: { title?: string; text?: string } = {}): Promise<ShareResult> {
-  if (isNativeApp()) {
+// Comparte el TEXTO/ENLACE por el plugin nativo (respaldo cuando falla el archivo).
+async function nativeShareText(opts: { title?: string; text?: string; url?: string }): Promise<boolean> {
+  try {
+    const { Share } = await import('@capacitor/share');
+    const payload: any = { dialogTitle: opts.title };
+    if (opts.title) payload.title = opts.title;
+    if (opts.text) payload.text = opts.text;
+    if (opts.url) payload.url = opts.url;
+    // Share.share exige al menos uno; si no hay nada, mandamos la web como enlace.
+    if (!payload.text && !payload.url) payload.url = (typeof location !== 'undefined' ? location.origin : 'https://onyxtradinglive.com');
+    await Share.share(payload);
+    return true;
+  } catch (e: any) {
+    return /cancel/i.test(String(e?.message || ''));
+  }
+}
+
+// Compartir una IMAGEN (Blob). App → guarda en caché y abre la hoja nativa con el
+// archivo; si el archivo falla, comparte texto+enlace (la hoja abre igual). Web → Web
+// Share con archivo si se puede; si no, descarga directa.
+export async function shareImage(blob: Blob, filename = 'onyx.png', opts: { title?: string; text?: string; url?: string } = {}): Promise<ShareResult> {
+  if (isNative()) {
+    // 1) Intento con el ARCHIVO (imagen).
     try {
       const base64 = await blobToBase64(blob);
       const { Filesystem, Directory } = await import('@capacitor/filesystem');
@@ -49,9 +81,12 @@ export async function shareImage(blob: Blob, filename = 'onyx.png', opts: { titl
       return 'shared';
     } catch (e: any) {
       if (/cancel/i.test(String(e?.message || ''))) return 'cancel';
-      // Si falla el guardado nativo, caemos a la descarga web más abajo.
+      // 2) Respaldo nativo: comparte texto+enlace para que la hoja SIEMPRE abra.
+      if (await nativeShareText({ title: opts.title, text: opts.text, url: opts.url })) return 'shared';
+      return 'error';
     }
   }
+  // WEB
   try {
     const file = new File([blob], filename, { type: blob.type || 'image/png' });
     if (typeof navigator !== 'undefined' && (navigator as any).canShare?.({ files: [file] })) {
@@ -63,18 +98,17 @@ export async function shareImage(blob: Blob, filename = 'onyx.png', opts: { titl
   return 'downloaded';
 }
 
-// Descargar un Blob (web) o, dentro de la app, mandarlo a la hoja de compartir para
-// que el usuario lo guarde (en el WebView una descarga normal no funciona).
-export async function saveImage(blob: Blob, filename = 'onyx.png', opts: { title?: string; text?: string } = {}): Promise<ShareResult> {
-  if (isNativeApp()) return shareImage(blob, filename, opts);
+// Guardar una imagen. Web → descarga. App → hoja de compartir (el usuario elige
+// "Guardar en Fotos"); si falla, comparte texto+enlace para no quedarse en "nada".
+export async function saveImage(blob: Blob, filename = 'onyx.png', opts: { title?: string; text?: string; url?: string } = {}): Promise<ShareResult> {
+  if (isNative()) return shareImage(blob, filename, opts);
   downloadBlob(blob, filename);
   return 'downloaded';
 }
 
-// Abrir un enlace externo. En la app usa el navegador del sistema (no atrapa la URL
-// dentro del WebView); en web abre una pestaña nueva.
+// Abrir un enlace externo. App → navegador del sistema; web → pestaña nueva.
 export async function openExternal(url: string) {
-  if (isNativeApp()) {
+  if (isNative()) {
     try { const { Browser } = await import('@capacitor/browser'); await Browser.open({ url }); return; } catch {}
   }
   try { window.open(url, '_blank', 'noopener,noreferrer'); } catch { window.location.href = url; }
