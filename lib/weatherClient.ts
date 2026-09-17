@@ -14,13 +14,29 @@ export type Weather = { temp: number; unit: WxUnit; code: number; cond: WxCond; 
 // sesión). Guardamos la marca de tiempo y el país; si pasa el TTL o se pide
 // forzado (refresco automático), se vuelve a pedir de verdad.
 const TTL_MS = 10 * 60 * 1000; // 10 min
-let cache: { at: number; country?: string; p: Promise<Weather | null> } | null = null;
+let cache: { at: number; country?: string; manual?: string; p: Promise<Weather | null> } | null = null;
+
+// Ciudad manual (la elige el usuario tocando el clima). Tiene PRIORIDAD sobre la
+// IP, que dentro de la app suele resolver a la ciudad del proveedor (p. ej. la
+// capital) y no la del trader. Se guarda en localStorage.
+const CITY_KEY = 'onyx_wx_city';
+export function getManualCity(): string {
+  try { return localStorage.getItem(CITY_KEY) || ''; } catch { return ''; }
+}
+export function setManualCity(name: string) {
+  try {
+    const v = (name || '').trim();
+    if (v) localStorage.setItem(CITY_KEY, v); else localStorage.removeItem(CITY_KEY);
+  } catch {}
+  cache = null; // invalida la caché para que el próximo getWeather use la ciudad nueva
+}
 
 export function getWeather(country?: string, force = false): Promise<Weather | null> {
   const now = Date.now();
-  if (!force && cache && cache.country === country && now - cache.at < TTL_MS) return cache.p;
-  const p = load(country);
-  cache = { at: now, country, p };
+  const manual = getManualCity();
+  if (!force && cache && cache.country === country && cache.manual === manual && now - cache.at < TTL_MS) return cache.p;
+  const p = load(country, manual);
+  cache = { at: now, country, manual, p };
   // Si falla (null), invalidamos para poder reintentar antes del TTL.
   p.then((w) => { if (!w && cache && cache.p === p) cache = null; }).catch(() => { if (cache && cache.p === p) cache = null; });
   return p;
@@ -48,13 +64,20 @@ function codeToCond(c: number): WxCond {
   return 'clouds';
 }
 
-async function load(country?: string): Promise<Weather | null> {
+async function load(country?: string, manual?: string): Promise<Weather | null> {
   try {
     let lat: number | undefined, lon: number | undefined, city: string | undefined;
     const unit = unitFor(country);
 
+    // 0) Ciudad manual elegida por el usuario: tiene PRIORIDAD sobre todo lo demás.
+    if (manual && manual.trim()) {
+      const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(manual.trim())}&count=1&language=es`).then((r) => r.json()).catch(() => null);
+      const r0 = g?.results?.[0];
+      if (r0) { lat = r0.latitude; lon = r0.longitude; city = r0.name; }
+    }
+
     // 1) Ubicación del navegador (con tope de 4s; si la niega, seguimos).
-    const geo = await new Promise<GeolocationPosition | null>((res) => {
+    const geo = lat != null ? null : await new Promise<GeolocationPosition | null>((res) => {
       if (typeof navigator === 'undefined' || !navigator.geolocation) return res(null);
       let done = false;
       const ok = (p: GeolocationPosition) => { if (!done) { done = true; res(p); } };

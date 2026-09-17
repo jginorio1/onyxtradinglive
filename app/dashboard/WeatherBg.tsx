@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { getWeather, type Weather, type WxCond } from '@/lib/weatherClient';
+import { getWeather, getManualCity, setManualCity, type Weather, type WxCond } from '@/lib/weatherClient';
 
 // Clima en UNA tarjetita: pastilla con tinte según el clima + animación
 // (gotas / copos / nubes) CONTENIDA dentro de la propia pastilla (no baja por
@@ -33,6 +33,8 @@ const LABEL: Record<string, Record<WxCond, string>> = {
 export function WeatherCard({ country, lang = 'es', sep = false }: { country?: string; lang?: string; sep?: boolean }) {
   const [wx, setWx] = useState<Weather | null>(null);
   const [on, setOn] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [cityInput, setCityInput] = useState('');
   const cvRef = useRef<HTMLCanvasElement | null>(null);
   const boxRef = useRef<HTMLSpanElement | null>(null);
 
@@ -92,6 +94,10 @@ export function WeatherCard({ country, lang = 'es', sep = false }: { country?: s
     return () => { cancelAnimationFrame(raf); ro?.disconnect(); };
   }, [wx, on]);
 
+  const openEdit = () => { setCityInput(getManualCity() || wx?.city || ''); setEditing(true); };
+  const saveCity = () => { setManualCity(cityInput); setEditing(false); getWeather(country, true).then((w) => { if (w) setWx(w); }); };
+  const clearCity = () => { setManualCity(''); setCityInput(''); setEditing(false); getWeather(country, true).then((w) => { if (w) setWx(w); }); };
+
   if (!wx) return null;
   const L = LABEL[lang === 'en' ? 'en' : 'es'];
   const rgb = rgbFor(wx);
@@ -108,7 +114,30 @@ export function WeatherCard({ country, lang = 'es', sep = false }: { country?: s
         <span style={{ position: 'relative', fontWeight: 700 }}>{wx.temp}°{wx.unit}</span>
         <span style={{ position: 'relative', fontWeight: 600 }}>{L[wx.cond]}</span>
         {wx.city && <><span style={{ position: 'relative', opacity: .5 }}>·</span><span style={{ position: 'relative', fontWeight: 600, opacity: .85 }}>{wx.city}</span></>}
+        {/* Lápiz: fijar tu ciudad (dentro de la app la IP da la ciudad del proveedor, no la tuya). */}
+        <span role="button" tabIndex={0} title={lang === 'en' ? 'Set your city' : 'Fijar tu ciudad'} aria-label={lang === 'en' ? 'Set your city' : 'Fijar tu ciudad'}
+          onClick={(e) => { e.stopPropagation(); openEdit(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openEdit(); } }}
+          style={{ position: 'relative', opacity: .7, fontSize: 11, marginLeft: 2, cursor: 'pointer' }}>✎</span>
       </span>
+      {editing && (
+        <>
+          <span onClick={() => setEditing(false)} style={{ position: 'fixed', inset: 0, zIndex: 3000 }} />
+          <span onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', width: 260, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 12, zIndex: 3001, boxShadow: '0 12px 34px rgba(0,0,0,.45)', display: 'block' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>{lang === 'en' ? 'Your city' : 'Tu ciudad'}</div>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{lang === 'en' ? 'Type your city so the weather is yours, not your provider’s.' : 'Escribe tu ciudad para que el clima sea el tuyo, no el de tu proveedor.'}</div>
+            <input value={cityInput} onChange={(e) => setCityInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') saveCity(); }} autoFocus
+              placeholder={lang === 'en' ? 'e.g. Ponce' : 'ej. Ponce'} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13, marginBottom: 10 }} />
+            <div className="row" style={{ gap: 8, justifyContent: 'space-between' }}>
+              <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={clearCity}>{lang === 'en' ? 'Auto' : 'Auto'}</button>
+              <span className="row" style={{ gap: 8 }}>
+                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setEditing(false)}>{lang === 'en' ? 'Cancel' : 'Cancelar'}</button>
+                <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={saveCity}>{lang === 'en' ? 'Save' : 'Guardar'}</button>
+              </span>
+            </div>
+          </span>
+        </>
+      )}
     </>
   );
 }

@@ -96,6 +96,8 @@ const G: Record<string, Els> = {
   sun: (<><circle cx="12" cy="12" r="4.2" /><path d="M12 2.5 v2.4 M12 19.1 v2.4 M2.5 12 h2.4 M19.1 12 h2.4 M5.1 5.1 l1.7 1.7 M17.2 17.2 l1.7 1.7 M18.9 5.1 l-1.7 1.7 M6.8 17.2 l-1.7 1.7" /></>),
   // Avión de papel (enviar mensaje).
   send: (<><path d="M21 4 L3 11 l6 2.5 L11.5 20 l3 -6 z" /><path d="M9 13.5 L21 4" /></>),
+  // Chincheta (fijar la nota / notificaciones).
+  pin: (<><path d="M9 3 h6 l-1 5 3 3 v2 H7 v-2 l3 -3 z" /><line x1="12" y1="13" x2="12" y2="20" /></>),
 };
 
 // Emoji → nombre de glifo (se normaliza quitando el selector de variación).

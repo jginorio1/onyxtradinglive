@@ -551,6 +551,17 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');
   const [demo, setDemo] = useState(false);
+  const [expOpen, setExpOpen] = useState(false); // menú Exportar (cierra al tocar fuera)
+  const [moreOpen, setMoreOpen] = useState(false); // menú "Más" (móvil): Demo · Calendario · Exportar
+  const [isMobile, setIsMobile] = useState(false); // barra compacta en móvil
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(max-width: 640px)');
+    const on = () => setIsMobile(mq.matches);
+    on();
+    mq.addEventListener ? mq.addEventListener('change', on) : mq.addListener(on);
+    return () => { mq.removeEventListener ? mq.removeEventListener('change', on) : mq.removeListener(on); };
+  }, []);
   // Rendimiento: filtro por activo/robot + enfoque por estilo del trader.
   const [segSym, setSegSym] = useState('');
   const [segBot, setSegBot] = useState('');
@@ -972,23 +983,51 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   )}
                 </>)}
               </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {(['d1', 'd7', 'd30', 'mo', 'yr', 'all'] as const).map((r) => <button key={r} className={'btn ' + (range === r ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px' }} onClick={() => setRange(r)}>{L.ranges[r]}</button>)}
-                <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center' }} onClick={() => setRange('custom')} title={L.customRange}><OnyxIcon emoji="📅" size={15} /></button>
-                <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>
-                {/* Compartir: tarjeta profesional con marca de agua Onyx (redes / móvil / PC). */}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: isMobile ? 'nowrap' : 'wrap', ...(isMobile ? { width: '100%' } : {}) }}>
+                {/* Período: en móvil, UNA sola fila deslizable (no envuelve). */}
+                <div style={isMobile
+                  ? { display: 'flex', gap: 6, overflowX: 'auto', flexWrap: 'nowrap', flex: 1, minWidth: 0, WebkitOverflowScrolling: 'touch', paddingBottom: 2 }
+                  : { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {(['d1', 'd7', 'd30', 'mo', 'yr', 'all'] as const).map((r) => <button key={r} className={'btn ' + (range === r ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', whiteSpace: 'nowrap', flex: 'none' }} onClick={() => setRange(r)}>{L.ranges[r]}</button>)}
+                  {/* En escritorio el calendario va aquí; en móvil se mueve a "Más". */}
+                  {!isMobile && <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', flex: 'none' }} onClick={() => setRange('custom')} title={L.customRange}><OnyxIcon emoji="📅" size={15} /></button>}
+                </div>
+                {/* Compartir: siempre visible (acción principal). */}
                 {!isFree && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
-                {/* Exportar: al lado de Demo, mismo tamaño (mismo padding de botón). */}
-                {!isFree && (
-                  <details style={{ position: 'relative' }}>
-                    <summary className="btn btn-ghost" style={{ listStyle: 'none', padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><OnyxIcon emoji="⬇️" size={15} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span></summary>
-                    <div style={{ position: 'absolute', left: 0, right: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 220, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
-                      <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
-                      <button className="btn btn-ghost" onClick={() => openAuthedFile(pdfHref, `onyx-reporte-${expFrom}.html`)} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
-                      <button className="btn btn-ghost" onClick={() => openAuthedFile(xlsxHref, `onyx-reporte-${expFrom}.xlsx`)} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'con gráficas' : 'with charts'}</span></button>
-                      <button className="btn btn-ghost" onClick={() => openAuthedFile(csvHref, `onyx-reporte-${expFrom}.csv`)} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📋" size={14} /> CSV <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'datos planos' : 'raw data'}</span></button>
-                    </div>
-                  </details>
+                {/* ESCRITORIO: Demo + Exportar sueltos, como antes. */}
+                {!isMobile && <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>}
+                {!isMobile && !isFree && (
+                  <span style={{ position: 'relative', display: 'inline-flex' }}>
+                    <button type="button" className="btn btn-ghost" style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => setExpOpen((o) => !o)}><OnyxIcon emoji="⬇️" size={15} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span></button>
+                    {expOpen && (<>
+                      <span onClick={() => setExpOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
+                      <div style={{ position: 'absolute', left: 0, right: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 220, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
+                        <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
+                        <button className="btn btn-ghost" onClick={() => { setExpOpen(false); openAuthedFile(pdfHref, `onyx-reporte-${expFrom}.html`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
+                        <button className="btn btn-ghost" onClick={() => { setExpOpen(false); openAuthedFile(xlsxHref, `onyx-reporte-${expFrom}.xlsx`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'con gráficas' : 'with charts'}</span></button>
+                        <button className="btn btn-ghost" onClick={() => { setExpOpen(false); openAuthedFile(csvHref, `onyx-reporte-${expFrom}.csv`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📋" size={14} /> CSV <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'datos planos' : 'raw data'}</span></button>
+                      </div>
+                    </>)}
+                  </span>
+                )}
+                {/* MÓVIL: un solo botón "Más" agrupa Demo · Calendario · Exportar. */}
+                {isMobile && (
+                  <span style={{ position: 'relative', display: 'inline-flex', flex: 'none' }}>
+                    <button type="button" className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} aria-label={lang === 'es' ? 'Más opciones' : 'More options'} style={{ padding: '7px 11px', display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer' }} onClick={() => setMoreOpen((o) => !o)}>⋯ {lang === 'es' ? 'Más' : 'More'}</button>
+                    {moreOpen && (<>
+                      <span onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
+                      <div style={{ position: 'absolute', right: 0, left: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 230, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
+                        <button className="btn btn-ghost" onClick={() => { setDemo(!demo); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="🎬" size={14} /> {L.demo}{demo ? ' ✓' : ''}</button>
+                        <button className="btn btn-ghost" onClick={() => { setRange('custom'); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: !isFree ? 6 : 0 }}><OnyxIcon emoji="📅" size={14} /> {L.customRange}</button>
+                        {!isFree && <>
+                          <div className="muted" style={{ fontSize: 11, padding: '6px 8px 6px', borderTop: '1px solid var(--line)', marginTop: 2 }}>{lang === 'es' ? 'Exportar reporte' : 'Export report'}</div>
+                          <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(pdfHref, `onyx-reporte-${expFrom}.html`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
+                          <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(xlsxHref, `onyx-reporte-${expFrom}.xlsx`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel</button>
+                          <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(csvHref, `onyx-reporte-${expFrom}.csv`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📋" size={14} /> CSV</button>
+                        </>}
+                      </div>
+                    </>)}
+                  </span>
                 )}
               </div>
             </div>

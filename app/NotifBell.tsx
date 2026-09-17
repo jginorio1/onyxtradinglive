@@ -59,9 +59,9 @@ export default function NotifBell() {
           : { position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 340, maxWidth: 'calc(100vw - 16px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 34px rgba(0,0,0,.35)', zIndex: 1000, overflow: 'hidden' }}>
           <div className="row between" style={{ padding: '11px 14px', borderBottom: '1px solid var(--line)' }}>
             <b style={{ fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon name="bell" size={16} /></span>{L('Mensajes', 'Messages')}</b>
-            <span className="row" style={{ gap: 10 }}>
-              <button onClick={togglePin} title={L('Fijar', 'Pin')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 15, color: pinned ? 'var(--soft-brand)' : 'var(--mut)' }}>📌</button>
-              <button onClick={() => setOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--mut)' }}>✕</button>
+            <span className="row" style={{ gap: 4 }}>
+              <button onClick={togglePin} title={L('Fijar', 'Pin')} aria-label={L('Fijar', 'Pin')} style={{ background: pinned ? 'rgba(124,140,255,.14)' : 'transparent', border: 'none', cursor: 'pointer', color: pinned ? 'var(--soft-brand)' : 'var(--mut)', width: 34, height: 34, borderRadius: 9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon name="pin" size={16} glow={pinned} /></button>
+              <button onClick={() => setOpen(false)} title={L('Cerrar', 'Close')} aria-label={L('Cerrar', 'Close')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--mut)', width: 34, height: 34, borderRadius: 9, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>✕</button>
             </span>
           </div>
           <div style={{ maxHeight: 380, overflowY: 'auto' }}>
@@ -81,7 +81,7 @@ export default function NotifBell() {
           {!!items.length && (
             <div className="row between" style={{ padding: '9px 14px' }}>
               <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={markAll}>{L('Marcar todo leído', 'Mark all read')}</button>
-              {pinned && <span className="muted" style={{ fontSize: 11 }}>📌 {L('Fijado', 'Pinned')}</span>}
+              {pinned && <span className="muted" style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}><OnyxIcon name="pin" size={12} glow={false} /> {L('Fijado', 'Pinned')}</span>}
             </div>
           )}
         </div>
