@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { saveImage, shareImage } from '@/lib/nativeShare';
 
 // QR para unirse a la academia. Genera el código en el cliente. Con `actions`
 // muestra botones para descargar la imagen o copiarla al portapapeles.
@@ -15,15 +16,26 @@ export default function JoinQR({ url, size = 160, actions = false, L }: { url: s
       .then(setImg).catch(() => setImg(''));
   }, [url, size]);
 
+  // "Copiar" en la app abre la hoja de compartir nativa (WhatsApp, guardar en fotos…),
+  // porque el portapapeles de imagen no funciona en el WebView; en web copia al portapapeles.
   async function copyImg() {
     try {
       const blob = await (await fetch(img)).blob();
+      const r = await shareImage(blob, 'academia-qr.png', { title: 'Onyx Academy', text: t('Únete a la academia', 'Join the academy'), url });
+      if (r === 'shared') return;
       // @ts-ignore ClipboardItem existe en navegadores modernos
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
       flash(t('QR copiado', 'QR copied'));
     } catch { flash(t('No se pudo copiar', 'Could not copy')); }
   }
-  function download() { const a = document.createElement('a'); a.href = img; a.download = 'academia-qr.png'; a.click(); }
+  async function download() {
+    try {
+      const blob = await (await fetch(img)).blob();
+      const r = await saveImage(blob, 'academia-qr.png', { title: 'Onyx Academy', text: t('Únete a la academia', 'Join the academy'), url });
+      if (r === 'downloaded') flash(t('QR descargado', 'QR downloaded'));
+      else if (r === 'error') flash(t('No se pudo', 'Could not'));
+    } catch { flash(t('No se pudo descargar', 'Could not download')); }
+  }
   function flash(m: string) { setMsg(m); setTimeout(() => setMsg(''), 1600); }
 
   if (!img) return <div style={{ width: size, height: size, borderRadius: 14, background: 'var(--bg2)', display: 'grid', placeItems: 'center', color: 'var(--mut)', fontSize: 12 }}>…</div>;

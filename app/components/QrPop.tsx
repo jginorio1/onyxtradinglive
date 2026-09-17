@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { saveImage } from '@/lib/nativeShare';
 
 // Botón reutilizable de "QR": abre una ventanita con el código QR de un enlace,
 // permite descargar el QR y, para referido/embajador, un PÓSTER de marca listo
@@ -47,11 +48,18 @@ export default function QrPop({ data, title, handle, poster = 'generic', label }
       g.fillStyle = '#c7ccd6'; g.font = '500 36px system-ui, sans-serif';
       g.fillText(es ? 'Escanéame · onyxtradinglive.com' : 'Scan me · onyxtradinglive.com', W / 2, H - 80);
 
-      await new Promise<void>((res) => c.toBlob((b) => {
-        if (b) { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'onyx-invita.png'; a.click(); }
-        res();
-      }, 'image/png'));
+      const blob = await new Promise<Blob | null>((res) => c.toBlob((b) => res(b), 'image/png'));
+      if (blob) await saveImage(blob, 'onyx-invita.png', { title: 'Onyx Trading Live', text: es ? 'Únete con mi enlace' : 'Join with my link', url: data });
     } finally { setBusy(false); }
+  }
+
+  // Descargar/guardar el QR simple. En la app abre la hoja nativa; en web descarga.
+  async function downloadQr() {
+    setBusy(true);
+    try {
+      const blob = await (await fetch(qrPng)).blob();
+      await saveImage(blob, 'onyx-qr.png', { title: 'Onyx Trading Live', text: es ? 'Mi enlace' : 'My link', url: data });
+    } catch {} finally { setBusy(false); }
   }
 
   return (
@@ -69,7 +77,7 @@ export default function QrPop({ data, title, handle, poster = 'generic', label }
             </div>
             <div className="muted" style={{ fontSize: 11.5, margin: '10px 0', wordBreak: 'break-all' }}>{data}</div>
             <div className="row" style={{ gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a className="btn btn-ghost" style={{ fontSize: 13 }} href={qrPng}><OnyxIcon emoji="⬇" size={15} /> {es ? 'QR' : 'QR'}</a>
+              <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={downloadQr} disabled={busy}><OnyxIcon emoji="⬇" size={15} /> QR</button>
               {showPoster && <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={downloadPoster} disabled={busy}>{busy ? '…' : (es ? '⬇ Póster' : '⬇ Poster')}</button>}
             </div>
           </div>
