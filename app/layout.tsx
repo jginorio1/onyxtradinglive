@@ -11,6 +11,7 @@ import ChunkReload from './ChunkReload';
 import LiveNavRefresh from './LiveNavRefresh';
 import UpdateToast from './UpdateToast';
 import SupportWidget from './SupportWidget';
+import BackToTop from './BackToTop';
 import { Toaster } from '@/lib/toast';
 import JsonLd from './JsonLd';
 import { createSupabaseServer } from '@/lib/supabaseServer';
@@ -239,6 +240,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {!path.startsWith('/admin') && (inBotLab
               ? (botlabCfg && <SupportWidget loggedIn={loggedIn} cfg={botlabCfg} variant="botlab" />)
               : <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />)}
+            <BackToTop />
             {online && online.enabled && (
               <OnlineNow min={online.min} max={online.max} speed={online.speed} color={online.color} hideMobile={online.hideMobile} label={lang === 'es' ? online.label_es : online.label_en} />
             )}

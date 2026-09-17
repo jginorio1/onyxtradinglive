@@ -1146,7 +1146,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               />
             </>)}
 
-            {view !== 'hub' && <button className="btn" style={{ alignSelf: isMobile ? 'stretch' : 'flex-start', width: isMobile ? '100%' : undefined, justifyContent: 'center', textAlign: 'center', background: 'rgba(124,140,255,.12)', border: '1px solid rgba(124,140,255,.6)', color: 'var(--soft-brand)', fontWeight: 500, boxShadow: '0 0 16px -2px rgba(124,140,255,.5)' }} onClick={() => setView('hub')}>{L.back}</button>}
+            {view !== 'hub' && <button className="btn" style={{ position: 'sticky', top: 8, zIndex: 20, alignSelf: isMobile ? 'stretch' : 'flex-start', width: isMobile ? '100%' : undefined, justifyContent: 'center', textAlign: 'center', background: 'var(--soft-brand)', border: '1px solid rgba(124,140,255,.6)', color: '#fff', fontWeight: 600, boxShadow: '0 6px 18px -2px rgba(124,140,255,.6)' }} onClick={() => { setView('hub'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {} }}>{L.back}</button>}
 
             {view === 'rendimiento' && (() => {
               const sWR = a.winRate >= 50 ? GREEN : a.winRate >= 40 ? GOLD : RED;
