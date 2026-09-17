@@ -95,6 +95,26 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     calc(); window.addEventListener('resize', calc); return () => window.removeEventListener('resize', calc);
   }, []);
 
+  // Auto-esconder el botón al bajar (deja ver todo el contenido); reaparece al
+  // subir o al parar de hacer scroll. Solo cuando el panel está cerrado.
+  const [hideLauncher, setHideLauncher] = useState(false);
+  useEffect(() => {
+    if (open) { setHideLauncher(false); return; }
+    let lastY = typeof window !== 'undefined' ? (window.scrollY || 0) : 0;
+    let stopTimer: any;
+    const onScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop || 0;
+      const dy = y - lastY;
+      if (y > 140 && dy > 4) setHideLauncher(true);        // bajando → esconder
+      else if (dy < -4) setHideLauncher(false);            // subiendo → mostrar
+      lastY = y;
+      clearTimeout(stopTimer);
+      stopTimer = setTimeout(() => setHideLauncher(false), 650);  // al parar → mostrar
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { window.removeEventListener('scroll', onScroll); clearTimeout(stopTimer); };
+  }, [open]);
+
   useEffect(() => { fetch('/api/support/availability').then((r) => r.json()).then((j) => setHuman(!!j.online)).catch(() => {}); }, [open]);
   // Al abrir con sesión: trae rol + nombre para personalizar saludo y temas rápidos.
   useEffect(() => {
@@ -300,7 +320,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       `}</style>
 
       {!open && (
-        <div style={{ position: 'fixed', [side]: ox, bottom: `calc(${oy}px + env(safe-area-inset-bottom))`, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: side === 'left' ? 'flex-start' : 'flex-end', gap: 8 }}>
+        <div style={{ position: 'fixed', [side]: ox, bottom: `calc(${oy}px + env(safe-area-inset-bottom))`, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: side === 'left' ? 'flex-start' : 'flex-end', gap: 8, transition: 'transform .28s ease, opacity .28s ease', transform: (hideLauncher && !tease) ? `translateY(${lsz + oy + 28}px)` : 'translateY(0)', opacity: (hideLauncher && !tease) ? 0 : 1, pointerEvents: (hideLauncher && !tease) ? 'none' : 'auto' }}>
           {/* Globo proactivo */}
           {tease && x.proactive && (
             <div onClick={launch} style={{ cursor: 'pointer', maxWidth: 250, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 34px 10px 12px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 8px 22px rgba(0,0,0,.32)', animation: 'onyxTease .3s ease', position: 'relative' }}>

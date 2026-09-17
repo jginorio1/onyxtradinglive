@@ -1071,12 +1071,13 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               </div>
             )}
             {range === 'custom' && (
-              <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignSelf: 'flex-start' }}>
+              <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10, padding: '8px 14px', alignSelf: isMobile ? 'stretch' : 'flex-start', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <OnyxIcon emoji="📅" size={15} />
                 <span className="muted" style={{ fontSize: 13 }}>{L.from}</span>
                 <input type="date" value={cFrom} onChange={(e) => setCFrom(e.target.value)} style={{ margin: 0, width: 'auto', padding: '7px 9px' }} />
                 <span className="muted" style={{ fontSize: 13 }}>{L.to}</span>
                 <input type="date" value={cTo} onChange={(e) => setCTo(e.target.value)} style={{ margin: 0, width: 'auto', padding: '7px 9px' }} />
-                <button className="btn btn-ghost" onClick={() => setRange('all')} title={lang === 'es' ? 'Cerrar' : 'Close'} style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13 }}>✕ {lang === 'es' ? 'Cerrar' : 'Close'}</button>
+                <button onClick={() => setRange('all')} title={lang === 'es' ? 'Cerrar' : 'Close'} aria-label={lang === 'es' ? 'Cerrar' : 'Close'} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--soft-brand2)', cursor: 'pointer', fontSize: 15, lineHeight: 1, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>✕ {lang === 'es' ? 'Cerrar' : 'Close'}</button>
               </div>
             )}
             {demo && <div style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '8px 14px', fontSize: 13, alignSelf: isMobile ? 'stretch' : 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 10 }}>{L.demoOn}<button onClick={() => setDemo(false)} title={lang === 'es' ? 'Cerrar demo' : 'Close demo'} aria-label={lang === 'es' ? 'Cerrar demo' : 'Close demo'} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--amber)', cursor: 'pointer', fontSize: 15, lineHeight: 1, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>✕ {lang === 'es' ? 'Cerrar' : 'Close'}</button></div>}

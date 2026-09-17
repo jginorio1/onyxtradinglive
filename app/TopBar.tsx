@@ -156,13 +156,14 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
           {/* Fila 1: logo (solo símbolo) + estado/acciones/avatar (siempre visibles). */}
           <div className="tb-row1">
             {/* El logo lleva al PANEL (inicio de la app). La casita "Panel" lo hace obvio. */}
-            <Link className="logo" href="/dashboard" aria-label={lang === 'en' ? 'Go to panel' : 'Ir al panel'} title={lang === 'en' ? 'Go to panel' : 'Ir al panel'} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 28, height: 28, objectFit: 'contain', flex: '0 0 auto' }} />
-              <span className="logo-text">Onyx Trading Live</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 600, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.14)', border: '1px solid rgba(124,140,255,.4)', borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11 L12 4 l8 7 M6 10 v9 h12 v-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                {lang === 'en' ? 'Panel' : 'Panel'}
+            <Link className="logo" href="/dashboard" aria-label={lang === 'en' ? 'Go to panel' : 'Ir al panel'} title={lang === 'en' ? 'Go to panel' : 'Ir al panel'} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+              {/* Icono + "Panel" son UN solo botón, con una línea de separación entre ambos. */}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(124,140,255,.14)', border: '1px solid rgba(124,140,255,.4)', borderRadius: 999, padding: '3px 11px 3px 5px' }}>
+                <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 24, height: 24, objectFit: 'contain', flex: '0 0 auto' }} />
+                <span style={{ width: 1, height: 16, background: 'rgba(124,140,255,.45)', flex: '0 0 auto' }} />
+                <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--soft-brand)', whiteSpace: 'nowrap' }}>{lang === 'en' ? 'Panel' : 'Panel'}</span>
               </span>
+              <span className="logo-text">Onyx Trading Live</span>
             </Link>
             <div className="row tb-cluster" style={{ gap: 6 }}>
               {eaLive !== null && (
