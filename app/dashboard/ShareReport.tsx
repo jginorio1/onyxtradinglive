@@ -16,8 +16,8 @@ type Summary = {
 };
 
 export default function ShareReport({
-  lang = 'es', from, to, pdfHref,
-}: { lang?: string; from: string; to: string; pdfHref: string }) {
+  lang = 'es', from, to, pdfHref, compact = false,
+}: { lang?: string; from: string; to: string; pdfHref: string; compact?: boolean }) {
   const es = lang !== 'en';
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<Summary | null>(null);
@@ -159,9 +159,11 @@ export default function ShareReport({
 
   return (
     <>
-      <button onClick={() => setOpen(true)} title={es ? 'Compartir mi rendimiento' : 'Share my performance'}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#fff', background: 'linear-gradient(135deg,#4b3ff0,#7c8cff)', border: 'none', borderRadius: 9, padding: '7px 13px', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}>
-        <OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir' : 'Share'}
+      <button onClick={() => setOpen(true)} title={es ? 'Compartir mi rendimiento' : 'Share my performance'} aria-label={es ? 'Compartir' : 'Share'}
+        style={compact
+          ? { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: 'linear-gradient(135deg,#4b3ff0,#7c8cff)', border: 'none', borderRadius: 10, cursor: 'pointer', flex: 1, alignSelf: 'stretch' }
+          : { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#fff', background: 'linear-gradient(135deg,#4b3ff0,#7c8cff)', border: 'none', borderRadius: 9, padding: '7px 13px', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}>
+        <OnyxIcon emoji="📤" size={compact ? 17 : 15} /> {compact ? '' : (es ? 'Compartir' : 'Share')}
       </button>
 
       {open && (

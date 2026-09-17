@@ -943,9 +943,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
             {/* controles: cuenta (menú) + activo/robot (menú, en Rendimiento) + filtro de tiempo */}
             <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={isMobile ? { display: 'flex', gap: 8, alignItems: 'stretch', width: '100%' } : { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {/* Selector de cuenta CON el balance dentro (una sola tarjeta). */}
-                <PickerMenu search width={280} ph={L.searchAcc}
+                <PickerMenu search width={280} ph={L.searchAcc} btnStyle={isMobile ? { flex: 1, width: '100%', minHeight: 56, padding: '8px 12px' } : undefined}
                   trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}>
                     <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="💼" size={15} /></span>
                     <span style={{ lineHeight: 1.15, textAlign: 'left' }}>
@@ -978,7 +978,56 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                     <span className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: .5, cursor: 'default', borderColor: 'var(--line)' }} title={L.noRobotsHint}><OnyxIcon emoji="🤖" size={14} /> <span style={{ fontSize: 12, color: 'var(--mut)' }}>{L.segRobot}:</span> {L.noRobots}</span>
                   )}
                 </>)}
-                {/* En móvil, Activo/Robot van dentro del botón "Filtros" de la fila de acciones. */}
+                {/* MÓVIL: tarjeta de acciones (Compartir · Filtros · Más) del MISMO tamaño que Portafolio. */}
+                {isMobile && (
+                  <div style={{ flex: 1, minWidth: 0, minHeight: 56, display: 'flex', alignItems: 'stretch', gap: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 6 }}>
+                    {!isFree && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} compact />}
+                    {view === 'rendimiento' && (
+                      <span style={{ position: 'relative', display: 'inline-flex', flex: 1 }}>
+                        <button type="button" aria-label={L.filterBy} className={'btn ' + ((segSym || segBot) ? 'btn-primary' : 'btn-ghost')} style={{ flex: 1, width: '100%', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setFiltOpen((o) => !o)}><OnyxIcon emoji="🔎" size={17} /></button>
+                        {filtOpen && (<>
+                          <span onClick={() => setFiltOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
+                          <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, width: 250, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div className="muted" style={{ fontSize: 11 }}>{L.filterBy}</div>
+                            <PickerMenu search width={230} ph={L.searchAsset} btnStyle={{ borderColor: 'var(--brand)', width: '100%', justifyContent: 'flex-start' }}
+                              trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💱" size={14} /> <span style={{ color: 'var(--mut)', fontSize: 12 }}>{L.segAsset}:</span> {segSym || L.segAll} <span style={pillCnt}>{perfBk.symbols.length}</span></span>}
+                              items={[{ key: '', text: L.segAll, active: !segSym }, ...perfBk.symbols.map((s) => ({ key: s.key, text: s.key, net: s.net, dot: s.net >= 0 ? GREEN : RED, active: segSym === s.key }))]}
+                              onPick={(k) => setSegSym(k)} />
+                            {perfBk.robots.length > 0 ? (
+                              <PickerMenu search width={230} accent={!!segBot} ph={L.searchRobot} empty={L.noBots} btnStyle={{ borderColor: 'var(--brand)', width: '100%', justifyContent: 'flex-start' }}
+                                trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🤖" size={14} /> <span style={{ color: segBot ? undefined : 'var(--mut)', fontSize: 12 }}>{L.segRobot}:</span> {segBot ? (segBot === '__manual' ? L.manual : nameOf(segBot, '#' + segBot)) : L.segAll} <span style={pillCnt}>{perfBk.robots.length}</span></span>}
+                                items={[
+                                  { key: '', text: L.segAll, active: !segBot },
+                                  ...(perfBk.manual.present ? [{ key: '__manual', text: L.manual, sub: L.manualSub, net: perfBk.manual.net, dot: perfBk.manual.net >= 0 ? GREEN : RED, active: segBot === '__manual' }] : []),
+                                  ...perfBk.robots.map((r) => ({ key: r.key, text: nameOf(r.key, r.label), sub: `magic ${r.key}`, net: r.net, dot: r.net >= 0 ? GREEN : RED, active: segBot === r.key })),
+                                ]}
+                                onPick={(k) => setSegBot(k)} />
+                            ) : (
+                              <span className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: .5, cursor: 'default', borderColor: 'var(--line)', width: '100%', justifyContent: 'flex-start' }} title={L.noRobotsHint}><OnyxIcon emoji="🤖" size={14} /> <span style={{ fontSize: 12, color: 'var(--mut)' }}>{L.segRobot}:</span> {L.noRobots}</span>
+                            )}
+                            {(segSym || segBot) && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { setSegSym(''); setSegBot(''); }}>{L.segClear}</button>}
+                          </div>
+                        </>)}
+                      </span>
+                    )}
+                    <span style={{ position: 'relative', display: 'inline-flex', flex: 1 }}>
+                      <button type="button" aria-label={lang === 'es' ? 'Más' : 'More'} className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ flex: 1, width: '100%', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 18 }} onClick={() => setMoreOpen((o) => !o)}>⋯</button>
+                      {moreOpen && (<>
+                        <span onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
+                        <div style={{ position: 'absolute', right: 0, left: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 230, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
+                          <button className="btn btn-ghost" onClick={() => { setDemo(!demo); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="🎬" size={14} /> {L.demo}{demo ? ' ✓' : ''}</button>
+                          <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} onClick={() => { setRange(range === 'custom' ? 'all' : 'custom'); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: !isFree ? 6 : 0 }}><OnyxIcon emoji="📅" size={14} /> {L.customRange}{range === 'custom' ? ' ✓' : ''}</button>
+                          {!isFree && <>
+                            <div className="muted" style={{ fontSize: 11, padding: '6px 8px 6px', borderTop: '1px solid var(--line)', marginTop: 2 }}>{lang === 'es' ? 'Exportar reporte' : 'Export report'}</div>
+                            <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(pdfHref, `onyx-reporte-${expFrom}.html`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
+                            <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(xlsxHref, `onyx-reporte-${expFrom}.xlsx`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel</button>
+                            <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(csvHref, `onyx-reporte-${expFrom}.csv`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📋" size={14} /> CSV</button>
+                          </>}
+                        </div>
+                      </>)}
+                    </span>
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: isMobile ? 'stretch' : 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', ...(isMobile ? { width: '100%' } : {}) }}>
                 {/* Período: en móvil, UNA sola fila deslizable (no envuelve). */}
@@ -1007,57 +1056,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                     </>)}
                   </span>
                 )}
-                {/* MÓVIL: fila propia con Compartir + un botón "Más" (Demo · Calendario · Exportar). */}
-                {isMobile && (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%' }}>
-                  {!isFree && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
-                  {/* Filtros (Activo/Robot) solo en Rendimiento. */}
-                  {view === 'rendimiento' && (
-                    <span style={{ position: 'relative', display: 'inline-flex', flex: 'none' }}>
-                      <button type="button" className={'btn ' + ((segSym || segBot) ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 11px', display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', maxWidth: 160 }} onClick={() => setFiltOpen((o) => !o)}><OnyxIcon emoji="🔎" size={14} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(segSym || segBot) ? (segSym || (segBot === '__manual' ? L.manual : nameOf(segBot, '#' + segBot))) : L.filterBy}</span> <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span></button>
-                      {filtOpen && (<>
-                        <span onClick={() => setFiltOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
-                        <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, width: 250, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          <div className="muted" style={{ fontSize: 11 }}>{L.filterBy}</div>
-                          <PickerMenu search width={230} ph={L.searchAsset} btnStyle={{ borderColor: 'var(--brand)', width: '100%', justifyContent: 'flex-start' }}
-                            trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💱" size={14} /> <span style={{ color: 'var(--mut)', fontSize: 12 }}>{L.segAsset}:</span> {segSym || L.segAll} <span style={pillCnt}>{perfBk.symbols.length}</span></span>}
-                            items={[{ key: '', text: L.segAll, active: !segSym }, ...perfBk.symbols.map((s) => ({ key: s.key, text: s.key, net: s.net, dot: s.net >= 0 ? GREEN : RED, active: segSym === s.key }))]}
-                            onPick={(k) => setSegSym(k)} />
-                          {perfBk.robots.length > 0 ? (
-                            <PickerMenu search width={230} accent={!!segBot} ph={L.searchRobot} empty={L.noBots} btnStyle={{ borderColor: 'var(--brand)', width: '100%', justifyContent: 'flex-start' }}
-                              trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🤖" size={14} /> <span style={{ color: segBot ? undefined : 'var(--mut)', fontSize: 12 }}>{L.segRobot}:</span> {segBot ? (segBot === '__manual' ? L.manual : nameOf(segBot, '#' + segBot)) : L.segAll} <span style={pillCnt}>{perfBk.robots.length}</span></span>}
-                              items={[
-                                { key: '', text: L.segAll, active: !segBot },
-                                ...(perfBk.manual.present ? [{ key: '__manual', text: L.manual, sub: L.manualSub, net: perfBk.manual.net, dot: perfBk.manual.net >= 0 ? GREEN : RED, active: segBot === '__manual' }] : []),
-                                ...perfBk.robots.map((r) => ({ key: r.key, text: nameOf(r.key, r.label), sub: `magic ${r.key}`, net: r.net, dot: r.net >= 0 ? GREEN : RED, active: segBot === r.key })),
-                              ]}
-                              onPick={(k) => setSegBot(k)} />
-                          ) : (
-                            <span className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: .5, cursor: 'default', borderColor: 'var(--line)', width: '100%', justifyContent: 'flex-start' }} title={L.noRobotsHint}><OnyxIcon emoji="🤖" size={14} /> <span style={{ fontSize: 12, color: 'var(--mut)' }}>{L.segRobot}:</span> {L.noRobots}</span>
-                          )}
-                          {(segSym || segBot) && <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { setSegSym(''); setSegBot(''); }}>{L.segClear}</button>}
-                        </div>
-                      </>)}
-                    </span>
-                  )}
-                  <span style={{ position: 'relative', display: 'inline-flex', flex: 'none', marginLeft: 'auto' }}>
-                    <button type="button" className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} aria-label={lang === 'es' ? 'Más opciones' : 'More options'} style={{ padding: '7px 11px', display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer' }} onClick={() => setMoreOpen((o) => !o)}>⋯ {lang === 'es' ? 'Más' : 'More'}</button>
-                    {moreOpen && (<>
-                      <span onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
-                      <div style={{ position: 'absolute', right: 0, left: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 230, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
-                        <button className="btn btn-ghost" onClick={() => { setDemo(!demo); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="🎬" size={14} /> {L.demo}{demo ? ' ✓' : ''}</button>
-                        <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} onClick={() => { setRange(range === 'custom' ? 'all' : 'custom'); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: !isFree ? 6 : 0 }}><OnyxIcon emoji="📅" size={14} /> {L.customRange}{range === 'custom' ? ' ✓' : ''}</button>
-                        {!isFree && <>
-                          <div className="muted" style={{ fontSize: 11, padding: '6px 8px 6px', borderTop: '1px solid var(--line)', marginTop: 2 }}>{lang === 'es' ? 'Exportar reporte' : 'Export report'}</div>
-                          <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(pdfHref, `onyx-reporte-${expFrom}.html`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
-                          <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(xlsxHref, `onyx-reporte-${expFrom}.xlsx`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel</button>
-                          <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(csvHref, `onyx-reporte-${expFrom}.csv`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📋" size={14} /> CSV</button>
-                        </>}
-                      </div>
-                    </>)}
-                  </span>
-                  </div>
-                )}
+                {/* En móvil, las acciones (Compartir · Filtros · Más) están en la tarjeta junto a Portafolio, arriba. */}
               </div>
             </div>
             {view === 'rendimiento' && (
@@ -1147,7 +1146,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               />
             </>)}
 
-            {view !== 'hub' && <button className="btn" style={{ alignSelf: 'flex-start', background: 'rgba(124,140,255,.12)', border: '1px solid rgba(124,140,255,.6)', color: 'var(--soft-brand)', fontWeight: 500, boxShadow: '0 0 16px -2px rgba(124,140,255,.5)' }} onClick={() => setView('hub')}>{L.back}</button>}
+            {view !== 'hub' && <button className="btn" style={{ alignSelf: isMobile ? 'stretch' : 'flex-start', width: isMobile ? '100%' : undefined, justifyContent: 'center', textAlign: 'center', background: 'rgba(124,140,255,.12)', border: '1px solid rgba(124,140,255,.6)', color: 'var(--soft-brand)', fontWeight: 500, boxShadow: '0 0 16px -2px rgba(124,140,255,.5)' }} onClick={() => setView('hub')}>{L.back}</button>}
 
             {view === 'rendimiento' && (() => {
               const sWR = a.winRate >= 50 ? GREEN : a.winRate >= 40 ? GOLD : RED;
