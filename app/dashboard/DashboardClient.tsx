@@ -987,7 +987,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                         <button type="button" aria-label={L.filterBy} className={'btn ' + ((segSym || segBot) ? 'btn-primary' : 'btn-ghost')} style={{ flex: 1, width: '100%', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setFiltOpen((o) => !o)}><OnyxIcon emoji="🔎" size={17} /></button>
                         {filtOpen && (<>
                           <span onClick={() => setFiltOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
-                          <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, width: 250, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <div style={{ position: 'absolute', right: 0, left: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, width: 250, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                             <div className="muted" style={{ fontSize: 11 }}>{L.filterBy}</div>
                             <PickerMenu search width={230} ph={L.searchAsset} btnStyle={{ borderColor: 'var(--brand)', width: '100%', justifyContent: 'flex-start' }}
                               trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💱" size={14} /> <span style={{ color: 'var(--mut)', fontSize: 12 }}>{L.segAsset}:</span> {segSym || L.segAll} <span style={pillCnt}>{perfBk.symbols.length}</span></span>}
@@ -1079,7 +1079,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <button className="btn btn-ghost" onClick={() => setRange('all')} title={lang === 'es' ? 'Cerrar' : 'Close'} style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13 }}>✕ {lang === 'es' ? 'Cerrar' : 'Close'}</button>
               </div>
             )}
-            {demo && <div style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '8px 14px', fontSize: 13, alignSelf: 'flex-start' }}>{L.demoOn}</div>}
+            {demo && <div style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '8px 14px', fontSize: 13, alignSelf: isMobile ? 'stretch' : 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 10 }}>{L.demoOn}<button onClick={() => setDemo(false)} title={lang === 'es' ? 'Cerrar demo' : 'Close demo'} aria-label={lang === 'es' ? 'Cerrar demo' : 'Close demo'} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--amber)', cursor: 'pointer', fontSize: 15, lineHeight: 1, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>✕ {lang === 'es' ? 'Cerrar' : 'Close'}</button></div>}
             {fundAlert && <div style={{ background: fundAlert.type === 'danger' ? 'rgba(255,107,125,.12)' : 'rgba(52,226,160,.12)', border: '1px solid ' + (fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)'), color: fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)', borderRadius: 10, padding: '10px 14px', fontSize: 14, fontWeight: 600 }}>{fundAlert.txt}</div>}
             {histDays > 0 && <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', color: 'var(--soft-brand2)', borderRadius: 10, padding: '9px 14px', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{L.histCap} <Link href="/pricing" style={{ color: '#fff', fontWeight: 700 }}>{L.proLockCta}</Link></div>}
 
@@ -1146,7 +1146,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               />
             </>)}
 
-            {view !== 'hub' && <button className="btn" style={{ position: 'sticky', top: 8, zIndex: 20, alignSelf: isMobile ? 'stretch' : 'flex-start', width: isMobile ? '100%' : undefined, justifyContent: 'center', textAlign: 'center', background: 'var(--soft-brand)', border: '1px solid rgba(124,140,255,.6)', color: '#fff', fontWeight: 600, boxShadow: '0 6px 18px -2px rgba(124,140,255,.6)' }} onClick={() => { setView('hub'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {} }}>{L.back}</button>}
+            {view !== 'hub' && <button className="btn" style={{ position: 'sticky', top: 8, zIndex: 20, alignSelf: isMobile ? 'stretch' : 'flex-start', width: isMobile ? '100%' : undefined, justifyContent: 'center', textAlign: 'center', background: 'var(--card)', border: '1px solid var(--line)', color: 'var(--tx)', fontWeight: 600 }} onClick={() => { setView('hub'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {} }}>{L.back}</button>}
 
             {view === 'rendimiento' && (() => {
               const sWR = a.winRate >= 50 ? GREEN : a.winRate >= 40 ? GOLD : RED;
