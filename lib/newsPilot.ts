@@ -45,6 +45,27 @@ function hashOf(s: string): string {
 }
 const norm = (s: string) => String(s || '').toLowerCase();
 
+// Firma del TÍTULO para anti-duplicados por CONTENIDO (no por URL). La MISMA historia
+// llega por varias fuentes con enlaces distintos → sin esto se publicaba varias veces.
+// Quita acentos, puntuación y palabras vacías; ordena las palabras significativas.
+const STOP = new Set(['the', 'a', 'an', 'of', 'to', 'in', 'on', 'for', 'and', 'or', 'de', 'la', 'el', 'los', 'las', 'un', 'una', 'y', 'o', 'en', 'del', 'al', 'que', 'con', 'por', 'se', 'su']);
+function titleSig(title: string): string {
+  const words = String(title || '')
+    .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')   // sin acentos
+    .replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
+    .filter((w) => w.length > 2 && !STOP.has(w));
+  return Array.from(new Set(words)).sort().slice(0, 10).join(' ');
+}
+// ¿Ya hay un artículo con este MISMO título (por firma) publicado hace poco?
+async function titlePostedRecently(title: string, hours = 72): Promise<boolean> {
+  try {
+    const sig = titleSig(title); if (!sig) return false;
+    const since = new Date(Date.now() - hours * 3600 * 1000).toISOString();
+    const { data } = await supabaseAdmin.from('blog_posts').select('title_es,title_en').gte('created_at', since).limit(200);
+    return (data || []).some((p: any) => titleSig(p.title_es) === sig || titleSig(p.title_en) === sig);
+  } catch { return false; }
+}
+
 // Familia de tema activa según los toggles del dueño.
 function topicOn(cat: NewsSource['cat'], t: NewsPilot['topics']): boolean {
   return (cat === 'macro' && t.macro) || (cat === 'markets' && t.markets) || (cat === 'earnings' && t.earnings) || (cat === 'crypto' && t.crypto);
@@ -135,11 +156,21 @@ async function runCycle(force = false): Promise<PilotResult> {
   fresh.sort((a, b) => (score(b) - score(a)) || (b.published - a.published));
 
   // Salta los ya vistos (anti-duplicados). Toma el primero nuevo.
+  // La clave de "visto" es la FIRMA DEL TÍTULO (contenido), no la URL: así la misma
+  // historia que llega por varias fuentes con enlaces distintos NO se publica varias
+  // veces. Además, respaldo: si ya hay un artículo con ese título en el blog (últimas
+  // 72 h), se salta aunque news_seen no lo tenga (carreras entre crons).
   let pick: NewsItem | null = null; let pickHash = '';
   for (const it of fresh.slice(0, 25)) {
-    const h = hashOf(norm(it.link) || norm(it.title));
+    const sig = titleSig(it.title);
+    const h = sig ? hashOf('t:' + sig) : hashOf(norm(it.link) || norm(it.title));
     const { data: seen } = await supabaseAdmin.from('news_seen').select('hash').eq('hash', h).maybeSingle();
     if (seen) continue;
+    if (await titlePostedRecently(it.title)) {
+      // Ya publicada por otra vía: márcala vista para no reevaluarla y sigue.
+      try { await supabaseAdmin.from('news_seen').insert({ hash: h, source: it.sourceId, title: it.title.slice(0, 300), url: it.link, posted: true }); } catch {}
+      continue;
+    }
     // Registra como visto de inmediato (aunque no lo publiquemos) para no reevaluarlo.
     try { await supabaseAdmin.from('news_seen').insert({ hash: h, source: it.sourceId, title: it.title.slice(0, 300), url: it.link, posted: false }); } catch {}
     pick = it; pickHash = h; break;
