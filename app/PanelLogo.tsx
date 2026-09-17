@@ -1,14 +1,18 @@
 'use client';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLang } from '@/lib/lang';
+import { isNativeApp } from '@/lib/native';
 
 // Logo + botón "ir al panel". Es un solo botón (icono Onyx | casita) que SIEMPRE
 // lleva al panel. Sin texto: usa un símbolo (casita) para que sea igual en
-// cualquier idioma. El clic se maneja por completo en JS con router.push, así
-// funciona igual en el navegador y dentro de la app nativa (Capacitor):
+// cualquier idioma. El clic se maneja por completo en JS:
 //  - Si ya estás en /dashboard (aunque sea una sub-vista), avisa al panel para
 //    volver al hub y sube arriba (navegar a la misma URL no haría nada).
-//  - Desde cualquier otra sección, navega al panel.
+//  - Desde cualquier otra sección, navega al panel. En el navegador usa la
+//    navegación suave (router). Dentro de la app nativa (Capacitor) la
+//    navegación por router a veces no surte efecto, así que hacemos una
+//    navegación dura (window.location), que es como carga la app y siempre
+//    responde.
 export default function PanelLogo() {
   const { lang } = useLang();
   const en = lang === 'en';
@@ -20,11 +24,13 @@ export default function PanelLogo() {
 
   const go = (e: React.MouseEvent) => {
     e.preventDefault();
+    // Reset instantáneo si el panel ya está montado (sub-vistas del hub).
+    try { window.dispatchEvent(new CustomEvent('onyx:panel-home')); } catch {}
     if (onDash) {
-      try { window.dispatchEvent(new CustomEvent('onyx:panel-home')); } catch {}
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
       return;
     }
+    if (isNativeApp()) { try { window.location.assign(dest); return; } catch {} }
     try { router.push(dest); } catch { try { window.location.assign(dest); } catch {} }
   };
 
