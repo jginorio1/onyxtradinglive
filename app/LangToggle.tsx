@@ -42,6 +42,17 @@ export default function LangToggle({ compact = false, label = '' }: { compact?: 
       document.cookie = `onyx_lang=${l}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
       localStorage.setItem('onyx_lang', l);
     } catch { /* sin cookies/localStorage: seguimos igual, la URL basta */ }
+    // Guardar también en el PERFIL (profiles.lang) para que los push y correos
+    // lleguen en el idioma elegido. Los avisos solo tienen es/en, así que cualquier
+    // idioma distinto de 'es' se guarda como 'en'. keepalive: se completa aunque la
+    // página recargue justo después. Si no hay sesión, el endpoint no hace nada.
+    try {
+      fetch('/api/lang', {
+        method: 'POST', keepalive: true, credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ lang: l === 'es' ? 'es' : 'en' }),
+      }).catch(() => {});
+    } catch {}
     const seg = pathname.split('/')[1];
     const base = PREFIXES.includes(seg) ? (pathname.slice(seg.length + 1) || '/') : pathname;
     const PUBLIC = ['/pricing', '/embajadores', '/guia', '/login', '/terms', '/mentores'];

@@ -4,6 +4,7 @@ import { getSetting, saveSetting } from '@/lib/settings';
 import { NOTIF_CATALOG, type NotifOverride } from '@/lib/notifConfig';
 import { emitNotif } from '@/lib/emitNotif';
 import { createSupabaseServer } from '@/lib/supabaseServer';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -43,7 +44,11 @@ export async function POST(req: Request) {
     // Config forzada SOLO para este envío: prendido, campana + push (sin Telegram
     // para no molestar a los suscriptores del canal al probar).
     const cfg = { [key]: { ...def, on: true, bell: true, push: true, telegram: false } } as any;
-    const lang = b.lang === 'en' ? 'en' : 'es';
+    // Idioma de la PRUEBA: el idioma guardado en TU perfil (profiles.lang), para que
+    // la prueba llegue igual que un aviso real. Antes usaba el idioma del panel de
+    // admin, que podía no coincidir con el idioma de la app. Cae a 'es' si no hay.
+    let lang: 'es' | 'en' = 'es';
+    try { const { data } = await supabaseAdmin.from('profiles').select('lang').eq('id', uid).maybeSingle(); lang = (data as any)?.lang === 'en' ? 'en' : 'es'; } catch {}
     const prefix = lang === 'en' ? '[TEST] ' : '[PRUEBA] ';
     try {
       await emitNotif(uid, key, { cfg, lang, vars: TEST_VARS, title: prefix + (def as any)[lang].title });
