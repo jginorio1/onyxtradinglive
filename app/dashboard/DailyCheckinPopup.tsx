@@ -108,7 +108,10 @@ export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onSta
   const hasAuto = allHabits.some((h) => h.auto);
 
   const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16 };
-  const modal: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 18, maxWidth: 448, width: '100%', padding: 22, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 40px rgba(124,140,255,.35)' };
+  // El popup se divide en 3 zonas: cabecera fija, cuerpo con scroll (solo la lista
+  // de hábitos) y pie fijo con los botones. Así los botones y el cierre NUNCA
+  // quedan escondidos bajo el pliegue: solo se desplaza el medio.
+  const modal: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--brand)', borderRadius: 18, maxWidth: 448, width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 40px rgba(124,140,255,.35)' };
 
   const Row = (h: { id: string; label: string; auto: boolean }) => (
     <button key={h.id} onClick={() => toggle(h.id)} style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 10, cursor: 'pointer', fontSize: 13.5, border: '1px solid', borderColor: items[h.id] ? 'var(--green)' : 'var(--line)', background: items[h.id] ? 'color-mix(in srgb,var(--green) 12%,transparent)' : 'var(--bg2)', color: 'var(--tx)' }}>
@@ -121,11 +124,17 @@ export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onSta
   return (
     <div style={overlay} onClick={() => closeForNow(false)}>
       <div style={modal} onClick={(e) => e.stopPropagation()}>
-        <div className="row between" style={{ alignItems: 'center' }}>
-          <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon emoji="🎯" size={20} /></span> {t.title}</div>
-          <span className="pill" style={{ fontSize: 12, background: allDone ? 'rgba(52,226,160,.15)' : 'rgba(124,140,255,.15)', color: allDone ? 'var(--green)' : 'var(--soft-brand)' }}>{done}/{total}</span>
+        {/* ---- Cabecera FIJA (no hace scroll) ---- */}
+        <div style={{ flex: '0 0 auto', padding: '20px 22px 12px' }}>
+          <div className="row between" style={{ alignItems: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon emoji="🎯" size={20} /></span> {t.title}</div>
+            <span className="pill" style={{ fontSize: 12, background: allDone ? 'rgba(52,226,160,.15)' : 'rgba(124,140,255,.15)', color: allDone ? 'var(--green)' : 'var(--soft-brand)' }}>{done}/{total}</span>
+          </div>
+          <p className="muted" style={{ fontSize: 13, margin: '6px 0 0' }}>{allDone ? t.allDone : t.sub}</p>
         </div>
-        <p className="muted" style={{ fontSize: 13, margin: '6px 0 14px' }}>{allDone ? t.allDone : t.sub}</p>
+
+        {/* ---- Cuerpo con SCROLL (resumen + hábitos) ---- */}
+        <div style={{ flex: '1 1 auto', overflowY: 'auto', padding: '2px 22px 8px' }}>
 
         {/* Mini resumen del plan */}
         <div className="row" style={{ gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -167,14 +176,18 @@ export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onSta
 
         {hasAuto && <p className="muted" style={{ fontSize: 11, margin: '0 0 10px' }}><OnyxIcon emoji="✨" size={15} /> {t.autoHint}</p>}
 
-        <div style={{ position: 'relative', height: 8, marginBottom: 12 }}>
+        <div style={{ position: 'relative', height: 8 }}>
           {saved && <span style={{ position: 'absolute', right: 0, top: -2, color: 'var(--green)', fontSize: 11.5 }}>✓ {t.saved}</span>}
         </div>
+        </div>{/* /cuerpo con scroll */}
 
-        <button className="btn btn-primary" onClick={() => closeForNow(true)} style={{ width: '100%', marginBottom: 8 }}>{allDone ? t.allDone : t.done}</button>
-        <div className="row between" style={{ alignItems: 'center' }}>
-          <a href="/dashboard?view=plan" className="muted" style={{ fontSize: 12.5, textDecoration: 'underline' }}>{t.seePlan}</a>
-          <button className="btn btn-ghost" style={{ fontSize: 12.5, padding: '5px 12px' }} onClick={() => closeForNow(false)}>{t.later}</button>
+        {/* ---- Pie FIJO con los botones (siempre visibles) ---- */}
+        <div style={{ flex: '0 0 auto', padding: '12px 22px 18px', borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
+          <button className="btn btn-primary" onClick={() => closeForNow(true)} style={{ width: '100%', marginBottom: 8 }}>{allDone ? t.allDone : t.done}</button>
+          <div className="row between" style={{ alignItems: 'center' }}>
+            <a href="/dashboard?view=plan" className="muted" style={{ fontSize: 12.5, textDecoration: 'underline' }}>{t.seePlan}</a>
+            <button className="btn btn-ghost" style={{ fontSize: 12.5, padding: '5px 12px' }} onClick={() => closeForNow(false)}>{t.later}</button>
+          </div>
         </div>
       </div>
     </div>
