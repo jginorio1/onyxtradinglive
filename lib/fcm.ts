@@ -61,7 +61,7 @@ async function getToken(): Promise<string | null> {
   } catch { return null; }
 }
 
-type Payload = { title: string; body: string; url?: string };
+type Payload = { title: string; body: string; url?: string; category?: string };
 
 // Envía a un token concreto. Devuelve 'ok' | 'dead' (token inválido → borrar) | 'err'.
 async function sendToToken(token: string, projectId: string, oauth: string, p: Payload): Promise<'ok' | 'dead' | 'err'> {
@@ -70,7 +70,20 @@ async function sendToToken(token: string, projectId: string, oauth: string, p: P
       token,
       notification: { title: p.title, body: p.body },
       data: { url: p.url || '/dashboard' },
-      android: { priority: 'HIGH', notification: { sound: 'default', default_vibrate_timings: true } },
+      android: {
+        priority: 'HIGH',
+        notification: {
+          sound: 'default',
+          default_vibrate_timings: true,
+          // Identidad Onyx en la notificación:
+          //  • icon: ícono chico monocromo de la barra de estado (drawable ic_stat_onyx del APK).
+          //  • color: acento morado de marca (tiñe el ícono y el nombre).
+          //  • channel_id: la categoría → canal (Plan, Robots, Soporte…), creado en NativeInit.
+          icon: 'ic_stat_onyx',
+          color: '#4B3FF0',
+          channel_id: p.category || 'onyx_default',
+        },
+      },
       apns: { payload: { aps: { sound: 'default' } } },
     },
   };

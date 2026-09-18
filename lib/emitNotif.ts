@@ -4,6 +4,22 @@ import { alertUser } from '@/lib/telegram';
 import { loadNotifConfig } from '@/lib/notifConfig';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
+// Cada tipo de aviso cae en un CANAL de notificación de Android (los canales se
+// crean en la app, ver NativeInit). Así el usuario controla cada categoría y
+// cada push muestra su nombre de canal (Plan, Robots, Soporte…).
+export function notifCategory(key: string): string {
+  if (['checkin', 'checkin_evening', 'no_trade', 'journal_reminder'].includes(key)) return 'onyx_plan';
+  if (['ea_down', 'goal_reached', 'funding_near', 'challenge_violation', 'challenge_passed', 'big_trade', 'news_high'].includes(key)) return 'onyx_trading';
+  if (key === 'bot_alert') return 'onyx_robots';
+  if (key === 'copy_stopped') return 'onyx_copy';
+  if (['live_class', 'academy_activity'].includes(key)) return 'onyx_academia';
+  if (['referral_reward', 'new_commission', 'bot_sold'].includes(key)) return 'onyx_ingresos';
+  if (key === 'payment_failed') return 'onyx_cuenta';
+  if (key === 'support_reply') return 'onyx_soporte';
+  if (key === 'weekly_summary') return 'onyx_resumen';
+  return 'onyx_default';
+}
+
 // Envía UN aviso por los canales que el dueño dejó activos (campana / push /
 // Telegram), con los textos configurados en Admin → Notificaciones. Si el tipo
 // está apagado, no hace nada. Nunca lanza: un fallo de un canal no rompe el resto.
@@ -47,7 +63,9 @@ export async function emitNotif(
     } catch { /* si no existe la columna aún, no filtra */ }
 
     if (d.bell && pref.bell !== false) { try { await notify(userId, { kind: key, title, body, url }); } catch {} }
-    if (d.push && pref.push !== false) { try { await sendPush(userId, { title, body, url }); } catch {} }
+    // La categoría define el CANAL de la push nativa (Android) para que el usuario
+    // pueda activar/silenciar cada tipo por separado y se vea el nombre del canal.
+    if (d.push && pref.push !== false) { try { await sendPush(userId, { title, body, url, category: notifCategory(key) }); } catch {} }
     if (d.telegram) { try { await alertUser(userId, d.tgKind as any, `<b>${title}</b>\n${body}`); } catch {} }
   } catch { /* nunca romper el flujo que llamó */ }
 }

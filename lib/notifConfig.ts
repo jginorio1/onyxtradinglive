@@ -79,6 +79,101 @@ export const NOTIF_CATALOG: NotifDef[] = [
     bell: true, push: false, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
     editableChannels: ['bell', 'push'],
   },
+
+  // ===== GRUPO 1 · encendidas por defecto (alto valor, baja frecuencia) =====
+  {
+    key: 'ea_down', group: 'Trading y reto',
+    es: { title: '🔌 Tu conexión se cayó', body: 'Tu cuenta {acc} dejó de reportar. Revisa el EA o el VPS.' },
+    en: { title: '🔌 Your connection dropped', body: 'Account {acc} stopped reporting. Check the EA or VPS.' },
+    bell: true, push: true, telegram: true, tgKind: 'manager', url: '/dashboard/keys',
+    editableChannels: ['bell', 'push', 'telegram'],
+  },
+  {
+    key: 'goal_reached', group: 'Trading y reto',
+    es: { title: '🎯 ¡Meta alcanzada!', body: 'Llegaste a tu objetivo del día. Sabe cuándo parar.' },
+    en: { title: '🎯 Goal reached!', body: 'You hit your target for the day. Know when to stop.' },
+    bell: true, push: true, telegram: true, tgKind: 'manager', url: '/dashboard',
+    editableChannels: ['bell', 'push', 'telegram'],
+  },
+  {
+    key: 'funding_near', group: 'Trading y reto',
+    es: { title: '🛑 Cerca de tu límite de pérdida', body: 'Vas por -{pct}% hoy. Un paso más y rompes tu regla.' },
+    en: { title: '🛑 Close to your loss limit', body: 'You are at -{pct}% today. One more step breaks your rule.' },
+    bell: true, push: true, telegram: true, tgKind: 'funding', url: '/dashboard/manager',
+    editableChannels: ['bell', 'push', 'telegram'],
+  },
+  {
+    key: 'challenge_violation', group: 'Trading y reto',
+    es: { title: '⛔ Rompiste una regla del reto', body: '{rule}. Revisa tu marcador antes de seguir.' },
+    en: { title: '⛔ You broke a challenge rule', body: '{rule}. Check your scoreboard before continuing.' },
+    bell: true, push: true, telegram: true, tgKind: 'challenge', url: '/dashboard?view=reto',
+    editableChannels: ['bell', 'push', 'telegram'],
+  },
+  {
+    key: 'challenge_passed', group: 'Trading y reto',
+    es: { title: '🏆 ¡Pasaste el reto!', body: 'Cumpliste el objetivo. Enhorabuena, sigue tu plan.' },
+    en: { title: '🏆 Challenge passed!', body: 'You hit the objective. Congrats — stick to your plan.' },
+    bell: true, push: true, telegram: true, tgKind: 'challenge', url: '/dashboard?view=reto',
+    editableChannels: ['bell', 'push', 'telegram'],
+  },
+  {
+    key: 'payment_failed', group: 'Cuenta y pagos',
+    es: { title: '💳 No pudimos cobrar tu plan', body: 'Actualiza tu tarjeta para no perder el acceso.' },
+    en: { title: '💳 We could not charge your plan', body: 'Update your card so you do not lose access.' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/account',
+    editableChannels: ['bell', 'push'],
+  },
+
+  // ===== GRUPO 2 · opt-in (apagadas por defecto; el usuario las activa) =====
+  {
+    key: 'big_trade', group: 'Trading y reto', extra: true,
+    es: { title: '💰 Operación cerrada', body: '{sym} cerró en {net}. Revisa el detalle.' },
+    en: { title: '💰 Trade closed', body: '{sym} closed at {net}. See the details.' },
+    bell: false, push: true, telegram: false, tgKind: 'manager', url: '/dashboard?view=operaciones',
+    editableChannels: ['bell', 'push', 'telegram'],
+  },
+  {
+    key: 'news_high', group: 'Mercado', extra: true,
+    es: { title: '📅 Noticia de alto impacto pronto', body: '{event} en ~{mins} min. Cuida tus posiciones.' },
+    en: { title: '📅 High-impact news soon', body: '{event} in ~{mins} min. Mind your positions.' },
+    bell: false, push: true, telegram: false, tgKind: 'news', url: '/dashboard',
+    editableChannels: ['bell', 'push', 'telegram'],
+  },
+  {
+    key: 'live_class', group: 'Academia', extra: true,
+    es: { title: '🔴 Clase en vivo pronto', body: '{title} empieza en {mins} min. Entra a tiempo.' },
+    en: { title: '🔴 Live class soon', body: '{title} starts in {mins} min. Join on time.' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'academy_activity', group: 'Academia', extra: true,
+    es: { title: '🎓 Novedad en tu academia', body: '{body}' },
+    en: { title: '🎓 New in your academy', body: '{body}' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'bot_sold', group: 'Ingresos y referidos', extra: true,
+    es: { title: '🛒 ¡Vendiste un robot!', body: '{name} generó una venta. Ya está en tu saldo.' },
+    en: { title: '🛒 You sold a robot!', body: '{name} made a sale. It is in your balance.' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/bot-lab',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'new_commission', group: 'Ingresos y referidos', extra: true,
+    es: { title: '💵 Nueva comisión', body: 'Ganaste {amount}. Se acredita tras la ventana de espera.' },
+    en: { title: '💵 New commission', body: 'You earned {amount}. It credits after the holding window.' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/earnings',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'copy_stopped', group: 'Copy', extra: true,
+    es: { title: '⏸️ La copia se detuvo', body: 'Tu enlace de copia dejó de operar. Revisa la conexión.' },
+    en: { title: '⏸️ Copy trading stopped', body: 'Your copy link stopped trading. Check the connection.' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/copy',
+    editableChannels: ['bell', 'push', 'telegram'],
+  },
 ];
 
 export type NotifOverride = { on?: boolean; title_es?: string; title_en?: string; body_es?: string; body_en?: string; bell?: boolean; push?: boolean; telegram?: boolean };
