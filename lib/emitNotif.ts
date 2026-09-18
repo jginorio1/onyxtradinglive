@@ -45,7 +45,17 @@ export async function emitNotif(
         await supabaseAdmin.from('profiles').update({ tg_sent: sent }).eq('id', userId);
       } catch { /* si no existe la columna, seguimos sin dedup */ }
     }
-    const lang = opts.lang === 'en' ? 'en' : 'es';
+    // Idioma del aviso: si el que llama lo pasa, se respeta; si no, se toma el
+    // idioma guardado en el perfil del propio destinatario (profiles.lang). Así
+    // cada trader recibe sus push en su idioma sin que cada llamador tenga que
+    // averiguarlo. Solo cae a 'es' si el perfil no tiene idioma.
+    let lang: 'es' | 'en';
+    if (opts.lang) lang = opts.lang === 'en' ? 'en' : 'es';
+    else {
+      let plang = '';
+      try { const { data } = await supabaseAdmin.from('profiles').select('lang').eq('id', userId).maybeSingle(); plang = (data as any)?.lang || ''; } catch {}
+      lang = plang === 'en' ? 'en' : 'es';
+    }
     const sub = (s: string) => String(s || '').replace(/\{(\w+)\}/g, (_, k) => String(opts.vars?.[k] ?? ''));
     // Si el que llama pasa un texto específico (p. ej. el motivo del robot), se usa
     // ese; si no, el texto configurado en Admin. Los canales/on-off mandan igual.
