@@ -50,6 +50,18 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
     } catch { toast('Error'); }
     setAiBusy('');
   }
+  // Prueba: dispara ESE aviso al propio admin (campana + push) para verlo llegar.
+  const [testBusy, setTestBusy] = useState('');
+  async function runTest(k: string) {
+    setTestBusy(k);
+    try {
+      const r = await fetch('/api/admin/notifications', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ test: k, lang }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) toast(es ? 'Enviado · revisa tu campana/móvil' : 'Sent · check your bell/phone', 'ok');
+      else toast(j.error || 'Error');
+    } catch { toast('Error'); }
+    setTestBusy('');
+  }
   async function save() {
     setBusy(true);
     try {
@@ -99,7 +111,10 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
                         <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setAiKey('')}>✕</button>
                       </div>
                     ) : (
-                      <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setAiKey(d.key)}><OnyxIcon emoji="✨" size={15} /> {es ? 'Redactar con IA' : 'Write with AI'}</button>
+                      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                        <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setAiKey(d.key)}><OnyxIcon emoji="✨" size={15} /> {es ? 'Redactar con IA' : 'Write with AI'}</button>
+                        <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => runTest(d.key)} disabled={testBusy === d.key} title={es ? 'Te lo envía a ti para verlo' : 'Sends it to you to preview'}>{testBusy === d.key ? '…' : <><OnyxIcon emoji="🔔" size={15} /> {es ? 'Probar' : 'Test'}</>}</button>
+                      </div>
                     )}
                   </div>
                   <div className="grid g2" style={{ gap: 8, marginTop: 8 }}>

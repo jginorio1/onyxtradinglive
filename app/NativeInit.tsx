@@ -47,6 +47,26 @@ export default function NativeInit() {
         const plat = (() => { try { return (window as any).Capacitor?.getPlatform?.() || 'android'; } catch { return 'android'; } })();
         const perm = await PushNotifications.requestPermissions();
         if (perm.receive === 'granted') {
+          // Canales de notificación (Android): un canal por categoría, para que el
+          // usuario pueda activar/silenciar cada tipo y se muestre su nombre. El
+          // servidor manda cada push a su channel_id (ver lib/fcm.ts / emitNotif).
+          try {
+            const chans = [
+              { id: 'onyx_plan', name: 'Plan y hábitos' },
+              { id: 'onyx_trading', name: 'Trading y reto' },
+              { id: 'onyx_robots', name: 'Robots' },
+              { id: 'onyx_copy', name: 'Copy trading' },
+              { id: 'onyx_academia', name: 'Academia' },
+              { id: 'onyx_ingresos', name: 'Ingresos y referidos' },
+              { id: 'onyx_cuenta', name: 'Cuenta y pagos' },
+              { id: 'onyx_soporte', name: 'Soporte' },
+              { id: 'onyx_resumen', name: 'Resúmenes' },
+              { id: 'onyx_default', name: 'Onyx Trading Live' },
+            ];
+            for (const c of chans) {
+              try { await (PushNotifications as any).createChannel({ id: c.id, name: c.name, importance: 4, visibility: 1, vibration: true, lights: true }); } catch {}
+            }
+          } catch {}
           await PushNotifications.addListener('registration', async (t: any) => {
             try {
               await fetch('/api/push/native', {
