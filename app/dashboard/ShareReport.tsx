@@ -29,9 +29,25 @@ export default function ShareReport({
 
   const flash = (m: string) => { setNote(m); setTimeout(() => setNote(''), 1800); };
   const jsonHref = `/api/dashboard/report?export=json&from=${from}&to=${to}&lang=${lang}&acc=${acc}`;
+  // PDF DE VERDAD (server-side). El webview de Android NO soporta window.print(),
+  // así que en la app descargamos este PDF real con la sesión de la app.
+  const pdfDlHref = `/api/dashboard/report?export=pdf&from=${from}&to=${to}&lang=${lang}&acc=${acc}`;
   // Abrir el reporte/PDF: en la app usa el navegador del sistema (un <a target=_blank>
   // no siempre abre dentro del WebView). En web abre pestaña nueva.
   const openReport = () => openAuthedFile(pdfHref.startsWith('http') ? pdfHref : (typeof location !== 'undefined' ? location.origin : '') + pdfHref, `onyx-reporte-${from}.html`);
+  // "Imprimir / PDF": en la app descarga el PDF real (el webview no imprime); en
+  // web abre el reporte HTML para imprimir con el diálogo del navegador.
+  const isNativeApp = () => { try { return !!(window as any).Capacitor?.isNativePlatform?.(); } catch { return false; } };
+  const printOrPdf = () => {
+    if (isNativeApp()) {
+      const url = (typeof location !== 'undefined' ? location.origin : '') + pdfDlHref;
+      openAuthedFile(url, `onyx-reporte-${from}.pdf`).then((r) => {
+        if (r === 'error') flash((es ? 'No se pudo generar el PDF · ' : 'Could not create PDF · ') + (getLastShareError() || '?'));
+      });
+    } else {
+      openReport();
+    }
+  };
 
   // Trae los datos SIEMPRE que cambie el rango/idioma (jsonHref) mientras está
   // abierto. Antes tenía `if (data) return` y deps solo [open], así que tras la
@@ -91,8 +107,26 @@ export default function ShareReport({
 
     // Nombre + estilo.
     let y = M + 120;
-    try { if (d.avatar) { const a = await loadImg(d.avatar); ctx.save(); ctx.beginPath(); ctx.arc(M + 30, y + 26, 30, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(a, M, y - 4, 60, 60); ctx.restore(); } } catch {}
-    const nx = d.avatar ? M + 76 : M;
+    let hasAvatar = false;
+    try {
+      if (d.avatar) {
+        const a = await loadImg(d.avatar);
+        const cx0 = M + 32, cy0 = y + 26, R = 32;        // círculo del avatar
+        // Recorte "cover": tomamos el cuadrado central de la imagen para NO
+        // deformarla (antes se estiraba a 60x60 y salía mal en fotos no cuadradas).
+        const iw = (a as any).naturalWidth || a.width, ih = (a as any).naturalHeight || a.height;
+        const s = Math.max(1, Math.min(iw, ih)), sx = (iw - s) / 2, sy = (ih - s) / 2;
+        ctx.save();
+        ctx.imageSmoothingEnabled = true; (ctx as any).imageSmoothingQuality = 'high';
+        ctx.beginPath(); ctx.arc(cx0, cy0, R, 0, Math.PI * 2); ctx.clip();
+        ctx.drawImage(a, sx, sy, s, s, cx0 - R, cy0 - R, R * 2, R * 2);
+        ctx.restore();
+        // Aro fino alrededor de la foto.
+        ctx.beginPath(); ctx.arc(cx0, cy0, R, 0, Math.PI * 2); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(124,140,255,.55)'; ctx.stroke();
+        hasAvatar = true;
+      }
+    } catch {}
+    const nx = hasAvatar ? M + 84 : M;
     ctx.fillStyle = TXT; ctx.font = '600 40px Arial, sans-serif'; ctx.textBaseline = 'alphabetic';
     ctx.fillText((d.name || (es ? 'Mi rendimiento' : 'My performance')).slice(0, 26), nx, y + 34);
     if (d.style) { ctx.fillStyle = MUT; ctx.font = '400 26px Arial, sans-serif'; ctx.fillText(d.style, nx, y + 66); }
@@ -101,7 +135,7 @@ export default function ShareReport({
     y += 150;
     ctx.fillStyle = MUT; ctx.font = '500 30px Arial, sans-serif';
     ctx.fillText(es ? 'Resultado del período' : 'Period result', M, y);
-    y += 96;
+    y += 158;   // separación clara entre la etiqueta y la cifra grande (antes 96, se pegaban)
     ctx.fillStyle = up ? GREEN : RED; ctx.font = '700 130px Arial, sans-serif';
     ctx.fillText(showMoney ? money(d.net) : pctS(d.pct), M, y);
 
@@ -209,7 +243,7 @@ export default function ShareReport({
               <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 12 }}>
                 <button className="btn btn-primary" onClick={share}><OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir' : 'Share'}</button>
                 <button className="btn btn-ghost" onClick={download}><OnyxIcon emoji="⬇" size={15} /> {es ? 'Imagen' : 'Image'}</button>
-                <button className="btn btn-ghost" onClick={openReport}><OnyxIcon emoji="🖨️" size={15} /> {es ? 'Imprimir / PDF' : 'Print / PDF'}</button>
+                <button className="btn btn-ghost" onClick={printOrPdf}><OnyxIcon emoji="🖨️" size={15} /> {es ? 'Imprimir / PDF' : 'Print / PDF'}</button>
               </div>
               {note && <div className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 8, color: 'var(--green)' }}>{note}</div>}
             </>)}

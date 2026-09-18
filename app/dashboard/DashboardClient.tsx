@@ -665,6 +665,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const expFrom = rangeDates.from || '2000-01-01';
   const expTo = rangeDates.to || new Date().toISOString().slice(0, 10);
   const pdfHref = `/api/dashboard/report?from=${expFrom}&to=${expTo}&lang=${lang}&acc=${sel}`;
+  // PDF de verdad (server-side): el botón "PDF" descarga este archivo (el webview
+  // de la app no imprime HTML). `pdfHref` sigue sirviendo el reporte HTML para
+  // ShareReport ("Ver reporte").
+  const pdfDlHref = `/api/dashboard/report?export=pdf&from=${expFrom}&to=${expTo}&lang=${lang}&acc=${sel}`;
   const xlsxHref = `/api/dashboard/report?export=xlsx&from=${expFrom}&to=${expTo}&lang=${lang}&acc=${sel}`;
   const csvHref = `/api/dashboard/report?export=csv&from=${expFrom}&to=${expTo}&lang=${lang}&acc=${sel}`;
 
@@ -1026,7 +1030,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                           <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} onClick={() => { setRange(range === 'custom' ? 'all' : 'custom'); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: !isFree ? 6 : 0 }}><OnyxIcon emoji="📅" size={14} /> {L.customRange}{range === 'custom' ? ' ✓' : ''}</button>
                           {!isFree && <>
                             <div className="muted" style={{ fontSize: 11, padding: '6px 8px 6px', borderTop: '1px solid var(--line)', marginTop: 2 }}>{lang === 'es' ? 'Exportar reporte' : 'Export report'}</div>
-                            <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(pdfHref, `onyx-reporte-${expFrom}.html`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
+                            <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(pdfDlHref, `onyx-reporte-${expFrom}.pdf`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
                             <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(xlsxHref, `onyx-reporte-${expFrom}.xlsx`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel</button>
                             <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(csvHref, `onyx-reporte-${expFrom}.csv`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📋" size={14} /> CSV</button>
                           </>}
@@ -1056,7 +1060,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                       <span onClick={() => setExpOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
                       <div style={{ position: 'absolute', left: 0, right: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 220, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
                         <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
-                        <button className="btn btn-ghost" onClick={() => { setExpOpen(false); openAuthedFile(pdfHref, `onyx-reporte-${expFrom}.html`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
+                        <button className="btn btn-ghost" onClick={() => { setExpOpen(false); openAuthedFile(pdfDlHref, `onyx-reporte-${expFrom}.pdf`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
                         <button className="btn btn-ghost" onClick={() => { setExpOpen(false); openAuthedFile(xlsxHref, `onyx-reporte-${expFrom}.xlsx`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'con gráficas' : 'with charts'}</span></button>
                         <button className="btn btn-ghost" onClick={() => { setExpOpen(false); openAuthedFile(csvHref, `onyx-reporte-${expFrom}.csv`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%' }}><OnyxIcon emoji="📋" size={14} /> CSV <span style={{ fontSize: 11, color: 'var(--mut)' }}>· {lang === 'es' ? 'datos planos' : 'raw data'}</span></button>
                       </div>
