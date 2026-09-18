@@ -86,13 +86,27 @@ function important(item: NewsItem): boolean {
 }
 
 // Cuántos artículos del piloto se han publicado HOY (UTC) y cuándo fue el último.
+// FUENTE DE VERDAD: los artículos REALES en blog_posts (is_news), no news_seen.
+// Antes se contaba news_seen.posted; si esa marca no se grababa, el tope daba 0 y
+// el piloto republicaba la misma noticia decenas de veces. Contar el blog real
+// hace que el tope diario y la separación NO se puedan romper.
 async function todayStats(): Promise<{ count: number; lastMs: number }> {
   try {
     const since = new Date(); since.setUTCHours(0, 0, 0, 0);
-    const { data } = await supabaseAdmin.from('news_seen').select('created_at').eq('posted', true).gte('created_at', since.toISOString()).order('created_at', { ascending: false });
+    const { data } = await supabaseAdmin.from('blog_posts')
+      .select('created_at').eq('is_news', true).eq('status', 'published')
+      .gte('created_at', since.toISOString()).order('created_at', { ascending: false });
     const rows = data || [];
     return { count: rows.length, lastMs: rows[0] ? new Date((rows[0] as any).created_at).getTime() : 0 };
-  } catch { return { count: 0, lastMs: 0 }; }
+  } catch {
+    // Respaldo: si por lo que sea falla la consulta al blog, usamos news_seen.
+    try {
+      const since = new Date(); since.setUTCHours(0, 0, 0, 0);
+      const { data } = await supabaseAdmin.from('news_seen').select('created_at').eq('posted', true).gte('created_at', since.toISOString()).order('created_at', { ascending: false });
+      const rows = data || [];
+      return { count: rows.length, lastMs: rows[0] ? new Date((rows[0] as any).created_at).getTime() : 0 };
+    } catch { return { count: 0, lastMs: 0 }; }
+  }
 }
 
 export type PilotResult = { ran: boolean; reason?: string; posted?: number; seen?: number; candidate?: string; feeds?: number; feedsOk?: number; fetched?: number; important?: number };
@@ -188,6 +202,15 @@ async function runCycle(force = false): Promise<PilotResult> {
     try { await supabaseAdmin.from('news_seen').delete().eq('hash', pickHash); } catch {}
     await logError('news_pilot_gen', new Error(gen.reason || 'gen_failed'));
     return { ran: true, reason: 'gen_failed', posted: 0, candidate: pick.title };
+  }
+
+  // Candado final anti-duplicado por el TÍTULO YA GENERADO. La IA crea un título
+  // propio (distinto al titular crudo del feed), así que solo comparando ese título
+  // contra los del blog se detecta la MISMA historia ya publicada. Si ya existe,
+  // no volvemos a publicarla: marcamos la noticia como vista y salimos.
+  if (await titlePostedRecently(gen.article.title_es || '') || await titlePostedRecently(gen.article.title_en || '')) {
+    try { await supabaseAdmin.from('news_seen').update({ posted: true }).eq('hash', pickHash); } catch {}
+    return { ran: true, reason: 'dup_title', posted: 0, candidate: pick.title };
   }
 
   const auto = cfg.mode !== 'draft';
