@@ -664,9 +664,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   // URLs de descarga del reporte para el período filtrado (con topes seguros).
   const expFrom = rangeDates.from || '2000-01-01';
   const expTo = rangeDates.to || new Date().toISOString().slice(0, 10);
-  const pdfHref = `/api/dashboard/report?from=${expFrom}&to=${expTo}&lang=${lang}`;
-  const xlsxHref = `/api/dashboard/report?export=xlsx&from=${expFrom}&to=${expTo}&lang=${lang}`;
-  const csvHref = `/api/dashboard/report?export=csv&from=${expFrom}&to=${expTo}&lang=${lang}`;
+  const pdfHref = `/api/dashboard/report?from=${expFrom}&to=${expTo}&lang=${lang}&acc=${sel}`;
+  const xlsxHref = `/api/dashboard/report?export=xlsx&from=${expFrom}&to=${expTo}&lang=${lang}&acc=${sel}`;
+  const csvHref = `/api/dashboard/report?export=csv&from=${expFrom}&to=${expTo}&lang=${lang}&acc=${sel}`;
 
   // Cuántas operaciones suyas quedan fuera por el límite de historial de su plan
   const hiddenTrades = useMemo(() => {
@@ -988,7 +988,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 {/* MÓVIL: tarjeta de acciones (Compartir · Filtros · Más) del MISMO tamaño que Portafolio. */}
                 {isMobile && (
                   <div style={{ flex: 1, minWidth: 0, minHeight: 56, display: 'flex', alignItems: 'stretch', gap: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 6 }}>
-                    {!isFree && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} compact />}
+                    {!isFree && <ShareReport lang={lang} from={expFrom} to={expTo} acc={sel} pdfHref={pdfHref} compact />}
                     {view === 'rendimiento' && (
                       <span style={{ position: 'relative', display: 'inline-flex', flex: 1 }}>
                         <button type="button" aria-label={L.filterBy} className={'btn ' + ((segSym || segBot) ? 'btn-primary' : 'btn-ghost')} style={{ flex: 1, width: '100%', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setFiltOpen((o) => !o)}><OnyxIcon emoji="🔎" size={17} /></button>

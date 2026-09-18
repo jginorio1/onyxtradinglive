@@ -16,8 +16,8 @@ type Summary = {
 };
 
 export default function ShareReport({
-  lang = 'es', from, to, pdfHref, compact = false,
-}: { lang?: string; from: string; to: string; pdfHref: string; compact?: boolean }) {
+  lang = 'es', from, to, acc = 'all', pdfHref, compact = false,
+}: { lang?: string; from: string; to: string; acc?: string; pdfHref: string; compact?: boolean }) {
   const es = lang !== 'en';
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<Summary | null>(null);
@@ -28,19 +28,27 @@ export default function ShareReport({
   const cvRef = useRef<HTMLCanvasElement | null>(null);
 
   const flash = (m: string) => { setNote(m); setTimeout(() => setNote(''), 1800); };
-  const jsonHref = `/api/dashboard/report?export=json&from=${from}&to=${to}&lang=${lang}`;
+  const jsonHref = `/api/dashboard/report?export=json&from=${from}&to=${to}&lang=${lang}&acc=${acc}`;
   // Abrir el reporte/PDF: en la app usa el navegador del sistema (un <a target=_blank>
   // no siempre abre dentro del WebView). En web abre pestaña nueva.
   const openReport = () => openAuthedFile(pdfHref.startsWith('http') ? pdfHref : (typeof location !== 'undefined' ? location.origin : '') + pdfHref, `onyx-reporte-${from}.html`);
 
+  // Trae los datos SIEMPRE que cambie el rango/idioma (jsonHref) mientras está
+  // abierto. Antes tenía `if (data) return` y deps solo [open], así que tras la
+  // primera carga NUNCA se actualizaba: la imagen salía igual aunque cambiaras el
+  // rango de fechas o la cuenta. Limpiamos data para reflejar el rango nuevo y
+  // pedimos sin caché.
   useEffect(() => {
-    if (!open || data) return;
+    if (!open) return;
+    let alive = true;
     setFailed(false);
-    fetch(jsonHref)
+    setData(null);
+    fetch(jsonHref, { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)))
-      .then((d) => { if (d && typeof d.net === 'number') setData(d); else setFailed(true); })
-      .catch(() => setFailed(true));
-  }, [open]);
+      .then((d) => { if (!alive) return; if (d && typeof d.net === 'number') setData(d); else setFailed(true); })
+      .catch(() => { if (alive) setFailed(true); });
+    return () => { alive = false; };
+  }, [open, jsonHref]);
 
   // Redibuja la tarjeta cada vez que cambian los datos o el modo $/%.
   useEffect(() => { if (open && data) buildCard().then((u) => u && setPreview(u)); }, [open, data, showMoney]);

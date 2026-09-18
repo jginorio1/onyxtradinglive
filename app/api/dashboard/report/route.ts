@@ -24,9 +24,15 @@ export async function GET(req: Request) {
   const [from, to] = range(sp);
 
   const { data: accs } = await sb.from('trading_accounts').select('id,currency,balance').eq('user_id', user.id);
-  const accIds = (accs || []).map((a) => a.id);
-  const cur = ((accs || [])[0]?.currency || 'USD').toUpperCase();
-  const totalBalance = (accs || []).reduce((s, a: any) => s + Number(a.balance || 0), 0);
+  const allIds = (accs || []).map((a) => a.id);
+  // Cuenta seleccionada (acc): si viene una cuenta concreta (y es del usuario), el
+  // reporte se limita a ELLA; si es 'all' o no viene, usa todas. Antes se ignoraba,
+  // así que el reporte salía igual sin importar la cuenta elegida.
+  const accParam = sp.get('acc') || '';
+  const accIds = (accParam && accParam !== 'all' && allIds.includes(accParam)) ? [accParam] : allIds;
+  const selAcc = accIds.length === 1 && accParam && accParam !== 'all' ? (accs || []).find((a: any) => a.id === accParam) : null;
+  const cur = ((selAcc?.currency || (accs || [])[0]?.currency || 'USD') as string).toUpperCase();
+  const totalBalance = selAcc ? Number(selAcc.balance || 0) : (accs || []).reduce((s, a: any) => s + Number(a.balance || 0), 0);
   // Perfil del trader para la cabecera del reporte (tolerante si faltan columnas).
   let prof: any = {};
   try { const r = await sb.from('profiles').select('full_name,avatar_url,trade_style,experience,goal,country').eq('id', user.id).maybeSingle(); prof = r.data || {}; } catch {}
