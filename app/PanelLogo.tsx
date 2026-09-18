@@ -43,7 +43,7 @@ export default function PanelLogo() {
 
   return (
     <button type="button" onClick={go} className="logo" aria-label={label} title={label}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: 0, margin: 0, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' as any }}>
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: 0, margin: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', lineHeight: 'normal', textAlign: 'left', appearance: 'none' as any, WebkitAppearance: 'none' as any, WebkitTapHighlightColor: 'transparent' as any }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(124,140,255,.14)', border: '1px solid rgba(124,140,255,.4)', borderRadius: 999, padding: '4px 11px 4px 9px' }}>
         {/* Símbolo Onyx como FONDO (no <img>), para que nada intercepte el toque. */}
         <span aria-hidden="true" style={{ width: 22, height: 22, flex: '0 0 auto', backgroundImage: 'url(/onyx-symbol.png)', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }} />
