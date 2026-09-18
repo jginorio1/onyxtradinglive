@@ -106,8 +106,42 @@ export async function shareImage(blob: Blob, filename = 'onyx.png', opts: { titl
   return 'downloaded';
 }
 
+// Guarda un archivo DIRECTO en el dispositivo (carpeta pública Documentos), sin
+// abrir la hoja de Compartir. Devuelve la URI si lo logró.
+async function nativeSaveToDevice(filename: string, base64: string): Promise<string | undefined> {
+  const bridge = bridgePlugin('Filesystem');
+  if (bridge && typeof bridge.writeFile === 'function') {
+    for (const dir of ['DOCUMENTS', 'EXTERNAL_STORAGE']) {
+      try {
+        await bridge.writeFile({ path: filename, data: base64, directory: dir, recursive: true });
+        const r = await bridge.getUri({ path: filename, directory: dir });
+        return r?.uri || 'saved';
+      } catch (e: any) { rec('save-bridge-' + dir, e); }
+    }
+  }
+  try {
+    const { Filesystem, Directory } = await import('@capacitor/filesystem');
+    for (const dir of [Directory.Documents, Directory.ExternalStorage]) {
+      try {
+        await Filesystem.writeFile({ path: filename, data: base64, directory: dir, recursive: true });
+        const { uri } = await Filesystem.getUri({ path: filename, directory: dir });
+        return uri || 'saved';
+      } catch (e: any) { rec('save-pkg', e); }
+    }
+  } catch {}
+  return undefined;
+}
+
+// "Guardar": en la app GUARDA el archivo en el dispositivo (Documentos). Si por lo
+// que sea no pudiera escribir, cae a compartir el ARCHIVO (así al menos se puede
+// "Guardar en…" desde la hoja). En web, descarga normal.
 export async function saveImage(blob: Blob, filename = 'onyx.png', opts: { title?: string; text?: string; url?: string } = {}): Promise<ShareResult> {
-  if (isNative()) return shareImage(blob, filename, opts);
+  if (isNative()) {
+    const base64 = await blobToBase64(blob);
+    const uri = await nativeSaveToDevice(filename, base64);
+    if (uri) return 'downloaded';        // quedó guardado en Documentos
+    return shareImage(blob, filename, opts);  // respaldo: compartir el archivo
+  }
   downloadBlob(blob, filename);
   return 'downloaded';
 }
