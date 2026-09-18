@@ -15,9 +15,15 @@ export default function PanelLogo() {
   const { lang } = useLang();
   const label = lang === 'en' ? 'Go to panel' : 'Ir al panel';
 
+  // El aviso de "volver al hub" se difiere con setTimeout(…,0) para que NUNCA
+  // interfiera con la navegación del <Link> (en el webview nativo, un handler que
+  // tarde o falle podía tragarse el clic). Así el Link navega igual que un tab del
+  // menú, y el reset de sub-vista ocurre aparte, sin riesgo.
   const onClick = () => {
-    try { window.dispatchEvent(new CustomEvent('onyx:panel-home')); } catch {}
-    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+    setTimeout(() => {
+      try { window.dispatchEvent(new CustomEvent('onyx:panel-home')); } catch {}
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
+    }, 0);
   };
 
   return (
