@@ -1,6 +1,7 @@
 // @ts-ignore  (web-push se instala en el deploy; el tipo no hace falta aquí)
 import webpush from 'web-push';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { sendFcmToUser } from '@/lib/fcm';
 
 // ============================================================
 // Notificaciones push (Web Push con VAPID).
@@ -25,7 +26,11 @@ function ensure() {
 type Payload = { title: string; body: string; url?: string };
 
 // Envía una push a TODOS los dispositivos del usuario. Borra los que ya no valen.
+// Cubre DOS canales: web-push (navegador/PWA con VAPID) y FCM (app nativa
+// Android/iOS). Cada uno se activa solo si tiene sus variables; si no, se salta.
 export async function sendPush(userId: string, payload: Payload) {
+  // Canal nativo (app): independiente del web-push. No espera ni rompe si falla.
+  try { await sendFcmToUser(userId, payload); } catch {}
   if (!ensure()) return;
   try {
     const { data: subs } = await supabaseAdmin.from('push_subscriptions')

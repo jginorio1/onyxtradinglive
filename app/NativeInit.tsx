@@ -38,6 +38,35 @@ export default function NativeInit() {
         await SplashScreen.hide();
       } catch {}
 
+      // Push NATIVA (FCM): pide permiso, registra el dispositivo y manda el token
+      // a /api/push/native para atarlo a la sesión. Al tocar una notificación,
+      // abre la URL que traiga (deep-link dentro de la app). Solo corre en nativo;
+      // si el plugin o Firebase no están, no rompe nada.
+      try {
+        const { PushNotifications } = await import('@capacitor/push-notifications');
+        const plat = (() => { try { return (window as any).Capacitor?.getPlatform?.() || 'android'; } catch { return 'android'; } })();
+        const perm = await PushNotifications.requestPermissions();
+        if (perm.receive === 'granted') {
+          await PushNotifications.addListener('registration', async (t: any) => {
+            try {
+              await fetch('/api/push/native', {
+                method: 'POST', credentials: 'include',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ token: t?.value || '', platform: plat }),
+              });
+            } catch {}
+          });
+          await PushNotifications.addListener('registrationError', () => {});
+          // Al tocar una notificación con la app abierta o en segundo plano →
+          // navegar a su URL (o al panel).
+          await PushNotifications.addListener('pushNotificationActionPerformed', (ev: any) => {
+            const url = ev?.notification?.data?.url || '/dashboard';
+            try { window.location.assign(url); } catch {}
+          });
+          await PushNotifications.register();
+        }
+      } catch { /* sin plugin/Firebase: se ignora */ }
+
       try {
         const { App } = await import('@capacitor/app');
         // Botón atrás de Android:

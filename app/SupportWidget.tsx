@@ -100,10 +100,22 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const [hideLauncher, setHideLauncher] = useState(false);
   useEffect(() => {
     if (open) { setHideLauncher(false); return; }
-    let lastY = typeof window !== 'undefined' ? (window.scrollY || 0) : 0;
+    let lastY = -1;
+    let lastTarget: any = null;
     let stopTimer: any;
-    const onScroll = () => {
-      const y = window.scrollY || document.documentElement.scrollTop || 0;
+    // Lee la posición de scroll del elemento que realmente se desplazó. En la app
+    // scrollea el <body>/ventana, pero en el navegador móvil suele scrollear un
+    // CONTENEDOR interno (overflow:auto); por eso antes el botón no se escondía.
+    const onScroll = (e: Event) => {
+      const tgt: any = e && e.target;
+      let el: any;
+      if (tgt && tgt !== document && tgt !== window && typeof tgt.scrollTop === 'number') el = tgt;
+      else el = document.scrollingElement || document.documentElement;
+      const y = (el && typeof el.scrollTop === 'number' ? el.scrollTop : (window.scrollY || 0)) || 0;
+      // Si cambió el contenedor que scrollea, no comparamos entre distintos: solo
+      // guardamos la referencia nueva y esperamos al próximo evento.
+      if (el !== lastTarget) { lastTarget = el; lastY = y; return; }
+      if (lastY < 0) { lastY = y; return; }
       const dy = y - lastY;
       if (y > 140 && dy > 4) setHideLauncher(true);        // bajando → esconder
       else if (dy < -4) setHideLauncher(false);            // subiendo → mostrar
@@ -111,8 +123,15 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       clearTimeout(stopTimer);
       stopTimer = setTimeout(() => setHideLauncher(false), 650);  // al parar → mostrar
     };
+    // capture:true → atrapa el scroll de CUALQUIER contenedor (el evento scroll no
+    // burbujea, pero sí llega al document en fase de captura). Cubre app y web.
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => { window.removeEventListener('scroll', onScroll); clearTimeout(stopTimer); };
+    document.addEventListener('scroll', onScroll, { passive: true, capture: true } as any);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      document.removeEventListener('scroll', onScroll, { capture: true } as any);
+      clearTimeout(stopTimer);
+    };
   }, [open]);
 
   useEffect(() => { fetch('/api/support/availability').then((r) => r.json()).then((j) => setHuman(!!j.online)).catch(() => {}); }, [open]);
