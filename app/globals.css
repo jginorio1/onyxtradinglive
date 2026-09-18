@@ -974,6 +974,6 @@ html.native-app .cf-wrap{ display:flex; justify-content:center; transform:scale(
    formulario) dejan de responder al clic — siguen visibles como marca. */
 html.native-app .home-back{ display:none !important; }
 html.native-app a.logo{ pointer-events:none !important; cursor:default !important; }
-/* App nativa: sin burbuja de chat de soporte flotante (se siente más "app" y no
-   tapa botones al hacer scroll). En la web sigue apareciendo normal. */
-html.native-app .onyx-support-root{ display:none !important; }
+/* App nativa: la burbuja de chat de soporte SÍ aparece (igual que en el navegador
+   móvil). No tapa botones porque el botón se auto-esconde al bajar y reaparece al
+   subir. Antes se ocultaba con display:none; se dejó visible a petición. */

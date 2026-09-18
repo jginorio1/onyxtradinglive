@@ -10,9 +10,9 @@ const T: any = {
   es: {
     exportNow: 'Exportar ahora', exportDesc: 'Descarga una copia manual de todos los datos.',
     exportAll: 'Exportar todo (JSON)', exportCsv: 'Operaciones (CSV)',
-    auto: 'Backup automático', autoOn: 'Activo · semanal', autoOff: 'Sin ejecutar aún',
+    auto: 'Backup automático', autoOn: 'Activo · diario', autoOff: 'Sin ejecutar aún',
     last: 'Última copia', size: 'Tamaño', dest: 'Destino', never: 'Nunca', destNone: '—',
-    autoNote: 'Corre en GitHub Actions cada domingo y sube el volcado a tu almacén externo. Aquí solo ves el estado; la configuración es un archivo con dos secretos.',
+    autoNote: 'Corre en GitHub Actions cada día y sube el volcado a tu almacén externo (Google Drive y Backblaze). Aquí solo ves el estado; la configuración es un archivo con dos secretos.',
     setup: 'Cómo se configura', setupHide: 'Ocultar',
     setupSteps: [
       'En tu repositorio de GitHub → Settings → Secrets and variables → Actions, añade: DATABASE_URL (la cadena de conexión de Supabase), B2_KEY_ID y B2_APP_KEY (tu almacén Backblaze), B2_BUCKET, APP_URL y CRON_SECRET.',
@@ -21,7 +21,7 @@ const T: any = {
     ],
     checklist: 'Lista de seguridad',
     ck1: 'Supabase en plan Pro (backups diarios 7 días)',
-    ck2: 'Copia externa semanal activa',
+    ck2: 'Copia externa diaria activa',
     ck3: 'Variables de entorno guardadas aparte',
     ck4: 'Restauración probada una vez',
     counts: 'Datos ahora', users: 'Usuarios', accounts: 'Cuentas', trades: 'Operaciones', tickets: 'Tickets',
@@ -49,9 +49,9 @@ const T: any = {
   en: {
     exportNow: 'Export now', exportDesc: 'Download a manual copy of all data.',
     exportAll: 'Export all (JSON)', exportCsv: 'Trades (CSV)',
-    auto: 'Automatic backup', autoOn: 'Active · weekly', autoOff: 'Not run yet',
+    auto: 'Automatic backup', autoOn: 'Active · daily', autoOff: 'Not run yet',
     last: 'Last backup', size: 'Size', dest: 'Destination', never: 'Never', destNone: '—',
-    autoNote: 'Runs in GitHub Actions every Sunday and uploads the dump to your external storage. Here you only see the status; setup is one file with two secrets.',
+    autoNote: 'Runs in GitHub Actions every day and uploads the dump to your external storage (Google Drive and Backblaze). Here you only see the status; setup is one file with two secrets.',
     setup: 'How to set it up', setupHide: 'Hide',
     setupSteps: [
       'In your GitHub repo → Settings → Secrets and variables → Actions, add: DATABASE_URL (the Supabase connection string), B2_KEY_ID and B2_APP_KEY (your Backblaze storage), B2_BUCKET, APP_URL and CRON_SECRET.',
@@ -60,7 +60,7 @@ const T: any = {
     ],
     checklist: 'Safety checklist',
     ck1: 'Supabase on Pro (daily backups, 7 days)',
-    ck2: 'Weekly external copy active',
+    ck2: 'Daily external copy active',
     ck3: 'Environment variables saved elsewhere',
     ck4: 'Restore tested once',
     counts: 'Data now', users: 'Users', accounts: 'Accounts', trades: 'Trades', tickets: 'Tickets',
@@ -119,13 +119,12 @@ export default function Backups() {
   }
 
   const backup = d?.backup || { last_at: null, size: 0, dest: '', history: [] };
-  const recent = backup.last_at && (Date.now() - new Date(backup.last_at).getTime()) < 8 * 86400000;
+  const recent = backup.last_at && (Date.now() - new Date(backup.last_at).getTime()) < 36 * 3600000;
   const counts = d?.counts || {};
 
-  // Salud del respaldo: la copia corre SEMANAL (cada domingo por GitHub Actions),
-  // así que "hace unos días" es normal. Verde hasta 8 días (una semana + margen),
-  // ámbar hasta 10, rojo solo si ya se saltó una semana entera. Antes el umbral
-  // era diario (<36 h) y por eso marcaba falsa alarma al 3.º día.
+  // Salud del respaldo: la copia corre DIARIA (cada día por GitHub Actions, sube a
+  // Google Drive y Backblaze). Verde hasta 36 h (un día + margen para la hora del
+  // cron), ámbar hasta 60 h, rojo solo si ya se saltó más de dos días.
   const ageMs = backup.last_at ? Date.now() - new Date(backup.last_at).getTime() : Infinity;
   const agoTxt = (ms: number) => {
     if (!isFinite(ms)) return '';
@@ -135,8 +134,8 @@ export default function Backups() {
     return t.agoD.replace('{n}', String(Math.floor(h / 24)));
   };
   const health = !backup.last_at ? { txt: t.healthNone, c: 'var(--soft-purple)', bg: 'rgba(160,107,255,.18)' }
-    : ageMs < 8 * 86400000 ? { txt: t.healthOk, c: 'var(--soft-green)', bg: 'rgba(52,226,160,.15)' }
-    : ageMs < 10 * 86400000 ? { txt: t.healthWarn, c: '#ffcf7a', bg: 'rgba(255,192,77,.16)' }
+    : ageMs < 36 * 3600000 ? { txt: t.healthOk, c: 'var(--soft-green)', bg: 'rgba(52,226,160,.15)' }
+    : ageMs < 60 * 3600000 ? { txt: t.healthWarn, c: '#ffcf7a', bg: 'rgba(255,192,77,.16)' }
     : { txt: t.healthBad, c: '#ff9aa6', bg: 'rgba(255,107,125,.16)' };
 
   // Historial filtrado por fecha + "ver últimas 5".
@@ -174,7 +173,7 @@ export default function Backups() {
           <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
             {/* Indicador de salud: verde/ámbar/rojo según cuándo fue la última copia */}
             <span className="pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: health.c, background: health.bg }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: health.c }} className={ageMs < 8 * 86400000 ? 'livedot' : undefined} />
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: health.c }} className={ageMs < 36 * 3600000 ? 'livedot' : undefined} />
               {health.txt}{backup.last_at ? ` · ${agoTxt(ageMs)}` : ''}
             </span>
             {recent
