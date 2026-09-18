@@ -132,15 +132,40 @@ async function nativeSaveToDevice(filename: string, base64: string): Promise<str
   return undefined;
 }
 
-// "Guardar": en la app GUARDA el archivo en el dispositivo (Documentos). Si por lo
-// que sea no pudiera escribir, cae a compartir el ARCHIVO (así al menos se puede
-// "Guardar en…" desde la hoja). En web, descarga normal.
+// Guarda la imagen DIRECTO en la GALERÍA (Fotos) con las reglas modernas de
+// Android (scoped storage). Usa el plugin de medios por el puente del APK:
+// escribe el PNG en caché → obtiene su URI → lo mete en la galería con
+// Media.savePhoto. Devuelve true si lo logró.
+//
+// POR QUÉ ESTO: en builds nuevas de Android ya no se puede escribir directo en la
+// carpeta pública (por eso "Guardar" caía a Compartir). El plugin de medios sí
+// sabe guardar en Fotos con MediaStore, sin pedir permisos raros.
+async function nativeSaveToGallery(filename: string, base64: string): Promise<boolean> {
+  const uri = await nativeWriteCache(filename, base64);   // archivo temporal → URI
+  if (!uri) return false;
+  const media = bridgePlugin('Media');
+  if (media && typeof media.savePhoto === 'function') {
+    // Intento 1: guardar en un álbum "Onyx" (si el plugin lo soporta).
+    try { await media.savePhoto({ path: uri, albumIdentifier: undefined, album: 'Onyx Trading Live' }); return true; }
+    catch (e: any) { rec('media-album', e); }
+    // Intento 2: guardar sin álbum (galería principal).
+    try { await media.savePhoto({ path: uri }); return true; }
+    catch (e: any) { rec('media-bridge', e); }
+  }
+  return false;
+}
+
+// "Guardar": en la app guarda la imagen DIRECTO en la galería (Fotos). Si el
+// plugin de medios no estuviera, intenta escribir a Documentos y, como último
+// recurso, comparte el archivo (para poder "Guardar en…" desde la hoja). En web,
+// descarga normal.
 export async function saveImage(blob: Blob, filename = 'onyx.png', opts: { title?: string; text?: string; url?: string } = {}): Promise<ShareResult> {
   if (isNative()) {
     const base64 = await blobToBase64(blob);
+    if (await nativeSaveToGallery(filename, base64)) return 'downloaded';   // ✔ en la galería
     const uri = await nativeSaveToDevice(filename, base64);
-    if (uri) return 'downloaded';        // quedó guardado en Documentos
-    return shareImage(blob, filename, opts);  // respaldo: compartir el archivo
+    if (uri) return 'downloaded';                          // respaldo: Documentos
+    return shareImage(blob, filename, opts);               // último recurso: compartir
   }
   downloadBlob(blob, filename);
   return 'downloaded';
