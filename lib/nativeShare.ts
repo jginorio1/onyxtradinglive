@@ -140,18 +140,38 @@ async function nativeSaveToDevice(filename: string, base64: string): Promise<str
 // POR QUÉ ESTO: en builds nuevas de Android ya no se puede escribir directo en la
 // carpeta pública (por eso "Guardar" caía a Compartir). El plugin de medios sí
 // sabe guardar en Fotos con MediaStore, sin pedir permisos raros.
+// Busca (o crea) el álbum de la galería y devuelve su identifier. En Android
+// savePhoto EXIGE albumIdentifier; por eso hay que resolverlo antes.
+async function mediaAlbumId(media: any, name: string): Promise<string | undefined> {
+  const find = async (): Promise<string | undefined> => {
+    try {
+      const r = await media.getAlbums();
+      const a = (r?.albums || []).find((x: any) => x?.name === name);
+      return a?.identifier;
+    } catch { return undefined; }
+  };
+  let id = await find();
+  if (id) return id;
+  try { await media.createAlbum({ name }); } catch {}
+  return await find();
+}
+
 async function nativeSaveToGallery(filename: string, base64: string): Promise<boolean> {
-  const uri = await nativeWriteCache(filename, base64);   // archivo temporal → URI
-  if (!uri) return false;
   const media = bridgePlugin('Media');
-  if (media && typeof media.savePhoto === 'function') {
-    // Intento 1: guardar en un álbum "Onyx" (si el plugin lo soporta).
-    try { await media.savePhoto({ path: uri, albumIdentifier: undefined, album: 'Onyx Trading Live' }); return true; }
-    catch (e: any) { rec('media-album', e); }
-    // Intento 2: guardar sin álbum (galería principal).
-    try { await media.savePhoto({ path: uri }); return true; }
-    catch (e: any) { rec('media-bridge', e); }
-  }
+  if (!media || typeof media.savePhoto !== 'function') return false;
+  // El plugin acepta base64 con prefijo data: directamente (sin archivo temporal).
+  const dataUri = 'data:image/png;base64,' + base64;
+  const noExt = filename.replace(/\.[a-z0-9]+$/i, '');
+  const albumId = await mediaAlbumId(media, 'Onyx Trading Live');
+  try {
+    // Android: con albumIdentifier (obligatorio). iOS: funciona con o sin él.
+    if (albumId) await media.savePhoto({ path: dataUri, albumIdentifier: albumId, fileName: noExt });
+    else await media.savePhoto({ path: dataUri, fileName: noExt });
+    return true;
+  } catch (e: any) { rec('media-save', e); }
+  // Respaldo: intento simple por si el álbum no resolvió.
+  try { await media.savePhoto({ path: dataUri }); return true; }
+  catch (e: any) { rec('media-save2', e); }
   return false;
 }
 
