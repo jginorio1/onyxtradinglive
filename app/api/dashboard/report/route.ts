@@ -38,11 +38,14 @@ export async function GET(req: Request) {
   try { const r = await sb.from('profiles').select('full_name,avatar_url,trade_style,experience,goal,country').eq('id', user.id).maybeSingle(); prof = r.data || {}; } catch {}
   let trades: any[] = [];
   if (accIds.length) {
-    const { data } = await sb.from('trades').select('symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap')
+    const { data } = await sb.from('trades').select('id,position_id,closed_volume,exit_reason,symbol,side,volume,open_time,close_time,net_profit,profit,commission,swap')
       .in('account_id', accIds)
       .gte('close_time', from + 'T00:00:00Z').lte('close_time', to + 'T23:59:59Z')
       .order('close_time', { ascending: false }).limit(10000);
-    trades = data || [];
+    // Colapsar los cierres parciales de una MISMA posición en UNA operación lógica
+    // (igual que el dashboard). Antes el reporte contaba cada cierre por separado, así
+    // que "Operaciones" salía mayor que en el panel (p. ej. 1000 vs 971). Ahora coinciden.
+    trades = groupPositions(data || []);
   }
   const net = (t: any) => Number(t.net_profit ?? t.profit ?? 0) || 0;
 
@@ -412,4 +415,41 @@ export async function GET(req: Request) {
     ],
   });
   return new NextResponse(html, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+}
+
+// Colapsa los cierres (deals) de una MISMA posición en UNA operación lógica, igual
+// que el dashboard (lib/analytics · groupByPosition). Suma net/volumen/comisión/swap
+// de TP1+TP2+runner y cuenta como una sola operación. Si una fila no trae
+// position_id (EA antiguo), cada fila es su propia operación. Así el reporte da el
+// mismo número de operaciones que el panel (antes contaba cada parcial por separado).
+function groupPositions(rows: any[]): any[] {
+  const g = new Map<string, any[]>();
+  let auto = 0;
+  for (const t of rows) {
+    const k = t.position_id ? 'p' + t.position_id : 's' + (t.id || 'x' + auto++);
+    const arr = g.get(k); if (arr) arr.push(t); else g.set(k, [t]);
+  }
+  const out: any[] = [];
+  for (const deals of g.values()) {
+    const s = [...deals].sort((a, b) => String(a.close_time).localeCompare(String(b.close_time)));
+    const first = s[0], last = s[s.length - 1];
+    let net = 0, vol = 0, comm = 0, sw = 0, gross = 0, hasGross = false, earliest = first.open_time || first.close_time;
+    for (const d of s) {
+      net += Number(d.net_profit ?? d.profit ?? 0) || 0;
+      vol += (d.closed_volume != null ? Number(d.closed_volume) : (Number(d.volume) || 0));
+      comm += Number(d.commission || 0); sw += Number(d.swap || 0);
+      if (d.profit != null) { gross += Number(d.profit) || 0; hasGross = true; }
+      const ot = d.open_time || d.close_time;
+      if (ot && String(ot) < String(earliest)) earliest = ot;
+    }
+    out.push({
+      symbol: first.symbol, side: first.side, volume: vol,
+      open_time: earliest, close_time: last.close_time,
+      net_profit: net, profit: hasGross ? gross : null,
+      commission: comm, swap: sw, partials: s.length,
+    });
+  }
+  // Orden descendente por cierre (como venía la consulta original).
+  out.sort((a, b) => String(b.close_time).localeCompare(String(a.close_time)));
+  return out;
 }
