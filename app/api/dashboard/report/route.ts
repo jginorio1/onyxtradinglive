@@ -182,18 +182,33 @@ export async function GET(req: Request) {
 
     let page = doc.addPage([PW, PH]);
     let y = PH - M;
+    // IMPORTANTE: las fuentes estándar de pdf-lib (Helvetica) usan WinAnsi y NO
+    // pueden dibujar caracteres fuera de Latin-1 (flechas →, comillas curvas, o
+    // nombres/símbolos en chino, cirílico, etc.). Si les pasas uno, LANZAN y la
+    // ruta devolvía 500. `safe()` normaliza los tipográficos comunes y sustituye
+    // cualquier carácter no representable por '?'.
+    const safe = (s: any): string => {
+      let str = String(s ?? '')
+        .replace(/[→➔➡]/g, '->').replace(/[←]/g, '<-')
+        .replace(/[‘’‛]/g, "'").replace(/[“”]/g, '"')
+        .replace(/[–—]/g, '-').replace(/…/g, '...').replace(/ /g, ' ');
+      let out = '';
+      for (const ch of str) out += ch.charCodeAt(0) <= 255 ? ch : '?';
+      return out;
+    };
     // Recorta un texto para que no se salga del ancho dado.
     const clip = (s: string, f: any, size: number, maxW: number) => {
-      s = String(s ?? '');
+      s = safe(s);
       if (f.widthOfTextAtSize(s, size) <= maxW) return s;
-      while (s.length > 1 && f.widthOfTextAtSize(s + '…', size) > maxW) s = s.slice(0, -1);
-      return s + '…';
+      while (s.length > 1 && f.widthOfTextAtSize(s + '...', size) > maxW) s = s.slice(0, -1);
+      return s + '...';
     };
     const text = (s: string, x: number, yy: number, o: { f?: any; size?: number; color?: any; right?: number } = {}) => {
       const f = o.f || font, size = o.size || 10;
+      const str = safe(s);
       let xx = x;
-      if (o.right != null) xx = o.right - f.widthOfTextAtSize(String(s ?? ''), size);
-      page.drawText(String(s ?? ''), { x: xx, y: yy, size, font: f, color: o.color || INK });
+      if (o.right != null) xx = o.right - f.widthOfTextAtSize(str, size);
+      page.drawText(str, { x: xx, y: yy, size, font: f, color: o.color || INK });
     };
     const newPageIfNeeded = (need: number) => {
       if (y - need < M + 24) {
@@ -312,7 +327,7 @@ export async function GET(req: Request) {
     // Pie de página con numeración.
     const pages = doc.getPages();
     pages.forEach((p, i) => {
-      p.drawText(`${L.app} · ${L.page} ${i + 1}/${pages.length}`, { x: M, y: 22, size: 7, font, color: MUT });
+      p.drawText(safe(`${L.app} - ${L.page} ${i + 1}/${pages.length}`), { x: M, y: 22, size: 7, font, color: MUT });
     });
 
     const bytes = await doc.save();
