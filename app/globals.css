@@ -918,8 +918,10 @@ details[open] > summary > span:first-child { transform: rotate(90deg); }
    <html>; en el navegador no cambia nada. Usamos env(safe-area-inset-*) para
    que el contenido no quede debajo de la muesca ni de la barra inferior.
    ============================================================ */
+/* El notch lo absorbe SOLO la barra superior (.topbar) — no el body — para que
+   no se sume dos veces y quede un hueco vacío encima del logo. secnav y el menú
+   ya calculan su top como 64px + safe-area-inset-top, coherente con esto. */
 html.native-app body{
-  padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
 /* La barra fija superior de sesión respeta el notch. */

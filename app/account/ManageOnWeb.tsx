@@ -55,9 +55,6 @@ export default function ManageOnWeb({ lang, planName }: { lang: 'es' | 'en'; pla
                 ? 'Para cambiar tu tarjeta, subir o bajar de plan, entra a onyxtradinglive.com desde tu navegador.'
                 : 'To change your card or upgrade/downgrade your plan, go to onyxtradinglive.com in your browser.'}
             </div>
-            <button className="btn btn-ghost" style={{ marginTop: 10, fontSize: 13 }} onClick={() => openOnyxWeb('/account')}>
-              {es ? 'Abrir en el navegador' : 'Open in browser'}
-            </button>
           </div>
         </div>
       </div>
