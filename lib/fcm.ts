@@ -146,6 +146,32 @@ export async function fcmDiagnose(tokenOverride?: string): Promise<any> {
   return out;
 }
 
+// DIFUSIÓN: manda una push escrita a mano a TODOS los usuarios con dispositivo
+// registrado. Respeta el idioma de cada uno (profiles.lang) si se dan textos en
+// inglés; si no, usa el texto en español para todos. El ícono es el de Onyx por
+// defecto (Android: ic_stat_onyx; iOS: ícono de la app).
+export async function broadcastFcm(msg: {
+  title_es: string; body_es: string; title_en?: string; body_en?: string; url?: string;
+}): Promise<{ users: number; ok: number }> {
+  if (!fcmEnabled()) return { users: 0, ok: 0 };
+  const { data: toks } = await supabaseAdmin.from('native_push_tokens').select('user_id');
+  const ids = Array.from(new Set(((toks as any[]) || []).map((t) => t.user_id).filter(Boolean)));
+  if (!ids.length) return { users: 0, ok: 0 };
+  const langs: Record<string, string> = {};
+  try {
+    const { data: profs } = await supabaseAdmin.from('profiles').select('id,lang').in('id', ids);
+    ((profs as any[]) || []).forEach((p) => { langs[p.id] = p.lang === 'en' ? 'en' : 'es'; });
+  } catch {}
+  let ok = 0;
+  for (const uid of ids) {
+    const en = langs[uid] === 'en' && !!msg.title_en;
+    const title = en ? (msg.title_en as string) : msg.title_es;
+    const body = en ? (msg.body_en || msg.body_es) : msg.body_es;
+    try { await sendFcmToUser(uid, { title, body, url: msg.url || '/dashboard', category: 'onyx_default' }); ok++; } catch {}
+  }
+  return { users: ids.length, ok };
+}
+
 // Envía una push nativa a TODOS los dispositivos del usuario. Limpia los muertos.
 export async function sendFcmToUser(userId: string, payload: Payload): Promise<void> {
   if (!fcmEnabled()) return;

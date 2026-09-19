@@ -3,6 +3,7 @@ import { getAdmin } from '@/lib/admin';
 import { getSetting, saveSetting } from '@/lib/settings';
 import { NOTIF_CATALOG, type NotifOverride } from '@/lib/notifConfig';
 import { emitNotif } from '@/lib/emitNotif';
+import { broadcastFcm } from '@/lib/fcm';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
@@ -54,6 +55,21 @@ export async function POST(req: Request) {
       await emitNotif(uid, key, { cfg, lang, vars: TEST_VARS, title: prefix + (def as any)[lang].title });
     } catch (e: any) { return NextResponse.json({ error: 'no se pudo enviar', detail: String(e?.message || e) }, { status: 500 }); }
     return NextResponse.json({ ok: true, sent: true });
+  }
+
+  // ---- Difusión: push escrita a mano a TODOS los usuarios con dispositivo ----
+  if (b.broadcast) {
+    const m = b.broadcast || {};
+    const title_es = String(m.title_es || m.title || '').trim().slice(0, 140);
+    const body_es = String(m.body_es || m.body || '').trim().slice(0, 300);
+    if (!title_es || !body_es) return NextResponse.json({ error: 'Falta título o mensaje.' }, { status: 400 });
+    const res = await broadcastFcm({
+      title_es, body_es,
+      title_en: m.title_en ? String(m.title_en).trim().slice(0, 140) : undefined,
+      body_en: m.body_en ? String(m.body_en).trim().slice(0, 300) : undefined,
+      url: m.url ? String(m.url).slice(0, 300) : undefined,
+    });
+    return NextResponse.json({ ok: true, ...res });
   }
 
   const clean: Record<string, NotifOverride> = {};

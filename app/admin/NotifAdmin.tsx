@@ -15,6 +15,22 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
   const [cat, setCat] = useState<any[]>([]);
   const [ov, setOv] = useState<Record<string, any>>({});
   const [busy, setBusy] = useState(false);
+  // Composer de difusión: push escrita a mano para TODOS los usuarios.
+  const [bc, setBc] = useState({ title: '', body: '', title_en: '', body_en: '', url: '' });
+  const [bcBusy, setBcBusy] = useState(false);
+  async function sendBroadcast() {
+    if (!bc.title.trim() || !bc.body.trim()) { toast(es ? 'Escribe título y mensaje.' : 'Write a title and message.'); return; }
+    if (!window.confirm(es ? '¿Enviar este push a TODOS los usuarios con la app instalada?' : 'Send this push to ALL users with the app installed?')) return;
+    setBcBusy(true);
+    try {
+      const r = await fetch('/api/admin/notifications', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ broadcast: { title_es: bc.title, body_es: bc.body, title_en: bc.title_en || undefined, body_en: bc.body_en || undefined, url: bc.url || undefined } }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) { toast((es ? 'Enviado a ' : 'Sent to ') + (j.ok ?? 0) + (es ? ' usuarios.' : ' users.'), 'ok'); setBc({ title: '', body: '', title_en: '', body_en: '', url: '' }); }
+      else toast(j.error || 'Error');
+    } catch { toast('Error'); }
+    setBcBusy(false);
+  }
 
   async function load() {
     try {
@@ -83,6 +99,21 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
           <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>{es ? 'Prende/apaga cada aviso, elige sus canales y edita el texto. Usa {llaves} como variables.' : 'Turn each alert on/off, pick its channels and edit the text. Use {braces} as variables.'}</p>
         </div>
         <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : (es ? 'Guardar cambios' : 'Save changes')}</button>
+      </div>
+
+      {/* Composer: push escrita a mano para TODOS los usuarios (ícono Onyx por defecto). */}
+      <div className="card" style={{ padding: 14, marginBottom: 18, border: '1px solid var(--brand)' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}><OnyxIcon emoji="📣" size={14} /> {es ? 'Enviar aviso a todos' : 'Send announcement to everyone'}</div>
+        <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>{es ? 'Escribe un push y llega a todos los que tienen la app instalada. Lleva el ícono de Onyx por defecto.' : 'Write a push that reaches everyone with the app installed. It uses the Onyx icon by default.'}</p>
+        <input value={bc.title} onChange={(e) => setBc({ ...bc, title: e.target.value })} placeholder={es ? 'Título' : 'Title'} maxLength={140} style={{ ...inp, marginBottom: 8, fontSize: 14 }} />
+        <textarea value={bc.body} onChange={(e) => setBc({ ...bc, body: e.target.value })} placeholder={es ? 'Mensaje…' : 'Message…'} maxLength={300} rows={3} style={{ ...inp, marginBottom: 8, resize: 'vertical' }} />
+        <details style={{ marginBottom: 8 }}>
+          <summary className="muted" style={{ fontSize: 11.5, cursor: 'pointer' }}>{es ? 'Opcional: versión en inglés + enlace' : 'Optional: English version + link'}</summary>
+          <input value={bc.title_en} onChange={(e) => setBc({ ...bc, title_en: e.target.value })} placeholder="Title (EN)" maxLength={140} style={{ ...inp, margin: '8px 0' }} />
+          <textarea value={bc.body_en} onChange={(e) => setBc({ ...bc, body_en: e.target.value })} placeholder="Message (EN)" maxLength={300} rows={2} style={{ ...inp, marginBottom: 8, resize: 'vertical' }} />
+          <input value={bc.url} onChange={(e) => setBc({ ...bc, url: e.target.value })} placeholder={es ? 'Enlace al tocar (ej. /dashboard)' : 'Link on tap (e.g. /dashboard)'} style={{ ...inp }} />
+        </details>
+        <button className="btn btn-primary" onClick={sendBroadcast} disabled={bcBusy}>{bcBusy ? '…' : (es ? 'Enviar a todos' : 'Send to everyone')}</button>
       </div>
 
       {groups.map((g) => (

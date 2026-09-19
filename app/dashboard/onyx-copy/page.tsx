@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast } from '@/lib/toast';
 import CopyEarningsCalc from '@/app/copy/CopyEarningsCalc';
+import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Lang = 'es' | 'en';
@@ -45,6 +46,7 @@ export default function OnyxCopyHub() {
   const es = lang === 'es';
   const [tab, setTab] = useState<'copy' | 'mine' | 'trader'>('copy');
   const [providers, setProviders] = useState<any[]>([]);
+  const ios = useIsIOSApp(); // iOS (Apple 3.1.1): seguir un trader de pago es una compra → se hace en la web
   const [follows, setFollows] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [myProviders, setMyProviders] = useState<any[]>([]);
@@ -155,7 +157,7 @@ export default function OnyxCopyHub() {
     setCfg({ provider: p, follower_account_id: free.id, lot_mode: 'balance', lot_value: 1, max_lot: 2, max_drawdown_pct: 0, require_sl: false, reverse: false });
   }
   async function startCopy() {
-    if (!cfg) return;
+    if (ios || !cfg) return; // iOS: sin checkout de pago (Apple 3.1.1)
     setBusy(true);
     try {
       const r = await fetch('/api/copy/follow', { method: 'POST', body: JSON.stringify({ provider_id: cfg.provider.id, ...cfg, provider: undefined }) });
@@ -239,7 +241,9 @@ export default function OnyxCopyHub() {
                 <div style={{ textAlign: 'right', minWidth: 96 }}>
                   {p.fee_month ? <div style={{ fontSize: 12 }}>{T.from} ${p.fee_month}/{T.mo}</div> : <div className="muted" style={{ fontSize: 11 }}>{T.notPayable}</div>}
                   {p.perf_fee_pct > 0 && <div className="muted" style={{ fontSize: 10.5 }}>+{p.perf_fee_pct}% {T.perfNote}</div>}
-                  <button className="btn btn-primary" style={{ fontSize: 12, marginTop: 6 }} onClick={() => openConfig(p)}>{T.copy}</button>
+                  {ios
+                    ? <div className="muted" style={{ fontSize: 10.5, marginTop: 6, maxWidth: 120 }}>{es ? 'Sigue traders desde onyxtradinglive.com' : 'Follow traders at onyxtradinglive.com'}</div>
+                    : <button className="btn btn-primary" style={{ fontSize: 12, marginTop: 6 }} onClick={() => openConfig(p)}>{T.copy}</button>}
                 </div>
               </div>
             );
