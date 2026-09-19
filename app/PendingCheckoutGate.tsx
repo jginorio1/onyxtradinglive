@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { getPending, clearPending, pendingPricingUrl, type Pending } from '@/lib/pendingCheckout';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import { useLang } from '@/lib/lang';
+import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Red de seguridad de la COMPRA. Si un usuario recién registrado quería comprar un
@@ -18,11 +19,13 @@ const SKIP = ['/pricing', '/login', '/onboarding', '/checkout', '/terms', '/priv
 export default function PendingCheckoutGate() {
   const path = usePathname() || '/';
   const { lang } = useLang();
+  const ios = useIsIOSApp();
   const [pend, setPend] = useState<Pending | null>(null);
   const onDashboard = path.startsWith('/dashboard') || path.startsWith('/account');
 
   useEffect(() => {
     setPend(null);
+    if (ios) return;                                    // iOS: sin checkout (Apple 3.1.1)
     if (SKIP.some((p) => path.startsWith(p))) return;
     const p = getPending();
     if (!p) return;
@@ -39,7 +42,7 @@ export default function PendingCheckoutGate() {
     return () => { done = true; };
   }, [path]);
 
-  if (!pend || !onDashboard) return null;
+  if (ios || !pend || !onDashboard) return null;
   const label = pend.plan.charAt(0).toUpperCase() + pend.plan.slice(1);
   const go = () => { window.location.href = pendingPricingUrl(pend); };
   const dismiss = () => { clearPending(); setPend(null); };

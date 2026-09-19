@@ -10,6 +10,7 @@ import NavSelect from '@/app/components/NavSelect';
 import BrandIcon, { BRAND_COLOR } from '@/app/components/BrandIcon';
 import ShareRow from '@/app/components/ShareRow';
 import StudentBilling from '@/app/components/StudentBilling';
+import { useIsIOSApp, openOnyxWeb } from '@/app/account/ManageOnWeb';
 import LangToggle from '@/app/LangToggle';
 import EmailPreview from '@/app/admin/previews/EmailPreview';
 import { COUNTRIES, flagOf, countryName } from '@/app/components/countries';
@@ -576,6 +577,7 @@ function Paywall({ pw, lang, onBack }: any) {
   const L = mkL(lang);
   const [busy, setBusy] = useState(false);
   const [closed, setClosed] = useState<any>(null);
+  const ios = useIsIOSApp();   // en iOS no se cobra dentro de la app (regla 3.1.1): se invita a suscribirse por la web
   const cur = (pw.currency || 'usd').toUpperCase(); const sym = cur === 'USD' ? '$' : '';
   const money = (c: number) => sym ? sym + (c / 100).toLocaleString() : (c / 100).toLocaleString() + ' ' + cur;
   const price = money(pw.priceCents) + '/' + (pw.interval === 'year' ? L('año', 'yr') : L('mes', 'mo'));
@@ -598,8 +600,14 @@ function Paywall({ pw, lang, onBack }: any) {
         <div className="sk-chip" style={{ margin: '0 auto' }}><OnyxIcon name="guardian" size={12} /> {L('Comunidad privada', 'Private community')}</div>
         <h2 style={{ margin: '10px 0 4px' }}>{pw.academy_name}</h2>
         {pw.tagline && <div className="muted" style={{ fontSize: 13.5 }}>{pw.tagline}</div>}
-        <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--gold)', margin: '16px 0 6px' }}>{price}</div>
+        {!ios && <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--gold)', margin: '16px 0 6px' }}>{price}</div>}
         <p className="muted" style={{ fontSize: 13.5, marginBottom: 16 }}>{L('Suscríbete para entrar a la comunidad, las aulas y las clases en vivo.', 'Subscribe to access the community, classrooms and live classes.')}</p>
+        {ios ? (
+          <>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Únete desde onyxtradinglive.com y luego entra aquí con tu cuenta.', 'Join at onyxtradinglive.com and then sign in here with your account.')}</p>
+            <button className="btn btn-primary" style={{ width: '100%', fontSize: 15, padding: '12px' }} onClick={() => openOnyxWeb('/academia/' + pw.code)}>{L('Abrir en el navegador', 'Open in browser')}</button>
+          </>
+        ) : (<>
         <button className="btn btn-primary" style={{ width: '100%', fontSize: 16, padding: '12px' }} disabled={busy} onClick={() => join()}>{busy ? '…' : L('Unirme mensual', 'Join monthly')}</button>
         {hasYear && (
           <button className="btn btn-ghost" style={{ width: '100%', fontSize: 14.5, padding: '11px', marginTop: 10, border: '1px solid var(--gold)' }} disabled={busy} onClick={() => join('year')}>
@@ -607,6 +615,7 @@ function Paywall({ pw, lang, onBack }: any) {
             {(pw.yearSavePct || 0) > 0 && <span className="sk-chip" style={{ marginLeft: 8, background: 'var(--soft-green)', color: '#04210f' }}>-{pw.yearSavePct}%</span>}
           </button>
         )}
+        </>)}
         <a href={`/academia/${pw.code}`} target="_blank" rel="noreferrer" className="muted" style={{ display: 'inline-block', marginTop: 12, fontSize: 12.5 }}>{L('Ver la página completa', 'See the full page')} →</a>
       </div>
     </div>
@@ -947,7 +956,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
               ) : active.audit.addon ? (
                 <>
                   <p className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{L('Activa el add-on para que tu mentor audite tu trading real, te dé un reporte AI y verifique tu plan.', 'Activate the add-on so your mentor audits your real trading, gives you an AI report and verifies your plan.')}</p>
-                  <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => buy(active.audit.addon.id)}>{priceLabel(active.audit.addon, L)} · {L('Activar', 'Activate')}</button>
+                  <button className="btn btn-primary ios-pay-hide" style={{ width: '100%' }} onClick={() => buy(active.audit.addon.id)}>{priceLabel(active.audit.addon, L)} · {L('Activar', 'Activate')}</button>
                 </>
               ) : null}
             </div>
@@ -2173,7 +2182,7 @@ function Tiers({ products, purchases, onBuy, L }: any) {
                 </div>
               )}
               {owned ? <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>✓ {L('Ya lo tienes', 'You have it')}</span>
-                : <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => onBuy(p.id)}>{L('Desbloquear', 'Unlock')}</button>}
+                : <button className="btn btn-primary ios-pay-hide" style={{ width: '100%' }} onClick={() => onBuy(p.id)}>{L('Desbloquear', 'Unlock')}</button>}
             </div>
           );
         })}

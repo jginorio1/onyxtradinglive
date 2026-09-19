@@ -212,7 +212,7 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
         </p>
         <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ fontSize: 22, fontWeight: 800 }}>{money(info.priceCents)}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>/{L('mes', 'mo')}</span></div>
-          <button className="btn btn-primary" disabled={busy === 'sub'} onClick={() => { setSTyped(''); setRiskOpen(true); }}>{L('Copiar al mentor', 'Copy the mentor')}</button>
+          <button className="btn btn-primary ios-pay-hide" disabled={busy === 'sub'} onClick={() => { setSTyped(''); setRiskOpen(true); }}>{L('Copiar al mentor', 'Copy the mentor')}</button>
         </div>
         {info.minCapitalCents > 0 && <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{L('Capital mínimo: ', 'Min capital: ')}{money(info.minCapitalCents)}</p>}
         {riskOpen && (

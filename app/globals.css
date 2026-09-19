@@ -977,3 +977,13 @@ html.native-app a.logo{ pointer-events:none !important; cursor:default !importan
 /* App nativa: la burbuja de chat de soporte SÍ aparece (igual que en el navegador
    móvil). No tapa botones porque el botón se auto-esconde al bajar y reaparece al
    subir. Antes se ocultaba con display:none; se dejó visible a petición. */
+
+/* SOLO iOS (regla 3.1.1 de Apple): dentro de la app de iPhone/iPad no se muestran
+   enlaces ni botones que lleven a pagar suscripciones/planes (la web sí, y Android
+   también). Cubre de una vez todos los <Link href="/pricing"> de la app. Los
+   botones de compra por onClick se ocultan además en cada componente (useIsIOSApp).
+   Marca .ios-pay-hide para ocultar cualquier otro elemento de pago en iOS. */
+html.ios-app a[href="/pricing"],
+html.ios-app a[href^="/pricing"],
+html.ios-app a[href^="/en/pricing"],
+html.ios-app .ios-pay-hide{ display:none !important; }

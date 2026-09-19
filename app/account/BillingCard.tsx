@@ -2,6 +2,7 @@
 import { dictFor } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { getStripe, onyxAppearance } from '@/lib/stripeClient';
+import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
@@ -19,6 +20,7 @@ const T: any = {
 
 export default function BillingCard({ lang }: { lang: 'es' | 'en' }) {
   const t = dictFor(T, lang);
+  const ios = useIsIOSApp();
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -60,6 +62,8 @@ export default function BillingCard({ lang }: { lang: 'es' | 'en' }) {
       setMsg(t.ok); setOpen(false); setTimeout(() => setMsg(''), 3000);
     } catch { setErr(t.err); } finally { setBusy(false); }
   }
+
+  if (ios) return null; // Apple 3.1.1: sin cambio de tarjeta en la app iOS
 
   return (
     <div>

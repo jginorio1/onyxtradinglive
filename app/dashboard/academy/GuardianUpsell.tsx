@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 
 // Tarjeta dentro de la academia que invita al alumno a un plan de Onyx (que YA
 // incluye Onyx Guardian). Opción A + a prueba de futuro: los planes, nombres,
@@ -16,6 +17,7 @@ export default function GuardianUpsell({ L, inAcademy }: { L: L; inAcademy?: boo
   const es = L('es', 'en') === 'es';
   const [g, setG] = useState<any>(null);        // estado Guardian (enabled, hasManager, hasElite)
   const [plans, setPlans] = useState<any[]>([]); // planes reales desde la BD (misma fuente que /pricing)
+  const ios = useIsIOSApp();                     // en iOS no se ofrecen planes de pago (regla 3.1.1)
 
   useEffect(() => {
     if (!inAcademy) return;
@@ -25,7 +27,7 @@ export default function GuardianUpsell({ L, inAcademy }: { L: L; inAcademy?: boo
 
   // Solo tras unirse a una academia; solo si el dueño la dejó activa; y si el
   // alumno aún no tiene Guardian por su plan (para no ofrecerle lo que ya paga).
-  if (!inAcademy || !g || !g.enabled || g.hasManager || g.hasElite) return null;
+  if (ios || !inAcademy || !g || !g.enabled || g.hasManager || g.hasElite) return null;
 
   // Planes de pago (precio > 0), ordenados por precio, máximo 3. Nombres/precios/features
   // vienen de la BD, así que coinciden siempre con la página de precios.

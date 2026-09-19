@@ -2,6 +2,7 @@
 import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 
 type Lang = 'es' | 'en';
 
@@ -65,6 +66,7 @@ export default function Nudge({
 }) {
   const [tick, setTick] = useState(0);
   const [ready, setReady] = useState(false);
+  const ios = useIsIOSApp();   // en iOS ocultamos los avisos que llevan a pagar (regla 3.1.1)
   const t = dictFor(N, lang);
   useEffect(() => { setReady(true); }, []);
 
@@ -119,7 +121,10 @@ export default function Nudge({
     title: t.ambT, desc: t.ambD, cta: t.ambC, href: '/embajadores',
   });
 
-  const n = list.find((x) => !isHidden(x.id));
+  // En iOS quitamos los avisos que mandan a la página de pago (Apple 3.1.1); los
+  // demás (probar el diario, embajadores) sí se muestran.
+  const visible = ios ? list.filter((x) => x.href !== '/pricing') : list;
+  const n = visible.find((x) => !isHidden(x.id));
   if (!n) return null;
 
   return (

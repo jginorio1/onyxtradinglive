@@ -25,6 +25,9 @@ export default function NativeInit() {
 
     (async () => {
       document.documentElement.classList.add('native-app');
+      // Marca iOS aparte: en iPhone/iPad ocultamos por CSS los enlaces a pagar
+      // (regla 3.1.1 de Apple). En Android no se añade, así que no cambia nada.
+      try { if (((window as any).Capacitor?.getPlatform?.() || '') === 'ios') document.documentElement.classList.add('ios-app'); } catch {}
 
       try {
         const { StatusBar, Style } = await import('@capacitor/status-bar');

@@ -214,7 +214,7 @@ export default function BotLabDashboard() {
                     ) : (
                       <>
                         {/* USDT (Ethereum) DESTACADO: pago instantáneo y sin contracargos */}
-                        <button onClick={() => buy(p, 'usdt')} style={{ width: '100%', padding: '13px 12px', borderRadius: 11, cursor: 'pointer', fontWeight: 800, fontSize: 14, border: 'none', background: 'linear-gradient(120deg,var(--green),#12b981)', color: '#04150e', boxShadow: '0 8px 22px color-mix(in srgb,var(--green) 32%,transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                        <button className="ios-pay-hide" onClick={() => buy(p, 'usdt')} style={{ width: '100%', padding: '13px 12px', borderRadius: 11, cursor: 'pointer', fontWeight: 800, fontSize: 14, border: 'none', background: 'linear-gradient(120deg,var(--green),#12b981)', color: '#04150e', boxShadow: '0 8px 22px color-mix(in srgb,var(--green) 32%,transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                           <span style={{ width: 20, height: 20, borderRadius: 5, background: 'rgba(4,21,14,.14)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900 }}>₮</span>
                           {es ? 'Pagar con USDT' : 'Pay with USDT'}
                         </button>
@@ -222,7 +222,7 @@ export default function BotLabDashboard() {
                           <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.04em', color: 'var(--green)', border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 99, padding: '1px 7px' }}>◆ TRON · ETHEREUM</span>
                           <span className="muted" style={{ fontSize: 10 }}>{es ? 'sin contracargos' : 'no chargebacks'}</span>
                         </div>
-                        {pay.card && <button onClick={() => buy(p, 'card')} className="muted" style={{ width: '100%', marginTop: 6, padding: '6px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 11.5, border: 'none', background: 'transparent' }}>{es ? 'o pagar con tarjeta' : 'or pay by card'}</button>}
+                        {pay.card && <button onClick={() => buy(p, 'card')} className="muted ios-pay-hide" style={{ width: '100%', marginTop: 6, padding: '6px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 11.5, border: 'none', background: 'transparent' }}>{es ? 'o pagar con tarjeta' : 'or pay by card'}</button>}
                       </>
                     )}
                     {/* Referido: si el vendedor ofrece %, cualquiera puede compartir su enlace y ganar (menos el propio creador). */}
@@ -280,7 +280,7 @@ export default function BotLabDashboard() {
                           </div>
                         : <button onClick={() => l.product_id && download(l.product_id)} style={{ fontSize: 12.5, fontWeight: 800, cursor: 'pointer', border: '1px solid color-mix(in srgb,var(--brand) 45%,transparent)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)', borderRadius: 9, padding: '6px 12px' }}>{es ? '⬇ Descargar robot' : '⬇ Download robot'}</button>)
                     : l.kind === 'subscription' && l.product_id
-                      ? <button onClick={() => { const p = products.find((x) => x.id === l.product_id); if (p) buy(p, 'usdt'); }} style={{ fontSize: 12.5, fontWeight: 800, cursor: 'pointer', border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 12%,transparent)', color: 'var(--green)', borderRadius: 9, padding: '6px 12px' }}>{es ? 'Renovar' : 'Renew'}</button>
+                      ? <button className="ios-pay-hide" onClick={() => { const p = products.find((x) => x.id === l.product_id); if (p) buy(p, 'usdt'); }} style={{ fontSize: 12.5, fontWeight: 800, cursor: 'pointer', border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', background: 'color-mix(in srgb,var(--green) 12%,transparent)', color: 'var(--green)', borderRadius: 9, padding: '6px 12px' }}>{es ? 'Renovar' : 'Renew'}</button>
                       : null}
                 </div>
                 );

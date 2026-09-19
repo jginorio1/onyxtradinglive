@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 
 // Popup de la prueba de pago (cortesía):
 //  • "por vencer": faltan pocos días → botón para elegir plan y pagar.
@@ -20,6 +21,7 @@ export default function CompTrialPopup() {
   const L = (es: string, en: string) => (lang === 'en' ? en : es);
   const [st, setSt] = useState<St>({ state: 'none' });
   const [closed, setClosed] = useState(false);
+  const ios = useIsIOSApp();   // en iOS no se muestran ofertas de pago (regla 3.1.1)
 
   useEffect(() => {
     fetch('/api/comp').then((r) => r.json()).then((d: St) => {
@@ -34,7 +36,7 @@ export default function CompTrialPopup() {
     }).catch(() => {});
   }, []);
 
-  if (closed || st.state === 'none') return null;
+  if (ios || closed || st.state === 'none') return null;
   const planName = PLAN_LABEL[(st as any).plan] || (st as any).plan;
   const expired = st.state === 'expired';
 

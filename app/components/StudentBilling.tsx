@@ -92,7 +92,7 @@ export default function StudentBilling({ lang = 'es', mentorId }: { lang?: 'es' 
               {/* Acciones */}
               {it.kind !== 'one_time' && (
                 <div className="row" style={{ gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-                  {it.can_manage && <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={!!busy} onClick={() => act('portal', it.mentor_id)}><OnyxIcon name="card" size={14} glow={false} /> {L('Cambiar tarjeta / facturas', 'Update card / invoices')}</button>}
+                  {it.can_manage && <button className="btn btn-ghost ios-pay-hide" style={{ fontSize: 12.5 }} disabled={!!busy} onClick={() => act('portal', it.mentor_id)}><OnyxIcon name="card" size={14} glow={false} /> {L('Cambiar tarjeta / facturas', 'Update card / invoices')}</button>}
                   {it.can_manage && it.status === 'active' && !it.cancel_at_period_end &&
                     <button className="btn btn-ghost" style={{ fontSize: 12.5, color: 'var(--red)' }} disabled={busy === it.mentor_id + 'cancel'} onClick={() => act('cancel', it.mentor_id, L('¿Cancelar tu suscripción? Mantendrás el acceso hasta el fin del periodo ya pagado.', 'Cancel your subscription? You keep access until the end of the paid period.'))}>{L('Cancelar', 'Cancel')}</button>}
                   {it.can_manage && it.status === 'active' && it.cancel_at_period_end &&
