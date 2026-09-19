@@ -658,7 +658,7 @@ export default function AccountClient({ email }: { email: string }) {
                   </div>
                 )}
 
-                {sub && data.retention?.enabled && (
+                {!iosApp && sub && data.retention?.enabled && (
                   <div id="cancel-card" className="card" style={card}>
                     <CancelFlow lang={lang} canceling={!!sub.cancelAtPeriodEnd} planName={planName(myPlan, lang)} onDone={load} openTick={cancelTick} />
                   </div>

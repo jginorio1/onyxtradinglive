@@ -233,6 +233,17 @@ function PickerMenu({ trigger, items, onPick, search, width = 240, align = 'left
   const [q, setQ] = useState('');
   const ql = q.trim().toLowerCase();
   const list = (search && ql) ? items.filter((it) => (it.text + ' ' + (it.sub || '')).toLowerCase().includes(ql)) : items;
+  // En táctil / app nativa NO enfocamos el buscador: si lo hacíamos, iOS abría el
+  // teclado al tocar el selector y empujaba el header fuera de sitio. En escritorio
+  // (ratón) sí autoenfoca para poder teclear de inmediato.
+  const autofocusSearch = (() => {
+    try {
+      if (typeof window === 'undefined') return false;
+      if (document.documentElement.classList.contains('native-app')) return false;
+      if (window.matchMedia && window.matchMedia('(hover: none), (pointer: coarse)').matches) return false;
+      return true;
+    } catch { return false; }
+  })();
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <button className={'btn ' + (accent ? 'btn-primary' : 'btn-ghost') + (btnClass ? ' ' + btnClass : '')} onClick={() => setOpen((o) => !o)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, ...(btnStyle || {}) }}>
@@ -241,7 +252,7 @@ function PickerMenu({ trigger, items, onPick, search, width = 240, align = 'left
       {open && (<>
         <div onClick={() => { setOpen(false); setQ(''); }} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
         <div style={{ position: 'absolute', top: 'calc(100% + 6px)', [align]: 0, width, maxHeight: 340, overflowY: 'auto', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 6, zIndex: 61, boxShadow: '0 14px 34px -10px rgba(0,0,0,.55)' } as any}>
-          {search && <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={ph} autoFocus style={{ margin: '0 0 6px', width: '100%', padding: '6px 9px' }} />}
+          {search && <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={ph} autoFocus={autofocusSearch} style={{ margin: '0 0 6px', width: '100%', padding: '6px 9px', fontSize: 16 }} />}
           {list.map((it) => (
             <div key={it.key} onClick={() => { onPick(it.key); setOpen(false); setQ(''); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '7px 8px', borderRadius: 8, cursor: 'pointer', background: it.active ? 'rgba(124,140,255,.14)' : 'transparent' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
