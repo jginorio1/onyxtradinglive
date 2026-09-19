@@ -29,6 +29,17 @@ export default function NativeInit() {
       // (regla 3.1.1 de Apple). En Android no se añade, así que no cambia nada.
       try { if (((window as any).Capacitor?.getPlatform?.() || '') === 'ios') document.documentElement.classList.add('ios-app'); } catch {}
 
+      // SOLO en la app nativa: bloquea el auto-zoom del webview. En iOS, al tocar
+      // un <select>/<input> (p. ej. elegir cuenta de portafolio) el webview hacía
+      // zoom y la pantalla dejaba de encajar (se veía "movida"/como móvil). Con
+      // maximum-scale=1 + user-scalable=no el webview ya no escala. En el navegador
+      // NO se toca (el viewport de la web permite zoom por accesibilidad).
+      try {
+        let vp = document.querySelector('meta[name="viewport"]') as HTMLMetaElement | null;
+        if (!vp) { vp = document.createElement('meta'); vp.name = 'viewport'; document.head.appendChild(vp); }
+        vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+      } catch {}
+
       try {
         const { StatusBar, Style } = await import('@capacitor/status-bar');
         await StatusBar.setStyle({ style: Style.Dark });
