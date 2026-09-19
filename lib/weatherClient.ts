@@ -77,7 +77,11 @@ async function load(country?: string, manual?: string): Promise<Weather | null> 
     }
 
     // 1) Ubicación del navegador (con tope de 4s; si la niega, seguimos).
-    const geo = lat != null ? null : await new Promise<GeolocationPosition | null>((res) => {
+    // En la app NATIVA (Capacitor) NO usamos el GPS: evitamos pedir permiso de
+    // ubicación en iOS/Android y no tener que declarar "Location" en las tiendas.
+    // El clima igual funciona por IP o por la ciudad que el usuario escriba.
+    const isNative = (() => { try { return !!(window as any).Capacitor?.isNativePlatform?.() || document.documentElement.classList.contains('native-app'); } catch { return false; } })();
+    const geo = (lat != null || isNative) ? null : await new Promise<GeolocationPosition | null>((res) => {
       if (typeof navigator === 'undefined' || !navigator.geolocation) return res(null);
       let done = false;
       const ok = (p: GeolocationPosition) => { if (!done) { done = true; res(p); } };
