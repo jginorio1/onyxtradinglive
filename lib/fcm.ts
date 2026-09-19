@@ -103,6 +103,49 @@ async function sendToToken(token: string, projectId: string, oauth: string, p: P
   } catch { return 'err'; }
 }
 
+// DIAGNÓSTICO: envía un push al token iOS más reciente (o al que se pase) y
+// devuelve el estado y cuerpo EXACTO de la respuesta de FCM/APNs. Sirve para ver
+// por qué no llega en iOS (p. ej. "Auth error from APNS", "SenderId mismatch",
+// bundle/token inválido). Se llama desde /api/push/diag (protegido por secreto).
+export async function fcmDiagnose(tokenOverride?: string): Promise<any> {
+  const out: any = { fcmEnabled: fcmEnabled() };
+  if (!out.fcmEnabled) { out.error = 'faltan variables FCM_* en Vercel'; return out; }
+  const oauth = await getToken();
+  out.oauthOk = !!oauth;
+  if (!oauth) { out.error = 'OAuth falló: revisa FCM_CLIENT_EMAIL / FCM_PRIVATE_KEY'; return out; }
+  const projectId = process.env.FCM_PROJECT_ID as string;
+  out.projectId = projectId;
+  let token = tokenOverride;
+  if (!token) {
+    try {
+      const { data } = await supabaseAdmin.from('native_push_tokens')
+        .select('token,platform,updated_at').eq('platform', 'ios')
+        .order('updated_at', { ascending: false }).limit(1);
+      token = (data as any[])?.[0]?.token;
+    } catch (e: any) { out.dbError = String(e?.message || e); }
+  }
+  if (!token) { out.error = 'no hay token iOS en native_push_tokens'; return out; }
+  out.tokenTail = '…' + token.slice(-14);
+  const message = {
+    message: {
+      token,
+      notification: { title: 'Onyx · prueba', body: 'Diagnóstico de push iOS' },
+      apns: { payload: { aps: { sound: 'default', alert: { title: 'Onyx · prueba', body: 'Diagnóstico de push iOS' } } } },
+    },
+  };
+  try {
+    const r = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${oauth}`, 'content-type': 'application/json' },
+      body: JSON.stringify(message),
+    });
+    out.httpStatus = r.status;
+    try { out.response = await r.text(); } catch {}
+    out.sentOk = r.ok;
+  } catch (e: any) { out.fetchError = String(e?.message || e); }
+  return out;
+}
+
 // Envía una push nativa a TODOS los dispositivos del usuario. Limpia los muertos.
 export async function sendFcmToUser(userId: string, payload: Payload): Promise<void> {
   if (!fcmEnabled()) return;
