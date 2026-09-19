@@ -52,6 +52,15 @@ export default function NativeInit() {
         await SplashScreen.hide();
       } catch {}
 
+      // Teclado: 'none' → el webview no se redimensiona al abrir el teclado, así el
+      // header pegado arriba no se mueve (el teclado solo se superpone). Refuerza
+      // lo del capacitor.config por si el config no se aplicara.
+      try {
+        const { Keyboard, KeyboardResize } = await import('@capacitor/keyboard');
+        await Keyboard.setResizeMode({ mode: KeyboardResize.None });
+        try { await Keyboard.setAccessoryBarVisible({ isVisible: false }); } catch {}
+      } catch {}
+
       // Push NATIVA (FCM): pide permiso, registra el dispositivo y manda el token
       // a /api/push/native para atarlo a la sesión. Al tocar una notificación,
       // abre la URL que traiga (deep-link dentro de la app). Solo corre en nativo;

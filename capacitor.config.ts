@@ -38,6 +38,13 @@ const config: CapacitorConfig = {
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],
     },
+    // Teclado: 'none' = al abrir el teclado el webview NO se redimensiona, así el
+    // header pegado arriba no se mueve (el teclado solo se superpone abajo). Sin
+    // barra de accesorios para que se vea más app.
+    Keyboard: {
+      resize: 'none',
+      resizeOnFullScreen: true,
+    },
   },
 };
 
