@@ -435,7 +435,7 @@ export default function AcademyClient() {
         <div>
           <div className="sk-sec-title">{L('Mi comunidad', 'My community')}</div>
           <button className="sk-course" style={{ maxWidth: 280 }} onClick={() => openAcademy(d.myMentorId)}>
-            <div className="sk-course-cover" style={d.myLogoUrl ? { backgroundImage: `url(${d.myLogoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: 'var(--grad)' }}>{!d.myLogoUrl && <span style={{ color: 'rgba(255,255,255,.92)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={30} glow={false} /></span>}</div>
+            <div className="sk-course-cover" style={d.myLogoUrl ? { backgroundColor: 'var(--card)', backgroundImage: `url(${d.myLogoUrl})`, backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' } : { background: 'var(--grad)' }}>{!d.myLogoUrl && <span style={{ color: 'rgba(255,255,255,.92)', display: 'inline-flex' }}><OnyxIcon name="graduation" size={30} glow={false} /></span>}</div>
             <div className="sk-course-body">
               <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--tx)' }}>{d.myAcademyName || 'Onyx Academy'}</div>
               <div style={{ fontSize: 12.5, marginTop: 2, color: 'var(--brand)' }}>{L('Entrar como mentor →', 'Enter as mentor →')}</div>

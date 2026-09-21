@@ -216,8 +216,11 @@ th{color:var(--mut);font-weight:600;}
    vez (env safe-area arriba). El .topbar interno deja de ser sticky para no duplicar
    el safe-area ni quedar detrás del menú/batería en móvil. */
 .botlab-headwrap{position:sticky;top:0;z-index:40;padding-top:env(safe-area-inset-top,0px);background:#0a0e17;}
+/* Por defecto oscuro (igual que el resto de la app). El fondo claro SOLO cuando
+   el tema está marcado explícitamente como "light"; antes usábamos
+   :not([data-theme="dark"]) y en la app —que va oscura sin ese atributo— la cinta
+   salía blanca y desentonaba. */
 html[data-theme="light"] .botlab-headwrap{background:#f4f5f8;}
-:root:not([data-theme="dark"]) .botlab-headwrap{background:#f4f5f8;}
 html[data-theme="dark"] .botlab-headwrap{background:#0a0e17;}
 .botlab-headwrap .topbar.botlab-topbar{position:static;top:auto;padding-top:0;z-index:auto;}
 .topbar .wrap,.topbar .wrap-wide{height:64px;display:flex;align-items:center;justify-content:space-between;}
@@ -972,11 +975,16 @@ html.native-app .topbar:not(.app){ display:none !important; }
 html.native-app .auth-center{
   max-width:none !important; margin:0 !important;
   min-height:100dvh; display:flex; flex-direction:column; justify-content:center;
+  /* Centrado horizontal para que en tablet (iPad) el formulario no se estire de
+     borde a borde: el contenido queda en una columna centrada. */
+  align-items:center;
   /* Más aire arriba que abajo: con el contenido centrado, esto baja un poco el
      bloque para que quede mejor equilibrado en pantalla alta. */
   padding:calc(10vh + env(safe-area-inset-top)) 22px calc(5vh + env(safe-area-inset-bottom)) !important;
 }
-html.native-app .auth-center .card{ background:transparent; border:none; box-shadow:none; padding:0; }
+/* El formulario nunca más ancho de ~440px, aunque la pantalla (iPad) sea enorme. */
+html.native-app .auth-center .card{ background:transparent; border:none; box-shadow:none; padding:0; width:100%; max-width:440px; margin-left:auto; margin-right:auto; }
+html.native-app .auth-center>.logo{ align-self:center; }
 /* App nativa: logo del login (arriba, centrado) más grande y con más aire. */
 html.native-app .auth-center>.logo{ font-size:24px; gap:12px; margin-bottom:30px; }
 html.native-app .auth-center>.logo img{ width:52px !important; height:52px !important; }
