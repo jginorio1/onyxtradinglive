@@ -14,7 +14,7 @@ export async function middleware(req: NextRequest) {
   }
   // /en, /zh, /ja, /pt, /vi se sirven reescribiendo a la ruta normal, pero
   // marcando el idioma con una cabecera para que el servidor renderice traducido.
-  const PREFIXES = ['en']; // app en es/en; otros idiomas desactivados (ver lib/navText LANGS)
+  const PREFIXES = ['en', 'pt']; // idiomas activos con URL propia (ver lib/navText LANGS); zh/ja/vi desactivados
   const seg = rawPath.split('/')[1];
   const urlLang = PREFIXES.includes(seg) ? seg : '';
   const path = urlLang ? (rawPath.slice(urlLang.length + 1) || '/') : rawPath;
