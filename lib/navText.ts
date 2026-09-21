@@ -13,7 +13,7 @@ export type Lang = 'es' | 'en' | 'zh' | 'ja' | 'pt' | 'vi';
 // hasta terminar sus diccionarios: al no listarlos, el selector no los muestra.
 // Para activar un idioma nuevo: termina su diccionario, añádelo a esta lista y a
 // PREFIXES en middleware.ts.
-export const LANGS: Lang[] = ['es', 'en', 'pt'];
+export const LANGS: Lang[] = ['es', 'en'];
 // Nombre nativo + bandera para el selector.
 export const LANG_META: Record<Lang, { native: string; flag: string }> = {
   es: { native: 'Español', flag: '🇪🇸' },

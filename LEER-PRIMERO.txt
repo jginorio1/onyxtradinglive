@@ -1,20 +1,18 @@
-ZIP COMPLETO — base limpia y buildable
-======================================
-Incluye TODO lo último: fix del crash del panel (pt), activación de Portugués,
-selector de idioma en login, y los ajustes de Apple (legales en Cuenta + promo
-oculta en la app). Trae lib/i18n/pt.ts INCLUIDO para que NUNCA dé el error 404
-del import.
+ZIP COMPLETO FINAL — Portugués DESACTIVADO + enlaces de privacidad
+==================================================================
+- Portugués apagado (LANGS = ['es','en']): se acaba el error de pt. El selector
+  solo muestra Español/English. (Se reactiva limpio DESPUÉS de la aprobación.)
+- Términos y Política de privacidad al final de "Mi cuenta" (visibles en la app).
+- Barra promo oculta en la app nativa (regla 3.1.1 de Apple).
+- pt.ts va incluido (aunque pt esté apagado) para que nunca dé error de import.
 
-OJO con Portugués:
-- Este pt.ts es el PARCIAL (~275 claves); lo que falte cae a inglés (NO da 404).
-- Si quieres el portugués COMPLETO (3617 claves), antes de hacer commit copia tu
-  pt.ts bueno encima:
-    cp ~/Downloads/onyx-trading-live-v650-completo/lib/i18n/pt.ts lib/i18n/pt.ts
+DESPLEGAR (extrae ESTO sobre tu repo onyxtradinglive):
+  cd /Users/vendettatrader/Documents/Onyx_Trading_Live/onyxtradinglive
+  (copiar los archivos del ZIP aquí)
+  grep -c "Política de privacidad" app/account/AccountClient.tsx   # debe dar 2
+  git add -A && git commit -m "pt off + privacidad en cuenta + apple" && git push
 
-Desplegar:
-  git add -A && git commit -m "Base completa + fixes Apple" && git push
-
-IMPORTANTE (por qué no ves cambios en vivo):
-  Producción en Vercel quedó FIJADA por el Instant Rollback que hiciste. Aunque
-  hagas push, no se publica solo. Ve a Vercel -> Deployments -> el deploy mas
-  reciente -> "..." -> Promote to Production. Eso pone tu version en vivo.
+MUY IMPORTANTE — por qué no veías cambios:
+  Vercel tiene producción FIJADA (por el Instant Rollback). Aunque hagas push, NO
+  se publica solo. Ve a Vercel -> Deployments -> el deploy MÁS RECIENTE (arriba) ->
+  botón "..." -> "Promote to Production". Verifica que quede como "Current".
