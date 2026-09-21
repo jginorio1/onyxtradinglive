@@ -27,7 +27,28 @@ export default function NativeInit() {
       document.documentElement.classList.add('native-app');
       // Marca iOS aparte: en iPhone/iPad ocultamos por CSS los enlaces a pagar
       // (regla 3.1.1 de Apple). En Android no se añade, así que no cambia nada.
-      try { if (((window as any).Capacitor?.getPlatform?.() || '') === 'ios') document.documentElement.classList.add('ios-app'); } catch {}
+      const isIOS = (() => { try { return ((window as any).Capacitor?.getPlatform?.() || '') === 'ios'; } catch { return false; } })();
+      try { if (isIOS) document.documentElement.classList.add('ios-app'); } catch {}
+
+      // iOS: bloquea el pinch-zoom del WebView (gestos de pellizco) para que la
+      // pantalla NO se quede ampliada y descuadrada al entrar/salir de tabs. Junto
+      // con el CSS (16px en campos + touch-action) evita el zoom que se "pegaba".
+      // Además, si por lo que sea la página quedó con zoom, lo reseteamos al volver
+      // a la app (visibilitychange). Solo en iOS nativo; la web no se toca.
+      if (isIOS) {
+        const stopGesture = (e: Event) => { try { e.preventDefault(); } catch {} };
+        document.addEventListener('gesturestart', stopGesture as any, { passive: false } as any);
+        document.addEventListener('gesturechange', stopGesture as any, { passive: false } as any);
+        document.addEventListener('gestureend', stopGesture as any, { passive: false } as any);
+        // Doble-toque para hacer zoom: lo anulamos si dos toques llegan muy seguidos.
+        let lastTouch = 0;
+        const stopDoubleTap = (e: TouchEvent) => {
+          const now = Date.now();
+          if (now - lastTouch <= 300) { try { e.preventDefault(); } catch {} }
+          lastTouch = now;
+        };
+        document.addEventListener('touchend', stopDoubleTap as any, { passive: false } as any);
+      }
 
       // SOLO en la app nativa: bloquea el auto-zoom del webview. En iOS, al tocar
       // un <select>/<input> (p. ej. elegir cuenta de portafolio) el webview hacía
