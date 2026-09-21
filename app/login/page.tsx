@@ -475,6 +475,12 @@ function LoginInner() {
       <p className="muted" style={{ textAlign: 'center', marginTop: 18, fontSize: 13 }}>
         <Link href="/" className="home-back">{t.back}</Link>
       </p>
+      {/* Enlaces legales SIEMPRE visibles en el login (también en la app iOS).
+          Apple exige que Términos y Política de privacidad sean accesibles. */}
+      <div style={{ textAlign: 'center', marginTop: 6, display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+        <Link href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Terms' : 'Términos'}</Link>
+        <Link href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Privacy Policy' : 'Política de privacidad'}</Link>
+      </div>
     </div>
   );
 }
