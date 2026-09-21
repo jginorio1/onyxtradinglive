@@ -1,20 +1,13 @@
-ARREGLO: "Algo salió mal" en el panel al elegir Portugués
-=========================================================
-Causa: el panel tenía tablas de días/meses (WDS, WDL, MOL, DAYH, MO)
-indexadas solo por es/en. Con pt, WDS['pt'] era undefined y al usarlo
-(WDS[lang][dia], DAYH[lang].map) reventaba React → error boundary.
-Ahora esas tablas caen a inglés para pt/zh/ja/vi, así nunca es undefined.
+CUMPLIMIENTO APPLE — 2 ajustes (bajo riesgo)
+============================================
+1) app/account/AccountClient.tsx
+   -> Enlaces de Términos y Política de privacidad SIEMPRE visibles al final de
+      "Mi cuenta" (también dentro de la app iOS). Apple exige acceso a la política
+      de privacidad dentro de la app; el footer que los tenía está oculto en la app.
 
-También endurecí la búsqueda de la Guía (no revienta en pt).
+2) app/globals.css
+   -> Oculta la barra promo/descuento en la app nativa (html.native-app .promobar).
+      Empujaba a comprar en la web (cupón + CTA), eso es "anti-steering" (regla 3.1.1).
 
-Copia estos 4 archivos sobre tu repo onyxtradinglive (respeta carpetas):
-  app/dashboard/DashboardClient.tsx
-  app/dashboard/Achievements.tsx
-  app/guia/GuideHome.tsx
-  lib/guide.ts
-
-Luego, dentro de la carpeta del repo:
-  git add -A
-  git commit -m "Fix crash del panel en Portugues (tablas dias/meses)"
-  git push
-Vercel redespliega y el panel ya abrirá en Portugués sin error.
+Copia estos 2 archivos sobre tu repo onyxtradinglive y:
+  git add -A && git commit -m "Apple: legales en la app + ocultar promo en nativo" && git push
