@@ -95,10 +95,16 @@ function money2(n: number) { return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocal
 function money2k(n: number) { const s = n >= 0 ? '+$' : '-$'; const a = Math.abs(n); if (a >= 1000) return s + (a / 1000).toFixed(a >= 10000 ? 0 : 1) + 'K'; return s + a.toFixed(a >= 100 ? 0 : 2); }
 const GREEN = 'var(--green)', RED = 'var(--red)', BLUE = 'var(--brand)', PURPLE = 'var(--purple)', GOLD = 'var(--gold)', CYAN = 'var(--cyan)';
 
-const WDL = { es: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'], en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] };
-const WDS = { es: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'], en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] };
-const MOL = { es: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'], en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] };
-const DAYH = { es: ['L', 'M', 'X', 'J', 'V', 'S', 'D'], en: ['M', 'T', 'W', 'T', 'F', 'S', 'S'] };
+// Fallback a inglés para cualquier idioma que no sea es/en. Estas tablas de
+// días/meses solo tienen es/en; con pt/zh/ja/vi, `WDS[lang]` sería undefined y
+// al indexar/mapear (WDS[lang][wd], DAYH[lang].map) reventaba el panel. El Proxy
+// devuelve la versión inglesa cuando falta el idioma, así nunca es undefined.
+const _enFb = <T,>(o: Record<string, T>): Record<string, T> =>
+  new Proxy(o, { get: (t: any, k: any) => (typeof k === 'string' && !(k in t)) ? t.en : t[k] });
+const WDL = _enFb({ es: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'], en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] });
+const WDS = _enFb({ es: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'], en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] });
+const MOL = _enFb({ es: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'], en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] });
+const DAYH = _enFb({ es: ['L', 'M', 'X', 'J', 'V', 'S', 'D'], en: ['M', 'T', 'W', 'T', 'F', 'S', 'S'] });
 const SESS: Record<string, { es: string; en: string }> = { 'Londres': { es: 'Londres', en: 'London' }, 'Nueva York': { es: 'Nueva York', en: 'New York' }, 'Asia': { es: 'Asia', en: 'Asia' } };
 
 const D = {
@@ -744,7 +750,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
 
   const totalBalance = accounts.reduce((s, x) => s + Number(x.balance || 0), 0);
   const accName = (x: Acc) => x.nickname || (x.broker ? `${x.broker} · #${x.login}` : `#${x.login}`);
-  const sessName = (key: string) => (SESS[key] ? SESS[key][lang] : key);
+  const sessName = (key: string) => (SESS[key] ? (SESS[key][lang] || SESS[key].en) : key);
   // Operaciones = posiciones lógicas (agrupando parciales), para que el número
   // cuadre con el resto del panel (no cierres crudos).
   function accStats(id: string) { const ts = ranged.filter((t) => t.account_id === id); const ops = groupByPosition(ts).length; let net = 0, w = 0; for (const t of ts) { const p = +t.net_profit || 0; net += p; if (p >= 0) w++; } return { net, ops, wr: ts.length ? Math.round(100 * w / ts.length) : 0 }; }

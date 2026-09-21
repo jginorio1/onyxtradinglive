@@ -1960,9 +1960,11 @@ export function searchArticles(q: string, lang: Lang): Article[] {
   const needle = q.trim().toLowerCase();
   if (needle.length < 2) return [];
   return ARTICLES.filter((a) => {
+    // Artículos solo tienen es/en: para pt/zh/ja/vi caemos a inglés (nunca undefined).
+    const body = (a.body as any)[lang] || (a.body as any).en || [];
     const hay = [
-      a.title[lang], a.summary[lang],
-      ...a.body[lang].map((b: any) => b.p || b.h || b.note || b.warn || b.tip || b.caption || (b.list || b.steps || []).join(' ') || (b.walk ? b.walk.map((s: any) => (s.t || '') + ' ' + (s.d || '')).join(' ') : '')),
+      (a.title as any)[lang] || (a.title as any).en, (a.summary as any)[lang] || (a.summary as any).en,
+      ...body.map((b: any) => b.p || b.h || b.note || b.warn || b.tip || b.caption || (b.list || b.steps || []).join(' ') || (b.walk ? b.walk.map((s: any) => (s.t || '') + ' ' + (s.d || '')).join(' ') : '')),
     ].join(' ').toLowerCase();
     return hay.includes(needle);
   });

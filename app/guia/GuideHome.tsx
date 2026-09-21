@@ -95,7 +95,7 @@ export default function GuideHome() {
   }, []);
 
   const found = useMemo(() => (q.trim().length >= 2 && !asked ? searchL(q, lang) : null), [q, lang, asked, arts]);
-  const next = NEXT[lang][state];
+  const next = (NEXT[lang] || NEXT.en)[state]; // idiomas sin tabla (pt/zh/ja/vi) → inglés, nunca undefined
   const stage = STAGE[state] ?? 0;
 
   async function askOnyx() {

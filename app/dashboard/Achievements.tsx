@@ -6,7 +6,10 @@ import { Ring } from './Modern';
 
 type Lang = 'es' | 'en';
 const money = (n: number) => (n >= 0 ? '+$' : '-$') + Math.abs(Math.round(n)).toLocaleString('en-US', { maximumFractionDigits: 0 });
-const MO = { es: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'], en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] };
+// Fallback a inglés para idiomas sin tabla propia (pt/zh/ja/vi): sin esto,
+// MO[lang] sería undefined y MO[lang][mes] reventaría la vista de logros.
+const _MO_raw: Record<string, string[]> = { es: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'], en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] };
+const MO = new Proxy(_MO_raw, { get: (t: any, k: any) => (typeof k === 'string' && !(k in t)) ? t.en : t[k] });
 
 // Inicio de la semana ISO (lunes 00:00) en la hora LOCAL del navegador → así los
 // cortes de día/semana caen a la medianoche del trader, no en UTC.

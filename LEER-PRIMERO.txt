@@ -1,0 +1,20 @@
+ARREGLO: "Algo salió mal" en el panel al elegir Portugués
+=========================================================
+Causa: el panel tenía tablas de días/meses (WDS, WDL, MOL, DAYH, MO)
+indexadas solo por es/en. Con pt, WDS['pt'] era undefined y al usarlo
+(WDS[lang][dia], DAYH[lang].map) reventaba React → error boundary.
+Ahora esas tablas caen a inglés para pt/zh/ja/vi, así nunca es undefined.
+
+También endurecí la búsqueda de la Guía (no revienta en pt).
+
+Copia estos 4 archivos sobre tu repo onyxtradinglive (respeta carpetas):
+  app/dashboard/DashboardClient.tsx
+  app/dashboard/Achievements.tsx
+  app/guia/GuideHome.tsx
+  lib/guide.ts
+
+Luego, dentro de la carpeta del repo:
+  git add -A
+  git commit -m "Fix crash del panel en Portugues (tablas dias/meses)"
+  git push
+Vercel redespliega y el panel ya abrirá en Portugués sin error.
