@@ -7,12 +7,13 @@
 // Idiomas soportados. es/en son los base; zh/ja/pt/vi se traducen y, si falta
 // alguna clave, el motor (lib/i18n) cae al inglés.
 export type Lang = 'es' | 'en' | 'zh' | 'ja' | 'pt' | 'vi';
-// App en 2 idiomas (Español / Inglés). La infraestructura de más idiomas queda
-// en el código pero DESACTIVADA aquí: al no listarlos, el selector solo muestra
-// es/en, y `asLang` recorta cualquier otro a es/en → el traductor nunca construye
-// diccionarios nuevos (100% estable, sin riesgo de error). Para reactivar más
-// idiomas en el futuro, vuelve a añadirlos a esta lista (y a PREFIXES en middleware).
-export const LANGS: Lang[] = ['es', 'en'];
+// Idiomas ACTIVOS (los que ve el usuario en el selector). Español / Inglés son
+// los base; Português ya tiene su diccionario completo (lib/i18n/pt.ts, ~3600
+// claves) así que se activa aquí. zh/ja/vi siguen en el código pero DESACTIVADOS
+// hasta terminar sus diccionarios: al no listarlos, el selector no los muestra.
+// Para activar un idioma nuevo: termina su diccionario, añádelo a esta lista y a
+// PREFIXES en middleware.ts.
+export const LANGS: Lang[] = ['es', 'en', 'pt'];
 // Nombre nativo + bandera para el selector.
 export const LANG_META: Record<Lang, { native: string; flag: string }> = {
   es: { native: 'Español', flag: '🇪🇸' },

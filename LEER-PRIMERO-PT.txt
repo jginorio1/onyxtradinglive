@@ -1,0 +1,23 @@
+ZIP COMPLETO — Portugués activado + selector de idioma en el login
+==================================================================
+
+⚠️  ESTE ZIP NO INCLUYE  lib/i18n/pt.ts  (a propósito).
+   Tu pt.ts con las ~3617 claves (el que generaste con el script en tu
+   máquina) es el bueno y NO se toca. Si extraes este ZIP encima de tu
+   carpeta del proyecto, tu pt.ts se queda como está. No lo borres.
+
+Cambios respecto a v650:
+  • lib/navText.ts   -> LANGS = ['es','en','pt']  (Portugués activo)
+  • middleware.ts    -> PREFIXES = ['en','pt']    (URLs /pt para SEO)
+  • lib/lang.tsx     -> autodetecta portugués (pt-BR) en el primer arranque
+  • app/login/page.tsx -> selector de idioma en la pantalla de entrada;
+                          ya no fuerza inglés en la app, respeta el elegido
+
+Para desplegar:
+  1) Extrae este ZIP sobre tu carpeta onyx-trading-live-v650-completo
+     (o copia los archivos). Tu lib/i18n/pt.ts NO se sobreescribe.
+  2) git add -A && git commit -m "Activar Portugués + selector idioma login"
+  3) git push   (Vercel redespliega solo)
+
+Si algún día extraes en una carpeta LIMPIA (sin tu pt.ts), copia tu
+lib/i18n/pt.ts a mano antes de compilar, o Portugués saldrá en inglés.

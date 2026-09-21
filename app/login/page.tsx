@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseBrowser, passkeySupported } from '@/lib/supabaseBrowser';
 import TwoFactor from '@/app/TwoFactor';
+import LangToggle from '@/app/LangToggle';
 import Turnstile, { TURNSTILE_KEY, type TurnstileHandle } from '@/app/Turnstile';
 import { setPending } from '@/lib/pendingCheckout';
 import { isNativeApp } from '@/lib/native';
@@ -140,7 +141,11 @@ function LoginInner() {
   // la hidratación (SSR no sabe si es nativo).
   const [nativeApp, setNativeApp] = useState(false);
   useEffect(() => { try { setNativeApp(isNativeApp()); } catch {} }, []);
-  const lang = nativeApp ? 'en' : ctxLang;
+  // El login respeta el idioma elegido por el usuario (cookie/contexto), también
+  // en la app nativa. Antes se forzaba inglés en la app; ahora mostramos un
+  // selector de idioma en la pantalla de entrada (ver <LangToggle/> abajo) para
+  // que quien abra la app por primera vez pueda escoger su idioma de una vez.
+  const lang = ctxLang;
   const t = dictFor(T, lang);
   const sb = supabaseBrowser();
 
@@ -368,6 +373,12 @@ function LoginInner() {
   const barColors = ['#e2531f', '#e2531f', '#f0a020', 'var(--green)', 'var(--green)'];
   return (
     <div className="center auth-center">
+      {/* Selector de idioma en la propia pantalla de entrada: imprescindible en la
+          app nativa, donde la barra superior está oculta y no habría otra forma de
+          cambiar el idioma antes de entrar. Alineado a la derecha, sobre el logo. */}
+      <div style={{ width: '100%', maxWidth: 440, display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+        <LangToggle compact />
+      </div>
       <Link className="logo" href="/" style={{ justifyContent: 'center', marginBottom: 24 }}>
         <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 30, height: 30, objectFit: 'contain' }} /> Onyx Trading Live
       </Link>

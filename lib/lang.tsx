@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 // ============================================================
 
 import type { Lang } from './navText';
+import { LANGS } from './navText';
 export type { Lang };
 
 const Ctx = createContext<{ lang: Lang; setLang: (l: Lang) => void }>({
@@ -33,9 +34,14 @@ export function LanguageProvider({ initial, children }: { initial: Lang; childre
     try {
       if (document.cookie.includes('onyx_lang=')) return;
       const stored = localStorage.getItem('onyx_lang');
-      const guess: Lang = stored === 'en' || stored === 'es'
+      const nav = (navigator.language || '').toLowerCase();
+      // Solo autodetectamos idiomas ACTIVOS (LANGS). Un valor guardado que ya no
+      // esté activo se ignora. El idioma del dispositivo se mapea por prefijo.
+      const guess: Lang = (stored && (LANGS as string[]).includes(stored))
         ? (stored as Lang)
-        : (navigator.language || '').toLowerCase().startsWith('en') ? 'en' : 'es';
+        : nav.startsWith('pt') && (LANGS as string[]).includes('pt') ? 'pt'
+        : nav.startsWith('en') ? 'en'
+        : 'es';
       if (guess !== lang) apply(guess);
       else writeCookie(guess);
     } catch { /* sin cookies ni localStorage, nos quedamos con el inicial */ }
