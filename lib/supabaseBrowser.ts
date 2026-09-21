@@ -11,12 +11,29 @@ export const supabaseBrowser = () =>
     { auth: { experimental: { passkey: true } } } as any
   );
 
-// ¿Este navegador + SDK soportan passkeys? La UI se muestra solo si es true.
+// ¿Este navegador + SDK soportan passkeys? (comprobación rápida y síncrona).
 export function passkeySupported(): boolean {
   if (typeof window === 'undefined') return false;
   if (!(window as any).PublicKeyCredential) return false;
   try {
     const sb: any = supabaseBrowser();
     return typeof sb?.auth?.registerPasskey === 'function' && typeof sb?.auth?.signInWithPasskey === 'function';
+  } catch { return false; }
+}
+
+// ¿El EQUIPO puede DE VERDAD crear/usar un passkey? Además del soporte básico,
+// pregunta al sistema si hay un autenticador de plataforma disponible (huella,
+// Face ID o PIN del dispositivo). Esto es clave en Android dentro de la app:
+// el WebView puede exponer la API pero no tener un autenticador usable → en ese
+// caso devolvemos false y la tarjeta de passkey NO se muestra. En un iPhone o en
+// un Android con biometría configurada devuelve true y sí se muestra.
+export async function passkeyUsable(): Promise<boolean> {
+  if (!passkeySupported()) return false;
+  try {
+    const PKC: any = (window as any).PublicKeyCredential;
+    if (typeof PKC.isUserVerifyingPlatformAuthenticatorAvailable === 'function') {
+      return !!(await PKC.isUserVerifyingPlatformAuthenticatorAvailable());
+    }
+    return true; // navegador viejo sin el método: nos quedamos con el soporte básico
   } catch { return false; }
 }

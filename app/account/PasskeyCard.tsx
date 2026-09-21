@@ -2,7 +2,7 @@
 import { dictFor } from '@/lib/i18n';
 import { toast } from '@/lib/toast';
 import { useEffect, useState } from 'react';
-import { supabaseBrowser, passkeySupported } from '@/lib/supabaseBrowser';
+import { supabaseBrowser, passkeyUsable } from '@/lib/supabaseBrowser';
 
 type Lang = 'es' | 'en';
 const T: any = {
@@ -33,9 +33,17 @@ export default function PasskeyCard({ lang }: { lang: Lang }) {
   const [nm, setNm] = useState('');
 
   useEffect(() => {
-    const ok = passkeySupported();
-    setSupported(ok);
-    if (ok) load();
+    let alive = true;
+    (async () => {
+      // Muestra la tarjeta SOLO si el equipo puede de verdad crear/usar un passkey
+      // (autenticador de plataforma disponible). En Android dentro del WebView sin
+      // biometría usable, esto da false y la tarjeta no aparece.
+      const ok = await passkeyUsable();
+      if (!alive) return;
+      setSupported(ok);
+      if (ok) load();
+    })();
+    return () => { alive = false; };
   }, []);
 
   async function load() {
