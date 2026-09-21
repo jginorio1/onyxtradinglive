@@ -98,6 +98,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ¿Es la PRIMERA vez que vemos esta cuenta bajo ESTE usuario? Si es nueva,
+    // pediremos el historial completo automáticamente (sin que el trader tenga que
+    // pulsar "Re-sincronizar"). Así toda cuenta de todo usuario sube su historial
+    // al conectarse, aunque antes estuviera sincronizada en otro usuario/clave.
+    let isNewAccount = false;
+    try {
+      let q = supabaseAdmin.from('trading_accounts').select('id').eq('user_id', userId).eq('login', acc.login);
+      q = acc.server != null ? q.eq('server', acc.server) : q.is('server', null);
+      const { data: existing } = await q.maybeSingle();
+      isNewAccount = !(existing as any)?.id;
+    } catch { /* si algo falla, no forzamos backfill */ }
+
     // --- Upsert de la cuenta de trading ---
     const { data: accountRow, error: accErr } = await supabaseAdmin
       .from('trading_accounts')
@@ -123,6 +135,13 @@ export async function POST(req: NextRequest) {
     if (accErr) throw accErr;
     if (!accountRow?.id) return NextResponse.json({ ok: false, error: 'no se pudo guardar la cuenta' }, { status: 500 });
     const accountId = accountRow.id;
+
+    // Cuenta NUEVA para este usuario → pide el historial completo automáticamente.
+    // La marca la recoge el bloque de resync más abajo en este MISMO sync, así el
+    // EA sube todo su historial sin que el trader tenga que pulsar nada.
+    if (isNewAccount) {
+      try { await supabaseAdmin.from('trading_accounts').update({ resync_history: true }).eq('id', accountId); } catch { /* columna opcional */ }
+    }
 
     // Cuenta pausada por el límite del plan (tras un downgrade): sigue "conectada"
     // pero NO se gestiona (ni Guardian, ni manager, ni copy). Se reactiva al subir de plan.
