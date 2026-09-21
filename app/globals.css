@@ -924,6 +924,16 @@ details[open] > summary > span:first-child { transform: rotate(90deg); }
 html.native-app body{
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
+/* Anti "se corre a los lados": en la app nativa algún bloque puntual queda más
+   ancho que la pantalla y el <html> permitía deslizar en horizontal (se sentía
+   web, no app). Recortamos el desborde horizontal en html y body y desactivamos
+   el rebote lateral del webview. Usamos 'clip' (no 'hidden') para no romper
+   position:sticky. Los carruseles internos (tablas de símbolos, tira de noticias,
+   mapa de actividad, tabs) siguen deslizándose porque son sus PROPIOS contenedores
+   de scroll con overflow-x:auto — 'clip' en el ancestro no los afecta. Solo aplica
+   en la app (.native-app); la web en el navegador no cambia. */
+html.native-app{ overflow-x:clip; max-width:100vw; }
+html.native-app body{ overflow-x:clip; max-width:100vw; overscroll-behavior-x:none; }
 /* La barra fija superior de sesión respeta el notch. */
 html.native-app .topbar,
 html.native-app .sessionbar,

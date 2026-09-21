@@ -337,8 +337,35 @@ export async function membersList(mentorId: string) {
   }).sort((a, b) => (b.is_mentor ? 1 : 0) - (a.is_mentor ? 1 : 0) || (b.online ? 1 : 0) - (a.online ? 1 : 0) || b.points - a.points);
 }
 
+// ---- Bloqueo entre usuarios (regla Apple 1.2: poder bloquear a un usuario abusivo) ----
+// Un miembro puede bloquear a otro; a partir de ahí no ve sus publicaciones,
+// comentarios ni mensajes, y no puede escribirle. Es por-usuario (no es moderación).
+export async function listBlockedIds(blockerId: string): Promise<string[]> {
+  if (!blockerId) return [];
+  const { data } = await supabaseAdmin.from('academy_blocks').select('blocked_id').eq('blocker_id', blockerId);
+  return (data || []).map((r: any) => r.blocked_id);
+}
+export async function blockUser(blockerId: string, blockedId: string) {
+  if (!blockerId || !blockedId || blockerId === blockedId) return { ok: false as const, error: 'bad_request' };
+  await supabaseAdmin.from('academy_blocks').upsert({ blocker_id: blockerId, blocked_id: blockedId }, { onConflict: 'blocker_id,blocked_id' });
+  return { ok: true as const };
+}
+export async function unblockUser(blockerId: string, blockedId: string) {
+  if (!blockerId || !blockedId) return { ok: false as const, error: 'bad_request' };
+  await supabaseAdmin.from('academy_blocks').delete().eq('blocker_id', blockerId).eq('blocked_id', blockedId);
+  return { ok: true as const };
+}
+export async function listBlocked(blockerId: string) {
+  const ids = await listBlockedIds(blockerId);
+  if (!ids.length) return [] as any[];
+  const { data } = await supabaseAdmin.from('profiles').select('id,full_name,avatar_url').in('id', ids);
+  return (data || []).map((p: any) => ({ user_id: p.id, name: p.full_name || 'Trader', avatar_url: p.avatar_url || null }));
+}
+
 // ---- Comunidad ----
 export async function listPosts(mentorId: string, viewerId?: string, includeScheduled = false, canModerate = false) {
+  // Oculta del feed a los usuarios que este miembro haya bloqueado.
+  const blockedSet = viewerId ? new Set(await listBlockedIds(viewerId)) : new Set<string>();
   let pq = supabaseAdmin.from('academy_posts').select('*').eq('mentor_id', mentorId);
   if (!includeScheduled) pq = pq.or(`scheduled_at.is.null,scheduled_at.lte.${new Date().toISOString()}`);
   // Moderación: todos ven lo 'visible'; el autor ve además lo suyo 'pending' (marcado
@@ -347,7 +374,7 @@ export async function listPosts(mentorId: string, viewerId?: string, includeSche
   else if (viewerId) pq = pq.or(`status.eq.visible,and(status.eq.pending,author_id.eq.${viewerId})`);
   else pq = pq.eq('status', 'visible');
   const { data: posts } = await pq.order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(50);
-  const list = posts || [];
+  const list = (posts || []).filter((p: any) => !blockedSet.has(p.author_id));
   const authorIds = Array.from(new Set(list.map((p: any) => p.author_id)));
   const postIds = list.map((p: any) => p.id);
   let cq = postIds.length ? supabaseAdmin.from('academy_comments').select('*').in('post_id', postIds) : null;
@@ -357,7 +384,8 @@ export async function listPosts(mentorId: string, viewerId?: string, includeSche
     else cq = cq.eq('status', 'visible');
   }
   const { data: comments } = cq ? await cq.order('created_at') : { data: [] } as any;
-  (comments || []).forEach((c: any) => authorIds.push(c.author_id));
+  const commentsF = (comments || []).filter((c: any) => !blockedSet.has(c.author_id));
+  commentsF.forEach((c: any) => authorIds.push(c.author_id));
   const uniqAuthors = Array.from(new Set(authorIds));
   const [{ data: profs }, { data: pts }] = await Promise.all([
     uniqAuthors.length ? supabaseAdmin.from('profiles').select('id,full_name,avatar_url').in('id', uniqAuthors) : Promise.resolve({ data: [] } as any),
@@ -369,14 +397,14 @@ export async function listPosts(mentorId: string, viewerId?: string, includeSche
   Object.keys(dnP).forEach((id) => { nameOf[id] = dnP[id]; });
   const lvlOf: Record<string, number> = {}; (pts || []).forEach((r: any) => { lvlOf[r.user_id] = levelFor(r.points).level; });
   // Likes de todos los posts + comentarios de esta tanda.
-  const comIds = (comments || []).map((c: any) => c.id);
+  const comIds = commentsF.map((c: any) => c.id);
   const { data: likes } = (postIds.length || comIds.length)
     ? await supabaseAdmin.from('academy_likes').select('target_type,target_id,user_id').eq('mentor_id', mentorId)
     : { data: [] } as any;
   const likeCount: Record<string, number> = {}; const likedMine: Record<string, boolean> = {};
   (likes || []).forEach((l: any) => { const k = l.target_type + ':' + l.target_id; likeCount[k] = (likeCount[k] || 0) + 1; if (viewerId && l.user_id === viewerId) likedMine[k] = true; });
   const byPost: Record<string, any[]> = {};
-  (comments || []).forEach((c: any) => { (byPost[c.post_id] ||= []).push({ ...c, author_name: nameOf[c.author_id] || 'Trader', author_avatar: avatarOf[c.author_id] || null, author_level: lvlOf[c.author_id] || 1, likes: likeCount['comment:' + c.id] || 0, liked: !!likedMine['comment:' + c.id] }); });
+  commentsF.forEach((c: any) => { (byPost[c.post_id] ||= []).push({ ...c, author_name: nameOf[c.author_id] || 'Trader', author_avatar: avatarOf[c.author_id] || null, author_level: lvlOf[c.author_id] || 1, likes: likeCount['comment:' + c.id] || 0, liked: !!likedMine['comment:' + c.id] }); });
   return list.map((p: any) => ({
     ...p, author_name: nameOf[p.author_id] || 'Trader', author_avatar: avatarOf[p.author_id] || null, author_level: lvlOf[p.author_id] || 1,
     likes: likeCount['post:' + p.id] || 0, liked: !!likedMine['post:' + p.id],
@@ -641,9 +669,11 @@ export async function nextEvent(mentorId: string) {
 // ============================================================
 export async function dmThreads(mentorId: string, userId: string) {
   const { data } = await supabaseAdmin.from('academy_messages').select('*').eq('mentor_id', mentorId).or(`from_id.eq.${userId},to_id.eq.${userId}`).order('created_at', { ascending: false }).limit(300);
+  const blocked = new Set(await listBlockedIds(userId)); // no mostrar conversaciones con bloqueados
   const byOther: Record<string, any> = {};
   for (const m of (data || []) as any[]) {
     const other = m.from_id === userId ? m.to_id : m.from_id;
+    if (blocked.has(other)) continue;
     if (!byOther[other]) byOther[other] = { user_id: other, last: m.body, at: m.created_at, unread: 0 };
     if (m.to_id === userId && !m.read_at) byOther[other].unread++;
   }
@@ -666,6 +696,10 @@ export async function dmWith(mentorId: string, userId: string, otherId: string) 
   return { messages: (data || []) as any[], name: (prof as any)?.full_name || ((prof as any)?.email || '').split('@')[0] || 'Trader' };
 }
 export async function dmSend(mentorId: string, fromId: string, toId: string, body: string, imageUrl?: string) {
+  // No se puede escribir a alguien que bloqueaste ni a alguien que te bloqueó.
+  const { data: rel } = await supabaseAdmin.from('academy_blocks').select('blocker_id,blocked_id')
+    .or(`and(blocker_id.eq.${fromId},blocked_id.eq.${toId}),and(blocker_id.eq.${toId},blocked_id.eq.${fromId})`).limit(1);
+  if (rel && rel.length) return { error: 'blocked' } as any;
   const { data } = await supabaseAdmin.from('academy_messages').insert({ mentor_id: mentorId, from_id: fromId, to_id: toId, body: String(body || '').slice(0, 4000), image_url: imageUrl ? String(imageUrl).slice(0, 500) : null }).select('*').single();
   return data as any;
 }

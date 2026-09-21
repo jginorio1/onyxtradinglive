@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard, recentCount, deleteOwnPost, deleteOwnComment, editOwnPost, editOwnComment } from '@/lib/academy';
+import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard, recentCount, deleteOwnPost, deleteOwnComment, editOwnPost, editOwnComment, blockUser, unblockUser, listBlocked, listBlockedIds } from '@/lib/academy';
 import { listProducts, accessibleModules, studentPurchases, perksFor, membershipInfo, hasMembership } from '@/lib/academyPay';
 import { referrerView } from '@/lib/academyReferral';
 import { auditAddon, hasAuditAddon, auditConsent, planVerified } from '@/lib/academyAudit';
@@ -119,6 +119,7 @@ export async function GET(req: Request) {
       audit: { addon, hasAddon, consent, verified },
       wins, winsPending,
       roles, myPerms, staffIds: staff, myPushPrefs,
+      blockedIds: iAmMentorHere ? [] : await listBlockedIds(user.id),
     };
     // Un colaborador con permiso de logros ve la cola de aprobación de logros.
     if (!iAmMentorHere && (myPerms as any)?.wins) out.active.winsPending = await pendingCount(m);
@@ -219,6 +220,19 @@ export async function POST(req: Request) {
         ? await editOwnPost(user.id, String(b.id), String(b.body), modStatus, flag)
         : await editOwnComment(user.id, String(b.id), String(b.body), modStatus, flag);
       return NextResponse.json({ ...r, pending: modStatus === 'pending' });
+    }
+    // --- Bloquear / desbloquear a otro usuario (regla Apple 1.2). Cualquier
+    // usuario autenticado puede bloquear a otro; deja de ver sus publicaciones,
+    // comentarios y mensajes, y no puede escribirle. Es reversible. ---
+    if (b.action === 'block' && b.user_id) {
+      if (String(b.user_id) === user.id) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+      return NextResponse.json(await blockUser(user.id, String(b.user_id)));
+    }
+    if (b.action === 'unblock' && b.user_id) {
+      return NextResponse.json(await unblockUser(user.id, String(b.user_id)));
+    }
+    if (b.action === 'blocked') {
+      return NextResponse.json({ blocked: await listBlocked(user.id) });
     }
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   } catch (e: any) { return NextResponse.json({ error: e?.message || 'error' }, { status: 500 }); }

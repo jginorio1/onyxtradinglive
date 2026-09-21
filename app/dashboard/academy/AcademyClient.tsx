@@ -702,6 +702,19 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
     await fetch('/api/academy/moderation', { method: 'POST', body: JSON.stringify({ action: 'report', mentor_id: active.mentor_id, target_type: targetType, target_id: id, reason }) });
     toast(L('Gracias. El equipo lo revisará.', 'Thanks. The team will review it.'), 'ok');
   }
+  // Bloquear a otro usuario (regla Apple 1.2): dejas de ver sus publicaciones,
+  // comentarios y mensajes, y no puede escribirte. Es reversible desde su perfil.
+  async function block(uid: string) {
+    if (!uid || uid === active.myUserId) return;
+    if (!await confirmDelete({ title: L('¿Bloquear a este usuario?', 'Block this user?'), message: L('Dejarás de ver sus publicaciones, comentarios y mensajes. Puedes desbloquearlo desde su perfil.', 'You will stop seeing their posts, comments and messages. You can unblock them from their profile.'), confirmText: L('Bloquear', 'Block') })) return;
+    await api({ action: 'block', user_id: uid });
+    toast(L('Usuario bloqueado.', 'User blocked.'), 'ok'); reload();
+  }
+  async function unblock(uid: string) {
+    if (!uid) return;
+    await api({ action: 'unblock', user_id: uid });
+    toast(L('Usuario desbloqueado.', 'User unblocked.'), 'ok'); reload();
+  }
   // Moderar (dueño/colaborador): ocultar o borrar un post/comentario directo desde el feed.
   async function modDelete(type: string, id: string) {
     if (!await confirmDelete({ title: L('¿Eliminar?', 'Delete?'), message: L('Se quitará de la comunidad.', 'It will be removed from the community.') })) return;
@@ -818,7 +831,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
         ))}
       </div>
 
-      {tab === 'profile' ? <ProfileView mentorId={active.mentor_id} userId={viewUser || active.myUserId} me={active.myUserId} lang={lang} onDm={openDm} onBack={() => setTab('members')} />
+      {tab === 'profile' ? <ProfileView mentorId={active.mentor_id} userId={viewUser || active.myUserId} me={active.myUserId} lang={lang} onDm={openDm} onBack={() => setTab('members')} onBlock={block} onUnblock={unblock} blocked={(active.blockedIds || []).includes(viewUser || '')} />
       : tab === 'chat' ? <ChatView mentorId={active.mentor_id} lang={lang} initialWith={dmWith} members={active.members || []} myUserId={active.myUserId} staffIds={active.staffIds || []} iAmStaff={!!active.myPerms?.isCollab} roles={active.roles || {}} />
       : (
       <div className="sk-grid" style={tab === 'classroom' ? { gridTemplateColumns: '1fr' } : undefined}>
@@ -859,7 +872,7 @@ function Community({ active, lang, reload, onExit, toMentor }: any) {
                   <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{w.status === 'rejected' ? L('La academia no aprobó este logro.', 'The academy did not approve this win.') : L('Aparecerá en el muro de logros cuando la academia lo apruebe.', 'It will show on the wins wall once the academy approves it.')}</div>
                 </div>
               ))}
-              {(active.feed || []).filter((p: any) => feedFilter === 'all' || (p.kind || 'community') === feedFilter).map((p: any) => <PostCard key={p.id} p={p} onLike={like} onComment={comment} onProfile={openProfile} onReport={report} onModDelete={modDelete} onSelfDelete={selfDelete} onSelfEdit={selfEdit} canModerate={!!(active.isMentorHere || active.myPerms?.moderate)} myUserId={active.myUserId} L={L} es={es} />)}
+              {(active.feed || []).filter((p: any) => feedFilter === 'all' || (p.kind || 'community') === feedFilter).map((p: any) => <PostCard key={p.id} p={p} onLike={like} onComment={comment} onProfile={openProfile} onReport={report} onBlock={block} onModDelete={modDelete} onSelfDelete={selfDelete} onSelfEdit={selfEdit} canModerate={!!(active.isMentorHere || active.myPerms?.moderate)} myUserId={active.myUserId} L={L} es={es} />)}
               {(active.feed || []).length === 0 && <div className="sk-card muted">{L('Sé el primero en publicar en la comunidad.', 'Be the first to post in the community.')}</div>}
             </>
           )}
@@ -1371,7 +1384,7 @@ function PdfViewer({ url, allowDownload = true, L }: { url: string; allowDownloa
   );
 }
 
-function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
+function ProfileView({ mentorId, userId, me, lang, onDm, onBack, onBlock, onUnblock, blocked }: any) {
   const L = mkL(lang);
   const [p, setP] = useState<any>(null);
   function reloadP() { fetch(`/api/academy/profile?m=${mentorId}&u=${userId}`).then((r) => r.json()).then((j) => setP(j.profile)); }
@@ -1403,7 +1416,10 @@ function ProfileView({ mentorId, userId, me, lang, onDm, onBack }: any) {
           </div>
           <div><div style={{ fontWeight: 800, fontSize: 20 }}>{p.name}</div><div style={{ color: 'var(--brand)', fontWeight: 700 }}>{L('Nivel', 'Level')} {lv.level}</div></div>
           {lv.next != null && <div className="muted" style={{ fontSize: 13 }}>{lv.next - p.points} {L('puntos para subir', 'points to level up')}</div>}
-          {userId !== me && <button className="btn btn-primary" onClick={() => onDm(userId)}><OnyxIcon name="chat" size={14} /> {L('Enviar mensaje', 'Message')}</button>}
+          {userId !== me && !blocked && <button className="btn btn-primary" onClick={() => onDm(userId)}><OnyxIcon name="chat" size={14} /> {L('Enviar mensaje', 'Message')}</button>}
+          {userId !== me && onBlock && (blocked
+            ? <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => onUnblock?.(userId)}>{L('Desbloquear usuario', 'Unblock user')}</button>
+            : <button className="btn btn-ghost" style={{ fontSize: 12.5, color: 'var(--red)' }} onClick={() => onBlock(userId)}>⊘ {L('Bloquear usuario', 'Block user')}</button>)}
           {isSelf && !editP && <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => { setNm(p.display_name || ''); setEditP(true); }}>✎ {L('Editar mi perfil', 'Edit my profile')}</button>}
         </div>
         <div className="row" style={{ gap: 16, margin: '16px 0 0', textAlign: 'center', justifyContent: 'center' }}>
@@ -1620,7 +1636,7 @@ function PostTypePicker({ kind, setKind, winKind, setWinKind, L }: any) {
     </div>
   );
 }
-function PostCard({ p, onLike, onComment, onProfile, onReport, onModDelete, onSelfDelete, onSelfEdit, canModerate, myUserId, L, es }: any) {
+function PostCard({ p, onLike, onComment, onProfile, onReport, onBlock, onModDelete, onSelfDelete, onSelfEdit, canModerate, myUserId, L, es }: any) {
   const [c, setC] = useState(''); const [cImg, setCImg] = useState(''); const [openC, setOpenC] = useState(false);
   const [editing, setEditing] = useState(false); const [draft, setDraft] = useState(p.body || '');
   const sendComment = () => { if (c.trim() || cImg) { onComment(p.id, c, cImg); setC(''); setCImg(''); setOpenC(true); } };
@@ -1640,6 +1656,7 @@ function PostCard({ p, onLike, onComment, onProfile, onReport, onModDelete, onSe
         {mine && onSelfDelete && <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 12, color: 'var(--red)' }} title={L('Borrar', 'Delete')} onClick={() => onSelfDelete('post', p.id)}>✕</button>}
         {canModerate && !mine && <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 12, color: 'var(--red)' }} title={L('Eliminar (moderación)', 'Delete (moderation)')} onClick={() => onModDelete('post', p.id)}>✕</button>}
         {!mine && !canModerate && onReport && <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 11.5, color: 'var(--mut)' }} title={L('Reportar', 'Report')} onClick={() => onReport('post', p.id)}><OnyxIcon name="flag" size={13} glow={false} /></button>}
+        {!mine && onBlock && <button className="btn btn-ghost" style={{ padding: '2px 7px', fontSize: 12.5, color: 'var(--mut)' }} title={L('Bloquear usuario', 'Block user')} onClick={() => onBlock(p.author_id)}>⊘</button>}
       </div>
       {editing ? (
         <div style={{ marginBottom: 6 }}>
@@ -1669,6 +1686,7 @@ function PostCard({ p, onLike, onComment, onProfile, onReport, onModDelete, onSe
                   {c2.author_id === myUserId && onSelfDelete && <button className="btn btn-ghost" style={{ fontSize: 10.5, padding: '1px 6px', color: 'var(--red)' }} onClick={() => onSelfDelete('comment', c2.id)}>✕</button>}
                   {canModerate && c2.author_id !== myUserId && <button className="btn btn-ghost" style={{ fontSize: 10.5, padding: '1px 6px', color: 'var(--red)' }} onClick={() => onModDelete('comment', c2.id)}>✕</button>}
                   {c2.author_id !== myUserId && !canModerate && onReport && <button className="btn btn-ghost" style={{ fontSize: 10.5, padding: '1px 6px', color: 'var(--mut)' }} onClick={() => onReport('comment', c2.id)} title={L('Reportar', 'Report')}><OnyxIcon name="flag" size={11} glow={false} /></button>}
+                  {c2.author_id !== myUserId && onBlock && <button className="btn btn-ghost" style={{ fontSize: 12, padding: '1px 6px', color: 'var(--mut)' }} onClick={() => onBlock(c2.author_id)} title={L('Bloquear usuario', 'Block user')}>⊘</button>}
                 </div>
               </div>
             </div>
