@@ -91,7 +91,17 @@ export async function fetchFeed(src: NewsSource, timeoutMs = 8000): Promise<News
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const r = await fetch(src.url, { signal: ctrl.signal, headers: { 'user-agent': 'OnyxNewsBot/1.0 (+https://www.onyxtradinglive.com)' } });
+    // EN VIVO SIEMPRE: sin esto, Next.js/Vercel guardan la respuesta del feed en su
+    // Data Cache (persiste ENTRE despliegues), así el cron leía siempre la MISMA foto
+    // vieja de titulares — se congelaban y con el tiempo pasaban de la ventana de
+    // frescura -> 'no_fresh' permanente. 'no-store' salta ese Data Cache; el parametro
+    // anti-cache rompe cualquier CDN/edge intermedia para traer los titulares del momento.
+    const bust = (src.url.includes('?') ? '&' : '?') + '_onyx=' + Date.now();
+    const r = await fetch(src.url + bust, {
+      signal: ctrl.signal,
+      cache: 'no-store',
+      headers: { 'user-agent': 'OnyxNewsBot/1.0 (+https://www.onyxtradinglive.com)', 'cache-control': 'no-cache' },
+    });
     if (!r.ok) return [];
     const xml = await r.text();
     return parseFeed(xml, src);
