@@ -1,13 +1,20 @@
-CUMPLIMIENTO APPLE — 2 ajustes (bajo riesgo)
-============================================
-1) app/account/AccountClient.tsx
-   -> Enlaces de Términos y Política de privacidad SIEMPRE visibles al final de
-      "Mi cuenta" (también dentro de la app iOS). Apple exige acceso a la política
-      de privacidad dentro de la app; el footer que los tenía está oculto en la app.
+ZIP COMPLETO — base limpia y buildable
+======================================
+Incluye TODO lo último: fix del crash del panel (pt), activación de Portugués,
+selector de idioma en login, y los ajustes de Apple (legales en Cuenta + promo
+oculta en la app). Trae lib/i18n/pt.ts INCLUIDO para que NUNCA dé el error 404
+del import.
 
-2) app/globals.css
-   -> Oculta la barra promo/descuento en la app nativa (html.native-app .promobar).
-      Empujaba a comprar en la web (cupón + CTA), eso es "anti-steering" (regla 3.1.1).
+OJO con Portugués:
+- Este pt.ts es el PARCIAL (~275 claves); lo que falte cae a inglés (NO da 404).
+- Si quieres el portugués COMPLETO (3617 claves), antes de hacer commit copia tu
+  pt.ts bueno encima:
+    cp ~/Downloads/onyx-trading-live-v650-completo/lib/i18n/pt.ts lib/i18n/pt.ts
 
-Copia estos 2 archivos sobre tu repo onyxtradinglive y:
-  git add -A && git commit -m "Apple: legales en la app + ocultar promo en nativo" && git push
+Desplegar:
+  git add -A && git commit -m "Base completa + fixes Apple" && git push
+
+IMPORTANTE (por qué no ves cambios en vivo):
+  Producción en Vercel quedó FIJADA por el Instant Rollback que hiciste. Aunque
+  hagas push, no se publica solo. Ve a Vercel -> Deployments -> el deploy mas
+  reciente -> "..." -> Promote to Production. Eso pone tu version en vivo.
