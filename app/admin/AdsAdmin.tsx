@@ -23,6 +23,19 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   const [pForm, setPForm] = useState<any>(emptyPartner);
   const [progCode, setProgCode] = useState('');
   const [busy, setBusy] = useState('');
+  const [upBusy, setUpBusy] = useState('');   // '' | 'logo' | 'banner'
+
+  async function uploadImg(kind: 'logo' | 'banner', file: File | null) {
+    if (!file) return;
+    setUpBusy(kind);
+    try {
+      const fd = new FormData(); fd.append('file', file);
+      const r = await fetch('/api/admin/ads/upload', { method: 'POST', body: fd });
+      const j = await r.json();
+      if (j.ok && j.url) { setPForm((p: any) => ({ ...p, [kind === 'logo' ? 'logo_url' : 'banner_url']: j.url })); toast(L('Imagen subida.', 'Image uploaded.'), 'ok'); }
+      else toast(j.error || L('No se pudo subir.', 'Upload failed.'), 'err');
+    } catch { toast(L('Error de red.', 'Network error.'), 'err'); } finally { setUpBusy(''); }
+  }
 
   async function load() {
     try {
@@ -268,8 +281,21 @@ export default function AdsAdmin({ es }: { es: boolean }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
           <div><div style={lbl}>{L('Nombre', 'Name')}</div><input value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
           <div><div style={lbl}>{L('Categoría', 'Category')}</div><select value={pForm.category} onChange={(e) => setPForm({ ...pForm, category: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="broker">Broker</option><option value="propfirm">Prop firm</option><option value="tool">{L('Herramienta', 'Tool')}</option></select></div>
-          <div><div style={lbl}>{L('Logo (URL)', 'Logo (URL)')}</div><input value={pForm.logo_url} onChange={(e) => setPForm({ ...pForm, logo_url: e.target.value })} placeholder="https://…" style={{ margin: 0, width: '100%' }} /></div>
-          <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Banner del broker (URL) — opcional', 'Broker banner (URL) — optional')}</div><input value={pForm.banner_url} onChange={(e) => setPForm({ ...pForm, banner_url: e.target.value })} placeholder={L('El banner que te dan en su programa de afiliados', 'The banner they give you in their affiliate program')} style={{ margin: 0, width: '100%' }} /></div>
+          <div>
+            <div style={lbl}>{L('Logo — pega la URL o sube el archivo', 'Logo — paste URL or upload file')}</div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input value={pForm.logo_url} onChange={(e) => setPForm({ ...pForm, logo_url: e.target.value })} placeholder="https://…" style={{ margin: 0, flex: 1 }} />
+              <label className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 8px', cursor: 'pointer', flex: 'none' }}>{upBusy === 'logo' ? '…' : L('Subir', 'Upload')}<input type="file" accept="image/*" onChange={(e) => uploadImg('logo', e.target.files?.[0] || null)} style={{ display: 'none' }} /></label>
+            </div>
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div style={lbl}>{L('Banner del broker — opcional (pega la URL o sube el archivo)', 'Broker banner — optional (paste URL or upload file)')}</div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input value={pForm.banner_url} onChange={(e) => setPForm({ ...pForm, banner_url: e.target.value })} placeholder={L('El banner que te dan en su programa de afiliados', 'The banner they give you in their affiliate program')} style={{ margin: 0, flex: 1 }} />
+              <label className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 8px', cursor: 'pointer', flex: 'none' }}>{upBusy === 'banner' ? '…' : L('Subir', 'Upload')}<input type="file" accept="image/*" onChange={(e) => uploadImg('banner', e.target.files?.[0] || null)} style={{ display: 'none' }} /></label>
+            </div>
+            {pForm.banner_url && <img src={pForm.banner_url} alt="banner" style={{ maxWidth: '100%', marginTop: 6, borderRadius: 8, border: '1px solid var(--line)' }} />}
+          </div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Enlace afiliado', 'Affiliate link')}</div><input value={pForm.link_url} onChange={(e) => setPForm({ ...pForm, link_url: e.target.value })} placeholder="https://…?ref=onyx" style={{ margin: 0, width: '100%' }} /></div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Descripción ES', 'Description ES')}</div><input value={pForm.blurb_es} onChange={(e) => setPForm({ ...pForm, blurb_es: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Descripción EN', 'Description EN')}</div><input value={pForm.blurb_en} onChange={(e) => setPForm({ ...pForm, blurb_en: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
