@@ -248,7 +248,7 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
     try { await supabaseAdmin.from('news_seen').insert({ hash: h, source: it.sourceId, title: it.title.slice(0, 300), url: it.link, posted: false }); } catch {}
     pick = it; pickHash = h; break;
   }
-  if (!pick) return { ran: true, reason: 'all_seen', posted: 0 };
+  if (!pick) return { ran: true, reason: 'all_seen', posted: 0, fresh: fresh.length, ...diag };
 
   // SEO ligero (opcional): una keyword de marca para tejer solo si encaja.
   const keyword = cfg.seo ? await pickSeoKeyword() : undefined;
@@ -260,7 +260,7 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
     // reintente y llegue a publicarse sola. Antes se quedaba "quemada" para siempre.
     try { await supabaseAdmin.from('news_seen').delete().eq('hash', pickHash); } catch {}
     await logError('news_pilot_gen', new Error(gen.reason || 'gen_failed'));
-    return { ran: true, reason: 'gen_failed', posted: 0, candidate: pick.title };
+    return { ran: true, reason: 'gen_failed', posted: 0, candidate: pick.title, fresh: fresh.length, ...diag };
   }
 
   // Candado final anti-duplicado por el TÍTULO YA GENERADO. La IA crea un título
@@ -269,7 +269,7 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
   // no volvemos a publicarla: marcamos la noticia como vista y salimos.
   if (await titlePostedRecently(gen.article.title_es || '') || await titlePostedRecently(gen.article.title_en || '')) {
     try { await supabaseAdmin.from('news_seen').update({ posted: true }).eq('hash', pickHash); } catch {}
-    return { ran: true, reason: 'dup_title', posted: 0, candidate: pick.title };
+    return { ran: true, reason: 'dup_title', posted: 0, candidate: pick.title, fresh: fresh.length, ...diag };
   }
 
   const auto = cfg.mode !== 'draft';
@@ -286,7 +286,7 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
   } catch (e: any) {
     try { await supabaseAdmin.from('news_seen').delete().eq('hash', pickHash); } catch {}
     await logError('news_pilot_save', e);
-    return { ran: true, reason: 'save_failed', posted: 0, candidate: pick.title };
+    return { ran: true, reason: 'save_failed', posted: 0, candidate: pick.title, fresh: fresh.length, ...diag };
   }
 
   // Marca el registro como publicado (para tope diario y separación).
@@ -300,5 +300,5 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
     } catch (e) { await logError('news_pilot_email', e); }
   }
 
-  return { ran: true, reason: auto ? 'posted' : 'drafted', posted: auto ? 1 : 0, candidate: pick.title };
+  return { ran: true, reason: auto ? 'posted' : 'drafted', posted: auto ? 1 : 0, candidate: pick.title, fresh: fresh.length, ...diag };
 }
