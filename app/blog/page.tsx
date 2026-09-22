@@ -3,6 +3,7 @@ import { listPublished, blogCoverUrl, slugFor } from '@/lib/blog';
 import { serverLang, localeAlternates } from '@/lib/locale';
 import { getSeoMeta, seoFor } from '@/lib/seo';
 import BlogList, { type BlogCard } from './BlogList';
+import AdSlot from '@/app/components/AdSlot';
 
 export const dynamic = 'force-dynamic'; // se renderiza en cada visita (contenido siempre fresco)
 
@@ -94,6 +95,9 @@ export default async function BlogIndex() {
               : 'Market news and practical guides on discipline, risk management and prop firms. Filter by category or search for what you need.'}
         </p>
       </div>
+
+      {/* Espacio patrocinado · leaderboard superior del blog */}
+      <AdSlot slot="blog_top" lang={es ? 'es' : 'en'} />
 
       {posts.length === 0 ? (
         <div className="card muted" style={{ textAlign: 'center', padding: 30 }}>

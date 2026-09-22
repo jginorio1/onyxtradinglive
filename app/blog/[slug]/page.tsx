@@ -7,6 +7,7 @@ import { blogAuthorsSettings, resolveBlogAuthor } from '@/lib/settings';
 import { serverLang, localeAlternates, SITE } from '@/lib/locale';
 import JsonLd from '../../JsonLd';
 import BlogCharts from '../BlogCharts';
+import AdSlot from '@/app/components/AdSlot';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,6 +143,9 @@ export default async function BlogArticle({ params }: { params: { slug: string }
       <img src={cover} alt={coverAlt} decoding="async" fetchPriority="high" width={760} height={399} style={{ width: '100%', height: 'auto', borderRadius: 14, margin: '4px 0 18px' }} />
       <article className="blog-body" dangerouslySetInnerHTML={{ __html: html }} />
       <BlogCharts />
+
+      {/* Espacio patrocinado · dentro del artículo (al pie del texto) */}
+      <AdSlot slot="article_incontent" lang={es ? 'es' : 'en'} />
 
       {/* Bio del autor al pie (autoridad) */}
       {authorBio && (
