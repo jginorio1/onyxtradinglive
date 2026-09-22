@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import BrandIcon from '@/app/components/BrandIcon';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import AdSlot from '@/app/components/AdSlot';
 
 // Footer multi-columna para TODAS las páginas: fila de marca + CTA, columnas de
 // enlaces por categoría, contacto (QR + email + redes), aviso legal de riesgo y
@@ -73,6 +74,9 @@ export default function SiteFooter() {
   return (
     <footer className="site-footer" style={{ borderTop: '1px solid var(--line)', marginTop: 24 }}>
       <div className="wrap" style={{ padding: '30px 0 22px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+        {/* Anuncio del footer (site-wide). Se oculta a usuarios de pago y en nativo. */}
+        <AdSlot slot="footer_site" lang={es ? 'es' : 'en'} />
 
         {/* Fila de marca + CTA */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--line)', paddingBottom: 20 }}>
