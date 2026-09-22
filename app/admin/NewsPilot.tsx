@@ -32,8 +32,13 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
   const [cfg, setCfg] = useState<Cfg | null>(null);
   const [sources, setSources] = useState<Src[]>([]);
   const [recent, setRecent] = useState<any[]>([]);
-  const [lastRun, setLastRun] = useState<{ at: string; via: string; reason: string; posted: number; candidate: string } | null>(null);
+  const [lastRun, setLastRun] = useState<{ at: string; via: string; reason: string; posted: number; candidate: string; feeds?: number; feedsOk?: number; fetched?: number; important?: number; fresh?: number } | null>(null);
   const [cronHits1h, setCronHits1h] = useState<number | null>(null);
+  const [stats, setStats] = useState<{ today: number; last7: number; total: number; nextWindowMin: number; gateFree: boolean } | null>(null);
+  const [log, setLog] = useState<any[]>([]);
+  const [sim, setSim] = useState<any | null>(null);
+  const [aiState, setAiState] = useState<{ ok: boolean; model?: string; error?: string } | null>(null);
+  const [feedHealth, setFeedHealth] = useState<any[] | null>(null);
   const [busy, setBusy] = useState('');
   // Añadir fuente personalizada + resultado de la prueba de cada URL.
   const [nf, setNf] = useState<{ name: string; url: string; cat: string }>({ name: '', url: '', cat: 'markets' });
@@ -42,7 +47,12 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
   async function load() {
     try {
       const r = await fetch('/api/admin/news'); const j = await r.json();
-      if (j.settings) { setCfg(j.settings); setSources(j.sources || []); setRecent(j.recent || []); setLastRun(j.lastRun || null); setCronHits1h(typeof j.cronHits1h === 'number' ? j.cronHits1h : null); }
+      if (j.settings) {
+        setCfg(j.settings); setSources(j.sources || []); setRecent(j.recent || []); setLastRun(j.lastRun || null);
+        setCronHits1h(typeof j.cronHits1h === 'number' ? j.cronHits1h : null);
+        setStats({ today: j.today || 0, last7: j.last7 || 0, total: j.total || 0, nextWindowMin: j.nextWindowMin || 0, gateFree: j.gateFree !== false });
+        setLog(Array.isArray(j.log) ? j.log : []);
+      }
     } catch {}
   }
   useEffect(() => { load(); }, []);
@@ -120,8 +130,40 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
     } catch { toast(L('Error de red.', 'Network error.'), 'err'); } finally { setBusy(''); }
   }
 
+  // SIMULAR: corre el motor sin publicar; muestra el embudo y los candidatos reales.
+  async function simulate() {
+    setBusy('sim'); setSim(null);
+    try {
+      const r = await fetch('/api/admin/news', { method: 'POST', body: JSON.stringify({ action: 'simulate' }) });
+      const j = await r.json();
+      setSim(j);
+      const n = (j.candidates || []).length;
+      toast(j.reason === 'dry_run' ? L(`Publicaría ${n} candidato(s). Nada se guardó.`, `Would publish ${n} candidate(s). Nothing saved.`) : L('Simulación lista (nada se publicó).', 'Simulation done (nothing posted).'), 'info');
+    } catch { toast(L('Error de red.', 'Network error.'), 'err'); } finally { setBusy(''); }
+  }
+  // Probar la CLAVE de la IA (Anthropic): ping mínimo.
+  async function aiTest() {
+    setBusy('ai'); setAiState(null);
+    try {
+      const r = await fetch('/api/admin/news', { method: 'POST', body: JSON.stringify({ action: 'ai_test' }) });
+      const j = await r.json(); setAiState(j);
+      toast(j.ok ? L('Clave IA válida ✓', 'AI key valid ✓') : L('Clave IA falló: ', 'AI key failed: ') + (j.error || ''), j.ok ? 'ok' : 'err');
+    } catch { toast(L('Error de red.', 'Network error.'), 'err'); } finally { setBusy(''); }
+  }
+  // Probar TODOS los feeds activos, uno por uno.
+  async function feedsTest() {
+    setBusy('feeds'); setFeedHealth(null);
+    try {
+      const r = await fetch('/api/admin/news', { method: 'POST', body: JSON.stringify({ action: 'feeds_test' }) });
+      const j = await r.json(); setFeedHealth(j.feeds || []);
+      const ok = (j.feeds || []).filter((f: any) => f.ok).length;
+      toast(L(`${ok}/${(j.feeds || []).length} feeds responden.`, `${ok}/${(j.feeds || []).length} feeds respond.`), 'info');
+    } catch { toast(L('Error de red.', 'Network error.'), 'err'); } finally { setBusy(''); }
+  }
+
   if (!cfg) return null;
   const A = '#f5b23e';
+  const GREEN = '#34e2a0', RED = '#ef6262';
   const box: any = { background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' };
   const lbl: any = { fontSize: 11.5, color: 'var(--mut)', marginBottom: 5 };
 
@@ -150,6 +192,12 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
     };
     if (r?.startsWith('error')) return [`Error: ${r.slice(7)}`, `Error: ${r.slice(7)}`][es ? 0 : 1];
     return (m[r] ? (es ? m[r][0] : m[r][1]) : r) || (es ? 'sin datos' : 'no data');
+  };
+  const reasonColor = (r: string) => {
+    if (r === 'posted' || r === 'drafted' || r === 'dry_run') return GREEN;
+    if (r === 'gen_failed' || r === 'save_failed' || (r && r.startsWith('error'))) return RED;
+    if (r === 'disabled' || r === 'no_sources') return 'var(--mut)';
+    return A;
   };
   // ¿El cron parece vivo? última corrida vía cron hace ≤ 10 min.
   const cronHealthy = lastRun && lastRun.via === 'cron' && (Date.now() - new Date(lastRun.at).getTime()) < 10 * 60000;
@@ -206,6 +254,104 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
               </div>
             )}
           </div>
+
+          {/* ===== SALUD DEL SISTEMA (semáforo) ===== */}
+          <div style={box}>
+            <div style={lbl}>{L('Salud del sistema', 'System health')}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(118px,1fr))', gap: 8 }}>
+              {(() => {
+                const feedsOk = lastRun?.feedsOk ?? (feedHealth ? feedHealth.filter((f: any) => f.ok).length : null);
+                const feedsTot = lastRun?.feeds ?? (feedHealth ? feedHealth.length : null);
+                const aiOk = aiState ? aiState.ok : (lastRun ? lastRun.reason !== 'gen_failed' : null);
+                const chips: [string, string, string][] = [
+                  [cronHealthy || (cronHits1h && cronHits1h > 0) ? GREEN : A, 'Cron', lastRun ? (cronHealthy ? L('Vivo', 'Live') : L('revisar', 'check')) + ' · ' + ago(lastRun.at) : L('sin latido', 'no beat')],
+                  [aiOk == null ? 'var(--mut)' : (aiOk ? GREEN : RED), L('Clave IA', 'AI key'), aiOk == null ? L('sin probar', 'untested') : (aiOk ? 'OK' : L('revisar', 'check'))],
+                  [feedsOk == null ? 'var(--mut)' : (feedsOk > 0 ? GREEN : RED), 'Feeds', feedsOk == null ? L('sin datos', 'no data') : (feedsOk + '/' + feedsTot)],
+                  [GREEN, L('Base de datos', 'Database'), 'OK'],
+                  [stats?.gateFree === false ? A : GREEN, L('Cerrojo', 'Lock'), stats?.gateFree === false ? L('reservado', 'held') : L('libre', 'free')],
+                ];
+                return chips.map((c, i) => (
+                  <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--mut)' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: c[0], flex: 'none' }} /> {c[1]}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, marginTop: 3 }}>{c[2]}</div>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+
+          {/* ===== KPIs DEL DÍA ===== */}
+          {stats && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(128px,1fr))', gap: 10 }}>
+              <div style={box}><div style={lbl}>{L('Publicados hoy', 'Posted today')}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{stats.today} <span style={{ fontSize: 13, color: 'var(--mut)' }}>/ {cfg.maxPerDay}</span></div><div style={{ height: 5, background: 'var(--line)', borderRadius: 4, marginTop: 6, overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: Math.min(100, (stats.today / Math.max(1, cfg.maxPerDay)) * 100) + '%', background: A }} /></div></div>
+              <div style={box}><div style={lbl}>{L('Últimos 7 días', 'Last 7 days')}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{stats.last7}</div></div>
+              <div style={box}><div style={lbl}>{L('Total artículos', 'Total articles')}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{stats.total}</div></div>
+              <div style={box}><div style={lbl}>{L('Próxima ventana', 'Next window')}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{stats.nextWindowMin > 0 ? stats.nextWindowMin + ' min' : L('lista', 'ready')}</div></div>
+            </div>
+          )}
+
+          {/* ===== EMBUDO DE LA ÚLTIMA CORRIDA ===== */}
+          {lastRun && lastRun.fetched != null && (
+            <div style={box}>
+              <div style={lbl}>{L('Última corrida · el embudo', 'Last run · the funnel')}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 6, textAlign: 'center' }}>
+                {([[lastRun.feedsOk ?? lastRun.feeds ?? 0, L('feeds ok', 'feeds ok'), '#7c8cff'], [lastRun.fetched ?? 0, L('bajados', 'fetched'), '#7c8cff'], [lastRun.important ?? 0, L('importantes', 'important'), A], [lastRun.fresh ?? 0, L('frescos', 'fresh'), A], [lastRun.posted ?? 0, L('publicado', 'posted'), GREEN]] as [number, string, string][]).map((f, i) => (
+                  <div key={i} style={{ background: 'color-mix(in srgb,' + f[2] + ' 15%,transparent)', borderRadius: 9, padding: '9px 3px' }}><div style={{ fontSize: 18, fontWeight: 800, color: f[2] }}>{f[0]}</div><div style={{ fontSize: 10.5, color: 'var(--mut)' }}>{f[1]}</div></div>
+                ))}
+              </div>
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{reasonLbl(lastRun.reason)}{lastRun.candidate ? ' — ' + lastRun.candidate.slice(0, 70) : ''}</div>
+            </div>
+          )}
+
+          {/* ===== PRUEBAS Y DIAGNÓSTICO ===== */}
+          <div style={box}>
+            <div style={lbl}>{L('Pruebas y diagnóstico', 'Tests & diagnostics')}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 8 }}>
+              <button className="btn btn-ghost" onClick={simulate} disabled={!!busy} style={{ fontSize: 12 }}>{busy === 'sim' ? '…' : L('Simular ciclo (no publica)', 'Simulate (no publish)')}</button>
+              <button className="btn btn-ghost" onClick={testNow} disabled={!!busy} style={{ fontSize: 12 }}>{busy === 'test' ? '…' : L('Publicar ahora', 'Publish now')}</button>
+              <button className="btn btn-ghost" onClick={aiTest} disabled={!!busy} style={{ fontSize: 12 }}>{busy === 'ai' ? '…' : L('Probar clave IA', 'Test AI key')}</button>
+              <button className="btn btn-ghost" onClick={feedsTest} disabled={!!busy} style={{ fontSize: 12 }}>{busy === 'feeds' ? '…' : L('Probar los feeds', 'Test the feeds')}</button>
+            </div>
+            {aiState && !aiState.ok && <div style={{ fontSize: 11.5, marginTop: 8, color: RED }}>{L('Clave IA: ', 'AI key: ')}{aiState.error}</div>}
+            {sim && (sim.candidates || []).length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 11.5, color: 'var(--mut)', marginBottom: 5 }}>{L('Candidatos que publicaría', 'Candidates it would publish')}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(sim.candidates || []).map((c: any, i: number) => (
+                    <div key={i} style={{ fontSize: 12 }}><div>{c.title}</div><div style={{ color: 'var(--mut)', fontSize: 11 }}>{c.source} · {c.ageMin} min · {c.cat}</div></div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {sim && (sim.candidates || []).length === 0 && <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--mut)' }}>{reasonLbl(sim.reason)}</div>}
+            {feedHealth && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 11.5, color: 'var(--mut)', marginBottom: 5 }}>{L('Salud por fuente', 'Per-source health')}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(168px,1fr))', gap: 5 }}>
+                  {feedHealth.map((f: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: f.ok ? GREEN : RED, flex: 'none' }} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span> <span style={{ marginLeft: 'auto', color: f.ok ? 'var(--mut)' : RED, flex: 'none' }}>{f.ok ? (f.count + (f.ageMin != null ? ' · ' + f.ageMin + 'm' : '')) : L('caído', 'down')}</span></div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ===== HISTORIAL DE CORRIDAS ===== */}
+          {log.length > 0 && (
+            <div style={box}>
+              <div style={lbl}>{L('Historial de corridas', 'Run history')}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflow: 'auto' }}>
+                {log.map((r: any, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5 }}>
+                    <span style={{ color: 'var(--mut)', width: 44, flex: 'none' }}>{new Date(r.at).toLocaleTimeString(es ? 'es' : 'en', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span style={{ flex: 'none', color: 'var(--mut)', fontSize: 10 }}>{r.via === 'cron' ? L('auto', 'auto') : L('prueba', 'test')}</span>
+                    <span style={{ padding: '1px 8px', borderRadius: 12, fontSize: 10.5, flex: 'none', background: 'color-mix(in srgb,' + reasonColor(r.reason) + ' 18%,transparent)', color: reasonColor(r.reason) }}>{reasonLbl(r.reason)}</span>
+                    {r.candidate ? <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--mut)' }}>{r.candidate}</span> : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div style={box}>
             <div style={lbl}>{L('Al detectar una noticia importante', 'When it detects important news')}</div>

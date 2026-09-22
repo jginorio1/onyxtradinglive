@@ -134,18 +134,28 @@ async function todayStats(): Promise<{ count: number; lastMs: number }> {
   }
 }
 
-export type PilotResult = { ran: boolean; reason?: string; posted?: number; seen?: number; candidate?: string; feeds?: number; feedsOk?: number; fetched?: number; important?: number };
+export type Candidate = { title: string; source: string; cat: string; ageMin: number };
+export type PilotResult = { ran: boolean; reason?: string; posted?: number; seen?: number; candidate?: string; feeds?: number; feedsOk?: number; fetched?: number; important?: number; fresh?: number; candidates?: Candidate[] };
 
 // Envoltorio público: corre el ciclo y DEJA CONSTANCIA de la última corrida
 // (hora + motivo + si publicó) para que el panel muestre si el cron está vivo.
-export async function runNewsPilot(force = false, via: 'cron' | 'test' = 'cron'): Promise<PilotResult> {
+export async function runNewsPilot(force = false, via: 'cron' | 'test' = 'cron', dryRun = false): Promise<PilotResult> {
   let res: PilotResult;
-  try { res = await runCycle(force); }
+  try { res = await runCycle(force, dryRun); }
   catch (e: any) { res = { ran: false, reason: 'error: ' + (e?.message || 'error') }; }
   const now = Date.now();
+  // En SIMULACIÓN no tocamos ningún registro (es solo una vista previa).
+  if (dryRun) return res;
   try {
     const { saveSetting, getSetting } = await import('@/lib/settings');
-    await saveSetting('news_pilot_last', { at: new Date(now).toISOString(), via, reason: res.reason || '', posted: res.posted || 0, candidate: res.candidate || '' });
+    // Guardamos el EMBUDO completo de la última corrida para que el panel lo dibuje.
+    await saveSetting('news_pilot_last', { at: new Date(now).toISOString(), via, reason: res.reason || '', posted: res.posted || 0, candidate: res.candidate || '', feeds: res.feeds || 0, feedsOk: res.feedsOk || 0, fetched: res.fetched || 0, important: res.important || 0, fresh: res.fresh || 0 });
+    // LOG de las últimas 20 corridas (hora, tipo, motivo, si publicó) para el historial.
+    try {
+      const log = await getSetting<{ runs: any[] }>('news_pilot_log', { runs: [] });
+      const runs = [{ at: now, via, reason: res.reason || '', posted: res.posted || 0, candidate: (res.candidate || '').slice(0, 120) }, ...(log.runs || [])].slice(0, 20);
+      await saveSetting('news_pilot_log', { runs });
+    } catch {}
     // Contador de LATIDOS del cron: guardamos la marca de cada corrida automática
     // (via='cron') de las últimas 3 h. Así el panel puede decir cuántas veces disparó
     // Vercel de verdad (esperado ~20/h con */3) y saber si el cron está vivo o no.
@@ -159,12 +169,12 @@ export async function runNewsPilot(force = false, via: 'cron' | 'test' = 'cron')
 }
 
 // Ejecuta un ciclo del piloto. Devuelve un resumen para logs/panel.
-async function runCycle(force = false): Promise<PilotResult> {
+async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
   const cfg = await newsPilotSettings();
   if (!cfg.enabled && !force) return { ran: false, reason: 'disabled' };
 
   const { count, lastMs } = await todayStats();
-  if (count >= (cfg.maxPerDay || 3)) return { ran: true, reason: 'cap_reached', posted: 0 };
+  if (!dryRun && count >= (cfg.maxPerDay || 3)) return { ran: true, reason: 'cap_reached', posted: 0 };
   // CERROJO ANTI-CARRERA (defensa en capas): la generación con IA tarda ~10-30s, así que
   // dos corridas del cron casi simultáneas podrían pasar el tope las dos y publicar doble.
   // Reservamos el turno en app_settings ANTES de generar: si otra corrida reservó hace
@@ -172,9 +182,9 @@ async function runCycle(force = false): Promise<PilotResult> {
   // consulta del tope fallara, esto por sí solo impide inundar.
   const gapMs = Math.max((cfg.minMinutesBetween || 60), 1) * 60000;
   const gate = await getSetting<{ at: number }>('news_pilot_gate', { at: 0 });
-  if (!force && gate.at && Date.now() - gate.at < gapMs) return { ran: true, reason: 'too_soon', posted: 0 };
-  await saveSetting('news_pilot_gate', { at: Date.now() });
-  if (lastMs && Date.now() - lastMs < (cfg.minMinutesBetween || 20) * 60000) return { ran: true, reason: 'too_soon', posted: 0 };
+  if (!force && !dryRun && gate.at && Date.now() - gate.at < gapMs) return { ran: true, reason: 'too_soon', posted: 0 };
+  if (!dryRun) await saveSetting('news_pilot_gate', { at: Date.now() });
+  if (!dryRun && lastMs && Date.now() - lastMs < (cfg.minMinutesBetween || 20) * 60000) return { ran: true, reason: 'too_soon', posted: 0 };
 
   // Fuentes activas (por toggle y por tema). Incluye las custom del dueño.
   const all = mergedSources(cfg.custom_sources);
@@ -198,10 +208,25 @@ async function runCycle(force = false): Promise<PilotResult> {
   const importantCount = flat.filter((it) => important(it)).length;
   const diag = { feeds: active.length, feedsOk, fetched: flat.length, important: importantCount };
   const fresh = flat.filter((it) => Date.now() - it.published <= maxAge && important(it));
-  if (!fresh.length) return { ran: true, reason: 'no_fresh', posted: 0, seen: 0, ...diag };
+  if (!fresh.length) return { ran: true, reason: 'no_fresh', posted: 0, seen: 0, fresh: 0, ...diag };
 
   // Ordena por importancia y frescura.
   fresh.sort((a, b) => (score(b) - score(a)) || (b.published - a.published));
+
+  // SIMULACIÓN: devolvemos los CANDIDATOS que se publicarían (frescos, importantes y
+  // no vistos), SIN generar ni guardar nada. Perfecto para probar sin ensuciar el blog.
+  if (dryRun) {
+    const cands: Candidate[] = [];
+    for (const it of fresh.slice(0, 30)) {
+      const sig = titleSig(it.title);
+      const h = sig ? hashOf('t:' + sig) : hashOf(norm(it.link) || norm(it.title));
+      const { data: seen } = await supabaseAdmin.from('news_seen').select('hash').eq('hash', h).maybeSingle();
+      if (seen) continue;
+      cands.push({ title: it.title, source: it.sourceName, cat: it.cat, ageMin: Math.round((Date.now() - it.published) / 60000) });
+      if (cands.length >= 8) break;
+    }
+    return { ran: true, reason: cands.length ? 'dry_run' : 'all_seen', posted: 0, fresh: fresh.length, candidates: cands, ...diag };
+  }
 
   // Salta los ya vistos (anti-duplicados). Toma el primero nuevo.
   // La clave de "visto" es la FIRMA DEL TÍTULO (contenido), no la URL: así la misma

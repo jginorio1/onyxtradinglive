@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { getSetting, saveSetting, newsPilotSettings, type NewsPilot } from '@/lib/settings';
-import { NEWS_SOURCES, fetchFeed, type NewsSource } from '@/lib/newsSources';
+import { NEWS_SOURCES, mergedSources, fetchFeed, type NewsSource } from '@/lib/newsSources';
 import { runNewsPilot } from '@/lib/newsPilot';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { logError } from '@/lib/errlog';
@@ -48,7 +48,31 @@ export async function GET() {
     const { data } = await supabaseAdmin.from('news_seen').select('title,source,url,posted,created_at').order('created_at', { ascending: false }).limit(20);
     recent = data || [];
   } catch {}
-  return NextResponse.json({ settings, sources, recent, lastRun, cronHits1h, cronLastAt });
+  // KPIs: publicados hoy / 7 días / total. Robusto: si is_news no existe, contamos
+  // todo lo publicado del rango (nunca dejamos que un filtro roto devuelva 0).
+  async function cnt(fromIso?: string): Promise<number> {
+    let q: any = supabaseAdmin.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'published').eq('is_news', true);
+    if (fromIso) q = q.gte('published_at', fromIso);
+    const r1 = await q;
+    if (r1.error) {
+      let q2: any = supabaseAdmin.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'published');
+      if (fromIso) q2 = q2.gte('published_at', fromIso);
+      const r2 = await q2;
+      return r2.count || 0;
+    }
+    return r1.count || 0;
+  }
+  const startToday = new Date(); startToday.setUTCHours(0, 0, 0, 0);
+  const start7 = new Date(nowMs - 7 * 86400000);
+  let today = 0, last7 = 0, total = 0;
+  try { today = await cnt(startToday.toISOString()); last7 = await cnt(start7.toISOString()); total = await cnt(); } catch {}
+  // Próxima ventana (cuándo podrá publicar el siguiente, por separación mínima).
+  const gate = await getSetting<{ at: number }>('news_pilot_gate', { at: 0 });
+  const gapMin = settings.minMinutesBetween || 60;
+  const nextWindowMin = gate.at ? Math.max(0, Math.ceil((gate.at + gapMin * 60000 - nowMs) / 60000)) : 0;
+  const gateFree = !gate.at || (nowMs - gate.at) >= gapMin * 60000;
+  const log = await getSetting<{ runs: any[] }>('news_pilot_log', { runs: [] });
+  return NextResponse.json({ settings, sources, recent, lastRun, cronHits1h, cronLastAt, today, last7, total, nextWindowMin, gateFree, log: log.runs || [] });
 }
 
 // PATCH · guardar ajustes del piloto (owner/gestor de módulos).
@@ -84,6 +108,41 @@ export async function POST(req: Request) {
   const { ok } = await requirePerm('modulos', 'manage');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const b = await req.json().catch(() => ({} as any));
+
+  // SIMULAR ciclo: corre todo el motor pero NO publica; devuelve el embudo + candidatos.
+  if (b?.action === 'simulate') {
+    try { const r = await runNewsPilot(true, 'test', true); return NextResponse.json({ ok: true, ...r }); }
+    catch (e: any) { return NextResponse.json({ ok: false, error: e?.message || 'error' }); }
+  }
+  // Probar la CLAVE de la IA (Anthropic): un ping mínimo. 200 = clave válida.
+  if (b?.action === 'ai_test') {
+    const key = process.env.ANTHROPIC_API_KEY;
+    if (!key) return NextResponse.json({ ok: false, error: 'Falta ANTHROPIC_API_KEY' });
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model, max_tokens: 8, messages: [{ role: 'user', content: 'ping' }] }),
+      });
+      if (r.ok) return NextResponse.json({ ok: true, model });
+      let msg = ''; try { msg = JSON.parse(await r.text())?.error?.message || ''; } catch {}
+      return NextResponse.json({ ok: false, status: r.status, error: msg || ('HTTP ' + r.status) });
+    } catch (e: any) { return NextResponse.json({ ok: false, error: e?.message || 'error de red' }); }
+  }
+  // Probar TODOS los feeds activos, uno por uno: responde/no + cuántos + antigüedad del más nuevo.
+  if (b?.action === 'feeds_test') {
+    const st = await newsPilotSettings();
+    const active = mergedSources(st.custom_sources).filter((s) => st.sources[s.id] !== false);
+    const feeds = await Promise.all(active.map(async (s) => {
+      try {
+        const items = await fetchFeed(s, 7000);
+        const newest = items.reduce((m, i) => Math.max(m, i.published || 0), 0);
+        return { id: s.id, name: s.name, cat: s.cat, ok: items.length > 0, count: items.length, ageMin: newest ? Math.round((Date.now() - newest) / 60000) : null };
+      } catch { return { id: s.id, name: s.name, cat: s.cat, ok: false, count: 0, ageMin: null }; }
+    }));
+    return NextResponse.json({ ok: true, feeds });
+  }
 
   // Probar un feed RSS/Atom concreto: devuelve si responde y cuántos titulares trae.
   if (b?.action === 'test') {

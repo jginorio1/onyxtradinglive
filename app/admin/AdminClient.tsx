@@ -711,6 +711,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   if (unconfirmed) navBadges.usuarios = { n: unconfirmed, tone: 'warn' };
   if (diagBad) navBadges.diag = { n: diagBad, tone: 'danger' };
   useEffect(() => { if (flatNav.length && !flatNav.some(([k]) => k === tab)) setTab(flatNav[0][0]); }, []);
+  // Al cambiar de menú, la vista debe empezar ARRIBA (antes quedaba a media página).
+  useEffect(() => { try { window.scrollTo(0, 0); if (document.getElementById('main')) (document.getElementById('main') as HTMLElement).scrollTop = 0; } catch {} }, [tab]);
 
   return (
     <>

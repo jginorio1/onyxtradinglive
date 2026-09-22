@@ -21,6 +21,7 @@ import { BetaProvider } from '@/lib/beta';
 import BetaBanner from './BetaBanner';
 import EnvBanner from './EnvBanner';
 import NativeInit from './NativeInit';
+import ScrollTopOnNav from './components/ScrollTopOnNav';
 import MonitorBeacon from './MonitorBeacon';
 import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
@@ -176,6 +177,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         {/* Arranque nativo (Capacitor): no hace nada en el navegador. */}
         <NativeInit />
+        <ScrollTopOnNav />
         {/* Google Analytics 4 (solo si hay NEXT_PUBLIC_GA_ID). Mide tráfico y conversión. */}
         {ga && (
           <>
