@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { rateCard } from '@/lib/ads';
+import { rateCard, slotAvailability } from '@/lib/ads';
 import { serverLang, localeAlternates } from '@/lib/locale';
-import ReserveForm from './ReserveForm';
+import BuyForm from './BuyForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,8 @@ export default async function AdvertisePage() {
   const es = serverLang() === 'es';
   const L = (a: string, b: string) => (es ? a : b);
   const rates = await rateCard();
-  const slots = rates.map((r) => ({ key: r.key, name: es ? r.es : r.en, size: r.size, priceLabel: `$${r.price} ${unitLabel(r.unit, es)}` }));
+  const avail = await Promise.all(rates.map((r) => slotAvailability(r.key)));
+  const buySlots = rates.map((r, i) => ({ key: r.key, name: es ? r.es : r.en, size: r.size, unit: r.unit, price: r.price, freeFrom: avail[i].freeFrom, bookedUntil: avail[i].bookedUntil }));
 
   return (
     <div className="wrap section" style={{ maxWidth: 920 }}>
@@ -47,17 +48,23 @@ export default async function AdvertisePage() {
       {/* Tarifario */}
       <h2 style={{ fontSize: 20, marginBottom: 12 }}>{L('Espacios y precios', 'Spaces and prices')}</h2>
       <div className="grid g3" style={{ gap: 14, marginBottom: 26 }}>
-        {rates.map((r) => (
+        {rates.map((r, i) => {
+          const booked = avail[i].bookedUntil;
+          const free = r.unit !== 'cpm' && !booked;
+          return (
           <div key={r.key} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>{es ? r.es : r.en}</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{es ? r.es : r.en}</div>
+              {r.unit !== 'cpm' && <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: free ? 'rgba(52,199,89,.15)' : 'rgba(201,138,0,.15)', color: free ? '#2e9e4f' : '#c98a00' }}>{free ? L('Disponible', 'Available') : L('Reservado', 'Booked')}</span>}
+            </div>
             <div className="muted" style={{ fontSize: 12.5 }}>{r.size} · {r.page}</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--brand)' }}>${r.price} <span style={{ fontSize: 13, color: 'var(--mut)', fontWeight: 500 }}>{unitLabel(r.unit, es)}</span></div>
-            <a href="#reservar" style={{ color: 'var(--brand)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none', marginTop: 'auto' }}>{L('Reservar →', 'Reserve →')}</a>
+            <a href="#reservar" style={{ color: 'var(--brand)', fontSize: 13.5, fontWeight: 600, textDecoration: 'none', marginTop: 'auto' }}>{r.unit === 'cpm' ? L('Contactar →', 'Contact →') : L('Comprar →', 'Buy →')}</a>
           </div>
-        ))}
+        );})}
       </div>
 
-      <ReserveForm slots={slots} es={es} />
+      <BuyForm slots={buySlots} es={es} />
 
       <p className="muted" style={{ fontSize: 12.5, marginTop: 18, textAlign: 'center' }}>
         {L('Los anuncios se muestran solo en la web y a usuarios del plan gratis. Especificaciones del creativo: PNG/JPG, tamaño exacto del espacio. Nos reservamos el derecho de rechazar contenido no apto.',

@@ -70,20 +70,29 @@ export type ServedAd =
   | { kind: 'house'; id: string; size: string }
   | null;
 
+// ¿La campaña apunta al país del visitante? geo 'all'/vacío = todos; si no, lista
+// de códigos ISO (ej. 'US,MX,ES').
+function geoMatch(geo: string, country: string): boolean {
+  const g = String(geo || 'all').trim().toLowerCase();
+  if (!g || g === 'all') return true;
+  if (!country) return true; // sin país no excluimos (mejor mostrar que perder impresión)
+  return g.split(/[,\s]+/).filter(Boolean).includes(country.toLowerCase());
+}
+
 // Elige el anuncio a mostrar en un slot: una campaña pagada activa (rotación
-// ponderada) o, si no hay, un house ad. Devuelve null si el slot no existe.
-export async function pickAd(slotKey: string, lang: 'es' | 'en'): Promise<ServedAd> {
+// ponderada, filtrada por idioma y país) o, si no hay, un house ad.
+export async function pickAd(slotKey: string, lang: 'es' | 'en', country = ''): Promise<ServedAd> {
   const slot = slotByKey(slotKey);
   if (!slot) return null;
   try {
     const nowIso = new Date().toISOString();
     const { data } = await supabaseAdmin.from('ad_campaigns')
-      .select('id,creative_url,link_url,alt,weight,lang,starts_at,ends_at')
+      .select('id,creative_url,link_url,alt,weight,lang,geo,starts_at,ends_at')
       .eq('slot_key', slotKey).eq('status', 'active')
       .or(`lang.eq.all,lang.eq.${lang}`)
       .limit(50);
     const live = (data || []).filter((c: any) =>
-      (!c.starts_at || c.starts_at <= nowIso) && (!c.ends_at || c.ends_at >= nowIso) && c.creative_url && c.link_url);
+      (!c.starts_at || c.starts_at <= nowIso) && (!c.ends_at || c.ends_at >= nowIso) && c.creative_url && c.link_url && geoMatch(c.geo, country));
     if (live.length) {
       // Rotación ponderada.
       const total = live.reduce((s: number, c: any) => s + Math.max(1, c.weight || 1), 0);
@@ -100,4 +109,43 @@ export async function pickAd(slotKey: string, lang: 'es' | 'en'): Promise<Served
 export async function bumpAd(id: string, kind: 'impression' | 'click') {
   if (!id || id === 'house') return;
   try { await supabaseAdmin.rpc('ad_bump', { p_id: id, p_kind: kind }); } catch {}
+}
+
+// ===== Fase 2: autoservicio + disponibilidad =====
+
+// Precio total = precio del slot × nº de periodos (semanas o meses).
+export function priceFor(slot: AdSlot, count: number): number {
+  return Math.round((slot.price || 0) * Math.max(1, count));
+}
+
+// Disponibilidad de un slot (modelo exclusivo: un anunciante por rango). Devuelve
+// hasta cuándo está reservado y desde cuándo queda libre.
+export async function slotAvailability(slotKey: string): Promise<{ freeFrom: string | null; bookedUntil: string | null }> {
+  try {
+    const nowIso = new Date().toISOString();
+    const { data } = await supabaseAdmin.from('ad_campaigns')
+      .select('ends_at,status,created_at').eq('slot_key', slotKey)
+      .in('status', ['active', 'draft']).not('ends_at', 'is', null).gte('ends_at', nowIso);
+    // Los borradores solo cuentan si son recientes (checkout en curso, < 30 min).
+    const ends = (data || []).filter((c: any) => c.status === 'active' || (Date.now() - new Date(c.created_at).getTime() < 30 * 60000))
+      .map((c: any) => c.ends_at).sort();
+    const last = ends.length ? ends[ends.length - 1] : null;
+    return { bookedUntil: last, freeFrom: last ? new Date(new Date(last).getTime() + 86400000).toISOString() : null };
+  } catch { return { freeFrom: null, bookedUntil: null }; }
+}
+
+// ¿El rango [start,end] está libre en ese slot? (no se solapa con activa/borrador reciente).
+export async function rangeAvailable(slotKey: string, startIso: string, endIso: string): Promise<boolean> {
+  try {
+    const { data } = await supabaseAdmin.from('ad_campaigns')
+      .select('starts_at,ends_at,status,created_at').eq('slot_key', slotKey).in('status', ['active', 'draft']);
+    const S = new Date(startIso).getTime(), E = new Date(endIso).getTime();
+    for (const c of (data || [])) {
+      if (c.status === 'draft' && Date.now() - new Date(c.created_at).getTime() > 30 * 60000) continue;
+      const s = c.starts_at ? new Date(c.starts_at).getTime() : 0;
+      const e = c.ends_at ? new Date(c.ends_at).getTime() : Number.POSITIVE_INFINITY;
+      if (S <= e && E >= s) return false; // solapa
+    }
+    return true;
+  } catch { return true; }
 }

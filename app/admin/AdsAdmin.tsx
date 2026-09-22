@@ -7,7 +7,7 @@ type Rate = Slot & { price: number; unit: 'week' | 'month' | 'cpm' };
 type Campaign = { id: string; advertiser: string; contact: string; slot_key: string; creative_url: string; link_url: string; alt: string; lang: string; starts_at: string | null; ends_at: string | null; weight: number; price: number; status: string; impressions: number; clicks: number };
 
 const UNIT: Record<string, [string, string]> = { week: ['/ semana', '/ week'], month: ['/ mes', '/ month'], cpm: ['CPM (mil impresiones)', 'CPM (per 1k impressions)'] };
-const emptyForm = { id: '', advertiser: '', contact: '', slot_key: '', creative_url: '', link_url: '', alt: '', lang: 'all', starts_at: '', ends_at: '', weight: 1, price: 0, status: 'active' };
+const emptyForm = { id: '', advertiser: '', contact: '', slot_key: '', creative_url: '', link_url: '', alt: '', lang: 'all', geo: 'all', starts_at: '', ends_at: '', weight: 1, price: 0, status: 'active' };
 
 export default function AdsAdmin({ es }: { es: boolean }) {
   const L = (a: string, b: string) => (es ? a : b);
@@ -107,6 +107,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
           <div><div style={lbl}>{L('Anunciante', 'Advertiser')}</div><input value={form.advertiser} onChange={(e) => setForm({ ...form, advertiser: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
           <div><div style={lbl}>{L('Ubicación', 'Placement')}</div><select value={form.slot_key} onChange={(e) => setForm({ ...form, slot_key: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="">{L('elige…', 'choose…')}</option>{slots.map((s) => <option key={s.key} value={s.key}>{(es ? s.es : s.en) + ' · ' + s.size}</option>)}</select></div>
           <div><div style={lbl}>{L('Idioma', 'Language')}</div><select value={form.lang} onChange={(e) => setForm({ ...form, lang: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="all">{L('Todos', 'All')}</option><option value="es">Español</option><option value="en">English</option></select></div>
+          <div><div style={lbl}>{L('País (ISO, coma) o all', 'Country (ISO, comma) or all')}</div><input value={form.geo} onChange={(e) => setForm({ ...form, geo: e.target.value })} placeholder="all · US,MX,ES" style={{ margin: 0, width: '100%' }} /></div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Imagen del banner (URL)', 'Banner image (URL)')}</div><input value={form.creative_url} onChange={(e) => setForm({ ...form, creative_url: e.target.value })} placeholder="https://…/banner.png" style={{ margin: 0, width: '100%' }} /></div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Enlace destino', 'Destination link')}</div><input value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} placeholder="https://…" style={{ margin: 0, width: '100%' }} /></div>
           <div><div style={lbl}>{L('Inicia', 'Starts')}</div><input type="date" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>

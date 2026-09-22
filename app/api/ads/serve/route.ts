@@ -15,7 +15,8 @@ export async function GET(req: Request) {
   if (!cfg.enabled) return NextResponse.json({ hide: true }, { headers: { 'cache-control': 'no-store' } });
   if (await viewerIsPaid()) return NextResponse.json({ hide: true }, { headers: { 'cache-control': 'no-store' } });
 
-  const ad = await pickAd(slot, lang);
+  const country = (req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || '').toUpperCase();
+  const ad = await pickAd(slot, lang, country);
   if (!ad) return NextResponse.json({ hide: true }, { headers: { 'cache-control': 'no-store' } });
   if (ad.kind === 'paid') bumpAd(ad.id, 'impression');
   return NextResponse.json({ ad }, { headers: { 'cache-control': 'no-store' } });

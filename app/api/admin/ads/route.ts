@@ -64,6 +64,7 @@ export async function POST(req: Request) {
     link_url: String(b.link_url || '').slice(0, 500),
     alt: String(b.alt || '').slice(0, 300),
     lang: ['all', 'es', 'en'].includes(b.lang) ? b.lang : 'all',
+    geo: String(b.geo || 'all').slice(0, 120) || 'all',
     starts_at: b.starts_at ? new Date(b.starts_at).toISOString() : null,
     ends_at: b.ends_at ? new Date(b.ends_at).toISOString() : null,
     weight: Math.max(1, parseInt(b.weight, 10) || 1),
