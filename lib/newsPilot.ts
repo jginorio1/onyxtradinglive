@@ -1,5 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { newsPilotSettings, blogKeywordsSettings, type NewsPilot } from '@/lib/settings';
+import { newsPilotSettings, blogKeywordsSettings, getSetting, saveSetting, type NewsPilot } from '@/lib/settings';
 import { NEWS_SOURCES, mergedSources, fetchFeed, type NewsItem, type NewsSource } from '@/lib/newsSources';
 import { generateNewsArticle } from '@/lib/blogAI';
 import { gscOpportunities } from '@/lib/seoSearchConsole';
@@ -165,6 +165,15 @@ async function runCycle(force = false): Promise<PilotResult> {
 
   const { count, lastMs } = await todayStats();
   if (count >= (cfg.maxPerDay || 3)) return { ran: true, reason: 'cap_reached', posted: 0 };
+  // CERROJO ANTI-CARRERA (defensa en capas): la generación con IA tarda ~10-30s, así que
+  // dos corridas del cron casi simultáneas podrían pasar el tope las dos y publicar doble.
+  // Reservamos el turno en app_settings ANTES de generar: si otra corrida reservó hace
+  // menos que la separación mínima, salimos. Es independiente del blog, así que aunque la
+  // consulta del tope fallara, esto por sí solo impide inundar.
+  const gapMs = Math.max((cfg.minMinutesBetween || 60), 1) * 60000;
+  const gate = await getSetting<{ at: number }>('news_pilot_gate', { at: 0 });
+  if (!force && gate.at && Date.now() - gate.at < gapMs) return { ran: true, reason: 'too_soon', posted: 0 };
+  await saveSetting('news_pilot_gate', { at: Date.now() });
   if (lastMs && Date.now() - lastMs < (cfg.minMinutesBetween || 20) * 60000) return { ran: true, reason: 'too_soon', posted: 0 };
 
   // Fuentes activas (por toggle y por tema). Incluye las custom del dueño.

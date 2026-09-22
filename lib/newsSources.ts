@@ -47,10 +47,34 @@ export function mergedSources(custom?: { id: string; name: string; url: string; 
 
 export type NewsItem = { title: string; link: string; summary: string; published: number; sourceId: string; sourceName: string; cat: NewsSource['cat']; tier: NewsSource['tier'] };
 
-const strip = (s: string) => String(s || '')
+// Entidades HTML con nombre más comunes en titulares financieros.
+const NAMED_ENT: Record<string, string> = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  ndash: '\u2013', mdash: '\u2014', hellip: '\u2026',
+  lsquo: '\u2018', rsquo: '\u2019', ldquo: '\u201C', rdquo: '\u201D',
+  laquo: '\u00AB', raquo: '\u00BB', trade: '\u2122', reg: '\u00AE', copy: '\u00A9',
+  deg: '\u00B0', euro: '\u20AC', pound: '\u00A3', cent: '\u00A2', middot: '\u00B7',
+};
+// Decodifica entidades numéricas (&#8217; y &#x2019;) y con nombre (&apos;, &rsquo;…).
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => { try { return String.fromCodePoint(parseInt(h, 16)); } catch { return _; } })
+    .replace(/&#(\d+);/g, (_, d) => { try { return String.fromCodePoint(parseInt(d, 10)); } catch { return _; } })
+    .replace(/&([a-zA-Z][a-zA-Z0-9]*);/g, (m, n) => NAMED_ENT[n] ?? NAMED_ENT[String(n).toLowerCase()] ?? m);
+}
+// Repara "mojibake": texto UTF-8 que en algún punto se leyó como Latin-1 (â€˜, â€™, Ã©…).
+function fixMojibake(s: string): string {
+  if (!/[\u00C2\u00C3\u00E2]/.test(s)) return s;
+  try {
+    // Re-interpreta los bytes como UTF-8. Si empeora (aparece \uFFFD), descártalo.
+    const bytes = Uint8Array.from([...s].map((c) => c.charCodeAt(0) & 0xff));
+    const fixed = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    return fixed.includes('\uFFFD') ? s : fixed;
+  } catch { return s; }
+}
+const strip = (s: string) => fixMojibake(decodeEntities(String(s || '')
   .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-  .replace(/<[^>]+>/g, ' ')
-  .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+  .replace(/<[^>]+>/g, ' ')))
   .replace(/\s+/g, ' ').trim();
 
 const tag = (block: string, name: string): string => {
@@ -103,7 +127,19 @@ export async function fetchFeed(src: NewsSource, timeoutMs = 8000): Promise<News
       headers: { 'user-agent': 'OnyxNewsBot/1.0 (+https://www.onyxtradinglive.com)', 'cache-control': 'no-cache' },
     });
     if (!r.ok) return [];
-    const xml = await r.text();
+    // Decodificamos con el charset REAL del feed. Muchos feeds son UTF-8 pero, si se
+    // leen como Latin-1, salen los símbolos rotos (â€˜, â€™). Detectamos el encoding
+    // de la declaración XML y, por defecto, usamos UTF-8.
+    const buf = await r.arrayBuffer();
+    let enc = 'utf-8';
+    try {
+      const head = new TextDecoder('latin1').decode(new Uint8Array(buf.slice(0, 300)));
+      const m = head.match(/encoding=["']([\w-]+)["']/i);
+      if (m) enc = m[1].toLowerCase();
+    } catch {}
+    let xml = '';
+    try { xml = new TextDecoder(enc as any).decode(buf); }
+    catch { xml = new TextDecoder('utf-8').decode(buf); }
     return parseFeed(xml, src);
   } catch { return []; }
   finally { clearTimeout(t); }

@@ -84,8 +84,24 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
     try {
       const r = await fetch('/api/admin/news', { method: 'PATCH', body: JSON.stringify(cfg) });
       if (r.ok) { toast(L('Piloto de noticias guardado.', 'News pilot saved.'), 'ok'); onChanged?.(); }
-      else toast(L('No se pudo guardar.', 'Could not save.'), 'err');
+      else toast(r.status === 423 ? L('Panel bloqueado: desbloquea con tu PIN y reintenta.', 'Panel locked: unlock with your PIN and retry.') : L('No se pudo guardar.', 'Could not save.'), 'err');
     } catch { toast(L('Error de red.', 'Network error.'), 'err'); } finally { setBusy(''); }
+  }
+  // ENCENDER/APAGAR es un botón de SEGURIDAD: guarda AL INSTANTE (no espera a "Guardar")
+  // y, si falla (p. ej. panel bloqueado por PIN), REVIERTE el interruptor y avisa. Antes
+  // solo cambiaba el estado visual y podía quedar "apagado" en pantalla pero ENCENDIDO en
+  // la base — justo lo que dejó publicar cientos de artículos de madrugada.
+  async function toggleEnabled() {
+    if (!cfg || busy === 'enabled') return;
+    const next = !cfg.enabled;
+    setCfg({ ...cfg, enabled: next });
+    setBusy('enabled');
+    try {
+      const r = await fetch('/api/admin/news', { method: 'PATCH', body: JSON.stringify({ ...cfg, enabled: next }) });
+      if (r.ok) { toast(next ? L('Piloto ENCENDIDO.', 'Pilot turned ON.') : L('Piloto APAGADO — dejará de publicar.', 'Pilot turned OFF — will stop posting.'), 'ok'); onChanged?.(); }
+      else { setCfg({ ...cfg, enabled: !next }); toast(r.status === 423 ? L('Panel bloqueado: desbloquea con tu PIN y reintenta.', 'Panel locked: unlock with your PIN and retry.') : L('No se pudo cambiar. Reintenta.', 'Could not change. Retry.'), 'err'); }
+    } catch { setCfg({ ...cfg, enabled: !next }); toast(L('Error de red. NO se guardó.', 'Network error. Not saved.'), 'err'); }
+    finally { setBusy(''); }
   }
   async function testNow() {
     setBusy('test');
@@ -158,7 +174,7 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
       {open && (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Master + modo */}
-          <div onClick={() => upd('enabled', !cfg.enabled)} style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...box, borderColor: cfg.enabled ? A + '66' : 'var(--line)' }}>
+          <div onClick={() => toggleEnabled()} style={{ cursor: 'pointer', opacity: busy === 'enabled' ? 0.6 : 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', ...box, borderColor: cfg.enabled ? A + '66' : 'var(--line)' }}>
             <div><div style={{ fontSize: 13.5, fontWeight: 700 }}>{L('Vigilante activo', 'Watcher on')}</div><div className="muted" style={{ fontSize: 12 }}>{L('Corre cada ~3 min y actúa solo cuando detecta algo importante.', 'Runs every ~3 min and acts only on important news.')}</div></div>
             <Switch on={cfg.enabled} accent={A} />
           </div>
