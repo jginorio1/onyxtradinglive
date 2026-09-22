@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 // financieros, muestra un aviso de riesgo. En la app NATIVA se oculta por CSS.
 type Served =
   | { kind: 'paid'; id: string; creative: string; link: string; alt: string; size: string; disclaimer?: string }
-  | { kind: 'partner'; id: string; name: string; logo: string; blurb: string; link: string; size: string }
+  | { kind: 'partner'; id: string; name: string; logo: string; banner: string; blurb: string; link: string; size: string }
   | { kind: 'house'; id: string; size: string }
   | { kind: 'programmatic'; id: 'net'; size: string; code: string }
   | null;
@@ -66,6 +66,17 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
   // Socio del directorio (CPA): broker/prop firm con tu enlace afiliado. Rellena
   // los huecos vacíos y cada clic te paga comisión. Va etiquetado y con rel sponsored.
   if (ad.kind === 'partner') {
+    // Si el socio trae su banner (el que dan las prop firms), lo mostramos tal cual.
+    if (ad.banner) {
+      return (
+        <div className="onyx-ad" style={wrap} ref={ref}>
+          {label && tag}
+          <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" style={{ display: 'block', lineHeight: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
+            <img src={ad.banner} alt={ad.name} loading="lazy" decoding="async" width={w || undefined} height={h || undefined} style={{ width: '100%', height: 'auto', display: 'block' }} />
+          </a>
+        </div>
+      );
+    }
     return (
       <div className="onyx-ad" style={wrap} ref={ref}>
         {label && tag}

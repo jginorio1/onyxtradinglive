@@ -136,7 +136,7 @@ export async function viewerIsPaid(): Promise<boolean> {
 
 export type ServedAd =
   | { kind: 'paid'; id: string; creative: string; link: string; alt: string; size: string; disclaimer?: string }
-  | { kind: 'partner'; id: string; name: string; logo: string; blurb: string; link: string; size: string }
+  | { kind: 'partner'; id: string; name: string; logo: string; banner: string; blurb: string; link: string; size: string }
   | { kind: 'house'; id: string; size: string }
   | { kind: 'programmatic'; id: 'net'; size: string; code: string }
   | null;
@@ -215,11 +215,11 @@ export async function pickAd(
   if (cfg.partnerFill) {
     try {
       const { data: parts } = await supabaseAdmin.from('ad_partners')
-        .select('id,name,logo_url,blurb_es,blurb_en,geo').eq('status', 'active').limit(50);
+        .select('id,name,logo_url,banner_url,blurb_es,blurb_en,geo').eq('status', 'active').limit(50);
       const live = (parts || []).filter((p: any) => geoMatch(p.geo, '', '', country));
       if (live.length) {
         const p = live[Math.floor(Math.random() * live.length)];
-        return { kind: 'partner', id: p.id, name: p.name, logo: p.logo_url || '', blurb: (lang === 'es' ? p.blurb_es : p.blurb_en) || '', link: `/api/ads/partner?id=${p.id}`, size: slot.size };
+        return { kind: 'partner', id: p.id, name: p.name, logo: p.logo_url || '', banner: p.banner_url || '', blurb: (lang === 'es' ? p.blurb_es : p.blurb_en) || '', link: `/api/ads/partner?id=${p.id}`, size: slot.size };
       }
     } catch {}
   }

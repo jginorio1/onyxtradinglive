@@ -10,7 +10,7 @@ type Campaign = { id: string; advertiser: string; contact: string; slot_key: str
 
 const UNIT: Record<string, [string, string]> = { week: ['/ semana', '/ week'], month: ['/ mes', '/ month'], cpm: ['CPM (mil impresiones)', 'CPM (per 1k impressions)'] };
 const emptyForm = { id: '', advertiser: '', contact: '', slot_key: '', creative_url: '', creative_path: '', link_url: '', alt: '', lang: 'all', geo: 'all', geo_tier: '', geo_exclude: '', device: 'all', category: 'general', disclaimer: false, pricing_model: 'flat', budget: 0, daily_cap: 0, starts_at: '', ends_at: '', weight: 1, price: 0, status: 'active' };
-const emptyPartner = { id: '', name: '', logo_url: '', blurb_es: '', blurb_en: '', link_url: '', category: 'broker', geo: 'all', cpa_payout: 0, featured: false, rank: 100, regulated: '', status: 'active' };
+const emptyPartner = { id: '', name: '', logo_url: '', banner_url: '', blurb_es: '', blurb_en: '', link_url: '', category: 'broker', geo: 'all', cpa_payout: 0, featured: false, rank: 100, regulated: '', status: 'active' };
 
 export default function AdsAdmin({ es }: { es: boolean }) {
   const L = (a: string, b: string) => (es ? a : b);
@@ -269,6 +269,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
           <div><div style={lbl}>{L('Nombre', 'Name')}</div><input value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
           <div><div style={lbl}>{L('Categoría', 'Category')}</div><select value={pForm.category} onChange={(e) => setPForm({ ...pForm, category: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="broker">Broker</option><option value="propfirm">Prop firm</option><option value="tool">{L('Herramienta', 'Tool')}</option></select></div>
           <div><div style={lbl}>{L('Logo (URL)', 'Logo (URL)')}</div><input value={pForm.logo_url} onChange={(e) => setPForm({ ...pForm, logo_url: e.target.value })} placeholder="https://…" style={{ margin: 0, width: '100%' }} /></div>
+          <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Banner del broker (URL) — opcional', 'Broker banner (URL) — optional')}</div><input value={pForm.banner_url} onChange={(e) => setPForm({ ...pForm, banner_url: e.target.value })} placeholder={L('El banner que te dan en su programa de afiliados', 'The banner they give you in their affiliate program')} style={{ margin: 0, width: '100%' }} /></div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Enlace afiliado', 'Affiliate link')}</div><input value={pForm.link_url} onChange={(e) => setPForm({ ...pForm, link_url: e.target.value })} placeholder="https://…?ref=onyx" style={{ margin: 0, width: '100%' }} /></div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Descripción ES', 'Description ES')}</div><input value={pForm.blurb_es} onChange={(e) => setPForm({ ...pForm, blurb_es: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Descripción EN', 'Description EN')}</div><input value={pForm.blurb_en} onChange={(e) => setPForm({ ...pForm, blurb_en: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>

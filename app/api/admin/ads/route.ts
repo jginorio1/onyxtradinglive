@@ -79,7 +79,7 @@ export async function POST(req: Request) {
   if (b.entity === 'partner') {
     if (b.action === 'delete' && b.id) { await supabaseAdmin.from('ad_partners').delete().eq('id', b.id); return NextResponse.json({ ok: true }); }
     const prow: any = {
-      name: String(b.name || '').slice(0, 120), logo_url: String(b.logo_url || '').slice(0, 400),
+      name: String(b.name || '').slice(0, 120), logo_url: String(b.logo_url || '').slice(0, 400), banner_url: String(b.banner_url || '').slice(0, 500),
       blurb_es: String(b.blurb_es || '').slice(0, 300), blurb_en: String(b.blurb_en || '').slice(0, 300),
       link_url: String(b.link_url || '').slice(0, 500), category: ['broker', 'propfirm', 'tool'].includes(b.category) ? b.category : 'broker',
       geo: String(b.geo || 'all').slice(0, 120) || 'all', cpa_payout: Math.max(0, Number(b.cpa_payout) || 0),
