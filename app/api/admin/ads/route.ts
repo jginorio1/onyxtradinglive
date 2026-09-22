@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { AD_SLOTS, IAB_SIZES, getAdsConfig, saveAdsConfig, rateCard, type AdSlot } from '@/lib/ads';
-import { getMediaKitOverrides, saveMediaKitOverrides } from '@/lib/mediakit';
+import { getMediaKitOverrides, saveMediaKitOverrides, createProposal, listProposals, deleteProposal, markProposalSent, getProposalByToken, proposalUrl } from '@/lib/mediakit';
+import { sendEmail, mailEnabled } from '@/lib/mail';
+import { mailRoutes, fromLine } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -20,9 +22,11 @@ export async function GET() {
   const { data: advertisers } = await supabaseAdmin.from('ad_advertisers').select('id,email,name,company,kind,balance,status,created_at').order('created_at', { ascending: false }).limit(100);
   const slots = AD_SLOTS.map((s) => ({ key: s.key, es: s.es, en: s.en, size: s.size, page: s.page, unit: s.unit, model: s.model || 'flat' }));
   const mediakit = await getMediaKitOverrides();
+  const proposals = await listProposals(100);
   return NextResponse.json({
     config: { enabled: cfg.enabled, nativeEnabled: cfg.nativeEnabled, autoApprove: cfg.autoApprove, programmatic: cfg.programmatic, riskDisclaimer: cfg.riskDisclaimer, freqCap: cfg.freqCap, partnerFill: cfg.partnerFill },
-    rates, slots, sizes: IAB_SIZES, campaigns: data || [], partners: partners || [], advertisers: advertisers || [], mediakit,
+    rates, slots, sizes: IAB_SIZES, campaigns: data || [], partners: partners || [], advertisers: advertisers || [], mediakit, proposals,
+    mailReady: mailEnabled(),
   });
 }
 
@@ -86,6 +90,49 @@ export async function POST(req: Request) {
     }
     const saved = await saveMediaKitOverrides(patch);
     return NextResponse.json({ ok: true, mediakit: saved });
+  }
+
+  // Propuestas personalizadas por cliente: crear / borrar / enviar por email.
+  if (b.entity === 'proposal') {
+    if (b.action === 'delete' && b.id) {
+      await deleteProposal(b.id);
+      return NextResponse.json({ ok: true, proposals: await listProposals(100) });
+    }
+    if (b.action === 'create') {
+      const p = await createProposal({
+        company: b.company, contact: b.contact, email: b.email,
+        packageId: b.packageId, noteEs: b.noteEs, noteEn: b.noteEn, lang: b.lang,
+      });
+      if (!p) return NextResponse.json({ error: 'No se pudo crear.' }, { status: 500 });
+      return NextResponse.json({ ok: true, proposal: p, url: proposalUrl(p.token, p.lang), proposals: await listProposals(100) });
+    }
+    if (b.action === 'send' && b.id) {
+      const p = await getProposalByToken(b.token || '');
+      // buscamos por id si no vino token
+      const target = p || (await listProposals(100)).find((x) => x.id === b.id) || null;
+      if (!target) return NextResponse.json({ error: 'Propuesta no encontrada.' }, { status: 404 });
+      if (!target.email) return NextResponse.json({ error: 'La propuesta no tiene email de cliente.' }, { status: 400 });
+      if (!mailEnabled()) return NextResponse.json({ error: 'El correo no está configurado (falta RESEND_API_KEY).' }, { status: 400 });
+
+      const es = target.lang !== 'en';
+      const url = proposalUrl(target.token, target.lang);
+      const routes = await mailRoutes().catch(() => null as any);
+      const from = routes ? fromLine(routes) : undefined;
+      const subject = es
+        ? `Propuesta de publicidad · Onyx Trading Live${target.company ? ' · ' + target.company : ''}`
+        : `Advertising proposal · Onyx Trading Live${target.company ? ' · ' + target.company : ''}`;
+      const greet = target.contact ? (es ? `Hola ${target.contact},` : `Hi ${target.contact},`) : (es ? 'Hola,' : 'Hi,');
+      const note = (es ? target.note_es : target.note_en) || '';
+      const body = es
+        ? `${greet}\n\nPreparé una propuesta de publicidad para ${target.company || 'ustedes'} con nuestras estadísticas reales, el inventario y los paquetes.\n\n${note ? note + '\n\n' : ''}Puedes verla y descargarla en PDF aquí:\n${url}\n\nQuedo atento a tus comentarios.\n\nOnyx Trading Live · Publicidad`
+        : `${greet}\n\nI prepared an advertising proposal for ${target.company || 'you'} with our real stats, inventory and packages.\n\n${note ? note + '\n\n' : ''}You can view it and download it as PDF here:\n${url}\n\nLooking forward to your feedback.\n\nOnyx Trading Live · Advertising`;
+
+      const ok = await sendEmail(target.email, subject, body, { from, kind: 'ad_proposal', replyTo: routes?.support });
+      if (!ok) return NextResponse.json({ error: 'No se pudo enviar el correo.' }, { status: 500 });
+      await markProposalSent(target.id);
+      return NextResponse.json({ ok: true, proposals: await listProposals(100) });
+    }
+    return NextResponse.json({ error: 'acción inválida' }, { status: 400 });
   }
 
   if (b.action === 'delete' && b.id) {

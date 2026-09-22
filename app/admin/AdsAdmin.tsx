@@ -25,6 +25,30 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   const [busy, setBusy] = useState('');
   const [upBusy, setUpBusy] = useState('');   // '' | 'logo' | 'banner'
   const [mk, setMk] = useState<any>(null);    // overrides del Media Kit
+  const [proposals, setProposals] = useState<any[]>([]);
+  const [mailReady, setMailReady] = useState(false);
+  const emptyProp = { company: '', contact: '', email: '', packageId: '', noteEs: '', noteEn: '', lang: 'es' };
+  const [prop, setProp] = useState<any>(emptyProp);
+
+  async function propAction(body: any, okMsg: string) {
+    setBusy('prop');
+    try {
+      const r = await fetch('/api/admin/ads', { method: 'POST', body: JSON.stringify({ entity: 'proposal', ...body }) });
+      const j = await r.json();
+      if (j.ok) { if (j.proposals) setProposals(j.proposals); toast(okMsg, 'ok'); return j; }
+      toast(j.error || L('No se pudo.', 'Failed.'), 'err'); return null;
+    } catch { toast(L('Error de red.', 'Network error.'), 'err'); return null; } finally { setBusy(''); }
+  }
+  async function createProp() {
+    if (!prop.company.trim()) { toast(L('Pon al menos la empresa.', 'Add at least the company.'), 'err'); return; }
+    const j = await propAction({ action: 'create', ...prop }, L('Propuesta creada.', 'Proposal created.'));
+    if (j?.url) { try { await navigator.clipboard.writeText(j.url); toast(L('Enlace copiado.', 'Link copied.'), 'ok'); } catch {} setProp(emptyProp); }
+  }
+  function copyLink(token: string, lang: string) {
+    const base = (typeof window !== 'undefined' ? window.location.origin : '');
+    const url = `${base}${lang === 'en' ? '/en' : ''}/publicidad/propuesta?t=${token}`;
+    try { navigator.clipboard.writeText(url); toast(L('Enlace copiado.', 'Link copied.'), 'ok'); } catch {}
+  }
 
   async function saveMk() {
     setBusy('mk');
@@ -52,7 +76,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   async function load() {
     try {
       const j = await (await fetch('/api/admin/ads')).json();
-      if (j.config) { setCfg(j.config); setRates(j.rates || []); setSlots(j.slots || []); setCamps(j.campaigns || []); setPartners(j.partners || []); setProgCode(j.config.programmatic?.code || ''); if (j.mediakit) setMk(j.mediakit); }
+      if (j.config) { setCfg(j.config); setRates(j.rates || []); setSlots(j.slots || []); setCamps(j.campaigns || []); setPartners(j.partners || []); setProgCode(j.config.programmatic?.code || ''); if (j.mediakit) setMk(j.mediakit); setProposals(j.proposals || []); setMailReady(!!j.mailReady); }
     } catch {}
   }
   useEffect(() => { load(); }, []);
@@ -286,6 +310,58 @@ export default function AdsAdmin({ es }: { es: boolean }) {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* ---- Generar propuesta personalizada para un cliente ---- */}
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--line)' }}>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+              {L('Generar propuesta para un cliente', 'Generate a proposal for a client')}
+              <Hint text={L('Crea una propuesta con el nombre y datos del cliente. Se genera un enlace único que puedes copiar y mandarle, o enviárselo directo por email desde aquí. Abre la misma propuesta bilingüe con sus datos y el paquete que le sugieres resaltado.', 'Create a proposal with the client’s name and details. It generates a unique link you can copy and send, or email directly from here. It opens the same bilingual proposal with their info and your suggested package highlighted.')} />
+            </div>
+            <p className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
+              {mailReady ? L('El correo está listo: puedes enviar directo.', 'Email is ready: you can send directly.') : L('El correo no está configurado (RESEND_API_KEY): podrás copiar el enlace y mandarlo tú.', 'Email is not configured (RESEND_API_KEY): you can copy the link and send it yourself.')}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 10 }}>
+              <div><div style={lbl}>{L('Empresa / broker', 'Company / broker')}</div><input value={prop.company} onChange={(e) => setProp({ ...prop, company: e.target.value })} placeholder="The5ers" style={{ margin: 0, width: '100%' }} /></div>
+              <div><div style={lbl}>{L('Contacto', 'Contact')}</div><input value={prop.contact} onChange={(e) => setProp({ ...prop, contact: e.target.value })} placeholder="John" style={{ margin: 0, width: '100%' }} /></div>
+              <div><div style={lbl}>{L('Email del cliente', 'Client email')}</div><input type="email" value={prop.email} onChange={(e) => setProp({ ...prop, email: e.target.value })} placeholder="ads@broker.com" style={{ margin: 0, width: '100%' }} /></div>
+              <div><div style={lbl}>{L('Paquete sugerido', 'Suggested package')}</div>
+                <select value={prop.packageId} onChange={(e) => setProp({ ...prop, packageId: e.target.value })} style={{ margin: 0, width: '100%' }}>
+                  <option value="">{L('(ninguno)', '(none)')}</option>
+                  {(mk.packages || []).map((p: any) => <option key={p.id} value={p.id}>{es ? p.es : p.en}</option>)}
+                </select>
+              </div>
+              <div><div style={lbl}>{L('Idioma', 'Language')}</div>
+                <select value={prop.lang} onChange={(e) => setProp({ ...prop, lang: e.target.value })} style={{ margin: 0, width: '100%' }}>
+                  <option value="es">Español</option><option value="en">English</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+              <div><div style={lbl}>{L('Nota personal (ES)', 'Personal note (ES)')}</div><textarea value={prop.noteEs} onChange={(e) => setProp({ ...prop, noteEs: e.target.value })} rows={2} placeholder={L('Un mensaje breve para el cliente…', 'A short message for the client…')} style={{ margin: 0, width: '100%' }} /></div>
+              <div><div style={lbl}>{L('Nota personal (EN)', 'Personal note (EN)')}</div><textarea value={prop.noteEn} onChange={(e) => setProp({ ...prop, noteEn: e.target.value })} rows={2} style={{ margin: 0, width: '100%' }} /></div>
+            </div>
+            <div style={{ marginTop: 10 }}>
+              <button className="btn btn-primary" onClick={createProp} disabled={busy === 'prop'} style={{ fontSize: 12 }}>{L('Crear propuesta + copiar enlace', 'Create proposal + copy link')}</button>
+            </div>
+
+            {/* Lista de propuestas generadas */}
+            {proposals.length > 0 && (
+              <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {proposals.map((p: any) => (
+                  <div key={p.id} style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{p.company || '—'} {p.contact_name ? <span className="muted" style={{ fontWeight: 400 }}>· {p.contact_name}</span> : null}</div>
+                      <div className="muted" style={{ fontSize: 11 }}>{p.email || L('sin email', 'no email')} · {p.lang?.toUpperCase()} · {p.views || 0} {L('vistas', 'views')} {p.status === 'sent' ? '· ' + L('enviada', 'sent') : ''}</div>
+                    </div>
+                    <button className="btn btn-ghost" onClick={() => copyLink(p.token, p.lang)} style={{ fontSize: 11 }}>{L('Copiar enlace', 'Copy link')}</button>
+                    <a className="btn btn-ghost" href={`/publicidad/propuesta?t=${p.token}`} target="_blank" style={{ fontSize: 11 }}>{L('Ver', 'View')}</a>
+                    {p.email && mailReady && <button className="btn btn-primary" onClick={() => propAction({ action: 'send', id: p.id, token: p.token }, L('Enviada por email.', 'Sent by email.'))} disabled={busy === 'prop'} style={{ fontSize: 11 }}>{L('Enviar email', 'Send email')}</button>}
+                    <button className="btn btn-ghost" onClick={() => propAction({ action: 'delete', id: p.id }, L('Borrada.', 'Deleted.'))} style={{ fontSize: 11, color: 'var(--red, #e0555f)' }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

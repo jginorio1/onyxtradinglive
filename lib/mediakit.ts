@@ -10,6 +10,7 @@
 // Así, al arrancar (poco tráfico) se ve una cifra creíble; cuando el tráfico
 // real supera el piso, manda el dato real. Nada se inventa por encima de lo real.
 // ============================================================================
+import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSetting, saveSetting } from '@/lib/settings';
 import { AD_SLOTS, getAdsConfig, tierOf, type AdSlot } from '@/lib/ads';
@@ -77,9 +78,17 @@ const GROUPS: Group[] = [
 ];
 const groupOf = (path: string) => (GROUPS.find((g) => g.key !== 'site' && g.match(path))?.key) || 'other';
 
+// Datos del cliente para una propuesta dirigida (personaliza la portada).
+export type ProposalClient = {
+  company: string; contact: string; email?: string;
+  packageId?: string;              // paquete sugerido (se resalta)
+  noteEs?: string; noteEn?: string;
+};
+
 export type MediaKitSlot = { key: string; es: string; en: string; size: string; unit: string; price: number; available: boolean; fmt: string };
 export type MediaKit = {
   updatedIso: string;
+  client?: ProposalClient | null;   // presente si es una propuesta personalizada
   totals: { visitors: number; pageviews: number; avgTime: string; ctrPct: number; mobilePct: number };
   groups: { key: string; es: string; en: string; pageviews: number; visitors: number; slots: MediaKitSlot[] }[];
   audience: { tiers: { t1: number; t2: number; t3: number }; topCountries: { code: string; n: number }[]; es: string; en: string };
@@ -91,7 +100,7 @@ export type MediaKit = {
 
 const grow = (real: number, floor: number) => Math.max(real || 0, floor || 0);
 
-export async function buildMediaKit(): Promise<MediaKit> {
+export async function buildMediaKit(opts?: { client?: ProposalClient | null }): Promise<MediaKit> {
   const cfg = await getAdsConfig();
   const ov = await getMediaKitOverrides();
   const now = Date.now();
@@ -192,6 +201,7 @@ export async function buildMediaKit(): Promise<MediaKit> {
 
   return {
     updatedIso: new Date(now).toISOString(),
+    client: opts?.client || null,
     totals: { visitors, pageviews: pv, avgTime: ov.avgTime, ctrPct, mobilePct: ov.mobilePct },
     groups,
     audience: { tiers, topCountries, es: ov.audienceEs, en: ov.audienceEn },
@@ -200,4 +210,70 @@ export async function buildMediaKit(): Promise<MediaKit> {
     disclaimer: cfg.riskDisclaimer,
     overrides: ov,
   };
+}
+
+// ============================================================================
+// Propuestas personalizadas por cliente (tabla ad_proposals)
+// ============================================================================
+export type Proposal = {
+  id: string; token: string; company: string; contact_name: string; email: string;
+  package_id: string; note_es: string; note_en: string; lang: string;
+  status: string; views: number; sent_at: string | null; created_at: string;
+};
+
+const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
+export const proposalUrl = (token: string, lang = 'es') =>
+  `${SITE}${lang === 'en' ? '/en' : ''}/publicidad/propuesta?t=${token}`;
+
+export async function createProposal(d: {
+  company: string; contact: string; email?: string; packageId?: string;
+  noteEs?: string; noteEn?: string; lang?: string;
+}): Promise<Proposal | null> {
+  const token = crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+  const row = {
+    token,
+    company: String(d.company || '').slice(0, 120),
+    contact_name: String(d.contact || '').slice(0, 120),
+    email: String(d.email || '').slice(0, 160),
+    package_id: String(d.packageId || '').slice(0, 40),
+    note_es: String(d.noteEs || '').slice(0, 1200),
+    note_en: String(d.noteEn || '').slice(0, 1200),
+    lang: d.lang === 'en' ? 'en' : 'es',
+    status: 'draft',
+  };
+  const { data, error } = await supabaseAdmin.from('ad_proposals').insert(row).select('*').single();
+  if (error) return null;
+  return data as Proposal;
+}
+
+export async function listProposals(limit = 100): Promise<Proposal[]> {
+  const { data } = await supabaseAdmin.from('ad_proposals').select('*').order('created_at', { ascending: false }).limit(limit);
+  return (data || []) as Proposal[];
+}
+
+export async function getProposalByToken(token: string): Promise<Proposal | null> {
+  if (!token) return null;
+  const { data } = await supabaseAdmin.from('ad_proposals').select('*').eq('token', token).maybeSingle();
+  return (data as Proposal) || null;
+}
+
+export async function deleteProposal(id: string) {
+  await supabaseAdmin.from('ad_proposals').delete().eq('id', id);
+}
+
+export async function markProposalSent(id: string) {
+  await supabaseAdmin.from('ad_proposals').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', id);
+}
+
+// Suma una vista (cuando el cliente abre su propuesta). Silencioso.
+export async function bumpProposalView(token: string) {
+  try {
+    const p = await getProposalByToken(token);
+    if (p) await supabaseAdmin.from('ad_proposals').update({ views: (p.views || 0) + 1 }).eq('id', p.id);
+  } catch {}
+}
+
+// Convierte una fila de BD en el overlay de cliente para buildMediaKit.
+export function proposalToClient(p: Proposal): ProposalClient {
+  return { company: p.company, contact: p.contact_name, email: p.email, packageId: p.package_id, noteEs: p.note_es, noteEn: p.note_en };
 }

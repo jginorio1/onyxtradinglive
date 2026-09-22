@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { buildMediaKit } from '@/lib/mediakit';
+import { buildMediaKit, getProposalByToken, proposalToClient, bumpProposalView } from '@/lib/mediakit';
 import PrintButton from './PrintButton';
 import { serverLang } from '@/lib/locale';
 
@@ -11,12 +11,18 @@ const unit = (u: string) => (u === 'month' ? '/mo' : u === 'cpm' ? ' CPM' : u ==
 // Documento imprimible (una sola página web, dos secciones de idioma). Diseñado
 // para "Guardar como PDF" desde el navegador. Colores claros fijos (los PDFs son
 // documentos, no dependen del tema de la app).
-export default async function ProposalDoc() {
-  const es = serverLang() === 'es';
-  const kit = await buildMediaKit();
+// Con ?t=TOKEN se personaliza para un cliente concreto (portada + nota + paquete).
+export default async function ProposalDoc({ searchParams }: { searchParams?: { t?: string } }) {
+  const token = (searchParams?.t || '').trim();
+  const proposal = token ? await getProposalByToken(token) : null;
+  if (proposal) bumpProposalView(token); // suma una vista (silencioso, no bloquea)
+  const client = proposal ? proposalToClient(proposal) : null;
+  const es = proposal ? proposal.lang !== 'en' : serverLang() === 'es';
+  const kit = await buildMediaKit({ client });
   const nf = (n: number) => n.toLocaleString('en-US');
   const date = new Date().toLocaleDateString(es ? 'es-ES' : 'en-US', { year: 'numeric', month: 'long' });
   const { totals, groups, audience, packages, branding, disclaimer } = kit;
+  const cl = kit.client;
   const t = audience.tiers;
   const donut = `conic-gradient(#c98a12 0 ${t.t1}%, #7b4fd0 ${t.t1}% ${t.t1 + t.t2}%, #2f9e63 ${t.t1 + t.t2}% 100%)`;
 
@@ -31,8 +37,16 @@ export default async function ProposalDoc() {
           <div className="mk-kicker">{tr('Kit de medios · Propuesta de publicidad', 'Media Kit · Advertising proposal')}</div>
           <h1>{tr('Llega a traders con intención de compra', 'Reach traders with buying intent')}</h1>
           <p className="mk-sub">{L ? branding.headlineEs : branding.headlineEn}</p>
+          {cl?.company && (
+            <div className="mk-for">{tr('Preparado para', 'Prepared for')}: <b>{cl.company}</b>{cl.contact ? ` · ${cl.contact}` : ''}</div>
+          )}
           <div className="mk-date">{date}</div>
         </div>
+
+        {/* Nota personal al cliente (si la propuesta es dirigida) */}
+        {cl && (L ? cl.noteEs : cl.noteEn) && (
+          <div className="mk-note">{L ? cl.noteEs : cl.noteEn}</div>
+        )}
 
         {/* Quiénes somos */}
         <h2>{tr('Quiénes somos', 'Who we are')}</h2>
@@ -79,14 +93,18 @@ export default async function ProposalDoc() {
         {/* Paquetes */}
         <h2>{tr('Paquetes', 'Packages')}</h2>
         <div className="mk-packs">
-          {packages.map((p) => (
-            <div key={p.id} className="mk-pack">
-              <div className="mk-pack-name">{L ? p.es : p.en}</div>
-              {branding.showPrices && <div className="mk-pack-price">{p.priceMonthly > 0 ? `$${nf(p.priceMonthly)}/mo` : tr('A medida', 'Custom')}</div>}
-              <div className="mk-pack-desc">{L ? p.descEs : p.descEn}</div>
-              {p.estImpressions > 0 && <div className="mk-pack-imp">~{nf(p.estImpressions)} {tr('impresiones est.', 'est. impressions')}</div>}
-            </div>
-          ))}
+          {packages.map((p) => {
+            const rec = cl?.packageId && p.id === cl.packageId;
+            return (
+              <div key={p.id} className={'mk-pack' + (rec ? ' mk-pack-rec' : '')}>
+                {rec && <div className="mk-pack-tag">{tr('Recomendado para ti', 'Recommended for you')}</div>}
+                <div className="mk-pack-name">{L ? p.es : p.en}</div>
+                {branding.showPrices && <div className="mk-pack-price">{p.priceMonthly > 0 ? `$${nf(p.priceMonthly)}/mo` : tr('A medida', 'Custom')}</div>}
+                <div className="mk-pack-desc">{L ? p.descEs : p.descEn}</div>
+                {p.estImpressions > 0 && <div className="mk-pack-imp">~{nf(p.estImpressions)} {tr('impresiones est.', 'est. impressions')}</div>}
+              </div>
+            );
+          })}
         </div>
 
         {/* Contacto */}
@@ -117,7 +135,11 @@ export default async function ProposalDoc() {
         .mk-kicker { color:#e8b64c; font-size:12px; font-weight:700; letter-spacing:.05em; margin-top:16px; text-transform:uppercase; }
         .mk-hero h1 { font-size:27px; margin:8px 0 6px; color:#fff; }
         .mk-sub { color:#c9d3e6; font-size:14px; margin:0; max-width:560px; }
+        .mk-for { color:#fff; font-size:13px; margin-top:12px; background:rgba(232,182,76,.16); border:1px solid rgba(232,182,76,.5); border-radius:8px; padding:7px 12px; display:inline-block; }
         .mk-date { color:#8b97b3; font-size:12px; margin-top:14px; }
+        .mk-note { background:#faf4e6; border:1px solid #e8b64c66; border-left:4px solid #e8b64c; border-radius:8px; padding:12px 14px; font-size:13px; color:#5a4a24; margin:16px 0 4px; white-space:pre-wrap; }
+        .mk-pack-rec { border:2px solid #e8b64c; box-shadow:0 4px 14px rgba(232,182,76,.25); }
+        .mk-pack-tag { background:#e8b64c; color:#0b0f1e; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; border-radius:20px; padding:2px 8px; display:inline-block; margin-bottom:6px; }
         .mk-doc h2 { font-size:16px; color:#0b0f1e; border-bottom:2px solid #e8b64c; padding-bottom:4px; margin:24px 0 10px; display:inline-block; }
         .mk-doc p { font-size:13.5px; margin:0 0 10px; }
         .mk-small { font-size:12.5px; color:#556; }
