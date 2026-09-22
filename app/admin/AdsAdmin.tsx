@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
+import { Hint } from '@/app/components/HintPop';
+import GuidePanel, { type GuideStep } from '@/app/components/GuidePanel';
 
 type Slot = { key: string; es: string; en: string; size: string; page: string };
 type Rate = Slot & { price: number; unit: 'week' | 'month' | 'cpm' };
@@ -59,11 +61,22 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   const ctr = (c: Campaign) => (c.impressions > 0 ? ((c.clicks / c.impressions) * 100).toFixed(1) + '%' : '—');
   const stColor: Record<string, string> = { active: '#34e2a0', paused: '#f5b23e', draft: '#7c8cff', pending: '#e0a92e', rejected: '#ef6262', scheduled: '#7c8cff', ended: 'var(--mut)' };
 
+  const guideSteps: GuideStep[] = [
+    { target: '[data-guide="review"]', title: L('1 · Revisar artes', '1 · Review creatives'), body: L('Cuando un anunciante paga en /publicidad, su banner NO sale live: espera aquí tu aprobación. Revisa que el arte y el enlace sean apropiados y aprueba o rechaza. Sin clientes todavía, esto estará vacío.', 'When an advertiser pays on /publicidad, their banner does NOT go live: it waits here for your approval. Check the creative and link, then approve or reject. With no clients yet, this is empty.') },
+    { target: '[data-guide="settings"]', title: L('2 · Ajustes', '2 · Settings'), body: L('Aquí decides qué se muestra en un hueco vacío. Sin anunciantes, se ve tu anuncio de "Pro" (no queda vacío). El relleno programático es opcional (solo si tienes AdSense/Ezoic). El aviso de riesgo ya viene listo.', 'Here you decide what shows in an empty slot. With no advertisers, your "Pro" ad shows (never blank). Programmatic fill is optional (only if you have AdSense/Ezoic). The risk disclaimer is ready.') },
+    { target: '[data-guide="rates"]', title: L('3 · Poner precios', '3 · Set prices'), body: L('Define cuánto cobras por cada espacio y tamaño. Es tu tarifario: lo que verá el anunciante en /publicidad. Ponlo una vez y guarda.', 'Set how much you charge per space and size. This is your rate card: what advertisers see on /publicidad. Set once and save.') },
+    { target: '[data-guide="campaign"]', title: L('4 · Crear campaña a mano', '4 · Create a campaign manually'), body: L('Si vendiste un espacio por fuera (WhatsApp, correo), créalo aquí: sube el banner, pon el enlace y actívalo. También llegan solas desde /publicidad.', 'If you sold a space off-platform (WhatsApp, email), create it here: upload the banner, set the link, activate. They also arrive on their own from /publicidad.') },
+    { target: '[data-guide="partners"]', title: L('5 · Directorio de socios (CPA)', '5 · Partner directory (CPA)'), body: L('El ángulo que más rinde sin anunciantes: brokers y prop firms que te pagan por cada registro. Añádelos aquí y aparecen en /socios con tu enlace afiliado. Empieza por aquí.', 'The highest-yield angle without advertisers: brokers and prop firms that pay you per signup. Add them here and they appear on /socios with your affiliate link. Start here.') },
+  ];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div>
-        <h2 style={{ fontSize: 20, margin: '0 0 2px' }}>{L('Espacios patrocinados', 'Sponsored spaces')}</h2>
-        <div className="muted" style={{ fontSize: 13 }}>{L('Vende banners por ubicación y tamaño. Solo se muestran en la web y solo a usuarios del plan gratis.', 'Sell banners by placement and size. Shown only on web and only to free-plan users.')}</div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <h2 style={{ fontSize: 20, margin: '0 0 2px' }}>{L('Espacios patrocinados', 'Sponsored spaces')}</h2>
+          <div className="muted" style={{ fontSize: 13 }}>{L('Vende banners por ubicación y tamaño. Solo se muestran en la web y solo a usuarios del plan gratis.', 'Sell banners by placement and size. Shown only on web and only to free-plan users.')}</div>
+        </div>
+        <GuidePanel storageKey="ads" title={L('Guía de Publicidad', 'Advertising guide')} steps={guideSteps} es={es} />
       </div>
 
       {/* Interruptores globales */}
@@ -79,9 +92,10 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       </div>
 
       {/* Cola de revisión de artes (F3) */}
-      <div style={{ ...box, borderColor: pending.length ? 'var(--brand)' : 'var(--line)' }}>
+      <div data-guide="review" style={{ ...box, borderColor: pending.length ? 'var(--brand)' : 'var(--line)' }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
           {L('Revisión de artes', 'Creative review')}
+          <Hint text={L('Los anuncios pagados en /publicidad esperan aquí tu aprobación antes de salir live. Revisa el arte y el enlace, y aprueba o rechaza. Sin clientes todavía, esto está vacío.', 'Ads paid on /publicidad wait here for your approval before going live. Check the creative and link, then approve or reject. With no clients yet, this is empty.')} />
           {pending.length > 0 && <span style={{ fontSize: 11, fontWeight: 800, background: 'var(--brand)', color: '#1a1400', borderRadius: 20, padding: '2px 9px' }}>{pending.length}</span>}
         </div>
         {pending.length === 0 ? <div className="muted" style={{ fontSize: 13 }}>{L('Nada por revisar. Las campañas pagadas en autoservicio esperan aquí tu aprobación antes de salir live.', 'Nothing to review. Paid self-serve campaigns wait here for your approval before going live.')}</div> : (
@@ -105,8 +119,10 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       </div>
 
       {/* Ajustes pro (F3/F5/F6) */}
-      <div style={box}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>{L('Ajustes de monetización', 'Monetization settings')}</div>
+      <div data-guide="settings" style={box}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>{L('Ajustes de monetización', 'Monetization settings')}
+          <Hint text={L('Controlas qué se muestra en un hueco vacío (tu anuncio de Pro o una red externa), el tope de veces que un visitante ve el mismo anuncio, y el aviso de riesgo de los anuncios financieros. Sin clientes, no tienes que tocar nada.', 'You control what shows in an empty slot (your Pro ad or an external network), the cap on how many times a visitor sees the same ad, and the risk disclaimer on financial ads. With no clients, you don’t need to touch anything.')} />
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 10 }}>
           <div onClick={() => patch({ autoApprove: !cfg.autoApprove }, L('Guardado.', 'Saved.'))} style={{ ...box, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <div><div style={{ fontWeight: 600, fontSize: 13 }}>{L('Auto-aprobar artes', 'Auto-approve creatives')}</div><div className="muted" style={{ fontSize: 11 }}>{L('NO recomendado. Si está OFF, tú revisas cada anuncio.', 'Not recommended. If OFF, you review each ad.')}</div></div>
@@ -138,9 +154,11 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       </div>
 
       {/* Tarifario editable */}
-      <div style={box}>
+      <div data-guide="rates" style={box}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>{L('Tarifario (precio por ubicación y tamaño)', 'Rate card (price by placement & size)')}</div>
+          <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>{L('Tarifario (precio por ubicación y tamaño)', 'Rate card (price by placement & size)')}
+            <Hint text={L('El precio de cada espacio. Es lo que verá el anunciante en /publicidad. Edítalo y da "Guardar precios". Ponlo una vez.', 'The price of each space. This is what advertisers see on /publicidad. Edit it and hit "Save prices". Set once.')} />
+          </div>
           <button className="btn btn-primary" onClick={saveRates} disabled={busy === 'cfg'} style={{ fontSize: 12 }}>{L('Guardar precios', 'Save prices')}</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -165,8 +183,10 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       </div>
 
       {/* Nueva / editar campaña */}
-      <div style={box}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>{form.id ? L('Editar campaña', 'Edit campaign') : L('Nueva campaña', 'New campaign')}</div>
+      <div data-guide="campaign" style={box}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>{form.id ? L('Editar campaña', 'Edit campaign') : L('Nueva campaña', 'New campaign')}
+          <Hint text={L('Crea un anuncio a mano (por ejemplo, si vendiste el espacio por WhatsApp). Elige ubicación, sube el banner, pon el enlace y actívalo. Puedes segmentar por país, tier, dispositivo y modelo de cobro.', 'Create an ad manually (e.g. if you sold the space over WhatsApp). Pick placement, upload the banner, set the link and activate. You can target by country, tier, device and pricing model.')} />
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
           <div><div style={lbl}>{L('Anunciante', 'Advertiser')}</div><input value={form.advertiser} onChange={(e) => setForm({ ...form, advertiser: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
           <div><div style={lbl}>{L('Ubicación', 'Placement')}</div><select value={form.slot_key} onChange={(e) => setForm({ ...form, slot_key: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="">{L('elige…', 'choose…')}</option>{slots.map((s) => <option key={s.key} value={s.key}>{(es ? s.es : s.en) + ' · ' + s.size}</option>)}</select></div>
@@ -220,8 +240,10 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       </div>
 
       {/* Directorio de partners (CPA) — F6 */}
-      <div style={box}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{L('Directorio de socios (CPA)', 'Partner directory (CPA)')}</div>
+      <div data-guide="partners" style={box}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>{L('Directorio de socios (CPA)', 'Partner directory (CPA)')}
+          <Hint text={L('Aquí ganas SIN anunciantes: añade brokers y prop firms con tu enlace afiliado y aparecen en /socios. Cuando alguien se registra por tu enlace, te pagan comisión. Es lo primero que conviene llenar.', 'This earns you money WITHOUT advertisers: add brokers and prop firms with your affiliate link and they show on /socios. When someone signs up through your link, you get a commission. Fill this first.')} />
+        </div>
         <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{L('Brokers y prop firms que pagan por registro. Se listan en /socios. El ángulo que más rinde en este nicho.', 'Brokers and prop firms that pay per signup. Listed on /socios. The highest-yield angle in this niche.')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
           <div><div style={lbl}>{L('Nombre', 'Name')}</div><input value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
