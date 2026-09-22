@@ -173,6 +173,25 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
   const cfg = await newsPilotSettings();
   if (!cfg.enabled && !force) return { ran: false, reason: 'disabled' };
 
+  // ===== TOPE DIARIO A PRUEBA DE TODO =====
+  // Contador propio en app_settings, INDEPENDIENTE del blog. Se reinicia cada día
+  // (UTC) y, al empezar un día nuevo, se SIEMBRA con los artículos ya publicados hoy
+  // (por si tras un despliegue el día ya traía artículos). Aunque la consulta del
+  // tope basada en el blog fallara o contara mal, este contador jamás deja pasar del
+  // máximo por día. Es la red que hoy faltaba (publicaba de más pese al tope).
+  const dayKey = new Date().toISOString().slice(0, 10);
+  const dayRec = await getSetting<{ day: string; count: number }>('news_pilot_day', { day: '', count: 0 });
+  let dayCount = dayRec.day === dayKey ? (dayRec.count || 0) : 0;
+  if (dayRec.day !== dayKey) {
+    try {
+      const since0 = new Date(); since0.setUTCHours(0, 0, 0, 0);
+      const { count: c } = await supabaseAdmin.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('published_at', since0.toISOString());
+      if (typeof c === 'number') dayCount = c;
+    } catch {}
+    try { await saveSetting('news_pilot_day', { day: dayKey, count: dayCount }); } catch {}
+  }
+  if (!dryRun && dayCount >= (cfg.maxPerDay || 3)) return { ran: true, reason: 'cap_reached', posted: 0 };
+
   const { count, lastMs } = await todayStats();
   if (!dryRun && count >= (cfg.maxPerDay || 3)) return { ran: true, reason: 'cap_reached', posted: 0 };
   // CERROJO ANTI-CARRERA (defensa en capas): la generación con IA tarda ~10-30s, así que
@@ -300,5 +319,6 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
     } catch (e) { await logError('news_pilot_email', e); }
   }
 
+  try { await saveSetting('news_pilot_day', { day: dayKey, count: dayCount + 1 }); } catch {}
   return { ran: true, reason: auto ? 'posted' : 'drafted', posted: auto ? 1 : 0, candidate: pick.title, fresh: fresh.length, ...diag };
 }
