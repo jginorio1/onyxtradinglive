@@ -161,6 +161,9 @@ export default async function BlogArticle({ params }: { params: { slug: string }
         </div>
       )}
 
+      {/* Espacio patrocinado · al pie del artículo (medio rectángulo) */}
+      <AdSlot slot="article_halfpage" lang={es ? 'es' : 'en'} />
+
       {/* Sigue leyendo (enlazado interno) */}
       {related.length > 0 && (
         <div style={{ marginTop: 30 }}>

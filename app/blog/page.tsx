@@ -106,6 +106,9 @@ export default async function BlogIndex() {
       ) : (
         <BlogList posts={posts} es={es} pageSize={12} />
       )}
+
+      {/* Anuncio in-feed al pie del listado del blog. */}
+      <AdSlot slot="blog_infeed" lang={es ? 'es' : 'en'} />
     </div>
   );
 }

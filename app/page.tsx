@@ -7,6 +7,7 @@ import SectionNav from './SectionNav';
 import PlansCompareTable from './PlansCompareTable';
 import PlanCards from './PlanCards';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import AdSlot from '@/app/components/AdSlot';
 import { planFacts, trialLine } from '@/lib/planFacts';
 
 type Lang = 'es' | 'en';
@@ -920,6 +921,9 @@ export default function Home() {
         <div style={{ color: 'var(--brand)', marginBottom: 8, display: 'flex', justifyContent: 'center' }}><OnyxIcon name="guardian" size={34} /></div>
         <h2>{t.secT}</h2><p className="muted" style={{ fontSize: 17, marginTop: 10 }}>{t.secS}</p>
       </div>
+
+      {/* Anuncio de la portada (leaderboard). Oculto a usuarios de pago y en nativo. */}
+      <div className="wrap"><AdSlot slot="landing_top" lang={lang} /></div>
 
       {/* PRICING */}
       <div id="pricing" className="wrap section">
