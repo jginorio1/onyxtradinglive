@@ -14,7 +14,7 @@ const emptyPartner = { id: '', name: '', logo_url: '', blurb_es: '', blurb_en: '
 
 export default function AdsAdmin({ es }: { es: boolean }) {
   const L = (a: string, b: string) => (es ? a : b);
-  const [cfg, setCfg] = useState<any>({ enabled: true, nativeEnabled: false, autoApprove: false, freqCap: 3, programmatic: { enabled: false, code: '' }, riskDisclaimer: { es: '', en: '' } });
+  const [cfg, setCfg] = useState<any>({ enabled: true, nativeEnabled: false, autoApprove: false, partnerFill: true, freqCap: 3, programmatic: { enabled: false, code: '' }, riskDisclaimer: { es: '', en: '' } });
   const [rates, setRates] = useState<Rate[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [camps, setCamps] = useState<Campaign[]>([]);
@@ -143,6 +143,10 @@ export default function AdsAdmin({ es }: { es: boolean }) {
           <div onClick={() => patch({ autoApprove: !cfg.autoApprove }, L('Guardado.', 'Saved.'))} style={{ ...box, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
             <div><div style={{ fontWeight: 600, fontSize: 13 }}>{L('Auto-aprobar artes', 'Auto-approve creatives')}</div><div className="muted" style={{ fontSize: 11 }}>{L('NO recomendado. Si está OFF, tú revisas cada anuncio.', 'Not recommended. If OFF, you review each ad.')}</div></div>
             <span style={{ fontSize: 12, fontWeight: 700, color: cfg.autoApprove ? '#f5b23e' : '#34e2a0' }}>{cfg.autoApprove ? 'ON' : 'OFF'}</span>
+          </div>
+          <div onClick={() => patch({ partnerFill: !cfg.partnerFill }, L('Guardado.', 'Saved.'))} style={{ ...box, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <div><div style={{ fontWeight: 600, fontSize: 13 }}>{L('Rellenar con socios', 'Fill with partners')}</div><div className="muted" style={{ fontSize: 11 }}>{L('ON = los huecos vacíos muestran a tus socios del directorio (CPA) con tu enlace afiliado, en vez del anuncio de Pro.', 'ON = empty slots show your directory partners (CPA) with your affiliate link, instead of the Pro ad.')}</div></div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: cfg.partnerFill ? '#34e2a0' : 'var(--mut)' }}>{cfg.partnerFill ? 'ON' : 'OFF'}</span>
           </div>
           <div style={{ ...box }}>
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{L('Tope de impresiones/visitante/día', 'Impression cap/visitor/day')}</div>

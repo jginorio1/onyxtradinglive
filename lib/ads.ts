@@ -82,6 +82,7 @@ export type AdsConfig = {
   programmatic: { enabled: boolean; code: string };  // relleno de red (F6)
   riskDisclaimer: { es: string; en: string };        // aviso financiero
   freqCap: number;                       // impresiones máx por visitante/campaña/día (0 = sin tope)
+  partnerFill: boolean;                  // rellenar huecos vacíos con socios del directorio (CPA) en vez del house ad de Pro
 };
 const DEFAULT_CFG: AdsConfig = {
   enabled: true, nativeEnabled: false, rates: {}, autoApprove: false,
@@ -91,6 +92,7 @@ const DEFAULT_CFG: AdsConfig = {
     en: 'Leveraged trading products carry a high risk of loss. This ad is not investment advice.',
   },
   freqCap: 3,
+  partnerFill: true,
 };
 
 export async function getAdsConfig(): Promise<AdsConfig> {
@@ -103,6 +105,7 @@ export async function getAdsConfig(): Promise<AdsConfig> {
     programmatic: { enabled: c.programmatic?.enabled === true, code: c.programmatic?.code || '' },
     riskDisclaimer: { es: c.riskDisclaimer?.es || DEFAULT_CFG.riskDisclaimer.es, en: c.riskDisclaimer?.en || DEFAULT_CFG.riskDisclaimer.en },
     freqCap: typeof c.freqCap === 'number' ? c.freqCap : DEFAULT_CFG.freqCap,
+    partnerFill: c.partnerFill !== false,
   };
 }
 export async function saveAdsConfig(c: Partial<AdsConfig>) {
@@ -133,6 +136,7 @@ export async function viewerIsPaid(): Promise<boolean> {
 
 export type ServedAd =
   | { kind: 'paid'; id: string; creative: string; link: string; alt: string; size: string; disclaimer?: string }
+  | { kind: 'partner'; id: string; name: string; logo: string; blurb: string; link: string; size: string }
   | { kind: 'house'; id: string; size: string }
   | { kind: 'programmatic'; id: 'net'; size: string; code: string }
   | null;
@@ -206,7 +210,20 @@ export async function pickAd(
       return { kind: 'paid', id: chosen.id, creative: chosen.creative_url, link: chosen.link_url, alt: chosen.alt || '', size: slot.size, disclaimer: disc };
     }
   } catch {}
-  // Sin campaña pagada → relleno programático (si está activo) o house ad.
+  // Sin campaña pagada → primero un socio del directorio (CPA), si está activado.
+  // Así The5ers, FTMO, etc. aparecen en TODOS los huecos y cada clic paga comisión.
+  if (cfg.partnerFill) {
+    try {
+      const { data: parts } = await supabaseAdmin.from('ad_partners')
+        .select('id,name,logo_url,blurb_es,blurb_en,geo').eq('status', 'active').limit(50);
+      const live = (parts || []).filter((p: any) => geoMatch(p.geo, '', '', country));
+      if (live.length) {
+        const p = live[Math.floor(Math.random() * live.length)];
+        return { kind: 'partner', id: p.id, name: p.name, logo: p.logo_url || '', blurb: (lang === 'es' ? p.blurb_es : p.blurb_en) || '', link: `/api/ads/partner?id=${p.id}`, size: slot.size };
+      }
+    } catch {}
+  }
+  // Si no hay socios → relleno programático (si está activo) o house ad de Pro.
   if (cfg.programmatic.enabled && cfg.programmatic.code.trim()) {
     return { kind: 'programmatic', id: 'net', size: slot.size, code: cfg.programmatic.code };
   }

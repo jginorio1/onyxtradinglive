@@ -19,7 +19,7 @@ export async function GET() {
   const { data: advertisers } = await supabaseAdmin.from('ad_advertisers').select('id,email,name,company,kind,balance,status,created_at').order('created_at', { ascending: false }).limit(100);
   const slots = AD_SLOTS.map((s) => ({ key: s.key, es: s.es, en: s.en, size: s.size, page: s.page, unit: s.unit, model: s.model || 'flat' }));
   return NextResponse.json({
-    config: { enabled: cfg.enabled, nativeEnabled: cfg.nativeEnabled, autoApprove: cfg.autoApprove, programmatic: cfg.programmatic, riskDisclaimer: cfg.riskDisclaimer, freqCap: cfg.freqCap },
+    config: { enabled: cfg.enabled, nativeEnabled: cfg.nativeEnabled, autoApprove: cfg.autoApprove, programmatic: cfg.programmatic, riskDisclaimer: cfg.riskDisclaimer, freqCap: cfg.freqCap, partnerFill: cfg.partnerFill },
     rates, slots, sizes: IAB_SIZES, campaigns: data || [], partners: partners || [], advertisers: advertisers || [],
   });
 }
@@ -33,6 +33,7 @@ export async function PATCH(req: Request) {
   if (typeof b.enabled === 'boolean') patch.enabled = b.enabled;
   if (typeof b.nativeEnabled === 'boolean') patch.nativeEnabled = b.nativeEnabled;
   if (typeof b.autoApprove === 'boolean') patch.autoApprove = b.autoApprove;
+  if (typeof b.partnerFill === 'boolean') patch.partnerFill = b.partnerFill;
   if (typeof b.freqCap === 'number') patch.freqCap = Math.max(0, Math.round(b.freqCap));
   if (b.programmatic && typeof b.programmatic === 'object') patch.programmatic = { enabled: b.programmatic.enabled === true, code: String(b.programmatic.code || '').slice(0, 4000) };
   if (b.riskDisclaimer && typeof b.riskDisclaimer === 'object') patch.riskDisclaimer = { es: String(b.riskDisclaimer.es || '').slice(0, 500), en: String(b.riskDisclaimer.en || '').slice(0, 500) };

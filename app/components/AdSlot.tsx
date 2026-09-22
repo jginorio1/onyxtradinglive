@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 // financieros, muestra un aviso de riesgo. En la app NATIVA se oculta por CSS.
 type Served =
   | { kind: 'paid'; id: string; creative: string; link: string; alt: string; size: string; disclaimer?: string }
+  | { kind: 'partner'; id: string; name: string; logo: string; blurb: string; link: string; size: string }
   | { kind: 'house'; id: string; size: string }
   | { kind: 'programmatic'; id: 'net'; size: string; code: string }
   | null;
@@ -58,6 +59,26 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
       <div className="onyx-ad" style={wrap} ref={ref}>
         {label && tag}
         <div dangerouslySetInnerHTML={{ __html: ad.code }} />
+      </div>
+    );
+  }
+
+  // Socio del directorio (CPA): broker/prop firm con tu enlace afiliado. Rellena
+  // los huecos vacíos y cada clic te paga comisión. Va etiquetado y con rel sponsored.
+  if (ad.kind === 'partner') {
+    return (
+      <div className="onyx-ad" style={wrap} ref={ref}>
+        {label && tag}
+        <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 16px', background: 'color-mix(in srgb, var(--brand) 8%, transparent)' }}>
+          {ad.logo
+            ? <img src={ad.logo} alt={ad.name} loading="lazy" decoding="async" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'contain', flex: 'none', background: '#ffffff10' }} />
+            : <span style={{ width: 40, height: 40, borderRadius: 8, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, background: 'var(--line)' }}>{ad.name?.[0] || '?'}</span>}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{ad.name}</div>
+            {ad.blurb && <div className="muted" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{ad.blurb}</div>}
+          </div>
+          <span style={{ color: 'var(--brand)', fontSize: 13.5, fontWeight: 700, flex: 'none', marginLeft: 'auto' }}>{L('Ver →', 'View →')}</span>
+        </a>
       </div>
     );
   }
