@@ -17,14 +17,32 @@ export default function BuyForm({ slots, es }: { slots: Slot[]; es: boolean }) {
   const [periods, setPeriods] = useState(1);
   const [advertiser, setAdvertiser] = useState('');
   const [contact, setContact] = useState('');
-  const [creative, setCreative] = useState('');
+  const [creative, setCreative] = useState('');       // URL alojada por nosotros
+  const [creativePath, setCreativePath] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [link, setLink] = useState('');
   const [alt, setAlt] = useState('');
   const [geo, setGeo] = useState('all');
+  const [geoTier, setGeoTier] = useState('');
+  const [device, setDevice] = useState('all');
+  const [category, setCategory] = useState('general');
   const [lang, setLang] = useState('all');
   const [startsAt, setStartsAt] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+
+  async function onFile(f: File | null) {
+    if (!f || !slot) return;
+    setErr(''); setUploading(true); setCreative(''); setCreativePath('');
+    try {
+      const fd = new FormData(); fd.append('file', f); fd.append('slot', slot.key);
+      const r = await fetch('/api/ads/upload', { method: 'POST', body: fd });
+      const j = await r.json();
+      if (j.ok && j.url) { setCreative(j.url); setCreativePath(j.path || ''); }
+      else setErr(j.error || L('No se pudo subir el arte.', 'Could not upload the creative.'));
+    } catch { setErr(L('Error subiendo el arte.', 'Error uploading the creative.')); }
+    setUploading(false);
+  }
 
   const slot = useMemo(() => buyable.find((s) => s.key === slotKey) || buyable[0], [buyable, slotKey]);
   const unitWord = slot?.unit === 'month' ? L('mes(es)', 'month(s)') : L('semana(s)', 'week(s)');
@@ -37,12 +55,13 @@ export default function BuyForm({ slots, es }: { slots: Slot[]; es: boolean }) {
   async function pay() {
     setErr('');
     if (!advertiser.trim() || !contact.trim()) { setErr(L('Pon tu nombre y contacto.', 'Enter your name and contact.')); return; }
-    if (!/^https?:\/\//i.test(creative) || !/^https?:\/\//i.test(link)) { setErr(L('La imagen y el enlace deben empezar por http.', 'Image and link must start with http.')); return; }
+    if (!creative) { setErr(L('Sube el arte del banner primero.', 'Upload the banner creative first.')); return; }
+    if (!/^https?:\/\//i.test(link)) { setErr(L('El enlace debe empezar por http.', 'Link must start with http.')); return; }
     setBusy(true);
     try {
       const r = await fetch('/api/ads/checkout', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ slot: slotKey, periods, advertiser, contact, creative_url: creative, link_url: link, alt: alt || advertiser, geo, lang, starts_at: startsAt || undefined }),
+        body: JSON.stringify({ slot: slotKey, periods, advertiser, contact, creative_url: creative, creative_path: creativePath, link_url: link, alt: alt || advertiser, geo, geo_tier: geoTier, device, category, lang, starts_at: startsAt || undefined }),
       });
       const j = await r.json();
       if (j.ok && j.url) { window.location.href = j.url; return; }
@@ -73,8 +92,25 @@ export default function BuyForm({ slots, es }: { slots: Slot[]; es: boolean }) {
         </div>
         <div><label style={lbl}>{L('Tu nombre / marca', 'Your name / brand')}</label><input value={advertiser} onChange={(e) => setAdvertiser(e.target.value)} style={{ margin: 0, width: '100%' }} /></div>
         <div><label style={lbl}>{L('Email de contacto', 'Contact email')}</label><input value={contact} onChange={(e) => setContact(e.target.value)} placeholder="tu@correo.com" style={{ margin: 0, width: '100%' }} /></div>
-        <div><label style={lbl}>{L('URL de la imagen (creativo)', 'Image URL (creative)')}</label><input value={creative} onChange={(e) => setCreative(e.target.value)} placeholder={`https://… (${slot?.size || ''})`} style={{ margin: 0, width: '100%' }} /></div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={lbl}>{L(`Arte del banner (${slot?.size || ''})`, `Banner creative (${slot?.size || ''})`)}</label>
+          <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={(e) => onFile(e.target.files?.[0] || null)} style={{ margin: 0, width: '100%', fontSize: 13 }} />
+          <div style={{ fontSize: 11.5, marginTop: 4, color: uploading ? '#c98a00' : creative ? '#2e9e4f' : 'var(--mut)' }}>
+            {uploading ? L('Subiendo y validando…', 'Uploading and validating…') : creative ? L('✓ Arte válido y guardado', '✓ Creative valid and saved') : L(`PNG/JPG/GIF/WebP exactamente ${slot?.size || ''} px`, `PNG/JPG/GIF/WebP exactly ${slot?.size || ''} px`)}
+          </div>
+          {creative && <img src={creative} alt="preview" style={{ maxWidth: '100%', marginTop: 8, borderRadius: 8, border: '1px solid var(--line)' }} />}
+        </div>
         <div><label style={lbl}>{L('Enlace de destino', 'Destination link')}</label><input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…" style={{ margin: 0, width: '100%' }} /></div>
+        <div>
+          <label style={lbl}>{L('Categoría', 'Category')}</label>
+          <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ margin: 0, width: '100%' }}>
+            <option value="general">{L('General', 'General')}</option>
+            <option value="broker">Broker</option>
+            <option value="propfirm">{L('Prop firm', 'Prop firm')}</option>
+            <option value="tool">{L('Herramienta', 'Tool')}</option>
+            <option value="education">{L('Educación', 'Education')}</option>
+          </select>
+        </div>
         <div><label style={lbl}>{L('Texto alternativo (alt)', 'Alt text')}</label><input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder={advertiser} style={{ margin: 0, width: '100%' }} /></div>
         <div><label style={lbl}>{L('Fecha de inicio (opcional)', 'Start date (optional)')}</label><input type="date" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} style={{ margin: 0, width: '100%' }} /></div>
         <div>
@@ -83,7 +119,22 @@ export default function BuyForm({ slots, es }: { slots: Slot[]; es: boolean }) {
             <option value="all">{L('Todos', 'All')}</option><option value="es">Español</option><option value="en">English</option>
           </select>
         </div>
-        <div><label style={lbl}>{L('País (ISO, coma) o "all"', 'Country (ISO, comma) or "all"')}</label><input value={geo} onChange={(e) => setGeo(e.target.value)} placeholder="all · US,MX,ES" style={{ margin: 0, width: '100%' }} /></div>
+        <div>
+          <label style={lbl}>{L('Región (tier)', 'Region (tier)')}</label>
+          <select value={geoTier} onChange={(e) => setGeoTier(e.target.value)} style={{ margin: 0, width: '100%' }}>
+            <option value="">{L('Todas', 'All')}</option>
+            <option value="t1">{L('Tier 1 (US, UK, CA, AU…)', 'Tier 1 (US, UK, CA, AU…)')}</option>
+            <option value="t2">{L('Tier 2 (ES, MX, BR, JP…)', 'Tier 2 (ES, MX, BR, JP…)')}</option>
+            <option value="t3">{L('Tier 3 (IN, PH, VN…)', 'Tier 3 (IN, PH, VN…)')}</option>
+          </select>
+        </div>
+        <div><label style={lbl}>{L('País específico (ISO) o "all"', 'Specific country (ISO) or "all"')}</label><input value={geo} onChange={(e) => setGeo(e.target.value)} placeholder="all · US,MX,ES" style={{ margin: 0, width: '100%' }} /></div>
+        <div>
+          <label style={lbl}>{L('Dispositivo', 'Device')}</label>
+          <select value={device} onChange={(e) => setDevice(e.target.value)} style={{ margin: 0, width: '100%' }}>
+            <option value="all">{L('Todos', 'All')}</option><option value="desktop">{L('Escritorio', 'Desktop')}</option><option value="mobile">{L('Móvil', 'Mobile')}</option>
+          </select>
+        </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginTop: 18, flexWrap: 'wrap' }}>

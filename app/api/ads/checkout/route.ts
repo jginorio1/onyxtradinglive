@@ -48,10 +48,16 @@ export async function POST(req: Request) {
 
     // Crea la campaña en BORRADOR (reserva el hueco durante el checkout).
     const reportToken = randomUUID();
+    const category = ['broker', 'propfirm', 'tool', 'education', 'general'].includes(b.category) ? b.category : 'general';
+    const isFinancial = category === 'broker' || category === 'propfirm';
     const { data: camp, error } = await supabaseAdmin.from('ad_campaigns').insert({
-      advertiser, contact, slot_key: slot.key, creative_url: creative, link_url: link,
+      advertiser, contact, slot_key: slot.key, creative_url: creative, creative_path: String(b.creative_path || '').slice(0, 300),
+      link_url: link,
       alt: String(b.alt || advertiser).slice(0, 300), lang: ['all', 'es', 'en'].includes(b.lang) ? b.lang : 'all',
       geo: String(b.geo || 'all').slice(0, 120) || 'all',
+      geo_tier: ['t1', 't2', 't3'].includes(b.geo_tier) ? b.geo_tier : '',
+      device: ['all', 'desktop', 'mobile'].includes(b.device) ? b.device : 'all',
+      category, disclaimer: isFinancial,
       starts_at: startIso, ends_at: endIso, weight: 1, price: amount,
       status: 'draft', source: 'selfserve', report_token: reportToken,
     }).select('id').maybeSingle();

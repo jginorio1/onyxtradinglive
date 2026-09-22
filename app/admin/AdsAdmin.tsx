@@ -7,24 +7,29 @@ type Rate = Slot & { price: number; unit: 'week' | 'month' | 'cpm' };
 type Campaign = { id: string; advertiser: string; contact: string; slot_key: string; creative_url: string; link_url: string; alt: string; lang: string; starts_at: string | null; ends_at: string | null; weight: number; price: number; status: string; impressions: number; clicks: number };
 
 const UNIT: Record<string, [string, string]> = { week: ['/ semana', '/ week'], month: ['/ mes', '/ month'], cpm: ['CPM (mil impresiones)', 'CPM (per 1k impressions)'] };
-const emptyForm = { id: '', advertiser: '', contact: '', slot_key: '', creative_url: '', link_url: '', alt: '', lang: 'all', geo: 'all', starts_at: '', ends_at: '', weight: 1, price: 0, status: 'active' };
+const emptyForm = { id: '', advertiser: '', contact: '', slot_key: '', creative_url: '', creative_path: '', link_url: '', alt: '', lang: 'all', geo: 'all', geo_tier: '', geo_exclude: '', device: 'all', category: 'general', disclaimer: false, pricing_model: 'flat', budget: 0, daily_cap: 0, starts_at: '', ends_at: '', weight: 1, price: 0, status: 'active' };
+const emptyPartner = { id: '', name: '', logo_url: '', blurb_es: '', blurb_en: '', link_url: '', category: 'broker', geo: 'all', cpa_payout: 0, featured: false, rank: 100, regulated: '', status: 'active' };
 
 export default function AdsAdmin({ es }: { es: boolean }) {
   const L = (a: string, b: string) => (es ? a : b);
-  const [cfg, setCfg] = useState<{ enabled: boolean; nativeEnabled: boolean }>({ enabled: true, nativeEnabled: false });
+  const [cfg, setCfg] = useState<any>({ enabled: true, nativeEnabled: false, autoApprove: false, freqCap: 3, programmatic: { enabled: false, code: '' }, riskDisclaimer: { es: '', en: '' } });
   const [rates, setRates] = useState<Rate[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [camps, setCamps] = useState<Campaign[]>([]);
+  const [partners, setPartners] = useState<any[]>([]);
   const [form, setForm] = useState<any>(emptyForm);
+  const [pForm, setPForm] = useState<any>(emptyPartner);
+  const [progCode, setProgCode] = useState('');
   const [busy, setBusy] = useState('');
 
   async function load() {
     try {
       const j = await (await fetch('/api/admin/ads')).json();
-      if (j.config) { setCfg(j.config); setRates(j.rates || []); setSlots(j.slots || []); setCamps(j.campaigns || []); }
+      if (j.config) { setCfg(j.config); setRates(j.rates || []); setSlots(j.slots || []); setCamps(j.campaigns || []); setPartners(j.partners || []); setProgCode(j.config.programmatic?.code || ''); }
     } catch {}
   }
   useEffect(() => { load(); }, []);
+  const pending = camps.filter((c: any) => c.status === 'pending');
 
   async function patch(body: any, okMsg: string) {
     setBusy('cfg');
@@ -52,7 +57,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   const lbl: any = { fontSize: 11.5, color: 'var(--mut)', marginBottom: 5 };
   const slotName = (k: string) => { const s = slots.find((x) => x.key === k); return s ? (es ? s.es : s.en) + ' · ' + s.size : k; };
   const ctr = (c: Campaign) => (c.impressions > 0 ? ((c.clicks / c.impressions) * 100).toFixed(1) + '%' : '—');
-  const stColor: Record<string, string> = { active: '#34e2a0', paused: '#f5b23e', draft: '#7c8cff', scheduled: '#7c8cff', ended: 'var(--mut)' };
+  const stColor: Record<string, string> = { active: '#34e2a0', paused: '#f5b23e', draft: '#7c8cff', pending: '#e0a92e', rejected: '#ef6262', scheduled: '#7c8cff', ended: 'var(--mut)' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -70,6 +75,65 @@ export default function AdsAdmin({ es }: { es: boolean }) {
         <div onClick={() => patch({ nativeEnabled: !cfg.nativeEnabled }, L('Guardado.', 'Saved.'))} style={{ ...box, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <div><div style={{ fontWeight: 700, fontSize: 13.5 }}>{L('Anuncios en la app nativa', 'Ads in the native app')}</div><div className="muted" style={{ fontSize: 12 }}>{L('Déjalo APAGADO hasta que Apple/Google aprueben.', 'Keep OFF until Apple/Google approve.')}</div></div>
           <span style={{ fontSize: 12, fontWeight: 700, color: cfg.nativeEnabled ? '#f5b23e' : 'var(--mut)' }}>{cfg.nativeEnabled ? 'ON' : 'OFF'}</span>
+        </div>
+      </div>
+
+      {/* Cola de revisión de artes (F3) */}
+      <div style={{ ...box, borderColor: pending.length ? 'var(--brand)' : 'var(--line)' }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+          {L('Revisión de artes', 'Creative review')}
+          {pending.length > 0 && <span style={{ fontSize: 11, fontWeight: 800, background: 'var(--brand)', color: '#1a1400', borderRadius: 20, padding: '2px 9px' }}>{pending.length}</span>}
+        </div>
+        {pending.length === 0 ? <div className="muted" style={{ fontSize: 13 }}>{L('Nada por revisar. Las campañas pagadas en autoservicio esperan aquí tu aprobación antes de salir live.', 'Nothing to review. Paid self-serve campaigns wait here for your approval before going live.')}</div> : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {pending.map((c: any) => (
+              <div key={c.id} style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+                {c.creative_url && <img src={c.creative_url} alt="" style={{ maxWidth: 160, maxHeight: 70, borderRadius: 6, border: '1px solid var(--line)' }} />}
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700 }}>{c.advertiser} · <span className="muted" style={{ fontWeight: 400 }}>{slotName(c.slot_key)}</span></div>
+                  <div className="muted" style={{ fontSize: 11.5 }}>{c.category} · ${c.price} · {c.contact}</div>
+                  <a href={c.link_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11.5, color: 'var(--brand)', wordBreak: 'break-all' }}>{c.link_url}</a>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn btn-primary" onClick={() => post({ action: 'approve', id: c.id }, L('Aprobada y live.', 'Approved and live.'))} style={{ fontSize: 12 }}>{L('Aprobar', 'Approve')}</button>
+                  <button className="btn btn-ghost" onClick={() => { const note = prompt(L('Motivo del rechazo (opcional):', 'Rejection reason (optional):')) || ''; post({ action: 'reject', id: c.id, review_note: note }, L('Rechazada.', 'Rejected.')); }} style={{ fontSize: 12, color: 'var(--red,#ef6262)' }}>{L('Rechazar', 'Reject')}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Ajustes pro (F3/F5/F6) */}
+      <div style={box}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>{L('Ajustes de monetización', 'Monetization settings')}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 10 }}>
+          <div onClick={() => patch({ autoApprove: !cfg.autoApprove }, L('Guardado.', 'Saved.'))} style={{ ...box, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+            <div><div style={{ fontWeight: 600, fontSize: 13 }}>{L('Auto-aprobar artes', 'Auto-approve creatives')}</div><div className="muted" style={{ fontSize: 11 }}>{L('NO recomendado. Si está OFF, tú revisas cada anuncio.', 'Not recommended. If OFF, you review each ad.')}</div></div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: cfg.autoApprove ? '#f5b23e' : '#34e2a0' }}>{cfg.autoApprove ? 'ON' : 'OFF'}</span>
+          </div>
+          <div style={{ ...box }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{L('Tope de impresiones/visitante/día', 'Impression cap/visitor/day')}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="number" min={0} value={cfg.freqCap} onChange={(e) => setCfg({ ...cfg, freqCap: Math.max(0, parseInt(e.target.value, 10) || 0) })} style={{ margin: 0, width: 70 }} />
+              <button className="btn btn-ghost" onClick={() => patch({ freqCap: cfg.freqCap }, L('Guardado.', 'Saved.'))} style={{ fontSize: 11 }}>{L('Guardar', 'Save')}</button>
+            </div>
+          </div>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>{L('Relleno programático (red externa)', 'Programmatic fallback (ad network)')}</div>
+            <span onClick={() => patch({ programmatic: { enabled: !cfg.programmatic?.enabled, code: progCode } }, L('Guardado.', 'Saved.'))} style={{ cursor: 'pointer', fontSize: 12, fontWeight: 700, color: cfg.programmatic?.enabled ? '#34e2a0' : 'var(--mut)' }}>{cfg.programmatic?.enabled ? 'ON' : 'OFF'}</span>
+          </div>
+          <div className="muted" style={{ fontSize: 11, margin: '2px 0 6px' }}>{L('Se muestra cuando ningún anunciante compró el hueco (cero impresión perdida). Pega el código de tu red (AdSense/Ezoic…).', 'Shown when no advertiser bought the slot (zero wasted impression). Paste your network code (AdSense/Ezoic…).')}</div>
+          <textarea value={progCode} onChange={(e) => setProgCode(e.target.value)} placeholder="<script>…</script>" style={{ width: '100%', minHeight: 60, fontSize: 12, fontFamily: 'monospace' }} />
+          <button className="btn btn-ghost" onClick={() => patch({ programmatic: { enabled: cfg.programmatic?.enabled, code: progCode } }, L('Código guardado.', 'Code saved.'))} style={{ fontSize: 11, marginTop: 6 }}>{L('Guardar código', 'Save code')}</button>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>{L('Aviso de riesgo financiero (broker/prop firm)', 'Financial risk disclaimer (broker/prop firm)')}</div>
+          <input value={cfg.riskDisclaimer?.es || ''} onChange={(e) => setCfg({ ...cfg, riskDisclaimer: { ...cfg.riskDisclaimer, es: e.target.value } })} placeholder="ES" style={{ margin: '0 0 6px', width: '100%', fontSize: 12 }} />
+          <input value={cfg.riskDisclaimer?.en || ''} onChange={(e) => setCfg({ ...cfg, riskDisclaimer: { ...cfg.riskDisclaimer, en: e.target.value } })} placeholder="EN" style={{ margin: 0, width: '100%', fontSize: 12 }} />
+          <button className="btn btn-ghost" onClick={() => patch({ riskDisclaimer: cfg.riskDisclaimer }, L('Aviso guardado.', 'Disclaimer saved.'))} style={{ fontSize: 11, marginTop: 6 }}>{L('Guardar aviso', 'Save disclaimer')}</button>
         </div>
       </div>
 
@@ -108,6 +172,14 @@ export default function AdsAdmin({ es }: { es: boolean }) {
           <div><div style={lbl}>{L('Ubicación', 'Placement')}</div><select value={form.slot_key} onChange={(e) => setForm({ ...form, slot_key: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="">{L('elige…', 'choose…')}</option>{slots.map((s) => <option key={s.key} value={s.key}>{(es ? s.es : s.en) + ' · ' + s.size}</option>)}</select></div>
           <div><div style={lbl}>{L('Idioma', 'Language')}</div><select value={form.lang} onChange={(e) => setForm({ ...form, lang: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="all">{L('Todos', 'All')}</option><option value="es">Español</option><option value="en">English</option></select></div>
           <div><div style={lbl}>{L('País (ISO, coma) o all', 'Country (ISO, comma) or all')}</div><input value={form.geo} onChange={(e) => setForm({ ...form, geo: e.target.value })} placeholder="all · US,MX,ES" style={{ margin: 0, width: '100%' }} /></div>
+          <div><div style={lbl}>{L('Región (tier)', 'Region (tier)')}</div><select value={form.geo_tier} onChange={(e) => setForm({ ...form, geo_tier: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="">{L('Todas', 'All')}</option><option value="t1">Tier 1</option><option value="t2">Tier 2</option><option value="t3">Tier 3</option></select></div>
+          <div><div style={lbl}>{L('Excluir países (ISO)', 'Exclude countries (ISO)')}</div><input value={form.geo_exclude} onChange={(e) => setForm({ ...form, geo_exclude: e.target.value })} placeholder="US,FR" style={{ margin: 0, width: '100%' }} /></div>
+          <div><div style={lbl}>{L('Dispositivo', 'Device')}</div><select value={form.device} onChange={(e) => setForm({ ...form, device: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="all">{L('Todos', 'All')}</option><option value="desktop">{L('Escritorio', 'Desktop')}</option><option value="mobile">{L('Móvil', 'Mobile')}</option></select></div>
+          <div><div style={lbl}>{L('Categoría', 'Category')}</div><select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="general">General</option><option value="broker">Broker</option><option value="propfirm">Prop firm</option><option value="tool">{L('Herramienta', 'Tool')}</option><option value="education">{L('Educación', 'Education')}</option></select></div>
+          <div><div style={lbl}>{L('Modelo de cobro', 'Pricing model')}</div><select value={form.pricing_model} onChange={(e) => setForm({ ...form, pricing_model: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="flat">{L('Plano', 'Flat')}</option><option value="cpm">CPM</option><option value="cpc">CPC</option><option value="cpa">CPA</option></select></div>
+          <div><div style={lbl}>{L('Presupuesto ($, cpm/cpc/cpa)', 'Budget ($, cpm/cpc/cpa)')}</div><input type="number" min={0} value={form.budget} onChange={(e) => setForm({ ...form, budget: Math.max(0, parseFloat(e.target.value) || 0) })} style={{ margin: 0, width: '100%' }} /></div>
+          <div><div style={lbl}>{L('Tope diario ($)', 'Daily cap ($)')}</div><input type="number" min={0} value={form.daily_cap} onChange={(e) => setForm({ ...form, daily_cap: Math.max(0, parseFloat(e.target.value) || 0) })} style={{ margin: 0, width: '100%' }} /></div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}><label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, cursor: 'pointer' }}><input type="checkbox" checked={!!form.disclaimer} onChange={(e) => setForm({ ...form, disclaimer: e.target.checked })} />{L('Mostrar aviso de riesgo', 'Show risk disclaimer')}</label></div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Imagen del banner (URL)', 'Banner image (URL)')}</div><input value={form.creative_url} onChange={(e) => setForm({ ...form, creative_url: e.target.value })} placeholder="https://…/banner.png" style={{ margin: 0, width: '100%' }} /></div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Enlace destino', 'Destination link')}</div><input value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} placeholder="https://…" style={{ margin: 0, width: '100%' }} /></div>
           <div><div style={lbl}>{L('Inicia', 'Starts')}</div><input type="date" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
@@ -147,8 +219,42 @@ export default function AdsAdmin({ es }: { es: boolean }) {
         )}
       </div>
 
+      {/* Directorio de partners (CPA) — F6 */}
+      <div style={box}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>{L('Directorio de socios (CPA)', 'Partner directory (CPA)')}</div>
+        <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{L('Brokers y prop firms que pagan por registro. Se listan en /socios. El ángulo que más rinde en este nicho.', 'Brokers and prop firms that pay per signup. Listed on /socios. The highest-yield angle in this niche.')}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
+          <div><div style={lbl}>{L('Nombre', 'Name')}</div><input value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
+          <div><div style={lbl}>{L('Categoría', 'Category')}</div><select value={pForm.category} onChange={(e) => setPForm({ ...pForm, category: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="broker">Broker</option><option value="propfirm">Prop firm</option><option value="tool">{L('Herramienta', 'Tool')}</option></select></div>
+          <div><div style={lbl}>{L('Logo (URL)', 'Logo (URL)')}</div><input value={pForm.logo_url} onChange={(e) => setPForm({ ...pForm, logo_url: e.target.value })} placeholder="https://…" style={{ margin: 0, width: '100%' }} /></div>
+          <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Enlace afiliado', 'Affiliate link')}</div><input value={pForm.link_url} onChange={(e) => setPForm({ ...pForm, link_url: e.target.value })} placeholder="https://…?ref=onyx" style={{ margin: 0, width: '100%' }} /></div>
+          <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Descripción ES', 'Description ES')}</div><input value={pForm.blurb_es} onChange={(e) => setPForm({ ...pForm, blurb_es: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
+          <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Descripción EN', 'Description EN')}</div><input value={pForm.blurb_en} onChange={(e) => setPForm({ ...pForm, blurb_en: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
+          <div><div style={lbl}>{L('Reguladores', 'Regulators')}</div><input value={pForm.regulated} onChange={(e) => setPForm({ ...pForm, regulated: e.target.value })} placeholder="FCA, ASIC…" style={{ margin: 0, width: '100%' }} /></div>
+          <div><div style={lbl}>{L('Pago CPA ($)', 'CPA payout ($)')}</div><input type="number" min={0} value={pForm.cpa_payout} onChange={(e) => setPForm({ ...pForm, cpa_payout: Math.max(0, parseFloat(e.target.value) || 0) })} style={{ margin: 0, width: '100%' }} /></div>
+          <div><div style={lbl}>{L('Orden', 'Rank')}</div><input type="number" value={pForm.rank} onChange={(e) => setPForm({ ...pForm, rank: parseInt(e.target.value, 10) || 100 })} style={{ margin: 0, width: '100%' }} /></div>
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}><label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, cursor: 'pointer' }}><input type="checkbox" checked={!!pForm.featured} onChange={(e) => setPForm({ ...pForm, featured: e.target.checked })} />{L('Destacado', 'Featured')}</label></div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          <button className="btn btn-primary" onClick={() => { if (!pForm.name || !pForm.link_url) return toast(L('Falta nombre o enlace.', 'Missing name or link.'), 'err'); post({ entity: 'partner', ...pForm }, pForm.id ? L('Socio actualizado.', 'Partner updated.') : L('Socio añadido.', 'Partner added.')); setPForm(emptyPartner); }} disabled={busy === 'camp'} style={{ fontSize: 12.5 }}>{pForm.id ? L('Guardar', 'Save') : L('Añadir socio', 'Add partner')}</button>
+          {pForm.id && <button className="btn btn-ghost" onClick={() => setPForm(emptyPartner)} style={{ fontSize: 12.5 }}>{L('Cancelar', 'Cancel')}</button>}
+        </div>
+        {partners.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+            {partners.map((p) => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 6 }}>
+                <div style={{ flex: 1, minWidth: 140, fontSize: 13 }}>{p.featured ? '★ ' : ''}{p.name} <span className="muted" style={{ fontSize: 11 }}>· {p.category}</span></div>
+                <div className="muted" style={{ fontSize: 11.5 }}>{p.clicks || 0} clic · {p.signups || 0} reg</div>
+                <button className="btn btn-ghost" onClick={() => setPForm({ ...emptyPartner, ...p })} style={{ fontSize: 11, padding: '3px 8px' }}>{L('Editar', 'Edit')}</button>
+                <button className="btn btn-ghost" onClick={() => { if (confirm(L('¿Borrar socio?', 'Delete partner?'))) post({ entity: 'partner', action: 'delete', id: p.id }, L('Borrado.', 'Deleted.')); }} style={{ fontSize: 11, padding: '3px 8px', color: 'var(--red,#ef6262)' }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="muted" style={{ fontSize: 11, borderTop: '1px dashed var(--line)', paddingTop: 8 }}>
-        {L('Requiere correr una vez supabase/ads.sql. Los enlaces llevan rel="sponsored nofollow" y todo va etiquetado como Publicidad. La página pública para vender está en /publicidad.', 'Run supabase/ads.sql once. Links use rel="sponsored nofollow" and are labeled as advertising. The public sales page is at /publicidad.')}
+        {L('Requiere correr una vez supabase/ads.sql, ads_v2.sql y ads_v3.sql. Los enlaces llevan rel="sponsored nofollow" y todo va etiquetado como Publicidad. Páginas públicas: /publicidad (vender espacios) y /socios (directorio CPA).', 'Run supabase/ads.sql, ads_v2.sql and ads_v3.sql once. Links use rel="sponsored nofollow" and are labeled as advertising. Public pages: /publicidad (sell spaces) and /socios (CPA directory).')}
       </div>
     </div>
   );

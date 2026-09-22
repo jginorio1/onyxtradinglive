@@ -1,50 +1,116 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getSetting, saveSetting } from '@/lib/settings';
+import crypto from 'crypto';
 
 // ============================================================
-// Espacios patrocinados (Ads) · Fase 1 (solo web)
+// Onyx Ads · motor de monetización (Fases 1–6)
 //
-// - Los SLOTS (ubicaciones) se definen aquí; el PRECIO de cada uno lo pone el
-//   dueño (por ubicación + tamaño) y se guarda como override en app_settings.
-// - Un anuncio por slot a la vez, elegido por rotación ponderada entre las
-//   campañas activas. Si no hay ninguna pagada, se muestra un "house ad" propio
-//   (mejora a Pro, etc.) para no desperdiciar el espacio.
-// - A los usuarios de PAGO no se les muestran anuncios (gancho de upgrade).
-// - En la app NATIVA los anuncios van APAGADOS hasta que Apple/Google aprueben
-//   (por CSS .native-app y por el flag nativeEnabled).
+//  · Inventario con formatos IAB (F4).
+//  · Control de artes: se suben a NUESTRO storage y requieren APROBACIÓN
+//    humana antes de salir live; el arte queda congelado (F3).
+//  · Geo por país + tier 1/2/3 + exclusiones de compliance (F4).
+//  · Modelos flat/CPM/CPC/CPA con pacing y presupuesto (F5).
+//  · Antifraude: dedupe por visitante + filtro de bots (F5).
+//  · Relleno programático cuando no hay campaña pagada (F6).
+//  · A los usuarios de PAGO no se les muestran anuncios (gancho de upgrade).
+//  · En la app NATIVA los anuncios van APAGADOS hasta aprobación de tiendas.
 // ============================================================
+
+export type PricingModel = 'flat' | 'cpm' | 'cpc' | 'cpa';
 
 export type AdSlot = {
-  key: string; es: string; en: string; size: string;   // ej. '728x90'
-  page: 'blog' | 'article' | 'landing' | 'guide';
-  unit: 'week' | 'month' | 'cpm';                        // unidad de cobro por defecto
+  key: string; es: string; en: string; size: string;   // ej. '728x90' (IAB)
+  page: 'blog' | 'article' | 'landing' | 'guide' | 'site' | 'directory' | 'email';
+  unit: 'week' | 'month' | 'cpm';                        // unidad por defecto del plano
   price: number;                                         // precio por defecto (USD)
+  model?: PricingModel;                                  // modelo sugerido
+  fmt?: string;                                          // nombre IAB legible
 };
 
-// Catálogo de ubicaciones (Fase 1, web). Añadir más es trivial.
+// Catálogo de tamaños estándar IAB (referencia para el anunciante).
+export const IAB_SIZES: { size: string; es: string; en: string; maxKB: number }[] = [
+  { size: '970x250', es: 'Billboard', en: 'Billboard', maxKB: 200 },
+  { size: '970x90',  es: 'Súper leaderboard', en: 'Large leaderboard', maxKB: 150 },
+  { size: '728x90',  es: 'Leaderboard', en: 'Leaderboard', maxKB: 150 },
+  { size: '300x250', es: 'Rectángulo (MPU)', en: 'Medium rectangle (MPU)', maxKB: 150 },
+  { size: '300x600', es: 'Media página', en: 'Half-page', maxKB: 200 },
+  { size: '320x50',  es: 'Banner móvil', en: 'Mobile banner', maxKB: 60 },
+  { size: '320x100', es: 'Banner móvil grande', en: 'Large mobile banner', maxKB: 80 },
+  { size: '600x300', es: 'Tarjeta in-feed', en: 'In-feed card', maxKB: 150 },
+];
+export const sizeInfo = (size: string) => IAB_SIZES.find((s) => s.size === size) || { size, es: size, en: size, maxKB: 150 };
+
+// Catálogo de ubicaciones. Fase 1: blog/artículo. Fase 4 añade footer site-wide,
+// sticky inferior, media página, native in-feed, billboard de landing y directorio.
 export const AD_SLOTS: AdSlot[] = [
-  { key: 'blog_top',         es: 'Blog · Leaderboard superior', en: 'Blog · Top leaderboard',  size: '970x90',  page: 'blog',    unit: 'week',  price: 60 },
-  { key: 'blog_infeed',      es: 'Blog · Tarjeta entre posts',  en: 'Blog · In-feed card',      size: '600x300', page: 'blog',    unit: 'week',  price: 45 },
-  { key: 'article_incontent',es: 'Artículo · Dentro del texto', en: 'Article · In-content',     size: '728x90',  page: 'article', unit: 'week',  price: 50 },
-  { key: 'article_sidebar',  es: 'Artículo · Lateral (MPU)',    en: 'Article · Sidebar (MPU)',  size: '300x250', page: 'article', unit: 'month', price: 120 },
-  { key: 'landing_top',      es: 'Landing · Leaderboard',       en: 'Landing · Leaderboard',    size: '970x90',  page: 'landing', unit: 'week',  price: 90 },
+  // --- Fase 1 ---
+  { key: 'blog_top',          es: 'Blog · Leaderboard superior', en: 'Blog · Top leaderboard',  size: '970x90',  page: 'blog',    unit: 'week',  price: 60,  model: 'flat', fmt: 'Súper leaderboard' },
+  { key: 'blog_infeed',       es: 'Blog · Tarjeta entre posts',  en: 'Blog · In-feed card',      size: '600x300', page: 'blog',    unit: 'week',  price: 45,  model: 'flat', fmt: 'In-feed' },
+  { key: 'article_incontent', es: 'Artículo · Dentro del texto', en: 'Article · In-content',     size: '728x90',  page: 'article', unit: 'week',  price: 50,  model: 'flat', fmt: 'Leaderboard' },
+  { key: 'article_sidebar',   es: 'Artículo · Lateral (MPU)',    en: 'Article · Sidebar (MPU)',  size: '300x250', page: 'article', unit: 'month', price: 120, model: 'flat', fmt: 'MPU' },
+  { key: 'landing_top',       es: 'Landing · Leaderboard',       en: 'Landing · Leaderboard',    size: '970x90',  page: 'landing', unit: 'week',  price: 90,  model: 'flat', fmt: 'Súper leaderboard' },
+  // --- Fase 4: inventario nuevo ---
+  { key: 'landing_billboard', es: 'Landing · Billboard superior',en: 'Landing · Top billboard',  size: '970x250', page: 'landing', unit: 'week',  price: 140, model: 'cpm',  fmt: 'Billboard' },
+  { key: 'footer_site',       es: 'Sitio · Footer global',       en: 'Site · Global footer',     size: '728x90',  page: 'site',    unit: 'week',  price: 70,  model: 'flat', fmt: 'Leaderboard' },
+  { key: 'sticky_bottom',     es: 'Sitio · Barra sticky inferior',en: 'Site · Sticky bottom bar', size: '320x50',  page: 'site',    unit: 'week',  price: 110, model: 'cpc',  fmt: 'Sticky móvil' },
+  { key: 'article_halfpage',  es: 'Artículo · Media página',     en: 'Article · Half-page',      size: '300x600', page: 'article', unit: 'month', price: 180, model: 'cpm',  fmt: 'Half-page' },
+  { key: 'blog_native',       es: 'Blog · Native destacado',     en: 'Blog · Native featured',   size: '600x300', page: 'blog',    unit: 'week',  price: 75,  model: 'flat', fmt: 'Native' },
+  { key: 'directory_partner', es: 'Directorio · Partner destacado',en: 'Directory · Featured partner', size: '600x300', page: 'directory', unit: 'month', price: 250, model: 'cpa', fmt: 'Listing' },
 ];
 export const slotByKey = (k: string) => AD_SLOTS.find((s) => s.key === k) || null;
 
-export type AdsConfig = { enabled: boolean; nativeEnabled: boolean; rates: Record<string, { price: number; unit: AdSlot['unit'] }> };
-const DEFAULT_CFG: AdsConfig = { enabled: true, nativeEnabled: false, rates: {} };
+// --- Geo por tier (Tier-1 paga mucho más; compliance por país) --------------
+export const GEO_TIERS: Record<string, string[]> = {
+  t1: ['US', 'CA', 'GB', 'AU', 'DE', 'CH', 'NZ', 'SG', 'AE', 'NL', 'SE', 'NO'],
+  t2: ['ES', 'FR', 'IT', 'PT', 'BR', 'MX', 'PL', 'JP', 'KR', 'ZA', 'IE', 'BE', 'AT'],
+  t3: ['IN', 'PH', 'VN', 'ID', 'NG', 'PK', 'EG', 'CO', 'AR', 'PE', 'CL', 'TR', 'MA'],
+};
+export const tierOf = (country: string): 't1' | 't2' | 't3' | '' => {
+  const c = (country || '').toUpperCase();
+  if (GEO_TIERS.t1.includes(c)) return 't1';
+  if (GEO_TIERS.t2.includes(c)) return 't2';
+  if (GEO_TIERS.t3.includes(c)) return 't3';
+  return '';
+};
+
+export type AdsConfig = {
+  enabled: boolean;
+  nativeEnabled: boolean;
+  rates: Record<string, { price: number; unit: AdSlot['unit'] }>;
+  autoApprove: boolean;                 // si true, se salta la revisión (no recomendado)
+  programmatic: { enabled: boolean; code: string };  // relleno de red (F6)
+  riskDisclaimer: { es: string; en: string };        // aviso financiero
+  freqCap: number;                       // impresiones máx por visitante/campaña/día (0 = sin tope)
+};
+const DEFAULT_CFG: AdsConfig = {
+  enabled: true, nativeEnabled: false, rates: {}, autoApprove: false,
+  programmatic: { enabled: false, code: '' },
+  riskDisclaimer: {
+    es: 'Los productos de trading apalancado conllevan alto riesgo de pérdida. Este anuncio no es asesoría de inversión.',
+    en: 'Leveraged trading products carry a high risk of loss. This ad is not investment advice.',
+  },
+  freqCap: 3,
+};
 
 export async function getAdsConfig(): Promise<AdsConfig> {
-  const c = await getSetting<AdsConfig>('ads', DEFAULT_CFG);
-  return { enabled: c.enabled !== false, nativeEnabled: c.nativeEnabled === true, rates: c.rates || {} };
+  const c = await getSetting<Partial<AdsConfig>>('ads', DEFAULT_CFG);
+  return {
+    enabled: c.enabled !== false,
+    nativeEnabled: c.nativeEnabled === true,
+    rates: c.rates || {},
+    autoApprove: c.autoApprove === true,
+    programmatic: { enabled: c.programmatic?.enabled === true, code: c.programmatic?.code || '' },
+    riskDisclaimer: { es: c.riskDisclaimer?.es || DEFAULT_CFG.riskDisclaimer.es, en: c.riskDisclaimer?.en || DEFAULT_CFG.riskDisclaimer.en },
+    freqCap: typeof c.freqCap === 'number' ? c.freqCap : DEFAULT_CFG.freqCap,
+  };
 }
 export async function saveAdsConfig(c: Partial<AdsConfig>) {
   const prev = await getAdsConfig();
   await saveSetting('ads', { ...prev, ...c });
 }
 
-// Tarifario efectivo: catálogo + los precios que el dueño haya sobrescrito.
+// Tarifario efectivo: catálogo + precios sobrescritos por el dueño.
 export async function rateCard() {
   const cfg = await getAdsConfig();
   return AD_SLOTS.map((s) => {
@@ -66,86 +132,217 @@ export async function viewerIsPaid(): Promise<boolean> {
 }
 
 export type ServedAd =
-  | { kind: 'paid'; id: string; creative: string; link: string; alt: string; size: string }
+  | { kind: 'paid'; id: string; creative: string; link: string; alt: string; size: string; disclaimer?: string }
   | { kind: 'house'; id: string; size: string }
+  | { kind: 'programmatic'; id: 'net'; size: string; code: string }
   | null;
 
-// ¿La campaña apunta al país del visitante? geo 'all'/vacío = todos; si no, lista
-// de códigos ISO (ej. 'US,MX,ES').
-function geoMatch(geo: string, country: string): boolean {
+// ¿La campaña apunta al país/tier del visitante? Respeta exclusiones de compliance.
+function geoMatch(geo: string, tier: string, exclude: string, country: string): boolean {
+  const c = (country || '').toUpperCase();
+  const ex = String(exclude || '').split(/[,\s]+/).filter(Boolean).map((x) => x.toUpperCase());
+  if (c && ex.includes(c)) return false; // excluido por compliance
   const g = String(geo || 'all').trim().toLowerCase();
-  if (!g || g === 'all') return true;
-  if (!country) return true; // sin país no excluimos (mejor mostrar que perder impresión)
-  return g.split(/[,\s]+/).filter(Boolean).includes(country.toLowerCase());
+  const t = String(tier || '').trim().toLowerCase();
+  const hasGeo = g && g !== 'all';
+  const hasTier = t && ['t1', 't2', 't3'].includes(t);
+  if (!hasGeo && !hasTier) return true;            // sin restricción → todos
+  if (!c) return true;                              // sin país → no excluimos
+  if (hasGeo && g.split(/[,\s]+/).filter(Boolean).includes(c.toLowerCase())) return true;
+  if (hasTier && tierOf(c) === t) return true;
+  return false;
 }
 
-// Elige el anuncio a mostrar en un slot: una campaña pagada activa (rotación
-// ponderada, filtrada por idioma y país) o, si no hay, un house ad.
-export async function pickAd(slotKey: string, lang: 'es' | 'en', country = ''): Promise<ServedAd> {
+export const deviceFromUA = (ua: string): 'mobile' | 'desktop' =>
+  /Mobi|Android|iPhone|iPad|iPod/i.test(ua || '') ? 'mobile' : 'desktop';
+const deviceOf = deviceFromUA;
+
+// Hash de visitante (IP+UA) sin PII, para dedupe antifraude.
+export function visitorHash(ip: string, ua: string): string {
+  return crypto.createHash('sha256').update(`${ip}|${ua}`).digest('hex').slice(0, 24);
+}
+const isBot = (ua: string) => /bot|crawler|spider|crawl|slurp|headless|preview|facebookexternalhit/i.test(ua || '');
+
+// Elige el anuncio a mostrar en un slot: campaña pagada APROBADA y activa
+// (rotación ponderada, filtrada por idioma, país/tier, dispositivo y pacing),
+// o house ad, o relleno programático.
+export async function pickAd(
+  slotKey: string,
+  lang: 'es' | 'en',
+  ctx: { country?: string; ua?: string } = {},
+): Promise<ServedAd> {
   const slot = slotByKey(slotKey);
   if (!slot) return null;
+  const country = (ctx.country || '').toUpperCase();
+  const dev = deviceOf(ctx.ua || '');
+  const cfg = await getAdsConfig();
   try {
     const nowIso = new Date().toISOString();
+    const today = nowIso.slice(0, 10);
     const { data } = await supabaseAdmin.from('ad_campaigns')
-      .select('id,creative_url,link_url,alt,weight,lang,geo,starts_at,ends_at')
-      .eq('slot_key', slotKey).eq('status', 'active')
+      .select('id,creative_url,link_url,alt,weight,lang,geo,geo_tier,geo_exclude,device,disclaimer,starts_at,ends_at,pricing_model,budget,spent,daily_cap,spent_today,spent_day')
+      .eq('slot_key', slotKey).eq('status', 'active')       // solo APROBADAS (status active)
       .or(`lang.eq.all,lang.eq.${lang}`)
-      .limit(50);
-    const live = (data || []).filter((c: any) =>
-      (!c.starts_at || c.starts_at <= nowIso) && (!c.ends_at || c.ends_at >= nowIso) && c.creative_url && c.link_url && geoMatch(c.geo, country));
+      .limit(60);
+    const live = (data || []).filter((c: any) => {
+      if (!(c.creative_url && c.link_url)) return false;
+      if (c.starts_at && c.starts_at > nowIso) return false;
+      if (c.ends_at && c.ends_at < nowIso) return false;
+      if (c.device && c.device !== 'all' && c.device !== dev) return false;
+      if (!geoMatch(c.geo, c.geo_tier, c.geo_exclude, country)) return false;
+      // Pacing: presupuesto total y tope diario (para cpm/cpc/cpa).
+      if (c.pricing_model && c.pricing_model !== 'flat') {
+        if (Number(c.budget) > 0 && Number(c.spent) >= Number(c.budget)) return false;
+        const st = c.spent_day === today ? Number(c.spent_today || 0) : 0;
+        if (Number(c.daily_cap) > 0 && st >= Number(c.daily_cap)) return false;
+      }
+      return true;
+    });
     if (live.length) {
-      // Rotación ponderada.
       const total = live.reduce((s: number, c: any) => s + Math.max(1, c.weight || 1), 0);
-      let r = Math.random() * total;
-      for (const c of live) { r -= Math.max(1, c.weight || 1); if (r <= 0) return { kind: 'paid', id: c.id, creative: c.creative_url, link: c.link_url, alt: c.alt || '', size: slot.size }; }
-      const c = live[0]; return { kind: 'paid', id: c.id, creative: c.creative_url, link: c.link_url, alt: c.alt || '', size: slot.size };
+      let r = Math.random() * total; let chosen = live[0];
+      for (const c of live) { r -= Math.max(1, c.weight || 1); if (r <= 0) { chosen = c; break; } }
+      const disc = chosen.disclaimer ? (lang === 'es' ? cfg.riskDisclaimer.es : cfg.riskDisclaimer.en) : undefined;
+      return { kind: 'paid', id: chosen.id, creative: chosen.creative_url, link: chosen.link_url, alt: chosen.alt || '', size: slot.size, disclaimer: disc };
     }
   } catch {}
-  // Sin campaña pagada → house ad (relleno propio).
+  // Sin campaña pagada → relleno programático (si está activo) o house ad.
+  if (cfg.programmatic.enabled && cfg.programmatic.code.trim()) {
+    return { kind: 'programmatic', id: 'net', size: slot.size, code: cfg.programmatic.code };
+  }
   return { kind: 'house', id: 'house', size: slot.size };
 }
 
 // Registro atómico de impresión/clic (best-effort, nunca lanza).
 export async function bumpAd(id: string, kind: 'impression' | 'click') {
-  if (!id || id === 'house') return;
+  if (!id || id === 'house' || id === 'net') return;
   try { await supabaseAdmin.rpc('ad_bump', { p_id: id, p_kind: kind }); } catch {}
 }
 
-// ===== Fase 2: autoservicio + disponibilidad =====
+// ¿Ya contamos una impresión de esta campaña para este visitante hoy? (dedupe).
+export async function dedupeImpression(campaignId: string, visitor: string, ua: string): Promise<boolean> {
+  if (isBot(ua)) return false;                 // los bots no cuentan
+  try {
+    const day = new Date().toISOString().slice(0, 10);
+    const { error } = await supabaseAdmin.from('ad_impression_log')
+      .insert({ campaign_id: campaignId, visitor, day });
+    if (error) return false;                    // choque de unique → ya contada hoy
+    return true;
+  } catch { return false; }
+}
+
+// Suma al rollup diario + al gasto de la campaña según su modelo.
+export async function recordEvent(
+  campaignId: string,
+  ev: 'impression' | 'view' | 'click' | 'conversion',
+  ctx: { country?: string; device?: string } = {},
+) {
+  const day = new Date().toISOString().slice(0, 10);
+  const country = (ctx.country || '').toUpperCase();
+  const device = ctx.device || 'all';
+  try {
+    const { data: c } = await supabaseAdmin.from('ad_campaigns')
+      .select('pricing_model,price,spent,spent_today,spent_day,conversions').eq('id', campaignId).maybeSingle();
+    const model = (c as any)?.pricing_model || 'flat';
+    let spend = 0;
+    if (model === 'cpm' && ev === 'impression') spend = Number((c as any)?.price || 0) / 1000;
+    if (model === 'cpc' && ev === 'click') spend = Number((c as any)?.price || 0);
+    if (model === 'cpa' && ev === 'conversion') spend = Number((c as any)?.price || 0);
+    await supabaseAdmin.rpc('ad_stat_bump', {
+      p_campaign: campaignId, p_day: day, p_country: country, p_device: device,
+      p_imp: ev === 'impression' ? 1 : 0, p_view: ev === 'view' ? 1 : 0,
+      p_click: ev === 'click' ? 1 : 0, p_conv: ev === 'conversion' ? 1 : 0, p_spend: spend,
+    });
+    if (spend > 0 || ev === 'conversion') {
+      const st = (c as any)?.spent_day === day ? Number((c as any)?.spent_today || 0) : 0;
+      await supabaseAdmin.from('ad_campaigns').update({
+        spent: Number((c as any)?.spent || 0) + spend,
+        spent_today: st + spend, spent_day: day,
+        conversions: Number((c as any)?.conversions || 0) + (ev === 'conversion' ? 1 : 0),
+      }).eq('id', campaignId);
+    }
+  } catch {}
+}
+
+// ===== Autoservicio + disponibilidad (F2) =====
 
 // Precio total = precio del slot × nº de periodos (semanas o meses).
 export function priceFor(slot: AdSlot, count: number): number {
   return Math.round((slot.price || 0) * Math.max(1, count));
 }
 
-// Disponibilidad de un slot (modelo exclusivo: un anunciante por rango). Devuelve
-// hasta cuándo está reservado y desde cuándo queda libre.
+// Disponibilidad de un slot (modelo exclusivo: un anunciante por rango).
 export async function slotAvailability(slotKey: string): Promise<{ freeFrom: string | null; bookedUntil: string | null }> {
   try {
     const nowIso = new Date().toISOString();
     const { data } = await supabaseAdmin.from('ad_campaigns')
       .select('ends_at,status,created_at').eq('slot_key', slotKey)
-      .in('status', ['active', 'draft']).not('ends_at', 'is', null).gte('ends_at', nowIso);
-    // Los borradores solo cuentan si son recientes (checkout en curso, < 30 min).
-    const ends = (data || []).filter((c: any) => c.status === 'active' || (Date.now() - new Date(c.created_at).getTime() < 30 * 60000))
+      .in('status', ['active', 'pending', 'draft']).not('ends_at', 'is', null).gte('ends_at', nowIso);
+    const ends = (data || []).filter((c: any) => c.status === 'active' || c.status === 'pending' || (Date.now() - new Date(c.created_at).getTime() < 30 * 60000))
       .map((c: any) => c.ends_at).sort();
     const last = ends.length ? ends[ends.length - 1] : null;
     return { bookedUntil: last, freeFrom: last ? new Date(new Date(last).getTime() + 86400000).toISOString() : null };
   } catch { return { freeFrom: null, bookedUntil: null }; }
 }
 
-// ¿El rango [start,end] está libre en ese slot? (no se solapa con activa/borrador reciente).
+// ¿El rango [start,end] está libre en ese slot?
 export async function rangeAvailable(slotKey: string, startIso: string, endIso: string): Promise<boolean> {
   try {
     const { data } = await supabaseAdmin.from('ad_campaigns')
-      .select('starts_at,ends_at,status,created_at').eq('slot_key', slotKey).in('status', ['active', 'draft']);
+      .select('starts_at,ends_at,status,created_at').eq('slot_key', slotKey).in('status', ['active', 'pending', 'draft']);
     const S = new Date(startIso).getTime(), E = new Date(endIso).getTime();
     for (const c of (data || [])) {
       if (c.status === 'draft' && Date.now() - new Date(c.created_at).getTime() > 30 * 60000) continue;
       const s = c.starts_at ? new Date(c.starts_at).getTime() : 0;
       const e = c.ends_at ? new Date(c.ends_at).getTime() : Number.POSITIVE_INFINITY;
-      if (S <= e && E >= s) return false; // solapa
+      if (S <= e && E >= s) return false;
     }
     return true;
   } catch { return true; }
+}
+
+// ===== Validación de creativo (F3) =====
+// Lee dimensiones de PNG/JPG/GIF/WebP desde el buffer, sin dependencias.
+export function imageDims(buf: Buffer): { w: number; h: number; type: string } | null {
+  try {
+    if (buf.length < 24) return null;
+    // PNG
+    if (buf[0] === 0x89 && buf[1] === 0x50) return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20), type: 'png' };
+    // GIF
+    if (buf[0] === 0x47 && buf[1] === 0x49) return { w: buf.readUInt16LE(6), h: buf.readUInt16LE(8), type: 'gif' };
+    // WebP (VP8/VP8L/VP8X)
+    if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
+      const fmt = buf.toString('ascii', 12, 16);
+      if (fmt === 'VP8X') return { w: 1 + ((buf[24] | (buf[25] << 8) | (buf[26] << 16))), h: 1 + ((buf[27] | (buf[28] << 8) | (buf[29] << 16))), type: 'webp' };
+      if (fmt === 'VP8 ') return { w: buf.readUInt16LE(26) & 0x3fff, h: buf.readUInt16LE(28) & 0x3fff, type: 'webp' };
+    }
+    // JPEG: recorrer marcadores SOFn
+    if (buf[0] === 0xff && buf[1] === 0xd8) {
+      let o = 2;
+      while (o < buf.length) {
+        if (buf[o] !== 0xff) { o++; continue; }
+        const m = buf[o + 1];
+        if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
+          return { h: buf.readUInt16BE(o + 5), w: buf.readUInt16BE(o + 7), type: 'jpg' };
+        }
+        o += 2 + buf.readUInt16BE(o + 2);
+      }
+    }
+  } catch {}
+  return null;
+}
+
+// ¿El arte respeta el tamaño exacto del slot (±2%) y el peso máximo IAB?
+export function validateCreative(slotKey: string, buf: Buffer): { ok: boolean; error?: string; w?: number; h?: number } {
+  const slot = slotByKey(slotKey);
+  if (!slot) return { ok: false, error: 'Ubicación inválida.' };
+  const [sw, sh] = slot.size.split('x').map((n) => parseInt(n, 10) || 0);
+  const info = sizeInfo(slot.size);
+  if (buf.length > info.maxKB * 1024) return { ok: false, error: `El arte pesa ${Math.round(buf.length / 1024)}KB; el máximo para ${slot.size} es ${info.maxKB}KB.` };
+  const dim = imageDims(buf);
+  if (!dim) return { ok: false, error: 'Formato no reconocido. Usa PNG, JPG, GIF o WebP.' };
+  const okW = Math.abs(dim.w - sw) <= Math.max(2, sw * 0.02);
+  const okH = Math.abs(dim.h - sh) <= Math.max(2, sh * 0.02);
+  if (!okW || !okH) return { ok: false, error: `El arte mide ${dim.w}×${dim.h}; debe ser ${slot.size}.`, w: dim.w, h: dim.h };
+  return { ok: true, w: dim.w, h: dim.h };
 }

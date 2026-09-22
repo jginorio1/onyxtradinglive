@@ -27,6 +27,7 @@ import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
 import OnlineNow from './OnlineNow';
 import VisitorBeacon from './VisitorBeacon';
+import StickyAd from './components/StickyAd';
 import RepInviteBanner from './RepInviteBanner';
 import TzSync from './TzSync';
 import PendingCheckoutGate from './PendingCheckoutGate';
@@ -249,6 +250,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <PendingCheckoutGate />
             {!path.startsWith('/admin') && !path.startsWith('/dashboard') && <RepInviteBanner />}
             <VisitorBeacon />
+            {!path.startsWith('/admin') && !path.startsWith('/dashboard') && <StickyAd lang={lang} />}
             {loggedIn && <MonitorBeacon />}
             <TzSync />
             <Toaster />
