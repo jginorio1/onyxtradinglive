@@ -44,7 +44,7 @@ function fmtDate(iso: string, es: boolean) {
 
 export default async function BlogIndex() {
   const es = serverLang() === 'es';
-  const raw = await listPublished(120);
+  const raw = await listPublished(300);
   const pref = <T,>(a: T, b: T) => (a || b);
 
   // Aplanamos cada post al idioma actual + categoría + tiempo de lectura.

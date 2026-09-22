@@ -31,18 +31,14 @@ export default function BlogList({ posts, es, pageSize = 12 }: { posts: BlogCard
   }, [posts]);
 
   const term = q.trim().toLowerCase();
-  const filtered = useMemo(() => posts.filter((p) => {
-    const okCat = cat === 'all' || p.cat === cat;
-    const okTerm = !term || (p.title + ' ' + p.excerpt).toLowerCase().includes(term);
-    return okCat && okTerm;
-  }), [posts, cat, term]);
+  const matches = (p: BlogCard) => (cat === 'all' || p.cat === cat) && (!term || (p.title + ' ' + p.excerpt).toLowerCase().includes(term));
+  const totalMatches = useMemo(() => posts.filter(matches).length, [posts, cat, term]);
 
-  // El destacado (más reciente) solo cuando no hay filtro ni búsqueda.
-  const showFeatured = cat === 'all' && !term && filtered.length > 0;
-  const featured = showFeatured ? filtered[0] : null;
-  const rest = showFeatured ? filtered.slice(1) : filtered;
-  const visible = rest.slice(0, shown);
+  // El destacado (más reciente) solo en la vista "Todos" sin búsqueda.
+  const featuredId = cat === 'all' && !term && posts.length ? posts[0].id : null;
+  const gridTotal = totalMatches - (featuredId ? 1 : 0);
 
+  const catLbl = (c: string) => (es ? (CAT_LABEL[c]?.[0] || c) : (CAT_LABEL[c]?.[1] || c));
   const pill = (active: boolean): any => ({
     border: '1px solid ' + (active ? 'transparent' : 'var(--line)'),
     background: active ? 'var(--brand)' : 'var(--bg2)',
@@ -53,11 +49,15 @@ export default function BlogList({ posts, es, pageSize = 12 }: { posts: BlogCard
     const col = CAT_COLOR[c] || 'var(--mut)';
     return { fontSize: 11, padding: '2px 9px', borderRadius: 20, width: 'fit-content', background: `color-mix(in srgb, ${col} 16%, transparent)`, color: col, fontWeight: 600 };
   };
-  const catLbl = (c: string) => (es ? (CAT_LABEL[c]?.[0] || c) : (CAT_LABEL[c]?.[1] || c));
+  const Cover = ({ p, h }: { p: BlogCard; h: number }) => (
+    <img src={p.cover} alt="" loading="lazy" decoding="async" width={400} height={h} style={{ width: '100%', height: h, objectFit: 'cover', background: 'var(--bg2)' }} />
+  );
 
-  function Cover({ p, h }: { p: BlogCard; h: number }) {
-    return <img src={p.cover} alt="" loading="lazy" decoding="async" width={400} height={h} style={{ width: '100%', height: h, objectFit: 'cover', background: 'var(--bg2)' }} />;
-  }
+  // IMPORTANTE (SEO): renderizamos TODAS las tarjetas en el HTML (para que Google
+  // las rastree). Solo OCULTAMOS visualmente las que sobran (display:none). Al filtrar
+  // o pulsar "Cargar más" cambiamos qué se ve, sin quitar nada del HTML.
+  let gridRank = 0;
+  const featured = posts.length ? posts[0] : null;
 
   return (
     <div>
@@ -74,9 +74,9 @@ export default function BlogList({ posts, es, pageSize = 12 }: { posts: BlogCard
         </div>
       </div>
 
-      {/* Destacado */}
+      {/* Destacado (siempre en el HTML; se oculta al filtrar/buscar) */}
       {featured && (
-        <Link href={featured.href} className="card" style={{ display: 'flex', gap: 0, textDecoration: 'none', color: 'inherit', overflow: 'hidden', padding: 0, marginBottom: 18, flexWrap: 'wrap' }}>
+        <Link href={featured.href} className="card" style={{ display: featuredId ? 'flex' : 'none', gap: 0, textDecoration: 'none', color: 'inherit', overflow: 'hidden', padding: 0, marginBottom: 18, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 260px', minWidth: 240, maxWidth: 360 }}><Cover p={featured} h={200} /></div>
           <div style={{ flex: '2 1 320px', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 9, justifyContent: 'center' }}>
             <span style={chip(featured.cat)}>{catLbl(featured.cat)}</span>
@@ -88,13 +88,14 @@ export default function BlogList({ posts, es, pageSize = 12 }: { posts: BlogCard
         </Link>
       )}
 
-      {/* Rejilla */}
-      {visible.length === 0 ? (
-        <div className="card muted" style={{ textAlign: 'center', padding: 30 }}>{L('No hay artículos que coincidan.', 'No matching articles.')}</div>
-      ) : (
-        <div className="grid g3" style={{ gap: 18, alignItems: 'stretch' }}>
-          {visible.map((p) => (
-            <Link key={p.id} href={p.href} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8, textDecoration: 'none', color: 'inherit', overflow: 'hidden', padding: 0 }}>
+      {/* Rejilla: TODAS las tarjetas en el HTML; visibles según filtro + "cargar más" */}
+      <div className="grid g3" style={{ gap: 18, alignItems: 'stretch' }}>
+        {posts.map((p) => {
+          const isFeat = p.id === featuredId;
+          let show = matches(p) && !isFeat;
+          if (show) { gridRank++; if (gridRank > shown) show = false; }
+          return (
+            <Link key={p.id} href={p.href} className="card" style={{ display: show ? 'flex' : 'none', flexDirection: 'column', gap: 8, textDecoration: 'none', color: 'inherit', overflow: 'hidden', padding: 0 }}>
               <Cover p={p} h={150} />
               <div style={{ padding: '10px 16px 16px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                 <span style={chip(p.cat)}>{catLbl(p.cat)}</span>
@@ -104,21 +105,26 @@ export default function BlogList({ posts, es, pageSize = 12 }: { posts: BlogCard
                 <span style={{ color: 'var(--brand)', fontSize: 13.5, fontWeight: 600 }}>{L('Leer →', 'Read →')}</span>
               </div>
             </Link>
-          ))}
-        </div>
+          );
+        })}
+      </div>
+
+      {/* Vacío */}
+      {totalMatches === 0 && (
+        <div className="card muted" style={{ textAlign: 'center', padding: 30 }}>{L('No hay artículos que coincidan.', 'No matching articles.')}</div>
       )}
 
       {/* Cargar más + contador */}
-      <div style={{ textAlign: 'center', marginTop: 24 }}>
-        {visible.length < rest.length && (
-          <button type="button" className="btn btn-ghost" onClick={() => setShown((n) => n + 9)} style={{ padding: '9px 22px' }}>＋ {L('Cargar más', 'Load more')}</button>
-        )}
-        {filtered.length > 0 && (
+      {totalMatches > 0 && (
+        <div style={{ textAlign: 'center', marginTop: 24 }}>
+          {gridTotal > shown && (
+            <button type="button" className="btn btn-ghost" onClick={() => setShown((n) => n + 9)} style={{ padding: '9px 22px' }}>＋ {L('Cargar más', 'Load more')}</button>
+          )}
           <div className="muted" style={{ fontSize: 12, marginTop: 10 }}>
-            {L(`Mostrando ${Math.min(visible.length + (featured ? 1 : 0), filtered.length)} de ${filtered.length} artículos`, `Showing ${Math.min(visible.length + (featured ? 1 : 0), filtered.length)} of ${filtered.length} articles`)}
+            {L(`Mostrando ${Math.min(shown + (featuredId ? 1 : 0), totalMatches)} de ${totalMatches} artículos`, `Showing ${Math.min(shown + (featuredId ? 1 : 0), totalMatches)} of ${totalMatches} articles`)}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
