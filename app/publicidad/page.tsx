@@ -45,6 +45,60 @@ export default async function AdvertisePage() {
         ))}
       </div>
 
+      {/* Mapa visual: dónde cae cada espacio */}
+      <h2 style={{ fontSize: 20, marginBottom: 4 }}>{L('Dónde aparece tu anuncio', 'Where your ad appears')}</h2>
+      <p className="muted" style={{ fontSize: 13.5, marginBottom: 14 }}>{L('Así se ven los espacios en la web. Cada bloque dorado es un lugar que puedes comprar.', 'Here’s how the spaces look on the site. Each gold block is a spot you can buy.')}</p>
+      {(() => {
+        const slot = (label: string, size: string, tall = false) => (
+          <div style={{ border: '1.5px dashed var(--brand)', background: 'color-mix(in srgb, var(--brand) 9%, transparent)', color: 'var(--brand)', borderRadius: 8, padding: '7px 6px', fontSize: 10.5, fontWeight: 700, textAlign: 'center' as const, minHeight: tall ? 130 : 34, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', lineHeight: 1.3 }}>
+            <span>{label}</span><span style={{ opacity: 0.7, fontWeight: 500 }}>{size}</span>
+          </div>
+        );
+        const ph = (h: number, w = '100%') => <div style={{ background: 'var(--line)', borderRadius: 6, height: h, width: w }} />;
+        const cardStyle = { border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden', background: 'var(--bg2, rgba(255,255,255,.02))' } as const;
+        return (
+          <div className="grid g3" style={{ gap: 14, marginBottom: 28 }}>
+            {/* Landing */}
+            <div style={cardStyle}>
+              <div style={{ height: 28, display: 'flex', alignItems: 'center', gap: 5, padding: '0 10px', borderBottom: '1px solid var(--line)' }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f0666b' }} /><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#e0a92e' }} /><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#43c463' }} /><span className="muted" style={{ fontSize: 10.5, marginLeft: 4 }}>{L('Portada', 'Landing')}</span></div>
+              <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {slot(L('Billboard superior', 'Top billboard'), '970×250', true)}
+                {ph(40)}{ph(28, '70%')}
+                {slot('Leaderboard', '970×90')}
+                {ph(30)}
+                {slot(L('Footer global', 'Global footer'), '728×90')}
+              </div>
+            </div>
+            {/* Blog / Artículo */}
+            <div style={cardStyle}>
+              <div style={{ height: 28, display: 'flex', alignItems: 'center', gap: 5, padding: '0 10px', borderBottom: '1px solid var(--line)' }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f0666b' }} /><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#e0a92e' }} /><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#43c463' }} /><span className="muted" style={{ fontSize: 10.5, marginLeft: 4 }}>{L('Blog / Artículo', 'Blog / Article')}</span></div>
+              <div style={{ padding: 10, display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {slot('Leaderboard', '728×90')}
+                  {ph(26, '85%')}{ph(46)}
+                  {slot(L('Dentro del texto', 'In-content'), '728×90')}
+                  {ph(34)}
+                  {slot(L('Tarjeta / Native', 'Card / Native'), '600×300')}
+                </div>
+                <div style={{ width: 76, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {slot('MPU', '300×250', false)}
+                  {slot(L('Media pág.', 'Half-page'), '300×600', true)}
+                </div>
+              </div>
+            </div>
+            {/* Sticky + directorio */}
+            <div style={cardStyle}>
+              <div style={{ height: 28, display: 'flex', alignItems: 'center', gap: 5, padding: '0 10px', borderBottom: '1px solid var(--line)' }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f0666b' }} /><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#e0a92e' }} /><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#43c463' }} /><span className="muted" style={{ fontSize: 10.5, marginLeft: 4 }}>{L('Todo el sitio + Directorio', 'Site-wide + Directory')}</span></div>
+              <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 260 }}>
+                {slot(L('Partner destacado (directorio)', 'Featured partner (directory)'), '600×300')}
+                {ph(30)}{ph(30)}{ph(26, '60%')}
+                <div style={{ marginTop: 'auto' }}>{slot(L('Barra sticky inferior (fija · más clics)', 'Bottom sticky bar (fixed · most clicks)'), '320×50')}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Tarifario */}
       <h2 style={{ fontSize: 20, marginBottom: 12 }}>{L('Espacios y precios', 'Spaces and prices')}</h2>
       <div className="grid g3" style={{ gap: 14, marginBottom: 26 }}>
