@@ -32,6 +32,10 @@ export default async function AdvertisePage() {
           {L('Conecta con una audiencia comprometida de traders de prop firms, forex y cripto. Espacios propios (no una red externa): cargan rápido, no los bloquean y rinden mejor.',
              'Reach an engaged audience of prop-firm, forex and crypto traders. Self-hosted spaces (not a third-party network): they load fast, aren’t blocked, and perform better.')}
         </p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' }}>
+          <a className="btn btn-primary" href={es ? '/publicidad/estadisticas' : '/en/publicidad/estadisticas'}>{L('Ver estadísticas (Media Kit)', 'See stats (Media Kit)')}</a>
+          <a className="btn btn-ghost" href={es ? '/publicidad/propuesta' : '/en/publicidad/propuesta'} target="_blank">{L('Descargar propuesta (PDF)', 'Download proposal (PDF)')}</a>
+        </div>
       </div>
 
       {/* ¿Por qué anunciarte? */}

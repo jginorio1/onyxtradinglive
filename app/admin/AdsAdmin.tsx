@@ -24,6 +24,18 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   const [progCode, setProgCode] = useState('');
   const [busy, setBusy] = useState('');
   const [upBusy, setUpBusy] = useState('');   // '' | 'logo' | 'banner'
+  const [mk, setMk] = useState<any>(null);    // overrides del Media Kit
+
+  async function saveMk() {
+    setBusy('mk');
+    try {
+      const r = await fetch('/api/admin/ads', { method: 'POST', body: JSON.stringify({ entity: 'mediakit', data: mk }) });
+      const j = await r.json();
+      if (j.ok) { setMk(j.mediakit); toast(L('Media Kit guardado.', 'Media Kit saved.'), 'ok'); }
+      else toast(j.error || L('No se pudo guardar.', 'Could not save.'), 'err');
+    } catch { toast(L('Error de red.', 'Network error.'), 'err'); } finally { setBusy(''); }
+  }
+  const setMkPack = (i: number, k: string, v: any) => setMk((m: any) => ({ ...m, packages: m.packages.map((p: any, j: number) => j === i ? { ...p, [k]: v } : p) }));
 
   async function uploadImg(kind: 'logo' | 'banner', file: File | null) {
     if (!file) return;
@@ -40,7 +52,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   async function load() {
     try {
       const j = await (await fetch('/api/admin/ads')).json();
-      if (j.config) { setCfg(j.config); setRates(j.rates || []); setSlots(j.slots || []); setCamps(j.campaigns || []); setPartners(j.partners || []); setProgCode(j.config.programmatic?.code || ''); }
+      if (j.config) { setCfg(j.config); setRates(j.rates || []); setSlots(j.slots || []); setCamps(j.campaigns || []); setPartners(j.partners || []); setProgCode(j.config.programmatic?.code || ''); if (j.mediakit) setMk(j.mediakit); }
     } catch {}
   }
   useEffect(() => { load(); }, []);
@@ -96,6 +108,9 @@ export default function AdsAdmin({ es }: { es: boolean }) {
     { target: '[data-guide="partners"]', title: L('7 · Directorio de socios (CPA) · lo importante', '7 · Partner directory (CPA) · the big one'),
       body: L('EMPIEZA POR AQUÍ para ganar sin anunciantes. Son brokers y prop firms que te pagan por cada registro que les mandes.\n\nCómo: entra a la web del broker → busca "Affiliates/Partners/IB" → regístrate → te dan un enlace único.\n\nLuego rellena los campos:\n• Nombre + Logo (URL).\n• Categoría: broker / prop firm / herramienta.\n• Enlace afiliado: tu enlace único (¡el que te paga!).\n• Descripción ES/EN + Reguladores (da confianza).\n• Pago CPA: cuánto te dan por registro (referencia).\n• Destacado: lo sube arriba y lo resalta.\n• Orden: número menor = aparece primero.\n\nSe publican en tu página /socios. Cada clic sale por tu enlace y se cuenta.',
         'START HERE to earn without advertisers. These are brokers and prop firms that pay you per signup you send them.\n\nHow: go to the broker’s site → find "Affiliates/Partners/IB" → sign up → they give you a unique link.\n\nThen fill the fields:\n• Name + Logo (URL).\n• Category: broker / prop firm / tool.\n• Affiliate link: your unique link (the one that pays you!).\n• Description ES/EN + Regulators (builds trust).\n• CPA payout: how much per signup (reference).\n• Featured: pushes it to the top and highlights it.\n• Rank: lower number = appears first.\n\nThey publish on your /socios page. Every click goes through your link and is counted.') },
+    { target: '[data-guide="mediakit"]', title: L('8 · Media Kit y propuesta (para clientes)', '8 · Media Kit & proposal (for clients)'),
+      body: L('Esto es lo que le enseñas a un cliente que quiere comprar un banner.\n\n• Página pública /publicidad/estadisticas: muestra sola tus estadísticas reales por página (visitas, CTR), la audiencia por país y qué espacios están libres. Se actualiza sola.\n\n• Propuesta PDF /publicidad/propuesta: un documento profesional bilingüe (ES/EN) que el cliente descarga. Sale con tus cifras reales incrustadas.\n\nAquí editas los textos, los "pisos" y los paquetes:\n• Pisos: cifra mínima creíble que se muestra mientras tienes poco tráfico. Cuando el tráfico real la supera, se muestra el real (nunca inventa por encima).\n• Mostrar precios: enséñalos u ocúltalos (para negociar por contacto).\n• Paquetes: Starter/Growth/Enterprise con su precio y qué espacios incluyen.\n\nPulsa "Guardar" y usa "Ver página / Ver propuesta" para revisarlo.',
+        'This is what you show a client who wants to buy a banner.\n\n• Public page /publicidad/estadisticas: automatically shows your real per-page stats (visits, CTR), audience by country and which spaces are open. It updates itself.\n\n• PDF proposal /publicidad/propuesta: a professional bilingual (ES/EN) document the client downloads. It comes with your real figures embedded.\n\nHere you edit the copy, the "floors" and the packages:\n• Floors: a credible minimum shown while traffic is low. Once real traffic beats it, the real number shows (never invents above real).\n• Show prices: display or hide them (to negotiate by contact).\n• Packages: Starter/Growth/Enterprise with price and which spaces they include.\n\nHit "Save" and use "View page / View proposal" to check it.') },
   ];
 
   return (
@@ -214,6 +229,66 @@ export default function AdsAdmin({ es }: { es: boolean }) {
           ))}
         </div>
       </div>
+
+      {/* Media Kit · estadísticas para anunciantes + propuesta PDF */}
+      {mk && (
+        <div data-guide="mediakit" style={box}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>{L('Media Kit y propuesta (para clientes)', 'Media Kit & proposal (for clients)')}
+              <Hint text={L('La página pública /publicidad/estadisticas y la propuesta PDF /publicidad/propuesta se llenan solas con tu tráfico real. Aquí ajustas los textos, los pisos (cifra mínima creíble mientras hay poco tráfico) y los paquetes. Cuando el dato real supera el piso, manda el real.', 'The public page /publicidad/estadisticas and the PDF proposal /publicidad/propuesta fill themselves from your real traffic. Here you tune the copy, the floors (a credible minimum while traffic is low) and the packages. When the real number beats the floor, the real one wins.')} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <a className="btn btn-ghost" href="/publicidad/estadisticas" target="_blank" style={{ fontSize: 12 }}>{L('Ver página', 'View page')}</a>
+              <a className="btn btn-ghost" href="/publicidad/propuesta" target="_blank" style={{ fontSize: 12 }}>{L('Ver propuesta', 'View proposal')}</a>
+              <button className="btn btn-primary" onClick={saveMk} disabled={busy === 'mk'} style={{ fontSize: 12 }}>{L('Guardar', 'Save')}</button>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 10 }}>
+            <div><div style={lbl}>{L('Titular (ES)', 'Headline (ES)')}</div><input value={mk.headlineEs} onChange={(e) => setMk({ ...mk, headlineEs: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
+            <div><div style={lbl}>{L('Titular (EN)', 'Headline (EN)')}</div><input value={mk.headlineEn} onChange={(e) => setMk({ ...mk, headlineEn: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 10, marginTop: 10 }}>
+            <div><div style={lbl}>{L('Quiénes somos (ES)', 'About (ES)')}</div><textarea value={mk.aboutEs} onChange={(e) => setMk({ ...mk, aboutEs: e.target.value })} rows={3} style={{ margin: 0, width: '100%' }} /></div>
+            <div><div style={lbl}>{L('Quiénes somos (EN)', 'About (EN)')}</div><textarea value={mk.aboutEn} onChange={(e) => setMk({ ...mk, aboutEn: e.target.value })} rows={3} style={{ margin: 0, width: '100%' }} /></div>
+            <div><div style={lbl}>{L('Audiencia (ES)', 'Audience (ES)')}</div><textarea value={mk.audienceEs} onChange={(e) => setMk({ ...mk, audienceEs: e.target.value })} rows={2} style={{ margin: 0, width: '100%' }} /></div>
+            <div><div style={lbl}>{L('Audiencia (EN)', 'Audience (EN)')}</div><textarea value={mk.audienceEn} onChange={(e) => setMk({ ...mk, audienceEn: e.target.value })} rows={2} style={{ margin: 0, width: '100%' }} /></div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginTop: 10 }}>
+            <div><div style={lbl}>{L('Piso visitantes/mes', 'Floor visitors/mo')} <Hint text={L('Cifra mínima que se muestra mientras el tráfico real es menor. Cuando el real la supera, se muestra el real.', 'Minimum shown while real traffic is lower. Once real beats it, real shows.')} /></div><input type="number" min={0} value={mk.floorVisitors} onChange={(e) => setMk({ ...mk, floorVisitors: +e.target.value || 0 })} style={{ margin: 0, width: '100%' }} /></div>
+            <div><div style={lbl}>{L('Piso vistas/mes', 'Floor pageviews/mo')}</div><input type="number" min={0} value={mk.floorPageviews} onChange={(e) => setMk({ ...mk, floorPageviews: +e.target.value || 0 })} style={{ margin: 0, width: '100%' }} /></div>
+            <div><div style={lbl}>{L('Tiempo medio', 'Avg. time')}</div><input value={mk.avgTime} onChange={(e) => setMk({ ...mk, avgTime: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
+            <div><div style={lbl}>{L('% Móvil', '% Mobile')}</div><input type="number" min={0} max={100} value={mk.mobilePct} onChange={(e) => setMk({ ...mk, mobilePct: +e.target.value || 0 })} style={{ margin: 0, width: '100%' }} /></div>
+            <div><div style={lbl}>{L('CTR piso (%)', 'CTR floor (%)')}</div><input type="number" min={0} step={0.1} value={mk.ctrPctFloor} onChange={(e) => setMk({ ...mk, ctrPctFloor: +e.target.value || 0 })} style={{ margin: 0, width: '100%' }} /></div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              <input type="checkbox" checked={!!mk.showPrices} onChange={(e) => setMk({ ...mk, showPrices: e.target.checked })} style={{ margin: 0 }} />
+              {L('Mostrar precios en el kit y la propuesta', 'Show prices in the kit & proposal')}
+            </label>
+            <div style={{ flex: 1, minWidth: 200 }}><div style={lbl}>{L('Email de contacto', 'Contact email')}</div><input value={mk.contactEmail} onChange={(e) => setMk({ ...mk, contactEmail: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
+          </div>
+
+          {/* Paquetes */}
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{L('Paquetes', 'Packages')}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {(mk.packages || []).map((p: any, i: number) => (
+                <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 8, padding: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 8 }}>
+                  <div><div style={lbl}>{L('Nombre (ES)', 'Name (ES)')}</div><input value={p.es} onChange={(e) => setMkPack(i, 'es', e.target.value)} style={{ margin: 0, width: '100%' }} /></div>
+                  <div><div style={lbl}>{L('Nombre (EN)', 'Name (EN)')}</div><input value={p.en} onChange={(e) => setMkPack(i, 'en', e.target.value)} style={{ margin: 0, width: '100%' }} /></div>
+                  <div><div style={lbl}>{L('Precio/mes ($, 0 = a medida)', 'Price/mo ($, 0 = custom)')}</div><input type="number" min={0} value={p.priceMonthly} onChange={(e) => setMkPack(i, 'priceMonthly', +e.target.value || 0)} style={{ margin: 0, width: '100%' }} /></div>
+                  <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Descripción (ES)', 'Description (ES)')}</div><input value={p.descEs} onChange={(e) => setMkPack(i, 'descEs', e.target.value)} style={{ margin: 0, width: '100%' }} /></div>
+                  <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Descripción (EN)', 'Description (EN)')}</div><input value={p.descEn} onChange={(e) => setMkPack(i, 'descEn', e.target.value)} style={{ margin: 0, width: '100%' }} /></div>
+                  <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Slots incluidos (claves separadas por coma)', 'Included slots (comma-separated keys)')}</div><input value={(p.slots || []).join(', ')} onChange={(e) => setMkPack(i, 'slots', e.target.value.split(',').map((x) => x.trim()).filter(Boolean))} placeholder="landing_top, footer_site" style={{ margin: 0, width: '100%' }} /></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Nueva / editar campaña */}
       <div data-guide="campaign" style={box}>

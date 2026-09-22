@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { AD_SLOTS, IAB_SIZES, getAdsConfig, saveAdsConfig, rateCard, type AdSlot } from '@/lib/ads';
+import { getMediaKitOverrides, saveMediaKitOverrides } from '@/lib/mediakit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -18,9 +19,10 @@ export async function GET() {
   const { data: partners } = await supabaseAdmin.from('ad_partners').select('*').order('rank', { ascending: true }).limit(100);
   const { data: advertisers } = await supabaseAdmin.from('ad_advertisers').select('id,email,name,company,kind,balance,status,created_at').order('created_at', { ascending: false }).limit(100);
   const slots = AD_SLOTS.map((s) => ({ key: s.key, es: s.es, en: s.en, size: s.size, page: s.page, unit: s.unit, model: s.model || 'flat' }));
+  const mediakit = await getMediaKitOverrides();
   return NextResponse.json({
     config: { enabled: cfg.enabled, nativeEnabled: cfg.nativeEnabled, autoApprove: cfg.autoApprove, programmatic: cfg.programmatic, riskDisclaimer: cfg.riskDisclaimer, freqCap: cfg.freqCap, partnerFill: cfg.partnerFill },
-    rates, slots, sizes: IAB_SIZES, campaigns: data || [], partners: partners || [], advertisers: advertisers || [],
+    rates, slots, sizes: IAB_SIZES, campaigns: data || [], partners: partners || [], advertisers: advertisers || [], mediakit,
   });
 }
 
@@ -54,6 +56,37 @@ export async function POST(req: Request) {
   const { ok } = await requirePerm(PERM, 'manage');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const b = await req.json().catch(() => ({} as any));
+
+  // Media Kit · guarda los textos/pisos/paquetes editables de la propuesta.
+  if (b.entity === 'mediakit') {
+    const d = b.data || {};
+    const patch: any = {};
+    const str = (v: any, n = 2000) => String(v ?? '').slice(0, n);
+    const num = (v: any) => Math.max(0, Number(v) || 0);
+    if (typeof d.headlineEs === 'string') patch.headlineEs = str(d.headlineEs, 300);
+    if (typeof d.headlineEn === 'string') patch.headlineEn = str(d.headlineEn, 300);
+    if (typeof d.aboutEs === 'string') patch.aboutEs = str(d.aboutEs);
+    if (typeof d.aboutEn === 'string') patch.aboutEn = str(d.aboutEn);
+    if (typeof d.audienceEs === 'string') patch.audienceEs = str(d.audienceEs, 600);
+    if (typeof d.audienceEn === 'string') patch.audienceEn = str(d.audienceEn, 600);
+    if (typeof d.contactEmail === 'string') patch.contactEmail = str(d.contactEmail, 120);
+    if (typeof d.showPrices === 'boolean') patch.showPrices = d.showPrices;
+    if (d.floorVisitors != null) patch.floorVisitors = num(d.floorVisitors);
+    if (d.floorPageviews != null) patch.floorPageviews = num(d.floorPageviews);
+    if (typeof d.avgTime === 'string') patch.avgTime = str(d.avgTime, 12);
+    if (d.mobilePct != null) patch.mobilePct = Math.min(100, num(d.mobilePct));
+    if (d.ctrPctFloor != null) patch.ctrPctFloor = num(d.ctrPctFloor);
+    if (Array.isArray(d.packages)) {
+      patch.packages = d.packages.slice(0, 8).map((p: any) => ({
+        id: str(p.id, 40) || 'pkg', es: str(p.es, 60), en: str(p.en, 60),
+        priceMonthly: num(p.priceMonthly),
+        descEs: str(p.descEs, 300), descEn: str(p.descEn, 300),
+        slots: Array.isArray(p.slots) ? p.slots.map((x: any) => str(x, 40)).slice(0, 12) : [],
+      }));
+    }
+    const saved = await saveMediaKitOverrides(patch);
+    return NextResponse.json({ ok: true, mediakit: saved });
+  }
 
   if (b.action === 'delete' && b.id) {
     await supabaseAdmin.from('ad_campaigns').delete().eq('id', b.id);
