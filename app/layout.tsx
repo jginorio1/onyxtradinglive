@@ -65,10 +65,13 @@ export async function generateMetadata(): Promise<Metadata> {
        : 'Connect MT4, MT5 and cTrader, track your prop-firm rules live, protect your risk with Onyx Guardian and copy across accounts. Journal, analytics and net profit. Start free.');
   const gVer = process.env.GOOGLE_SITE_VERIFICATION;
   const bVer = process.env.BING_SITE_VERIFICATION;
+  const adsenseId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;   // ej. ca-pub-7228105221509555
   return {
     metadataBase: new URL(url),
     title: seo.title,
     description: seo.description,
+    // Etiqueta meta de verificación de AdSense (método "Meta tag"). Siempre en el <head>.
+    ...(adsenseId ? { other: { 'google-adsense-account': adsenseId } } : {}),
     keywords: ['trading journal', 'diario de trading', 'MT4', 'MT5', 'MetaTrader', 'cTrader', 'MatchTrader', 'TradingView', 'TradingView signals', 'señales TradingView', 'estadísticas trading', 'trading stats', 'FTMO', 'prop firm', 'copy trading', 'trading academy', 'analytics'],
     verification: gVer ? { google: gVer, ...(bVer ? { other: { 'msvalidate.01': bVer } } : {}) } : (bVer ? { other: { 'msvalidate.01': bVer } } : undefined),
     alternates: localeAlternates('/'),
@@ -160,10 +163,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   };
 
   const ga = process.env.NEXT_PUBLIC_GA_ID;   // Google Analytics 4 (opcional)
+  const adsense = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;   // ej. ca-pub-7228105221509555 (verificación + anuncios AdSense)
 
   return (
     <html lang={lang} data-theme={theme || undefined} suppressHydrationWarning>
       <body>
+        {/* Google AdSense: carga la librería de anuncios y sirve para verificar el
+            sitio (método "AdSense code snippet"). Se activa poniendo
+            NEXT_PUBLIC_ADSENSE_CLIENT en las variables de entorno. Además se emite
+            la etiqueta meta google-adsense-account (método "Meta tag") en el head
+            vía metadata, así cualquiera de los dos métodos de Google funciona. */}
+        {adsense && (
+          <script async src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsense}`} crossOrigin="anonymous"></script>
+        )}
         {/* Login-first SIN parpadeo (solo app nativa Capacitor): este script corre
             mientras el HTML se está parseando, ANTES de que el landing se pinte. Si
             la app abre en la raíz o /en, redirige a /dashboard de inmediato (y el
