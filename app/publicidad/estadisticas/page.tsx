@@ -27,7 +27,7 @@ export default async function MediaKitStats() {
   const es = serverLang() === 'es';
   const kit = await buildMediaKit();
   const L = (a: string, b: string) => (es ? a : b);
-  const nf = (n: number) => n.toLocaleString(es ? 'es-ES' : 'en-US');
+  const nf = (n: number) => n.toLocaleString('en-US'); // miles con coma (95,587) en ambos idiomas
   const { totals, groups, audience, packages, branding } = kit;
   const t = audience.tiers;
   // conic-gradient para el donut de tiers

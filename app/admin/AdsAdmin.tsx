@@ -104,6 +104,10 @@ export default function AdsAdmin({ es }: { es: boolean }) {
     } catch { toast(L('Error de red.', 'Network error.'), 'err'); } finally { setBusy(''); }
   }
 
+  // Formateo de miles con COMA (95,587). Para inputs de texto: muestra con coma,
+  // guarda el número limpio.
+  const commaNum = (v: any) => (v || v === 0) ? Number(v).toLocaleString('en-US') : '';
+  const parseNum = (s: string) => Math.max(0, parseInt(String(s).replace(/[^0-9]/g, ''), 10) || 0);
   const box: any = { background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 14 };
   const lbl: any = { fontSize: 11.5, color: 'var(--mut)', marginBottom: 5 };
   const slotName = (k: string) => { const s = slots.find((x) => x.key === k); return s ? (es ? s.es : s.en) + ' · ' + s.size : k; };
@@ -381,19 +385,20 @@ export default function AdsAdmin({ es }: { es: boolean }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginTop: 10 }}>
-            <div><div style={lbl}>{L('Piso visitantes/mes', 'Floor visitors/mo')} <Hint text={L('Cifra mínima que se muestra mientras el tráfico real es menor. Cuando el real la supera, se muestra el real.', 'Minimum shown while real traffic is lower. Once real beats it, real shows.')} /></div><input type="number" min={0} value={mk.floorVisitors} onChange={(e) => setMk({ ...mk, floorVisitors: +e.target.value || 0 })} style={{ margin: 0, width: '100%' }} /></div>
-            <div><div style={lbl}>{L('Piso vistas/mes', 'Floor pageviews/mo')}</div><input type="number" min={0} value={mk.floorPageviews} onChange={(e) => setMk({ ...mk, floorPageviews: +e.target.value || 0 })} style={{ margin: 0, width: '100%' }} /></div>
+            <div><div style={lbl}>{L('Piso visitantes/mes', 'Floor visitors/mo')} <Hint text={L('Cifra mínima que se muestra mientras el tráfico real es menor. Cuando el real la supera, se muestra el real. Se ve con coma de miles (ej: 95,587).', 'Minimum shown while real traffic is lower. Once real beats it, real shows. Displayed with a thousands comma (e.g. 95,587).')} /></div><input inputMode="numeric" value={commaNum(mk.floorVisitors)} onChange={(e) => setMk({ ...mk, floorVisitors: parseNum(e.target.value) })} style={{ margin: 0, width: '100%' }} /></div>
+            <div><div style={lbl}>{L('Piso vistas/mes', 'Floor pageviews/mo')}</div><input inputMode="numeric" value={commaNum(mk.floorPageviews)} onChange={(e) => setMk({ ...mk, floorPageviews: parseNum(e.target.value) })} style={{ margin: 0, width: '100%' }} /></div>
             <div><div style={lbl}>{L('Tiempo medio', 'Avg. time')}</div><input value={mk.avgTime} onChange={(e) => setMk({ ...mk, avgTime: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
             <div><div style={lbl}>{L('% Móvil', '% Mobile')}</div><input type="number" min={0} max={100} value={mk.mobilePct} onChange={(e) => setMk({ ...mk, mobilePct: +e.target.value || 0 })} style={{ margin: 0, width: '100%' }} /></div>
             <div><div style={lbl}>{L('CTR piso (%)', 'CTR floor (%)')}</div><input type="number" min={0} step={0.1} value={mk.ctrPctFloor} onChange={(e) => setMk({ ...mk, ctrPctFloor: +e.target.value || 0 })} style={{ margin: 0, width: '100%' }} /></div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-              <input type="checkbox" checked={!!mk.showPrices} onChange={(e) => setMk({ ...mk, showPrices: e.target.checked })} style={{ margin: 0 }} />
-              {L('Mostrar precios en el kit y la propuesta', 'Show prices in the kit & proposal')}
-            </label>
-            <div style={{ flex: 1, minWidth: 200 }}><div style={lbl}>{L('Email de contacto', 'Contact email')}</div><input value={mk.contactEmail} onChange={(e) => setMk({ ...mk, contactEmail: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!mk.showPrices} onChange={(e) => setMk({ ...mk, showPrices: e.target.checked })} style={{ margin: 0, flex: 'none' }} />
+            <span>{L('Mostrar precios en el kit y la propuesta', 'Show prices in the kit & proposal')}</span>
+          </label>
+          <div style={{ marginTop: 10, maxWidth: 380 }}>
+            <div style={lbl}>{L('Email de contacto', 'Contact email')}</div>
+            <input value={mk.contactEmail} onChange={(e) => setMk({ ...mk, contactEmail: e.target.value })} style={{ margin: 0, width: '100%' }} />
           </div>
 
           {/* Paquetes */}
