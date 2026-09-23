@@ -96,11 +96,16 @@ export type MediaKit = {
   branding: { headlineEs: string; headlineEn: string; aboutEs: string; aboutEn: string; contactEmail: string; showPrices: boolean };
   disclaimer: { es: string; en: string };
   overrides: MediaKitOverrides;   // para el editor admin
+  // Solo para admin: datos REALES (sin piso) para comparar con los visibles.
+  real?: {
+    totals: { visitors: number; pageviews: number };
+    groups: { key: string; es: string; en: string; pageviews: number; visitors: number }[];
+  };
 };
 
 const grow = (real: number, floor: number) => Math.max(real || 0, floor || 0);
 
-export async function buildMediaKit(opts?: { client?: ProposalClient | null }): Promise<MediaKit> {
+export async function buildMediaKit(opts?: { client?: ProposalClient | null; includeReal?: boolean }): Promise<MediaKit> {
   const cfg = await getAdsConfig();
   const ov = await getMediaKitOverrides();
   const now = Date.now();
@@ -153,6 +158,14 @@ export async function buildMediaKit(opts?: { client?: ProposalClient | null }): 
   };
 
   // 4) Ensamblar grupos con sus slots ---------------------------------------
+  // Reparto CONGRUENTE del piso: cada superficie recibe una fracción del total,
+  // de modo que las filas por página cuadren con el KPI de arriba y nunca se vea
+  // "28 vistas" cuando el total dice 90k. Lo mostrado = max(real, cuota del piso),
+  // así siempre es ≥ base y sube solo cuando el tráfico real la supera.
+  const WEIGHT: Record<string, number> = { landing: 0.30, article: 0.25, blog: 0.18, directory: 0.05 };
+  const groupFloorViews = (k: string) => Math.round(pv * (WEIGHT[k] || 0));
+  const groupFloorVis   = (k: string) => Math.round(visitors * (WEIGHT[k] || 0));
+
   const groups = GROUPS.map((g) => {
     const slots = AD_SLOTS.filter((s) => {
       if (g.key === 'site') return s.page === 'site';
@@ -165,41 +178,59 @@ export async function buildMediaKit(opts?: { client?: ProposalClient | null }): 
       const { price, unit } = priceOf(s);
       return { key: s.key, es: s.es, en: s.en, size: s.size, unit, price, available: !taken.has(s.key), fmt: s.fmt };
     });
-    // El footer/sticky se sirven en todas las páginas → sus vistas = pageviews totales.
-    const views = g.key === 'site' ? pv : grow(perGroupViews[g.key] || 0, 0);
-    const vis = g.key === 'site' ? visitors : (perGroupVids[g.key]?.size || 0);
+    // El footer/sticky se sirven en TODAS las páginas → sus vistas = total.
+    const views = g.key === 'site' ? pv : grow(perGroupViews[g.key] || 0, groupFloorViews(g.key));
+    const vis   = g.key === 'site' ? visitors : grow(perGroupVids[g.key]?.size || 0, groupFloorVis(g.key));
     return { key: g.key, es: g.es, en: g.en, pageviews: views, visitors: vis, slots };
   }).filter((g) => g.slots.length > 0);
 
   // 5) Audiencia por tier ----------------------------------------------------
+  // Mezcla: partimos de un reparto típico del nicho (nunca 0%) proporcional al
+  // total, y le SUMAMOS los datos reales. Así los % son congruentes con la base
+  // y se van moviendo hacia lo real conforme llega tráfico, sin caer por debajo.
   const tierCount = { t1: 0, t2: 0, t3: 0 };
   for (const [c, n] of Object.entries(countries)) {
     const t = tierOf(c);
     if (t) (tierCount as any)[t] += n;
   }
-  const tierTot = tierCount.t1 + tierCount.t2 + tierCount.t3;
-  const pct = (n: number) => (tierTot ? Math.round((n / tierTot) * 100) : 0);
-  // Si aún no hay datos geográficos, mostramos un reparto típico del nicho (editable a futuro).
-  const tiers = tierTot >= 20
-    ? { t1: pct(tierCount.t1), t2: pct(tierCount.t2), t3: pct(tierCount.t3) }
-    : { t1: 45, t2: 27, t3: 28 };
+  const baseScale = Math.max(visitors, 100); // fuerza del reparto base
+  const blended = {
+    t1: 0.45 * baseScale + tierCount.t1,
+    t2: 0.27 * baseScale + tierCount.t2,
+    t3: 0.28 * baseScale + tierCount.t3,
+  };
+  const bTot = blended.t1 + blended.t2 + blended.t3 || 1;
+  const t1p = Math.round((blended.t1 / bTot) * 100);
+  const t2p = Math.round((blended.t2 / bTot) * 100);
+  const tiers = { t1: t1p, t2: t2p, t3: Math.max(0, 100 - t1p - t2p) }; // suman 100 exacto
   const topCountries = Object.entries(countries).map(([code, n]) => ({ code, n })).sort((a, b) => b.n - a.n).slice(0, 8);
 
   // 6) Paquetes con proyección de impresiones -------------------------------
-  // Estimación conservadora: impresiones ~ suma de pageviews de las superficies del paquete.
+  // Usa las mismas vistas "con piso" por superficie → congruente con las filas.
   const viewsForSlot = (key: string): number => {
     const s = AD_SLOTS.find((x) => x.key === key);
     if (!s) return 0;
     if (s.page === 'site') return pv;
     const gk = s.page === 'landing' ? 'landing' : s.page;
-    return grow(perGroupViews[gk] || 0, 0);
+    return grow(perGroupViews[gk] || 0, groupFloorViews(gk));
   };
   const packages = ov.packages.map((p) => {
     const est = p.slots.reduce((a, k) => a + viewsForSlot(k), 0);
     return { ...p, estImpressions: est };
   });
 
+  // 7) Datos REALES (sin piso) para la gráfica de comparación en admin --------
+  const real = opts?.includeReal ? {
+    totals: { visitors: allVids.size, pageviews },
+    groups: groups.map((g) => ({
+      key: g.key, es: g.es, en: g.en,
+      pageviews: g.key === 'site' ? pageviews : (perGroupViews[g.key] || 0),
+      visitors: g.key === 'site' ? allVids.size : (perGroupVids[g.key]?.size || 0),
+    })),
+  } : undefined;
+
   return {
+    real,
     updatedIso: new Date(now).toISOString(),
     client: opts?.client || null,
     totals: { visitors, pageviews: pv, avgTime: ov.avgTime, ctrPct, mobilePct: ov.mobilePct },
