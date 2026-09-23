@@ -110,6 +110,22 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   const parseNum = (s: string) => Math.max(0, parseInt(String(s).replace(/[^0-9]/g, ''), 10) || 0);
   const box: any = { background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 14 };
   const lbl: any = { fontSize: 11.5, color: 'var(--mut)', marginBottom: 5 };
+
+  // --- Pestañas de tarjetas de colores: una sección a la vez (menos scroll) ---
+  const [tab, setTab] = useState<'panel' | 'review' | 'rates' | 'mediakit' | 'campaign' | 'partners'>('panel');
+  const TABS = [
+    { key: 'panel',    color: '#4f9dff', icon: '⚙️', es: 'Panel',     en: 'Panel',      subEs: 'Interruptores y ajustes', subEn: 'Switches & settings' },
+    { key: 'review',   color: '#f5b23e', icon: '✅', es: 'Revisión',  en: 'Review',     subEs: 'Aprobar artes',          subEn: 'Approve creatives', badge: pending?.length || 0 },
+    { key: 'rates',    color: '#34e2a0', icon: '💲', es: 'Tarifario', en: 'Rate card',  subEs: 'Precios por espacio',     subEn: 'Prices per space' },
+    { key: 'mediakit', color: '#a679ff', icon: '📊', es: 'Media Kit', en: 'Media Kit',  subEs: 'Estadísticas y propuesta',subEn: 'Stats & proposal' },
+    { key: 'campaign', color: '#ef6ea0', icon: '📢', es: 'Campañas',  en: 'Campaigns',  subEs: 'Crear y gestionar',       subEn: 'Create & manage' },
+    { key: 'partners', color: '#d9b661', icon: '🤝', es: 'Socios',    en: 'Partners',   subEs: 'Directorio CPA',          subEn: 'CPA directory' },
+  ] as const;
+  const tabColor = (k: string) => (TABS.find((t) => t.key === k)?.color || 'var(--line)');
+  // Estilo del contenedor de cada sección: visible solo si su pestaña está activa,
+  // con borde de color a la izquierda. Se mantiene montada (para que la guía la ilumine).
+  const sec = (k: string): any => ({ display: tab === k ? 'block' : 'none', borderLeft: `3px solid ${tabColor(k)}` });
+  const guideTab = (t: string) => (/global|settings/.test(t) ? 'panel' : /review/.test(t) ? 'review' : /rates/.test(t) ? 'rates' : /mediakit/.test(t) ? 'mediakit' : /campaign/.test(t) ? 'campaign' : /partners/.test(t) ? 'partners' : 'panel') as any;
   const slotName = (k: string) => { const s = slots.find((x) => x.key === k); return s ? (es ? s.es : s.en) + ' · ' + s.size : k; };
   const ctr = (c: Campaign) => (c.impressions > 0 ? ((c.clicks / c.impressions) * 100).toFixed(1) + '%' : '—');
   const stColor: Record<string, string> = { active: '#34e2a0', paused: '#f5b23e', draft: '#7c8cff', pending: '#e0a92e', rejected: '#ef6262', scheduled: '#7c8cff', ended: 'var(--mut)' };
@@ -249,11 +265,31 @@ export default function AdsAdmin({ es }: { es: boolean }) {
           <h2 style={{ fontSize: 20, margin: '0 0 2px' }}>{L('Espacios patrocinados', 'Sponsored spaces')}</h2>
           <div className="muted" style={{ fontSize: 13 }}>{L('Vende banners por ubicación y tamaño. Solo se muestran en la web y solo a usuarios del plan gratis.', 'Sell banners by placement and size. Shown only on web and only to free-plan users.')}</div>
         </div>
-        <GuidePanel storageKey="ads" title={L('Guía de Publicidad', 'Advertising guide')} steps={guideSteps} es={es} />
+        <GuidePanel storageKey="ads" title={L('Guía de Publicidad', 'Advertising guide')} steps={guideSteps} es={es} onStep={(t) => setTab(guideTab(t))} />
+      </div>
+
+      {/* Navegación en tarjetas de colores: una sección a la vez */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+        {TABS.map((t) => {
+          const on = tab === t.key;
+          return (
+            <button key={t.key} onClick={() => setTab(t.key as any)}
+              style={{ textAlign: 'left', cursor: 'pointer', border: `1px solid ${on ? t.color : 'var(--line)'}`, borderRadius: 12, padding: '11px 12px',
+                background: on ? `color-mix(in srgb, ${t.color} 16%, var(--bg2))` : 'var(--bg2)', color: 'var(--tx)',
+                boxShadow: on ? `0 0 0 3px color-mix(in srgb, ${t.color} 22%, transparent)` : 'none', transition: 'all .15s', position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 26, height: 26, flex: 'none', borderRadius: 8, display: 'grid', placeItems: 'center', fontSize: 14, background: on ? t.color : `color-mix(in srgb, ${t.color} 20%, transparent)` }}>{t.icon}</span>
+                <span style={{ fontWeight: 800, fontSize: 13.5 }}>{es ? t.es : t.en}</span>
+                {'badge' in t && (t as any).badge > 0 && <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 800, background: t.color, color: '#1a1400', borderRadius: 20, padding: '1px 7px' }}>{(t as any).badge}</span>}
+              </div>
+              <div className="muted" style={{ fontSize: 11, marginTop: 5 }}>{es ? t.subEs : t.subEn}</div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Interruptores globales */}
-      <div data-guide="global" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
+      <div data-guide="global" style={{ display: tab === 'panel' ? 'grid' : 'none', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
         <div onClick={() => patch({ enabled: !cfg.enabled }, cfg.enabled ? L('Anuncios apagados.', 'Ads off.') : L('Anuncios encendidos.', 'Ads on.'))} style={{ ...box, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
           <div><div style={{ fontWeight: 700, fontSize: 13.5 }}>{L('Anuncios (global)', 'Ads (global)')}</div><div className="muted" style={{ fontSize: 12 }}>{L('Interruptor maestro para todos los espacios.', 'Master switch for every space.')}</div></div>
           <span style={{ fontSize: 12, fontWeight: 700, color: cfg.enabled ? '#34e2a0' : 'var(--mut)' }}>{cfg.enabled ? 'ON' : 'OFF'}</span>
@@ -265,7 +301,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       </div>
 
       {/* Cola de revisión de artes (F3) */}
-      <div data-guide="review" style={{ ...box, borderColor: pending.length ? 'var(--brand)' : 'var(--line)' }}>
+      <div data-guide="review" style={{ ...box, ...sec('review'), borderColor: pending.length ? 'var(--brand)' : 'var(--line)' }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
           {L('Revisión de artes', 'Creative review')}
           <Hint text={L('Los anuncios pagados en /publicidad esperan aquí tu aprobación antes de salir live. Revisa el arte y el enlace, y aprueba o rechaza. Sin clientes todavía, esto está vacío.', 'Ads paid on /publicidad wait here for your approval before going live. Check the creative and link, then approve or reject. With no clients yet, this is empty.')} />
@@ -292,7 +328,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       </div>
 
       {/* Ajustes pro (F3/F5/F6) */}
-      <div data-guide="settings" style={box}>
+      <div data-guide="settings" style={{ ...box, ...sec('panel') }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>{L('Ajustes de monetización', 'Monetization settings')}
           <Hint text={L('Controlas qué se muestra en un hueco vacío (tu anuncio de Pro o una red externa), el tope de veces que un visitante ve el mismo anuncio, y el aviso de riesgo de los anuncios financieros. Sin clientes, no tienes que tocar nada.', 'You control what shows in an empty slot (your Pro ad or an external network), the cap on how many times a visitor sees the same ad, and the risk disclaimer on financial ads. With no clients, you don’t need to touch anything.')} />
         </div>
@@ -331,7 +367,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       </div>
 
       {/* Tarifario editable */}
-      <div data-guide="rates" style={box}>
+      <div data-guide="rates" style={{ ...box, ...sec('rates') }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>{L('Tarifario (precio por ubicación y tamaño)', 'Rate card (price by placement & size)')}
             <Hint text={L('El precio de cada espacio. Es lo que verá el anunciante en /publicidad. Edítalo y da "Guardar precios". Ponlo una vez.', 'The price of each space. This is what advertisers see on /publicidad. Edit it and hit "Save prices". Set once.')} />
@@ -361,7 +397,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
 
       {/* Media Kit · estadísticas para anunciantes + propuesta PDF */}
       {mk && (
-        <div data-guide="mediakit" style={box}>
+        <div data-guide="mediakit" style={{ ...box, ...sec('mediakit') }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>{L('Media Kit y propuesta (para clientes)', 'Media Kit & proposal (for clients)')}
               <Hint text={L('La página pública /publicidad/estadisticas y la propuesta PDF /publicidad/propuesta se llenan solas con tu tráfico real. Aquí ajustas los textos, los pisos (cifra mínima creíble mientras hay poco tráfico) y los paquetes. Cuando el dato real supera el piso, manda el real.', 'The public page /publicidad/estadisticas and the PDF proposal /publicidad/propuesta fill themselves from your real traffic. Here you tune the copy, the floors (a credible minimum while traffic is low) and the packages. When the real number beats the floor, the real one wins.')} />
@@ -473,7 +509,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       )}
 
       {/* Nueva / editar campaña */}
-      <div data-guide="campaign" style={box}>
+      <div data-guide="campaign" style={{ ...box, ...sec('campaign') }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>{form.id ? L('Editar campaña', 'Edit campaign') : L('Nueva campaña', 'New campaign')}
           <Hint text={L('Crea un anuncio a mano (por ejemplo, si vendiste el espacio por WhatsApp). Elige ubicación, sube el banner, pon el enlace y actívalo. Puedes segmentar por país, tier, dispositivo y modelo de cobro.', 'Create an ad manually (e.g. if you sold the space over WhatsApp). Pick placement, upload the banner, set the link and activate. You can target by country, tier, device and pricing model.')} />
         </div>
@@ -505,7 +541,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       </div>
 
       {/* Lista de campañas */}
-      <div style={box}>
+      <div style={{ ...box, ...sec('campaign') }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>{L('Campañas', 'Campaigns')} ({camps.length})</div>
         {camps.length === 0 ? <div className="muted" style={{ fontSize: 13 }}>{L('Aún no hay campañas. Crea una arriba o llegan solas desde /publicidad.', 'No campaigns yet. Create one above or they arrive from /publicidad.')}</div> : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -530,7 +566,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       </div>
 
       {/* Directorio de partners (CPA) — F6 */}
-      <div data-guide="partners" style={box}>
+      <div data-guide="partners" style={{ ...box, ...sec('partners') }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>{L('Directorio de socios (CPA)', 'Partner directory (CPA)')}
           <Hint text={L('Aquí ganas SIN anunciantes: añade brokers y prop firms con tu enlace afiliado y aparecen en /socios. Cuando alguien se registra por tu enlace, te pagan comisión. Es lo primero que conviene llenar.', 'This earns you money WITHOUT advertisers: add brokers and prop firms with your affiliate link and they show on /socios. When someone signs up through your link, you get a commission. Fill this first.')} />
         </div>

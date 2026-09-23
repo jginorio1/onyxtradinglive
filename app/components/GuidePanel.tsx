@@ -26,7 +26,7 @@ export type GuideStep = { target: string; title: string; body: string; example?:
 
 const GOLD = '#d9b661';
 
-export default function GuidePanel({ storageKey, title, steps, es = true }: { storageKey: string; title: string; steps: GuideStep[]; es?: boolean }) {
+export default function GuidePanel({ storageKey, title, steps, es = true, onStep }: { storageKey: string; title: string; steps: GuideStep[]; es?: boolean; onStep?: (target: string) => void }) {
   const L = (a: string, b: string) => (es ? a : b);
   const [open, setOpen] = useState(false);
   const [big, setBig] = useState(false);
@@ -51,12 +51,13 @@ export default function GuidePanel({ storageKey, title, steps, es = true }: { st
   // Coloca el anillo de resalte y la flecha sobre el elemento objetivo del paso.
   const spotlight = useCallback((idx: number) => {
     const step = steps[idx]; if (!step) return;
-    const el = document.querySelector(step.target) as HTMLElement | null;
-    if (!el) { setArrow(null); return; }
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // Esperamos a que termine el scroll para medir.
+    onStep?.(step.target); // avisa al panel para cambiar de pestaña si hace falta
     let tries = 0;
     const place = () => {
+      const el = document.querySelector(step.target) as HTMLElement | null;
+      // La sección puede estar en otra pestaña; reintentamos hasta que aparezca.
+      if (!el || el.offsetParent === null) { if (tries++ < 14) setTimeout(place, 60); else setArrow(null); return; }
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       const r = el.getBoundingClientRect();
       if (ringRef.current) {
         ringRef.current.style.top = r.top - 6 + 'px';
@@ -78,7 +79,7 @@ export default function GuidePanel({ storageKey, title, steps, es = true }: { st
       if (tries < 8) requestAnimationFrame(() => setTimeout(place, 45));
     };
     place();
-  }, [steps]);
+  }, [steps, onStep]);
 
   useEffect(() => { if (open) spotlight(active); }, [open, active, spotlight]);
 
