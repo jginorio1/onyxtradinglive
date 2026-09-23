@@ -336,6 +336,7 @@ function CreateRep({ reps, act, inp, btnP, lvName }: any) {
 
 function AppRow({ a, reps, act, inp, btn, btnP, canManage, lvName }: any) {
   const [level, setLevel] = useState(a.desired_role === 'supervisor' ? 'l1' : 'vendedor');
+  const [propLang, setPropLang] = useState<'es' | 'en'>('es');    // idioma de la propuesta
   const [parent, setParent] = useState(a.sponsor_rep_id || '');   // pre-lleno con quien lo trajo
   return (
     <div style={{ background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: 14, marginBottom: 10 }}>
@@ -353,7 +354,7 @@ function AppRow({ a, reps, act, inp, btn, btnP, canManage, lvName }: any) {
         <select value={parent} onChange={(e) => setParent(e.target.value)} style={inp}><option value="">Sin supervisor</option>{reps.filter((r: any) => r.level !== 'vendedor').map((r: any) => <option key={r.id} value={r.id}>{r.display_name || r.email}</option>)}</select>
         <button style={btnP} onClick={() => act({ action: 'approve', app_id: a.id, email: a.email, level, parent_id: parent || null, display_name: a.name })}>Aprobar</button>
         <button style={btn} onClick={() => act({ action: 'reject', app_id: a.id })}>Rechazar</button>
-        {a.email && <button style={btn} title="Envía el PDF de la propuesta (con tus parámetros actuales, para el nivel seleccionado) al correo del candidato" onClick={() => act({ action: 'proposal_email', email: a.email, name: a.name, level })}>✉ Enviar propuesta ({lvName(level)})</button>}
+        {a.email && <><select value={propLang} onChange={(e) => setPropLang(e.target.value as any)} style={{ ...inp, width: 'auto' }} title="Idioma de la propuesta"><option value="es">ES</option><option value="en">EN</option></select><button style={btn} title="Envía el PDF de la propuesta (con tus parámetros actuales, para el nivel e idioma seleccionados) al correo del candidato" onClick={() => act({ action: 'proposal_email', email: a.email, name: a.name, level, lang: propLang })}>✉ Enviar propuesta ({lvName(level)})</button></>}
       </div>}
     </div>
   );
@@ -989,6 +990,7 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
   const [price, setPrice] = useState(100);
   const [cpm, setCpm] = useState(3);           // clientes nuevos por mes (escenario ajustable)
   const [level, setLevel] = useState<'vendedor' | 'l1' | 'l2'>('vendedor');  // tier de la plaza
+  const [lang, setLang] = useState<'es' | 'en'>('es');   // idioma del PDF/email
   const [team, setTeam] = useState(5);         // vendedores en su equipo directo
   const [network, setNetwork] = useState(15);  // red total en niveles inferiores (solo Director)
   const [name, setName] = useState('');
@@ -1054,7 +1056,7 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
   async function call(action: string, extra: any = {}) {
     setBusy(action); setMsg('');
     try {
-      const r = await fetch('/api/admin/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, settings: f, price: p, name, include_overrides: true, clients_per_month: perM, level, team_size: teamN, network_size: netN, ...extra }) });
+      const r = await fetch('/api/admin/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, settings: f, price: p, name, include_overrides: true, clients_per_month: perM, level, team_size: teamN, network_size: netN, lang, ...extra }) });
       const j = await r.json();
       if (j.error) { setMsg('⚠ ' + j.error); return null; }
       return j;
@@ -1088,6 +1090,7 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
       {/* Controles */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '12px 0', alignItems: 'flex-end' }}>
         <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Plaza / nivel<Hint text="Nivel de la vacante, con los nombres de tus tiers. Un vendedor ve sus ventas directas; un Lead o Director ven además lo que ganan de su equipo (overrides), y el potencial combina ambas fuentes." /><div style={{ marginTop: 4 }}><select value={level} onChange={(e) => setLevel(e.target.value as any)} style={inp}><option value="vendedor">{names.vendedor || 'Advisor'}</option><option value="l1">{names.l1 || 'Lead'}</option><option value="l2">{names.l2 || 'Director'}</option></select></div></label>
+        <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Idioma<Hint text="Idioma en el que se genera el PDF y el correo de la propuesta. La vista previa de abajo siempre está en español; el documento que se envía sale en el idioma elegido." /><div style={{ marginTop: 4 }}><select value={lang} onChange={(e) => setLang(e.target.value as any)} style={inp}><option value="es">Español</option><option value="en">English</option></select></div></label>
         <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Cliente de ejemplo<div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}><span className="muted">$</span><input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} style={{ ...inp, width: 90 }} /><span className="muted">/mes</span></div></label>
         <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Escenario<Hint text="Cuántos clientes nuevos cierra cada vendedor al mes (tú y cada persona de tu equipo). Con esto se calcula el titular, la bola de nieve y el potencial a 12 meses." /><div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}><input type="number" min={1} max={30} value={cpm} onChange={(e) => setCpm(Number(e.target.value))} style={{ ...inp, width: 70 }} /><span className="muted">clientes/mes</span></div></label>
         {hasTeam && <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Tu equipo<Hint text="Cuántos vendedores tienes en tu equipo directo. Ganas tu override sobre todo lo que ellos vendan." /><div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}><input type="number" min={1} max={100} value={team} onChange={(e) => setTeam(Number(e.target.value))} style={{ ...inp, width: 70 }} /><span className="muted">vendedores</span></div></label>}

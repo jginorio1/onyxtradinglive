@@ -67,19 +67,22 @@ export async function POST(req: Request) {
     if (action === 'proposal_pdf' || action === 'proposal_email') {
       const { proposalData, proposalPdf } = await import('@/lib/salesProposal');
       const s = b.settings && Object.keys(b.settings).length ? b.settings : await salesSettings();
+      const lang = b.lang === 'en' ? 'en' : 'es';
       const data = proposalData(s, { price: Number(b.price) || 100, includeOverrides: b.include_overrides !== false, candidateName: b.name || '', clientsPerMonth: Number(b.clients_per_month) || 3, level: (['vendedor', 'l1', 'l2'].includes(b.level) ? b.level : 'vendedor'), teamSize: Number(b.team_size) || 5, networkSize: Number(b.network_size) || 0 });
-      const pdf = await proposalPdf(data, { company: 'Onyx Trading Live' });
+      const pdf = await proposalPdf(data, { company: 'Onyx Trading Live', lang });
       const base64 = Buffer.from(pdf).toString('base64');
-      const filename = `propuesta-vendedor-onyx.pdf`;
+      const filename = lang === 'en' ? 'onyx-sales-proposal.pdf' : 'propuesta-vendedor-onyx.pdf';
       if (action === 'proposal_pdf') return NextResponse.json({ ok: true, pdf: base64, filename });
       // Enviar por correo con el PDF adjunto.
       const to = String(b.email || '').trim();
       if (!to || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return NextResponse.json({ error: 'Escribe un correo válido.', code: 'bad_email' }, { status: 400 });
       const { sendEmail, mailEnabled } = await import('@/lib/mail');
       if (!mailEnabled()) return NextResponse.json({ error: 'El correo no está configurado (falta RESEND_API_KEY).', code: 'no_mail' }, { status: 400 });
-      const hi = b.name ? `Hola ${b.name},` : 'Hola,';
-      const text = `${hi}\n\nTe comparto la propuesta para unirte como vendedor de Onyx Trading Live. Ganas un % alto el primer mes de cada cliente y comisión recurrente mientras siga pagando.\n\nEn el PDF adjunto verás los ejemplos con números. Si te interesa, postúlate en:\nhttps://www.onyxtradinglive.com/unete-ventas\n\n— Equipo de Onyx Trading Live`;
-      const sent = await sendEmail(to, 'Propuesta para vendedores · Onyx Trading Live', text, { kind: 'sales_proposal', attachments: [{ filename, content: base64 }] });
+      const text = lang === 'en'
+        ? `${b.name ? `Hi ${b.name},` : 'Hi,'}\n\nHere's the proposal to join the Onyx Trading Live sales team. You earn a high % on each client's first month plus recurring commission for as long as they keep paying.\n\nThe attached PDF shows the examples with real numbers. If you're interested, apply at:\nhttps://www.onyxtradinglive.com/unete-ventas\n\n— The Onyx Trading Live team`
+        : `${b.name ? `Hola ${b.name},` : 'Hola,'}\n\nTe comparto la propuesta para unirte como vendedor de Onyx Trading Live. Ganas un % alto el primer mes de cada cliente y comisión recurrente mientras siga pagando.\n\nEn el PDF adjunto verás los ejemplos con números. Si te interesa, postúlate en:\nhttps://www.onyxtradinglive.com/unete-ventas\n\n— Equipo de Onyx Trading Live`;
+      const subject = lang === 'en' ? 'Sales team proposal · Onyx Trading Live' : 'Propuesta para vendedores · Onyx Trading Live';
+      const sent = await sendEmail(to, subject, text, { kind: 'sales_proposal', attachments: [{ filename, content: base64 }] });
       if (!sent) return NextResponse.json({ error: 'No se pudo enviar el correo.', code: 'send_fail' }, { status: 400 });
       return NextResponse.json({ ok: true, sent: true });
     }
