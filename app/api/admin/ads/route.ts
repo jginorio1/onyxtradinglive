@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { AD_SLOTS, IAB_SIZES, getAdsConfig, saveAdsConfig, rateCard, type AdSlot } from '@/lib/ads';
-import { getMediaKitOverrides, saveMediaKitOverrides, createProposal, listProposals, deleteProposal, markProposalSent, getProposalByToken, proposalUrl } from '@/lib/mediakit';
+import { getMediaKitOverrides, saveMediaKitOverrides, createProposal, listProposals, deleteProposal, markProposalSent, getProposalByToken, proposalUrl, buildMediaKit } from '@/lib/mediakit';
 import { sendEmail, mailEnabled } from '@/lib/mail';
 import { mailRoutes, fromLine } from '@/lib/settings';
 
@@ -23,7 +23,10 @@ export async function GET() {
   const slots = AD_SLOTS.map((s) => ({ key: s.key, es: s.es, en: s.en, size: s.size, page: s.page, unit: s.unit, model: s.model || 'flat' }));
   const mediakit = await getMediaKitOverrides();
   const proposals = await listProposals(100);
+  let mediakitData: any = null;
+  try { mediakitData = await buildMediaKit({ includeReal: true }); } catch {}
   return NextResponse.json({
+    mediakitData,
     config: { enabled: cfg.enabled, nativeEnabled: cfg.nativeEnabled, autoApprove: cfg.autoApprove, programmatic: cfg.programmatic, riskDisclaimer: cfg.riskDisclaimer, freqCap: cfg.freqCap, partnerFill: cfg.partnerFill },
     rates, slots, sizes: IAB_SIZES, campaigns: data || [], partners: partners || [], advertisers: advertisers || [], mediakit, proposals,
     mailReady: mailEnabled(),

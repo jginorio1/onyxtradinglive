@@ -25,6 +25,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   const [busy, setBusy] = useState('');
   const [upBusy, setUpBusy] = useState('');   // '' | 'logo' | 'banner'
   const [mk, setMk] = useState<any>(null);    // overrides del Media Kit
+  const [mkData, setMkData] = useState<any>(null);  // kit construido: real + visible
   const [proposals, setProposals] = useState<any[]>([]);
   const [mailReady, setMailReady] = useState(false);
   const emptyProp = { company: '', contact: '', email: '', packageId: '', noteEs: '', noteEn: '', lang: 'es' };
@@ -76,7 +77,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   async function load() {
     try {
       const j = await (await fetch('/api/admin/ads')).json();
-      if (j.config) { setCfg(j.config); setRates(j.rates || []); setSlots(j.slots || []); setCamps(j.campaigns || []); setPartners(j.partners || []); setProgCode(j.config.programmatic?.code || ''); if (j.mediakit) setMk(j.mediakit); setProposals(j.proposals || []); setMailReady(!!j.mailReady); }
+      if (j.config) { setCfg(j.config); setRates(j.rates || []); setSlots(j.slots || []); setCamps(j.campaigns || []); setPartners(j.partners || []); setProgCode(j.config.programmatic?.code || ''); if (j.mediakit) setMk(j.mediakit); if (j.mediakitData) setMkData(j.mediakitData); setProposals(j.proposals || []); setMailReady(!!j.mailReady); }
     } catch {}
   }
   useEffect(() => { load(); }, []);
@@ -108,6 +109,22 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   // guarda el número limpio.
   const commaNum = (v: any) => (v || v === 0) ? Number(v).toLocaleString('en-US') : '';
   const parseNum = (s: string) => Math.max(0, parseInt(String(s).replace(/[^0-9]/g, ''), 10) || 0);
+  // Mini gráfica de barras horizontales (sin librerías) para comparar real vs visible.
+  const barChart = (groups: any[], color: string, scaleMax: number) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+      {groups.filter((g: any) => g.key !== 'site').map((g: any) => (
+        <div key={g.key}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 2 }}>
+            <span className="muted">{es ? g.es : g.en}</span>
+            <span style={{ color, fontWeight: 700 }}>{Number(g.pageviews).toLocaleString('en-US')}</span>
+          </div>
+          <div style={{ height: 9, borderRadius: 5, background: 'var(--line)', overflow: 'hidden' }}>
+            <div style={{ width: Math.min(100, (g.pageviews / scaleMax) * 100) + '%', height: '100%', background: color, borderRadius: 5, transition: 'width .4s' }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
   const box: any = { background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 14 };
   const lbl: any = { fontSize: 11.5, color: 'var(--mut)', marginBottom: 5 };
 
@@ -408,6 +425,28 @@ export default function AdsAdmin({ es }: { es: boolean }) {
               <button className="btn btn-primary" onClick={saveMk} disabled={busy === 'mk'} style={{ fontSize: 12 }}>{L('Guardar', 'Save')}</button>
             </div>
           </div>
+
+          {/* Gráficas: datos reales vs datos visibles (con piso) */}
+          {mkData && mkData.real && (() => {
+            const visPer = (mkData.groups || []).filter((g: any) => g.key !== 'site');
+            const scaleMax = Math.max(1, ...visPer.map((g: any) => g.pageviews));
+            return (
+              <div className="mk-charts" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 12, marginBottom: 14 }}>
+                <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 12, borderLeft: '3px solid #4f9dff' }}>
+                  <div style={{ fontWeight: 700, fontSize: 12.5 }}>{L('Datos reales', 'Real data')}</div>
+                  <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{L('Tu tráfico real por página (30 días).', 'Your real per-page traffic (30 days).')}</div>
+                  {barChart(mkData.real.groups, '#4f9dff', scaleMax)}
+                  <div className="muted" style={{ fontSize: 11, marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 6 }}>{L('Total real', 'Real total')}: <b>{Number(mkData.real.totals.visitors).toLocaleString('en-US')}</b> {L('visitantes', 'visitors')} · <b>{Number(mkData.real.totals.pageviews).toLocaleString('en-US')}</b> {L('vistas', 'views')}</div>
+                </div>
+                <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 12, borderLeft: '3px solid #a679ff' }}>
+                  <div style={{ fontWeight: 700, fontSize: 12.5 }}>{L('Datos visibles (con piso)', 'Visible data (with floor)')}</div>
+                  <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{L('Lo que ve el anunciante. Nunca baja del piso; sube con lo real.', 'What the advertiser sees. Never below the floor; rises with real.')}</div>
+                  {barChart(mkData.groups, '#a679ff', scaleMax)}
+                  <div className="muted" style={{ fontSize: 11, marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 6 }}>{L('Total visible', 'Visible total')}: <b>{Number(mkData.totals.visitors).toLocaleString('en-US')}</b> {L('visitantes', 'visitors')} · <b>{Number(mkData.totals.pageviews).toLocaleString('en-US')}</b> {L('vistas', 'views')}</div>
+                </div>
+              </div>
+            );
+          })()}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 10 }}>
             <div><div style={lbl}>{L('Titular (ES)', 'Headline (ES)')}</div><input value={mk.headlineEs} onChange={(e) => setMk({ ...mk, headlineEs: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
