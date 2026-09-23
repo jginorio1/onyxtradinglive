@@ -697,14 +697,27 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
     if (!u.plan || u.plan === 'free') return 'free';
     return ['active', 'trialing', 'past_due'].includes(String(u.subscription_status || '')) ? 'paid' : 'comp';
   };
-  const NAV_GROUPS: { g: string; items: [Tab, string, string][] }[] = [
-    { g: t.g_op, items: [['resumen', '📊', t.nav_resumen], ['facturacion', '💳', lang === 'en' ? 'Billing' : 'Facturación'], ['usuarios', '👥', t.nav_usuarios], ['correos', '✉️', t.nav_correos], ['soporte', '🎫', t.nav_soporte], ['chat', '💬', lang === 'en' ? 'Team chat' : 'Chat equipo'], ['equipo', '🛡️', t.nav_equipo], ['nomina', '💵', lang === 'en' ? 'Payroll' : 'Nómina'], ['carreras', '💼', lang === 'en' ? 'Careers' : 'Carreras'], ['formacion', '🎓', lang === 'en' ? 'Training' : 'Formación']] },
-    { g: t.g_prod, items: [['planes', '💳', t.nav_planes], ['academy', '🎓', lang === 'en' ? 'Academy' : 'Academia'], ['landing', '🧩', lang === 'en' ? 'Landing Builder' : 'Landing Builder'], ['landingnew', '✨', lang === 'en' ? 'New landing' : 'Landing nueva'], ['modulos', '🧩', t.nav_modulos], ['botlab', '🤖', 'Onyx Bot Lab'], ['factory', '🏭', lang === 'en' ? 'Bot Factory' : 'Fábrica de bots'], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', lang === 'en' ? 'Catalogs' : 'Catálogos']] },
-    { g: t.g_growth, items: [['campanas', '📣', lang === 'en' ? 'Campaigns' : 'Campañas'], ['blog', '📝', 'Blog'], ['ads', '📢', lang === 'en' ? 'Ads' : 'Anuncios'], ['seo', '🔎', 'SEO'], ['copytraders', '🏆', 'Onyx Copy'], ['trackrecord', '📈', lang === 'en' ? 'Public trackrecord' : 'Trackrecord público'], ['embajadores', '🎁', t.nav_embajadores], ['ventas', '🧑‍💼', lang === 'en' ? 'Sales team' : 'Red de ventas'], ['pagos', '💸', lang === 'en' ? 'Payouts' : 'Pagos y retiros'], ['antifraude', '🛡️', lang === 'en' ? 'Payments & chargebacks' : 'Pagos & chargebacks'], ['retencion', '🛟', t.nav_retencion]] },
-    { g: t.g_sys, items: [['monitor', '🛰️', 'Command Center'], ['notif', '🔔', lang === 'en' ? 'Notifications' : 'Notificaciones'], ['guias', '📚', lang === 'en' ? 'Guides' : 'Guías'], ['kb', '🧠', t.nav_kb], ['diag', '🩺', t.nav_diag], ['recursos', '📟', lang === 'en' ? 'Resources' : 'Recursos'], ['backups', '🗄️', t.nav_backups], ['audit', '📈', t.nav_audit], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
+  const en = lang === 'en';
+  // Menú reorganizado en 8 grupos temáticos, cada uno con COLOR. Acordeón: solo
+  // se abre la sección activa (ver render abajo). Cada grupo agrupa cosas que
+  // tienen sentido juntas para encontrarlas rápido.
+  const NAV_GROUPS: { g: string; c: string; items: [Tab, string, string][] }[] = [
+    { g: en ? 'Home' : 'Inicio', c: '#4f9dff', items: [['resumen', '📊', t.nav_resumen], ['monitor', '🛰️', 'Command Center'], ['notif', '🔔', en ? 'Notifications' : 'Notificaciones']] },
+    { g: en ? 'Customers' : 'Clientes', c: '#34e2a0', items: [['usuarios', '👥', t.nav_usuarios], ['soporte', '🎫', t.nav_soporte], ['correos', '✉️', t.nav_correos], ['retencion', '🛟', t.nav_retencion]] },
+    { g: en ? 'Money' : 'Dinero', c: '#35c26b', items: [['facturacion', '💳', en ? 'Billing' : 'Facturación'], ['planes', '🏷️', t.nav_planes], ['pagos', '💸', en ? 'Payouts' : 'Pagos y retiros'], ['antifraude', '🛡️', en ? 'Payments & chargebacks' : 'Pagos & chargebacks']] },
+    { g: 'Marketing', c: '#ef6ea0', items: [['campanas', '📣', en ? 'Campaigns' : 'Campañas'], ['blog', '📝', 'Blog'], ['seo', '🔎', 'SEO'], ['ads', '📢', en ? 'Ads' : 'Anuncios'], ['landing', '🧩', 'Landing Builder'], ['landingnew', '✨', en ? 'New landing' : 'Landing nueva']] },
+    { g: en ? 'Partners' : 'Socios', c: '#d9b661', items: [['embajadores', '🎁', t.nav_embajadores], ['ventas', '🧑‍💼', en ? 'Sales team' : 'Red de ventas'], ['copytraders', '🏆', 'Onyx Copy'], ['trackrecord', '📈', en ? 'Public trackrecord' : 'Trackrecord público']] },
+    { g: en ? 'Product' : 'Producto', c: '#a679ff', items: [['modulos', '🧩', t.nav_modulos], ['academy', '🎓', en ? 'Academy' : 'Academia'], ['botlab', '🤖', 'Onyx Bot Lab'], ['factory', '🏭', en ? 'Bot Factory' : 'Fábrica de bots'], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', en ? 'Catalogs' : 'Catálogos']] },
+    { g: en ? 'Team' : 'Equipo', c: '#f5a742', items: [['equipo', '🛡️', t.nav_equipo], ['nomina', '💵', en ? 'Payroll' : 'Nómina'], ['carreras', '💼', en ? 'Careers' : 'Carreras'], ['formacion', '🎓', en ? 'Training' : 'Formación'], ['chat', '💬', en ? 'Team chat' : 'Chat equipo']] },
+    { g: en ? 'System' : 'Sistema', c: '#8b93a7', items: [['kb', '🧠', t.nav_kb], ['guias', '📚', en ? 'Guides' : 'Guías'], ['diag', '🩺', t.nav_diag], ['audit', '📈', t.nav_audit], ['recursos', '📟', en ? 'Resources' : 'Recursos'], ['backups', '🗄️', t.nav_backups], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
   ];
   const groups = NAV_GROUPS.map((gr) => ({ ...gr, items: gr.items.filter(([k]) => canSee(k)) })).filter((gr) => gr.items.length);
   const flatNav = groups.flatMap((gr) => gr.items);
+  // Acordeón del menú: solo una sección abierta a la vez. Por defecto, la del tab
+  // activo. Se recuerda en localStorage.
+  const activeGroup = groups.find((gr) => gr.items.some(([k]) => k === tab))?.g || groups[0]?.g || '';
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const shownGroup = openGroup ?? activeGroup;   // qué sección se ve abierta
   // Insignias de "pendientes por atender" (datos ya cargados; sin backend nuevo).
   const diagBad = ((diag?.migrations || []).filter((m: any) => !m.ok).length) + ((diag?.services || []).filter((s: any) => !s.ok).length);
   const navBadges: Record<string, { n: number; tone: 'danger' | 'warn' }> = {};
@@ -760,20 +773,36 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               onChange={(v) => setTab(v as any)}
               groups={groups.map((gr) => ({ label: gr.g, items: gr.items.map(([k, ic, label]) => ({ value: k, label, icon: ic, emoji: true, badge: navBadges[k]?.n })) }))}
             />
+            {/* Escritorio: acordeón de secciones con color. Solo se abre la activa. */}
             <div className="adminnav-items adminnav-grouped">
-              {groups.map((gr) => (
-                <div key={gr.g}>
-                  <div className="adminnav-group">{gr.g}</div>
-                  {gr.items.map(([k, ic, label]) => (
-                    <button key={k} className={'adminnav-item' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>
-                      <span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}><OnyxIcon emoji={ic} size={16} /></span><span>{label}</span>
-                      {navBadges[k]
-                        ? <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, background: navBadges[k].tone === 'danger' ? 'color-mix(in srgb,var(--red) 20%,transparent)' : 'color-mix(in srgb,var(--amber) 24%,transparent)', color: navBadges[k].tone === 'danger' ? 'var(--red)' : 'var(--amber)', padding: '0 6px', borderRadius: 999, minWidth: 16, textAlign: 'center', lineHeight: '17px' }}>{navBadges[k].n}</span>
-                        : <span className="navdot" />}
-                    </button>
-                  ))}
+              {groups.map((gr) => {
+                const open = shownGroup === gr.g;
+                // ¿alguna sección cerrada tiene pendientes? mostramos un punto en su cabecera.
+                const grpBadge = !open && gr.items.reduce((n, [k]) => n + (navBadges[k]?.n || 0), 0);
+                return (
+                <div key={gr.g} style={{ marginBottom: 2 }}>
+                  <button onClick={() => setOpenGroup(open ? '' : gr.g)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', background: open ? `color-mix(in srgb,${gr.c} 10%,transparent)` : 'transparent', border: 'none', color: open ? gr.c : 'var(--mut)', font: 'inherit', fontSize: 11, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', padding: '7px 8px', borderRadius: 8, cursor: 'pointer' }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: gr.c, flex: 'none' }} />
+                    <span style={{ flex: 1 }}>{gr.g}</span>
+                    {grpBadge ? <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--red)', background: 'color-mix(in srgb,var(--red) 20%,transparent)', borderRadius: 999, padding: '0 6px', minWidth: 16, textAlign: 'center' }}>{grpBadge}</span> : null}
+                    <span style={{ fontSize: 12, opacity: .7, transition: 'transform .15s', transform: open ? 'rotate(90deg)' : 'none' }}>›</span>
+                  </button>
+                  {open && gr.items.map(([k, ic, label]) => {
+                    const on = tab === k;
+                    return (
+                      <button key={k} className={'adminnav-item' + (on ? ' on' : '')} onClick={() => setTab(k)}
+                        style={on ? { background: `color-mix(in srgb,${gr.c} 16%,transparent)`, color: gr.c, boxShadow: `inset 3px 0 0 ${gr.c}` } : undefined}>
+                        <span style={{ width: 18, display: 'inline-flex', justifyContent: 'center' }}><OnyxIcon emoji={ic} size={16} /></span><span>{label}</span>
+                        {navBadges[k]
+                          ? <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, background: navBadges[k].tone === 'danger' ? 'color-mix(in srgb,var(--red) 20%,transparent)' : 'color-mix(in srgb,var(--amber) 24%,transparent)', color: navBadges[k].tone === 'danger' ? 'var(--red)' : 'var(--amber)', padding: '0 6px', borderRadius: 999, minWidth: 16, textAlign: 'center', lineHeight: '17px' }}>{navBadges[k].n}</span>
+                          : <span className="navdot" />}
+                      </button>
+                    );
+                  })}
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 10 }}>
               <button className={'availpill ' + (available ? 'on' : 'off')} onClick={toggleAvail}>
