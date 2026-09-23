@@ -53,11 +53,14 @@ export default function GuidePanel({ storageKey, title, steps, es = true, onStep
     const step = steps[idx]; if (!step) return;
     onStep?.(step.target); // avisa al panel para cambiar de pestaña si hace falta
     let tries = 0;
+    let didScroll = false;
     const place = () => {
       const el = document.querySelector(step.target) as HTMLElement | null;
       // La sección puede estar en otra pestaña; reintentamos hasta que aparezca.
       if (!el || el.offsetParent === null) { if (tries++ < 14) setTimeout(place, 60); else setArrow(null); return; }
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Desplazamos UNA sola vez (evita que la página "brinque"); las demás
+      // pasadas solo reposicionan el anillo/flecha sin volver a desplazar.
+      if (!didScroll) { el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); didScroll = true; }
       const r = el.getBoundingClientRect();
       if (ringRef.current) {
         ringRef.current.style.top = r.top - 6 + 'px';
@@ -147,7 +150,7 @@ export default function GuidePanel({ storageKey, title, steps, es = true, onStep
       )}
 
       {/* Panel de la guía */}
-      <div ref={panelRef} style={{ position: 'fixed', left, top, width, maxWidth: 'calc(100vw - 24px)', background: '#14151b', border: `1px solid rgba(212,175,90,.5)`, borderRadius: 12, zIndex: 5002, boxShadow: '0 18px 50px rgba(0,0,0,.55)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div ref={panelRef} style={{ position: 'fixed', left, top, width, maxWidth: 'calc(100vw - 24px)', maxHeight: 'calc(100vh - 24px)', background: '#14151b', border: `1px solid rgba(212,175,90,.5)`, borderRadius: 12, zIndex: 5002, boxShadow: '0 18px 50px rgba(0,0,0,.55)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div onMouseDown={startDrag} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 11px', borderBottom: '1px solid var(--line,#262838)', background: 'rgba(212,175,90,.08)', cursor: 'grab' }}>
           <span style={{ color: GOLD }} aria-hidden>📖</span>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: GOLD }}>{title}</span>
@@ -157,7 +160,7 @@ export default function GuidePanel({ storageKey, title, steps, es = true, onStep
           </span>
         </div>
 
-        <div style={{ display: big ? 'grid' : 'block', gridTemplateColumns: big ? '220px 1fr' : undefined, height, overflow: 'hidden' }}>
+        <div style={{ display: big ? 'grid' : 'block', gridTemplateColumns: big ? '220px 1fr' : undefined, height, minHeight: 0, flex: 1, overflowY: big ? 'hidden' : 'auto' }}>
           {/* Lista de pasos */}
           <div style={{ padding: 6, overflowY: 'auto', borderRight: big ? '1px solid var(--line,#262838)' : undefined }}>
             <div style={{ fontSize: 10.5, color: 'var(--mut,#7f8598)', padding: '5px 8px' }}>{L('Pasos · toca uno y se ilumina en el panel', 'Steps · tap one, it lights up in the panel')}</div>
