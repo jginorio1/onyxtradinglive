@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { ambSettings, rateFor, balances, codeFromEmail } from '@/lib/ambassadors';
+import { ambSettings, rateFor, balances } from '@/lib/ambassadors';
 import { stripe } from '@/lib/stripe';
 
 export const dynamic = 'force-dynamic';
@@ -79,11 +79,14 @@ export async function POST(req: Request) {
     // Stripe, así que aquí no exigimos "payout_details". Para cripto/otros, sí.
     if (method !== 'stripe' && details.length < 4) return NextResponse.json({ error: 'Payout details required.', code: 'need_details' }, { status: 400 });
 
-    let code = String(b.code || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 20);
-    if (code.length < 3) code = codeFromEmail(user.email || '');
+    // UN SOLO ENLACE: el embajador reutiliza el MISMO código que ya usa como
+    // miembro (profiles.ref_code). Así su enlace no cambia entre etapas.
+    const { ensureRefCode } = await import('@/lib/memberReferral');
+    const code = await ensureRefCode(user.id);
 
-    const { data: taken } = await supabaseAdmin.from('ambassadors').select('id').eq('code', code).maybeSingle();
-    if (taken) return NextResponse.json({ error: 'Code taken.', code: 'code_taken' }, { status: 400 });
+    // Por si otro embajador ya lo tuviera (no debería, es único por usuario).
+    const { data: taken } = await supabaseAdmin.from('ambassadors').select('id,user_id').eq('code', code).maybeSingle();
+    if (taken && (taken as any).user_id !== user.id) return NextResponse.json({ error: 'Code taken.', code: 'code_taken' }, { status: 400 });
 
     const { error } = await supabaseAdmin.from('ambassadors').insert({
       user_id: user.id,

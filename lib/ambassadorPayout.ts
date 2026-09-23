@@ -1,6 +1,6 @@
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { ambSettings, balances, codeFromEmail, type AmbSettings } from '@/lib/ambassadors';
+import { ambSettings, balances, type AmbSettings } from '@/lib/ambassadors';
 
 // ============================================================
 // Pagos a EMBAJADORES.
@@ -140,13 +140,10 @@ export async function autoPromote(userId: string): Promise<{ promoted: boolean; 
     if (!s.enabled || s.auto_promote === false) return { promoted: false, reason: 'disabled' };
     const { data: prev } = await supabaseAdmin.from('ambassadors').select('id').eq('user_id', userId).maybeSingle();
     if (prev) return { promoted: false, reason: 'exists' };
-    const { data: prof } = await supabaseAdmin.from('profiles').select('email').eq('id', userId).maybeSingle();
-    const email = (prof as any)?.email || '';
-    let code = codeFromEmail(email);
-    for (let i = 0; i < 6; i++) {
-      const { data: taken } = await supabaseAdmin.from('ambassadors').select('id').eq('code', code).maybeSingle();
-      if (!taken) break; code = codeFromEmail(email);
-    }
+    // UN SOLO ENLACE: el embajador reutiliza el MISMO código de referido que ya
+    // tenía como miembro (profiles.ref_code). Así su enlace no cambia al ascender.
+    const { ensureRefCode } = await import('@/lib/memberReferral');
+    const code = await ensureRefCode(userId);
     const promoId = await createAmbPromo(code, s);
     const { error } = await supabaseAdmin.from('ambassadors').insert({
       user_id: userId, code, status: 'approved', approved_at: new Date().toISOString(),
