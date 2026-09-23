@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { toast, toastErr, confirmDialog } from '@/lib/toast';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 
 // Balance real (robusto): gastos operacionales con reembolso, prop firm, cuenta
 // vinculada y ROI por firma. Bruto trading − costo real = neto.
@@ -27,6 +28,7 @@ const emptyForm = (m: string) => ({ id: '', category: 'funding', amount: '', pro
 export default function Expenses() {
   const { lang } = useLang();
   const L = mkL(lang);
+  const ios = useIsIOSApp();   // iOS: sin precios ni CTA de compra (Apple 3.1.1)
   const cat = (k: string) => (CAT_LABEL[k] || CAT_LABEL.other)[lang === 'en' ? 1 : 0];
   const ph = (k: string | null) => k && PHASE_LABEL[k] ? PHASE_LABEL[k][lang === 'en' ? 1 : 0] : '';
   const [month, setMonth] = useState(monthNow());
@@ -127,8 +129,10 @@ export default function Expenses() {
       <div className="card" style={{ maxWidth: 520, textAlign: 'center', margin: '0 auto' }}>
         <div style={{ marginBottom: 8, display: "flex", justifyContent: "center", color: "var(--brand)" }}><OnyxIcon emoji="🧮" size={30} /></div>
         <h3 style={{ marginBottom: 8 }}>{L('Ganancia neta', 'Net profit')}</h3>
-        <p className="muted" style={{ fontSize: 14, marginBottom: 14 }}>{L('Lleva tus gastos (retos, VPS, software…) y ve lo que de verdad te quedó. Disponible en Pro y superiores.', 'Track your costs (challenges, VPS, software…) and see what you truly netted. Available on Pro and above.')}</p>
-        <Link className="btn btn-primary" href="/pricing">{L('Ver planes', 'See plans')}</Link>
+        <p className="muted" style={{ fontSize: 14, marginBottom: 14 }}>{ios
+          ? L('Lleva tus gastos (retos, VPS, software…) y ve lo que de verdad te quedó. No disponible en tu plan actual.', 'Track your costs (challenges, VPS, software…) and see what you truly netted. Not available on your current plan.')
+          : L('Lleva tus gastos (retos, VPS, software…) y ve lo que de verdad te quedó. Disponible en Pro y superiores.', 'Track your costs (challenges, VPS, software…) and see what you truly netted. Available on Pro and above.')}</p>
+        {!ios && <Link className="btn btn-primary" href="/pricing">{L('Ver planes', 'See plans')}</Link>}
       </div>
     </div>
   );

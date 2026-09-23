@@ -2,6 +2,7 @@
 import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 
 type Lang = 'es' | 'en';
 
@@ -66,7 +67,7 @@ const T: any = {
     style: 'Estilo', risk: 'Riesgo por operación', ddl: 'Pérdida diaria máx.', maxt: 'Máx. operaciones/día', sessions: 'Sesiones', pairs: 'Pares/mercados', goal: 'Mi objetivo', rules: 'Mis reglas', addRule: 'Añadir regla', habitsSel: 'Hábitos que quiero seguir',
     checkinT: 'Check-in de hoy', checkinTap: 'Toca cada hábito para marcarlo', saveCheck: 'Guardar check-in', savedCheck: 'Check-in guardado', note: 'Nota del día (opcional)',
     aiT: 'Repaso de Onyx AI', aiBtn: 'Repasar mi disciplina', aiBusy: 'Analizando…',
-    lockT: 'Repaso con IA (Pro)', lockD: 'La IA cruza tu plan con tu conducta real y te dice dónde rompes tus reglas. Disponible en Pro.', upgrade: 'Ver planes',
+    lockT: 'Repaso con IA (Pro)', lockD: 'La IA cruza tu plan con tu conducta real y te dice dónde rompes tus reglas. Disponible en Pro.', iosLockT: 'Repaso con IA', iosLockD: 'La IA cruza tu plan con tu conducta real y te dice dónde rompes tus reglas. No disponible en tu plan actual.', upgrade: 'Ver planes',
     noPairs: 'Ej: EURUSD, XAUUSD, US30', winR: 'Win rate respetando el límite', winB: 'rompiéndolo', overtr: 'Días de sobre-operar',
     gTag: 'Guardian', gOwn: 'objetivo propio',
     gOpen: 'Abrir el Guardian', gNotSet: 'sin configurar',
@@ -99,7 +100,7 @@ const T: any = {
     style: 'Style', risk: 'Risk per trade', ddl: 'Max daily loss', maxt: 'Max trades/day', sessions: 'Sessions', pairs: 'Pairs/markets', goal: 'My goal', rules: 'My rules', addRule: 'Add rule', habitsSel: 'Habits I want to track',
     checkinT: 'Today check-in', checkinTap: 'Tap each habit to mark it', saveCheck: 'Save check-in', savedCheck: 'Check-in saved', note: 'Day note (optional)',
     aiT: 'Onyx AI review', aiBtn: 'Review my discipline', aiBusy: 'Analyzing…',
-    lockT: 'AI review (Pro)', lockD: 'The AI compares your plan with your real behavior and shows where you break your rules. Available on Pro.', upgrade: 'See plans',
+    lockT: 'AI review (Pro)', lockD: 'The AI compares your plan with your real behavior and shows where you break your rules. Available on Pro.', iosLockT: 'AI review', iosLockD: 'The AI compares your plan with your real behavior and shows where you break your rules. Not available on your current plan.', upgrade: 'See plans',
     noPairs: 'e.g. EURUSD, XAUUSD, US30', winR: 'Win rate respecting the limit', winB: 'breaking it', overtr: 'Overtrading days',
     gTag: 'Guardian', gOwn: 'your target',
     gOpen: 'Open Guardian', gNotSet: 'not set',
@@ -127,6 +128,7 @@ const TYPE_LABEL: Record<string, [string, string]> = { challenge: ['challenge', 
 
 export default function PlanHabits({ lang, onGoGuardian, account = 'all', accountName }: { lang: Lang; onGoGuardian?: () => void; account?: string; accountName?: string }) {
   const t = dictFor(T, lang); const i = lang === 'en' ? 1 : 0;
+  const ios = useIsIOSApp();   // iOS: sin nombrar plan de pago ni CTA de compra (Apple 3.1.1)
   const [tab, setTab] = useState<'hoy' | 'plan' | 'limites'>(() => {
     if (typeof window !== 'undefined') { const q = new URLSearchParams(window.location.search).get('tab'); if (q === 'plan' || q === 'limites' || q === 'hoy') return q; }
     return 'hoy';
@@ -408,12 +410,12 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
 
           <div className="card">
             <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: review ? 10 : 0 }}>
-              <b style={{ fontSize: 14 }}>🤖 {d.aiEnabled ? t.aiT : t.lockT}</b>
+              <b style={{ fontSize: 14 }}>🤖 {d.aiEnabled ? t.aiT : (ios ? t.iosLockT : t.lockT)}</b>
               {d.aiEnabled
                 ? <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={runAI} disabled={busy === 'ai'}>{busy === 'ai' ? t.aiBusy : t.aiBtn}</button>
-                : <a className="btn btn-primary" style={{ fontSize: 13 }} href="/pricing">{t.upgrade}</a>}
+                : (!ios && <a className="btn btn-primary" style={{ fontSize: 13 }} href="/pricing">{t.upgrade}</a>)}
             </div>
-            {!d.aiEnabled && <p className="muted" style={{ fontSize: 13, margin: 0 }}>{t.lockD}</p>}
+            {!d.aiEnabled && <p className="muted" style={{ fontSize: 13, margin: 0 }}>{ios ? t.iosLockD : t.lockD}</p>}
             {d.aiEnabled && (s.winRateRespect != null || s.overtradingDays > 0) && !review && (
               <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>
                 {s.winRateRespect != null && `${t.winR}: ${s.winRateRespect}%`}{s.winRateBroken != null && ` · ${t.winB}: ${s.winRateBroken}%`}{s.overtradingDays > 0 && ` · ${t.overtr}: ${s.overtradingDays}`}
@@ -700,8 +702,8 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
                 <div style={{ fontSize: 17, fontWeight: 800 }}>🛡️ Onyx Guardian</div>
                 <p className="muted" style={{ fontSize: 13.5, margin: '8px 0 14px' }}>{t.syncNoMgr}</p>
                 <div className="row" style={{ gap: 8 }}>
-                  <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setDone(null)}>{t.cancel}</button>
-                  <a className="btn btn-primary" style={{ flex: 2, textAlign: 'center' }} href="/pricing">{t.syncSeePlans}</a>
+                  <button className="btn btn-ghost" style={{ flex: ios ? 2 : 1 }} onClick={() => setDone(null)}>{t.cancel}</button>
+                  {!ios && <a className="btn btn-primary" style={{ flex: 2, textAlign: 'center' }} href="/pricing">{t.syncSeePlans}</a>}
                 </div>
               </>
             ) : (

@@ -10,6 +10,7 @@ import { errMsg } from '@/lib/i18nErrors';
 import InstallWizard, { WIZ } from './InstallWizard';
 import QrPop from '@/app/components/QrPop';
 import MacInstallNote from '@/app/components/MacInstallNote';
+import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 import { useCatalog } from '@/lib/useCatalog';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -209,6 +210,8 @@ export default function KeysPage() {
   const [origin, setOrigin] = useState('');
   const { lang, setLang } = useLang();
   const t = dictFor(K, lang);
+  const ios = useIsIOSApp();   // iOS: sin CTA de compra ni steering (Apple 3.1.1)
+  const limitDText = ios ? (lang === 'en' ? 'Revoke a key to free a slot for another account.' : 'Revoca una clave para liberar un cupo y conectar otra cuenta.') : t.limitD;
   const firmItems = useCatalog('firm'); // prop firms / brokers del catálogo del admin
   const atLimit = !!usage && !usage.unlimited && usage.used >= usage.max;
 
@@ -380,7 +383,7 @@ export default function KeysPage() {
           {atLimit ? (
             <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10, padding: 14 }}>
               <div style={{ fontWeight: 800, marginBottom: 6 }}><OnyxIcon emoji="🔒" size={15} /> {t.limitT}</div>
-              <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.limitD}</p>
+              <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{limitDText}</p>
               {addon?.enabled ? (
                 <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                   <Link className="btn btn-primary ios-pay-hide" href="/account">➕ {t.addBuy} · ${addon.price}{t.addMo}</Link>

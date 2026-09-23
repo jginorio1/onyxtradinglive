@@ -12,6 +12,7 @@ import HubVitals, { StatCard, type Vital, type Tile } from './HubVitals';
 import SetupGuide from './SetupGuide';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { openAuthedFile } from '@/lib/nativeShare';
+import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 import Achievements from './Achievements';
 import MarketClock from './MarketClock';
 import QuantEdgeCard from './QuantEdgeCard';
@@ -147,7 +148,7 @@ const D = {
     holdTitle: 'Tiempo en operación', holdSub: '¿Cuánto aguantas cada trade?', holdAvg: 'Media',
     heatTitle: 'Mapa de calor · hora × día', heatSub: 'Verde ganas, rojo pierdes · por hora de apertura (UTC)',
     propTitle: 'Consistencia (prop firm)', propBig: 'Mayor día', propRatio: 'Mayor día vs total', propDays: 'Días operados', propDD: 'Uso de pérdida máx total', propDaily: 'Peor día vs límite diario', propGood: 'Parejo', propWarn: 'Concentrado', propHint: 'Muchas prop firms exigen que ningún día supere ~X% de tu ganancia total.', propNoRule: 'Define las reglas de tu cuenta de fondeo para ver el uso de límites.',
-    proLockT: 'Función Pro', proLockD: 'Mejora tu plan para desbloquear esta sección.', proLockCta: 'Ver planes →', histCap: '🔒 En el plan Free ves solo los últimos 30 días. Desbloquea tu historial completo con Pro.', available: 'Disponible en', upgradeTo: 'Mejorar a', perMo: 'mes', dLock1: 'Diario con fotos, notas y etiquetas por operación.', dLock2: 'Compara tus cuentas lado a lado.', dLock3: 'Reglas de fondeo, retiros y documentos de la cuenta.',
+    proLockT: 'Función Pro', proLockD: 'Mejora tu plan para desbloquear esta sección.', proLockCta: 'Ver planes →', histCap: '🔒 En el plan Free ves solo los últimos 30 días. Desbloquea tu historial completo con Pro.', iosHistCap: '🔒 En tu plan ves solo los últimos 30 días.', iosLockT: 'No disponible en tu plan actual', available: 'Disponible en', upgradeTo: 'Mejorar a', perMo: 'mes', dLock1: 'Diario con fotos, notas y etiquetas por operación.', dLock2: 'Compara tus cuentas lado a lado.', dLock3: 'Reglas de fondeo, retiros y documentos de la cuenta.',
   },
   en: {
     nav_dash: 'Dashboard', nav_connect: 'Connect account', nav_plan: 'Plan', nav_account: 'My account', nav_manager: 'Onyx Guardian', signout: 'Sign out',
@@ -188,7 +189,7 @@ const D = {
     holdTitle: 'Time in trade', holdSub: 'How long do you hold each trade?', holdAvg: 'Avg',
     heatTitle: 'Heatmap · hour × day', heatSub: 'Green wins, red loses · by entry hour (UTC)',
     propTitle: 'Consistency (prop firm)', propBig: 'Biggest day', propRatio: 'Biggest day vs total', propDays: 'Days traded', propDD: 'Max total loss used', propDaily: 'Worst day vs daily limit', propGood: 'Even', propWarn: 'Concentrated', propHint: 'Many prop firms require no single day above ~X% of total profit.', propNoRule: 'Set your prop-firm rules to see limit usage.',
-    proLockT: 'Pro feature', proLockD: 'Upgrade your plan to unlock this section.', proLockCta: 'See plans →', histCap: '🔒 On the Free plan you see only the last 30 days. Unlock your full history with Pro.', available: 'Available in', upgradeTo: 'Upgrade to', perMo: 'mo', dLock1: 'Trade journal with photos, notes and tags.', dLock2: 'Compare your accounts side by side.', dLock3: 'Funding rules, payouts and account documents.',
+    proLockT: 'Pro feature', proLockD: 'Upgrade your plan to unlock this section.', proLockCta: 'See plans →', histCap: '🔒 On the Free plan you see only the last 30 days. Unlock your full history with Pro.', iosHistCap: '🔒 On your plan you see only the last 30 days.', iosLockT: 'Not available on your current plan', available: 'Available in', upgradeTo: 'Upgrade to', perMo: 'mo', dLock1: 'Trade journal with photos, notes and tags.', dLock2: 'Compare your accounts side by side.', dLock3: 'Funding rules, payouts and account documents.',
   },
 } as const;
 
@@ -446,6 +447,7 @@ function FundCard({ acc, net, maxDD, L, onSave }: { acc: Acc; net: number; maxDD
 // Candado con vista previa difuminada: se ve el valor de la función, no solo el cerrojo.
 function ProLock({ L, plan = 'Pro', desc, price, preview }: { L: any; plan?: string; desc?: string; price?: number; preview?: any }) {
   const col = plan === 'Elite' ? 'var(--green)' : 'var(--brand2)';
+  const ios = useIsIOSApp();   // en iOS: sin precio, sin botón y sin nombrar el plan de pago (Apple 3.1.1)
   return (
     <div className="card" style={{ padding: 22, position: 'relative', overflow: 'hidden' }}>
       {preview && (
@@ -455,9 +457,11 @@ function ProLock({ L, plan = 'Pro', desc, price, preview }: { L: any; plan?: str
       )}
       <div style={{ textAlign: 'center', paddingTop: preview ? 6 : 16, paddingBottom: preview ? 6 : 16 }}>
         <div style={{ fontSize: 28, marginBottom: 6 }}><OnyxIcon emoji="🔒" size={15} /></div>
-        <h3 style={{ marginBottom: 6 }}>{L.available} <span style={{ color: col }}>{plan}</span></h3>
-        <p className="muted" style={{ marginBottom: 16 }}>{desc || L.proLockD}</p>
-        <Link className="btn btn-primary" href="/pricing">{L.upgradeTo} {plan}{price ? ` · $${price}/${L.perMo}` : ''} →</Link>
+        {ios
+          ? <h3 style={{ marginBottom: 6 }}>{L.iosLockT}</h3>
+          : <h3 style={{ marginBottom: 6 }}>{L.available} <span style={{ color: col }}>{plan}</span></h3>}
+        <p className="muted" style={{ marginBottom: ios ? 0 : 16 }}>{desc || L.proLockD}</p>
+        {!ios && <Link className="btn btn-primary" href="/pricing">{L.upgradeTo} {plan}{price ? ` · $${price}/${L.perMo}` : ''} →</Link>}
       </div>
     </div>
   );
@@ -600,6 +604,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const [plans, setPlans] = useState<any[]>([]);
   const [limitInfo, setLimitInfo] = useState<any>(null);
   const L = dictFor(D, lang);
+  const iosApp = useIsIOSApp();   // en iOS ocultamos precios/CTA de compra (Apple 3.1.1)
   const platItems = useCatalog('platform');
   const proPrice = plans.find((p: any) => p.id === 'pro')?.price_month || 0;
 
@@ -1110,7 +1115,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             )}
             {demo && <div style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '8px 14px', fontSize: 13, alignSelf: isMobile ? 'stretch' : 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 10 }}>{L.demoOn}<button onClick={() => setDemo(false)} title={lang === 'es' ? 'Cerrar demo' : 'Close demo'} aria-label={lang === 'es' ? 'Cerrar demo' : 'Close demo'} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--amber)', cursor: 'pointer', fontSize: 15, lineHeight: 1, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>✕ {lang === 'es' ? 'Cerrar' : 'Close'}</button></div>}
             {fundAlert && <div style={{ background: fundAlert.type === 'danger' ? 'rgba(255,107,125,.12)' : 'rgba(52,226,160,.12)', border: '1px solid ' + (fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)'), color: fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)', borderRadius: 10, padding: '10px 14px', fontSize: 14, fontWeight: 600 }}>{fundAlert.txt}</div>}
-            {histDays > 0 && <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', color: 'var(--soft-brand2)', borderRadius: 10, padding: '9px 14px', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{L.histCap} <Link href="/pricing" style={{ color: '#fff', fontWeight: 700 }}>{L.proLockCta}</Link></div>}
+            {histDays > 0 && <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', color: 'var(--soft-brand2)', borderRadius: 10, padding: '9px 14px', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{iosApp ? L.iosHistCap : <>{L.histCap} <Link href="/pricing" style={{ color: '#fff', fontWeight: 700 }}>{L.proLockCta}</Link></>}</div>}
 
             {view === 'hub' && (<>
               {/* Cabecera vital: anillos encendidos + mosaicos de navegación */}

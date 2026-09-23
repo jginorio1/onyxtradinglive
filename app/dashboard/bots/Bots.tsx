@@ -547,7 +547,7 @@ export default function Bots() {
           {d.addon?.enabled ? (
             <>
               <button className="btn btn-primary ios-pay-hide" onClick={buyAddon} disabled={busy} style={{ marginBottom: 8 }}>{(t.addBtn as string).replace('%', String(d.addon.price))}</button>
-              <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{t.addOr}</div>
+              <div className="muted ios-pay-hide" style={{ fontSize: 12, marginBottom: 12 }}>{t.addOr}</div>
               <Link className="btn btn-ghost" href="/pricing">{t.lockCta}</Link>
             </>
           ) : (

@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { errMsg } from '@/lib/i18nErrors';
 import { P2, PlanTab, LimitsTab, NewsTab, StateTab } from './Phase2';
 import Help from '@/app/Help';
+import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 
 type Tab = 'trade' | 'plan' | 'limits' | 'news' | 'state';
 
@@ -200,6 +201,9 @@ export default function ManagerClient() {
   const acc = useMemo(() => (d?.accounts || []).find((a: any) => a.id === sel), [d, sel]);
   const caps = d?.caps || {};
   const advanced = !!caps.manager_advanced;
+  const ios = useIsIOSApp();
+  // Etiqueta del candado avanzado: en iOS no nombramos el plan de pago (Apple 3.1.1).
+  const advLabel = ios ? (lang === 'en' ? 'Advanced feature' : 'Función avanzada') : t.adv;
   // Unidad visible en cada casilla de la pestaña Protección
   const uShort = unitShort(units, acc?.currency);
   // Borde verde cuando la protección está encendida
@@ -380,7 +384,7 @@ export default function ManagerClient() {
             firms={d.firms || []} firmSel={firmSel} setFirmSel={setFirmSel} />
         )}
 
-        {tab === 'news' && <NewsTab cfg={cfg} set={set} t={t2} canNews={!!caps.manager_news} advLabel={t.adv} />}
+        {tab === 'news' && <NewsTab cfg={cfg} set={set} t={t2} canNews={!!caps.manager_news} advLabel={advLabel} />}
 
         {tab === 'trade' && (<>
         {/* Selector de unidad, grande y explicado */}
@@ -454,7 +458,7 @@ export default function ManagerClient() {
         <div className="card" style={{ ...protCard(advanced && !!cfg?.partials?.on), opacity: advanced ? 1 : .75 }}>
           <ProtHeader icon="🥧" title={t.ptT} desc={t.ptD} on={advanced && !!cfg?.partials?.on}
             onToggle={advanced ? () => set('partials.on', !cfg.partials.on) : undefined}
-            right={<div className="row" style={{ gap: 8 }}><Help slug="parciales" />{!advanced && <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)', border: '1px solid var(--green)' }}><OnyxIcon emoji="🔒" size={16} /> {t.adv}</span>}</div>} />
+            right={<div className="row" style={{ gap: 8 }}><Help slug="parciales" />{!advanced && <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)', border: '1px solid var(--green)' }}><OnyxIcon emoji="🔒" size={16} /> {advLabel}</span>}</div>} />
 
           {advanced && cfg?.partials?.on && (
             <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14 }}>
