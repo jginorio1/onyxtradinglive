@@ -146,6 +146,8 @@ export default async function BlogArticle({ params }: { params: { slug: string }
 
       {/* Espacio patrocinado · dentro del artículo (al pie del texto) */}
       <AdSlot slot="article_incontent" lang={es ? 'es' : 'en'} />
+      {/* Rectángulo medio (MPU) dentro del artículo. */}
+      <AdSlot slot="article_sidebar" lang={es ? 'es' : 'en'} />
 
       {/* Bio del autor al pie (autoridad) */}
       {authorBio && (
