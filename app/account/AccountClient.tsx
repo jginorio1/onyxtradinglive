@@ -177,8 +177,9 @@ export default function AccountClient({ email }: { email: string }) {
   const [tab, setTabState] = useState<Tab>('plan');
   // En la app de iOS ocultamos los controles de pago (regla 3.1.1 de Apple).
   const iosApp = useIsIOSApp();
-  const [refView, setRefView] = useState<'invita' | 'embajador'>('invita'); // qué programa de referidos se muestra
+  const [refView, setRefView] = useState<'invita' | 'embajador'>('invita'); // (legacy) vista manual — hoy la etapa la decide el número de usuarios
   const [refInfo, setRefInfo] = useState<{ referrerCredit: number; friendCredit: number } | null>(null); // montos de "Invita y gana" (config admin)
+  const [refStage, setRefStage] = useState<{ isAmbassador: boolean; qualified: number; bridge: number } | null>(null); // etapa real por conteo de usuarios
   const [secOpen, setSecOpen] = useState<string | null>(null); // popup secundario abierto: "tab:parte"
   const setTab = (t: Tab) => { setTabState(t); setSecOpen(null); if (typeof window !== 'undefined') history.replaceState(null, '', '#' + t); };
   useEffect(() => {
@@ -188,6 +189,9 @@ export default function AccountClient({ email }: { email: string }) {
     try { const rv = new URLSearchParams(window.location.search).get('refv'); if (rv === 'embajador' || rv === 'invita') setRefView(rv); } catch {}
     // Montos de "Invita y gana" (los edita el admin) para la tarjeta comparadora.
     fetch('/api/referral/info', { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (typeof j?.referrerCredit === 'number') setRefInfo({ referrerCredit: j.referrerCredit, friendCredit: j.friendCredit }); }).catch(() => {});
+    // Etapa real (la decide cuántos usuarios has traído). Con esto mostramos SOLO
+    // el enlace de tu etapa: crédito mientras eres miembro, efectivo al ser embajador.
+    fetch('/api/referral', { cache: 'no-store' }).then((r) => r.json()).then((j) => { if (j) setRefStage({ isAmbassador: !!j.isAmbassador, qualified: Number(j.qualified || 0), bridge: Number(j.bridge || 0) }); }).catch(() => {});
     window.addEventListener('hashchange', apply);
     return () => window.removeEventListener('hashchange', apply);
   }, []);
@@ -910,34 +914,43 @@ export default function AccountClient({ email }: { email: string }) {
             {data && tab === 'referidos' && (() => {
               const en = lang === 'en';
               const rc = refInfo?.referrerCredit ?? 10, fc = refInfo?.friendCredit ?? 5;
-              const active: any = { boxShadow: '0 0 0 2px var(--brand)', borderColor: 'var(--brand)' };
               const cmpCard: any = { textAlign: 'left', cursor: 'pointer', borderRadius: 14, padding: 14, border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', transition: '.15s', width: '100%', display: 'block', font: 'inherit' };
               return (
-              <Section icon="🎁" title={L.nav.referidos} subtitle={en ? 'Two ways to earn by bringing people to Onyx. Pick the one that fits you.' : 'Dos formas de ganar trayendo gente a Onyx. Elige la que te encaje.'}>
-                {/* Comparador + selector: cada tarjeta explica y a la vez cambia de vista */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 12, marginBottom: 16 }}>
-                  <button onClick={() => setRefView('invita')} style={{ ...cmpCard, ...(refView === 'invita' ? active : {}), background: refView === 'invita' ? 'color-mix(in srgb,var(--green) 10%,var(--card))' : 'var(--card)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <OnyxIcon emoji="🎁" size={20} />
-                      <b style={{ fontSize: 15 }}>{en ? 'Invite & earn' : 'Invita y gana'}</b>
-                      {refView === 'invita' && <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 800, color: 'var(--brand)' }}>{en ? '✓ Viewing' : '✓ Viendo'}</span>}
+              <Section icon="🎁" title={L.nav.referidos} subtitle={en ? 'One link that grows with you. It pays more as you bring more people.' : 'Un solo enlace que crece contigo. Paga más a medida que traes más gente.'}>
+                {/* UN SOLO ENLACE: tu etapa la decide cuántos usuarios traes. Estas dos
+                    tarjetas son informativas (etapa actual vs siguiente), NO cambian el
+                    enlace. Abajo se muestra SOLO el panel de tu etapa. */}
+                {(() => {
+                  const amb = !!refStage?.isAmbassador;                                   // ¿ya eres embajador?
+                  const need = Math.max(0, (refStage?.bridge || 0) - (refStage?.qualified || 0)); // usuarios que faltan
+                  const stg = (on: boolean, doneColor: string) => ({ ...cmpCard, cursor: 'default', ...(on ? { boxShadow: `0 0 0 2px ${doneColor}`, borderColor: doneColor } : { opacity: 0.72 }) });
+                  const chip = (txt: string, col: string) => (<span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: col, border: `1px solid color-mix(in srgb,${col} 45%,transparent)`, borderRadius: 99, padding: '1px 8px' }}>{txt}</span>);
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 12, marginBottom: 16 }}>
+                      <div style={{ ...stg(!amb, 'var(--green)'), background: !amb ? 'color-mix(in srgb,var(--green) 10%,var(--card))' : 'var(--card)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <OnyxIcon emoji="🎁" size={20} />
+                          <b style={{ fontSize: 15 }}>{en ? '1 · Invite & earn' : '1 · Invita y gana'}</b>
+                          {!amb ? chip(en ? 'You are here' : 'Estás aquí', 'var(--brand)') : chip(en ? 'Completed' : 'Superado', 'var(--green)')}
+                        </div>
+                        <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.55 }}>{en ? `For your friends. You get plan credit ($${rc}), they get $${fc}. Nothing to withdraw — it lowers your invoice.` : `Para tus amigos. Ganas crédito en tu plan ($${rc}) y ellos $${fc}. No se retira: baja tu factura.`}</div>
+                        <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 800, color: 'var(--green)', border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', borderRadius: 99, padding: '2px 9px' }}>{en ? 'Plan credit' : 'Crédito en tu plan'}</span>
+                      </div>
+                      <div style={{ ...stg(amb, 'var(--gold,#ffd45e)'), background: amb ? 'color-mix(in srgb,var(--gold,#ffd45e) 12%,var(--card))' : 'var(--card)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <OnyxIcon emoji="📣" size={20} />
+                          <b style={{ fontSize: 15 }}>{en ? '2 · Ambassador' : '2 · Embajador'}</b>
+                          {amb ? chip(en ? 'You are here' : 'Estás aquí', 'var(--brand)') : chip(en ? (need > 0 ? `${need} to go` : 'Ready') : (need > 0 ? `Faltan ${need}` : 'Listo'), 'var(--gold,#ffd45e)')}
+                        </div>
+                        <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.55 }}>{en ? 'For your audience. You earn cash commission per subscriber and withdraw it to your bank or USDT.' : 'Para tu audiencia. Ganas comisión en efectivo por cada suscriptor y la retiras a tu banco o USDT.'}</div>
+                        <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 800, color: 'var(--gold,#ffd45e)', border: '1px solid color-mix(in srgb,var(--gold,#ffd45e) 45%,transparent)', borderRadius: 99, padding: '2px 9px' }}>{en ? 'Cash commission' : 'Comisión en efectivo'}</span>
+                      </div>
                     </div>
-                    <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.55 }}>{en ? `For your friends. You get plan credit ($${rc}), they get $${fc}. Nothing to withdraw — it lowers your invoice.` : `Para tus amigos. Ganas crédito en tu plan ($${rc}) y ellos $${fc}. No se retira: baja tu factura.`}</div>
-                    <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 800, color: 'var(--green)', border: '1px solid color-mix(in srgb,var(--green) 40%,transparent)', borderRadius: 99, padding: '2px 9px' }}>{en ? 'Plan credit' : 'Crédito en tu plan'}</span>
-                  </button>
-                  <button onClick={() => setRefView('embajador')} style={{ ...cmpCard, ...(refView === 'embajador' ? active : {}), background: refView === 'embajador' ? 'color-mix(in srgb,var(--gold,#ffd45e) 12%,var(--card))' : 'var(--card)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <OnyxIcon emoji="📣" size={20} />
-                      <b style={{ fontSize: 15 }}>{en ? 'Ambassador' : 'Embajador'}</b>
-                      {refView === 'embajador' && <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 800, color: 'var(--brand)' }}>{en ? '✓ Viewing' : '✓ Viendo'}</span>}
-                    </div>
-                    <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.55 }}>{en ? 'For your audience. You earn cash commission per subscriber and withdraw it to your bank or USDT.' : 'Para tu audiencia. Ganas comisión en efectivo por cada suscriptor y la retiras a tu banco o USDT.'}</div>
-                    <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 800, color: 'var(--gold,#ffd45e)', border: '1px solid color-mix(in srgb,var(--gold,#ffd45e) 45%,transparent)', borderRadius: 99, padding: '2px 9px' }}>{en ? 'Cash commission' : 'Comisión en efectivo'}</span>
-                  </button>
-                </div>
+                  );
+                })()}
 
-                {/* Panel enfocado del programa elegido */}
-                {refView === 'invita' ? <ReferralCard /> : <Ambassador lang={lang} only="referral" />}
+                {/* Panel de TU etapa: el mismo bloque; solo un enlace visible. */}
+                {refStage?.isAmbassador ? <Ambassador lang={lang} only="referral" /> : <ReferralCard />}
               </Section>
               );
             })()}

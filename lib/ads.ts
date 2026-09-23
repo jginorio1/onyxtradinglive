@@ -216,9 +216,16 @@ export async function pickAd(
     try {
       const { data: parts } = await supabaseAdmin.from('ad_partners')
         .select('id,name,logo_url,banner_url,blurb_es,blurb_en,geo').eq('status', 'active').limit(50);
-      const live = (parts || []).filter((p: any) => geoMatch(p.geo, '', '', country));
+      // Orden estable (por id) para que la rotación sea consistente entre huecos.
+      const live = (parts || []).filter((p: any) => geoMatch(p.geo, '', '', country))
+        .sort((a: any, b: any) => String(a.id).localeCompare(String(b.id)));
       if (live.length) {
-        const p = live[Math.floor(Math.random() * live.length)];
+        // Rotación por hueco: cada slot arranca en un socio distinto (hash del slot)
+        // y todo rota con el tiempo (cada 12 min). Así en una misma página no se
+        // repite el mismo banner en huecos seguidos, y con el tiempo van cambiando.
+        let h = 0; for (let i = 0; i < slotKey.length; i++) h = (h * 31 + slotKey.charCodeAt(i)) >>> 0;
+        const bucket = Math.floor(Date.now() / (12 * 60 * 1000)); // cambia cada 12 min
+        const p = live[(h + bucket) % live.length];
         return { kind: 'partner', id: p.id, name: p.name, logo: p.logo_url || '', banner: p.banner_url || '', blurb: (lang === 'es' ? p.blurb_es : p.blurb_en) || '', link: `/api/ads/partner?id=${p.id}`, size: slot.size };
       }
     } catch {}
