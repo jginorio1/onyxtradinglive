@@ -32,17 +32,21 @@ export default function GuidePanel({ storageKey, title, steps, es = true, onStep
   const [big, setBig] = useState(false);
   const [active, setActive] = useState(0);
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: -1, y: -1 });
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null); // tamaño a medida (estirado por el usuario)
   const [arrow, setArrow] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const ringRef = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{ dx: number; dy: number } | null>(null);
+  const rez = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
 
-  // Restaurar posición guardada.
+  // Restaurar posición y tamaño guardados.
   useEffect(() => {
     try {
       const raw = localStorage.getItem('guide_pos_' + storageKey);
       if (raw) { const p = JSON.parse(raw); if (typeof p.x === 'number') setPos(p); }
       if (localStorage.getItem('guide_big_' + storageKey) === '1') setBig(true);
+      const rawSz = localStorage.getItem('guide_size_' + storageKey);
+      if (rawSz) { const s = JSON.parse(rawSz); if (typeof s.w === 'number' && typeof s.h === 'number') setSize(s); }
     } catch {}
   }, [storageKey]);
 
@@ -115,6 +119,31 @@ export default function GuidePanel({ storageKey, title, steps, es = true, onStep
     drag.current = { dx: e.clientX - pr.left, dy: e.clientY - pr.top };
   };
 
+  // Estirar (redimensionar) tomando la esquina inferior derecha.
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      if (!rez.current) return;
+      e.preventDefault();
+      const w = Math.max(280, Math.min(window.innerWidth - 24, rez.current.w + (e.clientX - rez.current.x)));
+      const h = Math.max(220, Math.min(window.innerHeight - 24, rez.current.h + (e.clientY - rez.current.y)));
+      setSize({ w, h });
+    };
+    const up = () => {
+      if (rez.current) { rez.current = null; setSize((s) => { if (s) { try { localStorage.setItem('guide_size_' + storageKey, JSON.stringify(s)); } catch {} } return s; }); }
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+  }, [storageKey]);
+
+  const startResize = (e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    const pr = panelRef.current?.getBoundingClientRect();
+    if (!pr) return;
+    rez.current = { x: e.clientX, y: e.clientY, w: pr.width, h: pr.height };
+  };
+  const resetSize = () => { setSize(null); try { localStorage.removeItem('guide_size_' + storageKey); } catch {} };
+
   const toggleBig = () => setBig((b) => { const n = !b; try { localStorage.setItem('guide_big_' + storageKey, n ? '1' : '0'); } catch {} return n; });
   const close = () => { setOpen(false); setArrow(null); if (ringRef.current) ringRef.current.style.opacity = '0'; };
 
@@ -127,8 +156,11 @@ export default function GuidePanel({ storageKey, title, steps, es = true, onStep
     );
   }
 
-  const width = big ? Math.min(720, window.innerWidth - 24) : 320;
-  const height = big ? Math.min(560, window.innerHeight - 40) : undefined;
+  // Dimensiones: el tamaño a medida (estirado) manda sobre el modo grande/pequeño.
+  const width = size ? size.w : (big ? Math.min(720, window.innerWidth - 24) : 320);
+  const panelH = size ? size.h : undefined;                               // altura fija del panel (cuando se estira)
+  const bodyH = size ? undefined : (big ? Math.min(560, window.innerHeight - 40) : undefined); // altura del cuerpo en modo grande
+  const wide = big || (size ? size.w >= 520 : false); // layout de dos columnas cuando hay ancho de sobra
   const left = pos.x >= 0 ? pos.x : Math.max(12, window.innerWidth - width - 24);
   const top = pos.y >= 0 ? pos.y : 90;
 
@@ -150,19 +182,20 @@ export default function GuidePanel({ storageKey, title, steps, es = true, onStep
       )}
 
       {/* Panel de la guía */}
-      <div ref={panelRef} style={{ position: 'fixed', left, top, width, maxWidth: 'calc(100vw - 24px)', maxHeight: 'calc(100vh - 24px)', background: '#14151b', border: `1px solid rgba(212,175,90,.5)`, borderRadius: 12, zIndex: 5002, boxShadow: '0 18px 50px rgba(0,0,0,.55)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div ref={panelRef} style={{ position: 'fixed', left, top, width, height: panelH, maxWidth: 'calc(100vw - 24px)', maxHeight: 'calc(100vh - 24px)', background: '#14151b', border: `1px solid rgba(212,175,90,.5)`, borderRadius: 12, zIndex: 5002, boxShadow: '0 18px 50px rgba(0,0,0,.55)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div onMouseDown={startDrag} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 11px', borderBottom: '1px solid var(--line,#262838)', background: 'rgba(212,175,90,.08)', cursor: 'grab' }}>
           <span style={{ color: GOLD }} aria-hidden>📖</span>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: GOLD }}>{title}</span>
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+            {size && <button title={L('Restaurar tamaño', 'Reset size')} onClick={resetSize} style={hbtn}>⟲</button>}
             <button title={big ? L('Contraer', 'Shrink') : L('Agrandar', 'Expand')} onClick={toggleBig} style={hbtn}>{big ? '❐' : '⤢'}</button>
             <button title={L('Cerrar', 'Close')} onClick={close} style={hbtn}>✕</button>
           </span>
         </div>
 
-        <div style={{ display: big ? 'grid' : 'block', gridTemplateColumns: big ? '220px 1fr' : undefined, height, minHeight: 0, flex: 1, overflowY: big ? 'hidden' : 'auto' }}>
+        <div style={{ display: wide ? 'grid' : 'block', gridTemplateColumns: wide ? '220px 1fr' : undefined, height: bodyH, minHeight: 0, flex: 1, overflowY: wide ? 'hidden' : 'auto' }}>
           {/* Lista de pasos */}
-          <div style={{ padding: 6, overflowY: 'auto', borderRight: big ? '1px solid var(--line,#262838)' : undefined }}>
+          <div style={{ padding: 6, overflowY: 'auto', borderRight: wide ? '1px solid var(--line,#262838)' : undefined }}>
             <div style={{ fontSize: 10.5, color: 'var(--mut,#7f8598)', padding: '5px 8px' }}>{L('Pasos · toca uno y se ilumina en el panel', 'Steps · tap one, it lights up in the panel')}</div>
             {steps.map((s, i) => (
               <button key={i} onClick={() => setActive(i)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '7px 8px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: i === active ? 700 : 400, background: i === active ? GOLD : 'transparent', color: i === active ? '#1a1400' : 'var(--tx,#c7ccda)' }}>
@@ -173,7 +206,7 @@ export default function GuidePanel({ storageKey, title, steps, es = true, onStep
           </div>
           {/* Cuerpo del paso activo */}
           <div style={{ padding: 12, overflowY: 'auto' }}>
-            {!big && <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 6, color: 'var(--tx,#e8ecf5)' }}>{steps[active]?.title}</div>}
+            {!wide && <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 6, color: 'var(--tx,#e8ecf5)' }}>{steps[active]?.title}</div>}
             <div style={{ fontSize: 12.5, color: 'var(--mut,#aab0c0)', lineHeight: 1.55, whiteSpace: 'pre-line' }}>{steps[active]?.body}</div>
 
             {/* Dibujo / diagrama del paso */}
@@ -197,6 +230,15 @@ export default function GuidePanel({ storageKey, title, steps, es = true, onStep
                 : <button onClick={close} style={{ flex: 1, fontSize: 11.5, background: GOLD, border: 'none', color: '#1a1400', borderRadius: 8, padding: 6, fontWeight: 700, cursor: 'pointer' }}>{L('Listo', 'Done')}</button>}
             </div>
           </div>
+        </div>
+
+        {/* Tirador para estirar (ancho/alto) — esquina inferior derecha */}
+        <div onMouseDown={startResize} onDoubleClick={resetSize}
+             title={L('Arrastra para estirar · doble clic restaura', 'Drag to resize · double-click resets')}
+             style={{ position: 'absolute', right: 2, bottom: 2, width: 18, height: 18, cursor: 'nwse-resize', zIndex: 3, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" style={{ opacity: 0.6 }}>
+            <path d="M13 5 L5 13 M13 9 L9 13 M13 1 L1 13" stroke={GOLD} strokeWidth="1.4" fill="none" strokeLinecap="round" />
+          </svg>
         </div>
       </div>
 

@@ -26,6 +26,9 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   const [upBusy, setUpBusy] = useState('');   // '' | 'logo' | 'banner'
   const [mk, setMk] = useState<any>(null);    // overrides del Media Kit
   const [mkData, setMkData] = useState<any>(null);  // kit construido: real + visible
+  // Sub-secciones dentro del cuadro de Media Kit (para que no sea tan largo).
+  const [mkTab, setMkTab] = useState<'charts' | 'texts' | 'numbers' | 'packages' | 'proposals'>('charts');
+  const secMk = (t: string): any => ({ display: mkTab === t ? undefined : 'none' });
   const [proposals, setProposals] = useState<any[]>([]);
   const [mailReady, setMailReady] = useState(false);
   const emptyProp = { company: '', contact: '', email: '', packageId: '', noteEs: '', noteEn: '', lang: 'es' };
@@ -112,7 +115,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   // Mini gráfica de barras horizontales (sin librerías) para comparar real vs visible.
   const barChart = (groups: any[], color: string, scaleMax: number) => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-      {groups.filter((g: any) => g.key !== 'site').map((g: any) => (
+      {(groups || []).filter((g: any) => g && g.key !== 'site').map((g: any) => (
         <div key={g.key}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 2 }}>
             <span className="muted">{es ? g.es : g.en}</span>
@@ -426,8 +429,26 @@ export default function AdsAdmin({ es }: { es: boolean }) {
             </div>
           </div>
 
+          {/* Sub-secciones del Media Kit (pestañas pequeñas) */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+            {([
+              ['charts', L('Gráficas', 'Charts')],
+              ['texts', L('Textos', 'Texts')],
+              ['numbers', L('Cifras y contacto', 'Numbers & contact')],
+              ['packages', L('Paquetes', 'Packages')],
+              ['proposals', L('Propuestas', 'Proposals')],
+            ] as const).map(([k, lbltxt]) => (
+              <button key={k} onClick={() => setMkTab(k as any)}
+                style={{ fontSize: 12, fontWeight: mkTab === k ? 800 : 500, cursor: 'pointer', borderRadius: 20, padding: '5px 12px',
+                  border: `1px solid ${mkTab === k ? '#a679ff' : 'var(--line)'}`,
+                  background: mkTab === k ? 'color-mix(in srgb, #a679ff 18%, var(--bg2))' : 'var(--bg2)', color: 'var(--tx)' }}>
+                {lbltxt}
+              </button>
+            ))}
+          </div>
+
           {/* Gráficas: datos reales vs datos visibles (con piso) */}
-          {mkData && mkData.real && (() => {
+          {mkTab === 'charts' && mkData && mkData.real && (() => {
             const visPer = (mkData.groups || []).filter((g: any) => g.key !== 'site');
             const scaleMax = Math.max(1, ...visPer.map((g: any) => g.pageviews));
             return (
@@ -448,6 +469,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
             );
           })()}
 
+          <div style={secMk('texts')}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 10 }}>
             <div><div style={lbl}>{L('Titular (ES)', 'Headline (ES)')}</div><input value={mk.headlineEs} onChange={(e) => setMk({ ...mk, headlineEs: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
             <div><div style={lbl}>{L('Titular (EN)', 'Headline (EN)')}</div><input value={mk.headlineEn} onChange={(e) => setMk({ ...mk, headlineEn: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
@@ -459,6 +481,9 @@ export default function AdsAdmin({ es }: { es: boolean }) {
             <div><div style={lbl}>{L('Audiencia (EN)', 'Audience (EN)')}</div><textarea value={mk.audienceEn} onChange={(e) => setMk({ ...mk, audienceEn: e.target.value })} rows={2} style={{ margin: 0, width: '100%' }} /></div>
           </div>
 
+          </div>{/* fin texts */}
+
+          <div style={secMk('numbers')}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginTop: 10 }}>
             <div><div style={lbl}>{L('Piso visitantes/mes', 'Floor visitors/mo')} <Hint text={L('Cifra mínima que se muestra mientras el tráfico real es menor. Cuando el real la supera, se muestra el real. Se ve con coma de miles (ej: 95,587).', 'Minimum shown while real traffic is lower. Once real beats it, real shows. Displayed with a thousands comma (e.g. 95,587).')} /></div><input inputMode="numeric" value={commaNum(mk.floorVisitors)} onChange={(e) => setMk({ ...mk, floorVisitors: parseNum(e.target.value) })} style={{ margin: 0, width: '100%' }} /></div>
             <div><div style={lbl}>{L('Piso vistas/mes', 'Floor pageviews/mo')}</div><input inputMode="numeric" value={commaNum(mk.floorPageviews)} onChange={(e) => setMk({ ...mk, floorPageviews: parseNum(e.target.value) })} style={{ margin: 0, width: '100%' }} /></div>
@@ -476,8 +501,10 @@ export default function AdsAdmin({ es }: { es: boolean }) {
             <input value={mk.contactEmail} onChange={(e) => setMk({ ...mk, contactEmail: e.target.value })} style={{ margin: 0, width: '100%' }} />
           </div>
 
+          </div>{/* fin numbers */}
+
           {/* Paquetes */}
-          <div style={{ marginTop: 14 }}>
+          <div style={{ marginTop: 14, ...secMk('packages') }}>
             <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{L('Paquetes', 'Packages')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {(mk.packages || []).map((p: any, i: number) => (
@@ -494,7 +521,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
           </div>
 
           {/* ---- Generar propuesta personalizada para un cliente ---- */}
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--line)' }}>
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px dashed var(--line)', ...secMk('proposals') }}>
             <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
               {L('Generar propuesta para un cliente', 'Generate a proposal for a client')}
               <Hint text={L('Crea una propuesta con el nombre y datos del cliente. Se genera un enlace único que puedes copiar y mandarle, o enviárselo directo por email desde aquí. Abre la misma propuesta bilingüe con sus datos y el paquete que le sugieres resaltado.', 'Create a proposal with the client’s name and details. It generates a unique link you can copy and send, or email directly from here. It opens the same bilingual proposal with their info and your suggested package highlighted.')} />
