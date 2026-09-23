@@ -679,12 +679,22 @@ export default function AdsAdmin({ es }: { es: boolean }) {
             </div>
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
-            <div style={lbl}>{L('Banner del broker — opcional (pega la URL o sube el archivo)', 'Broker banner — optional (paste URL or upload file)')}</div>
+            <div style={lbl}>{L('Banner del broker — opcional (imagen directa .jpg/.png o sube el archivo)', 'Broker banner — optional (direct .jpg/.png image or upload file)')}</div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input value={pForm.banner_url} onChange={(e) => setPForm({ ...pForm, banner_url: e.target.value })} placeholder={L('El banner que te dan en su programa de afiliados', 'The banner they give you in their affiliate program')} style={{ margin: 0, flex: 1 }} />
+              <input value={pForm.banner_url} onChange={(e) => setPForm({ ...pForm, banner_url: e.target.value })} placeholder={L('https://…/banner.jpg — la IMAGEN, no el enlace de clic', 'https://…/banner.jpg — the IMAGE, not the click link')} style={{ margin: 0, flex: 1 }} />
               <label className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 8px', cursor: 'pointer', flex: 'none' }}>{upBusy === 'banner' ? '…' : L('Subir', 'Upload')}<input type="file" accept="image/*" onChange={(e) => uploadImg('banner', e.target.files?.[0] || null)} style={{ display: 'none' }} /></label>
             </div>
-            {pForm.banner_url && <img src={pForm.banner_url} alt="banner" style={{ maxWidth: '100%', marginTop: 6, borderRadius: 8, border: '1px solid var(--line)' }} />}
+            {(() => {
+              const b = (pForm.banner_url || '').trim();
+              const isImg = !b || b.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(b);
+              if (b && !isImg) return (
+                <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--red,#ef6262)', background: 'rgba(239,98,98,.08)', border: '1px solid rgba(239,98,98,.3)', borderRadius: 8, padding: '7px 9px', lineHeight: 1.5 }}>
+                  {L('⚠ Ese enlace no es una imagen (parece un enlace de clic/seguimiento, como “…/visit/?bta=…”). No se mostrará como banner. Opciones: 1) deja este campo vacío y se mostrará una tarjeta con logo, nombre y descripción; 2) sube la imagen del banner con “Subir”; 3) pega la URL directa de la imagen (termina en .jpg, .png, .gif…). El enlace de clic va en “Enlace afiliado”.',
+                     '⚠ That link is not an image (looks like a click/tracking link such as “…/visit/?bta=…”). It won’t show as a banner. Options: 1) leave this empty to show a card with logo, name and description; 2) upload the banner image with “Upload”; 3) paste the direct image URL (ends in .jpg, .png, .gif…). The click link goes in “Affiliate link”.')}
+                </div>
+              );
+              return b ? <img src={b} alt="banner" style={{ maxWidth: '100%', maxHeight: 160, objectFit: 'contain', marginTop: 6, borderRadius: 8, border: '1px solid var(--line)', display: 'block' }} /> : null;
+            })()}
           </div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Enlace afiliado', 'Affiliate link')}</div><input value={pForm.link_url} onChange={(e) => setPForm({ ...pForm, link_url: e.target.value })} placeholder="https://…?ref=onyx" style={{ margin: 0, width: '100%' }} /></div>
           <div style={{ gridColumn: '1 / -1' }}><div style={lbl}>{L('Descripción ES', 'Description ES')}</div><input value={pForm.blurb_es} onChange={(e) => setPForm({ ...pForm, blurb_es: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>

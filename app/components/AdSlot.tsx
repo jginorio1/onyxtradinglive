@@ -13,9 +13,20 @@ type Served =
   | { kind: 'programmatic'; id: 'net'; size: string; code: string }
   | null;
 
+// ¿La URL parece una imagen de verdad? Los enlaces de "banner" que dan las redes
+// de afiliados suelen ser de clic/iframe (…/visit/?bta=…), no un archivo de imagen,
+// y romperían el <img>. Aceptamos extensiones de imagen o data URLs; el resto cae a
+// la tarjeta del socio (y onError sirve de red por si igual falla).
+function looksLikeImage(u: string) {
+  if (!u) return false;
+  if (u.startsWith('data:image/')) return true;
+  return /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(u.trim());
+}
+
 export default function AdSlot({ slot, lang, label = true }: { slot: string; lang: 'es' | 'en'; label?: boolean }) {
   const [ad, setAd] = useState<Served>(null);
   const [done, setDone] = useState(false);
+  const [bannerBad, setBannerBad] = useState(false); // el banner del socio no cargó / no es imagen
   const ref = useRef<HTMLDivElement | null>(null);
   const viewed = useRef(false);
 
@@ -23,7 +34,7 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
     let alive = true;
     fetch(`/api/ads/serve?slot=${encodeURIComponent(slot)}&lang=${lang}`, { cache: 'no-store' })
       .then((r) => r.json())
-      .then((j) => { if (alive) { setAd(j.hide ? null : (j.ad || null)); setDone(true); } })
+      .then((j) => { if (alive) { setBannerBad(false); setAd(j.hide ? null : (j.ad || null)); setDone(true); } })
       .catch(() => { if (alive) setDone(true); });
     return () => { alive = false; };
   }, [slot, lang]);
@@ -66,13 +77,16 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
   // Socio del directorio (CPA): broker/prop firm con tu enlace afiliado. Rellena
   // los huecos vacíos y cada clic te paga comisión. Va etiquetado y con rel sponsored.
   if (ad.kind === 'partner') {
-    // Si el socio trae su banner (el que dan las prop firms), lo mostramos tal cual.
-    if (ad.banner) {
+    // Solo mostramos el banner como imagen si de verdad es una imagen y no ha
+    // fallado. Los "banners" de las redes de afiliados suelen ser enlaces de
+    // clic/iframe (…/visit/?bta=…): esos NO son imagen → caemos a la tarjeta.
+    if (ad.banner && looksLikeImage(ad.banner) && !bannerBad) {
       return (
         <div className="onyx-ad" style={wrap} ref={ref}>
           {label && tag}
           <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" style={{ display: 'block', lineHeight: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
-            <img src={ad.banner} alt={ad.name} loading="lazy" decoding="async" width={w || undefined} height={h || undefined} style={{ width: '100%', height: 'auto', display: 'block' }} />
+            <img src={ad.banner} alt={ad.name} loading="lazy" decoding="async" onError={() => setBannerBad(true)}
+                 style={{ width: '100%', height: 'auto', maxHeight: (h || 250) + 'px', objectFit: 'contain', display: 'block' }} />
           </a>
         </div>
       );
@@ -116,7 +130,7 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
     <div className="onyx-ad" style={wrap} ref={ref}>
       {label && tag}
       <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" onClick={onClick} style={{ display: 'block', lineHeight: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
-        <img src={ad.creative} alt={ad.alt || L('Anuncio', 'Ad')} loading="lazy" decoding="async" width={w || undefined} height={h || undefined} style={{ width: '100%', height: 'auto', display: 'block' }} />
+        <img src={ad.creative} alt={ad.alt || L('Anuncio', 'Ad')} loading="lazy" decoding="async" style={{ width: '100%', height: 'auto', maxHeight: (h || 250) + 'px', objectFit: 'contain', display: 'block' }} />
       </a>
       {ad.disclaimer && <div style={{ fontSize: 9.5, lineHeight: 1.35, color: 'var(--mut)', marginTop: 4, opacity: 0.8 }}>{ad.disclaimer}</div>}
     </div>
