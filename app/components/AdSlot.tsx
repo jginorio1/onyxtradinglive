@@ -84,9 +84,9 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
       return (
         <div className="onyx-ad" style={wrap} ref={ref}>
           {label && tag}
-          <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" style={{ display: 'block', lineHeight: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
+          <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" style={{ display: 'block', width: 'fit-content', maxWidth: '100%', margin: '0 auto', lineHeight: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
             <img src={ad.banner} alt={ad.name} loading="lazy" decoding="async" onError={() => setBannerBad(true)}
-                 style={{ width: '100%', height: 'auto', maxHeight: (h || 250) + 'px', objectFit: 'contain', display: 'block' }} />
+                 style={{ maxWidth: '100%', height: 'auto', maxHeight: (h || 250) + 'px', display: 'block' }} />
           </a>
         </div>
       );
@@ -129,8 +129,8 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
   return (
     <div className="onyx-ad" style={wrap} ref={ref}>
       {label && tag}
-      <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" onClick={onClick} style={{ display: 'block', lineHeight: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
-        <img src={ad.creative} alt={ad.alt || L('Anuncio', 'Ad')} loading="lazy" decoding="async" style={{ width: '100%', height: 'auto', maxHeight: (h || 250) + 'px', objectFit: 'contain', display: 'block' }} />
+      <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" onClick={onClick} style={{ display: 'block', width: 'fit-content', maxWidth: '100%', margin: '0 auto', lineHeight: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
+        <img src={ad.creative} alt={ad.alt || L('Anuncio', 'Ad')} loading="lazy" decoding="async" style={{ maxWidth: '100%', height: 'auto', maxHeight: (h || 250) + 'px', display: 'block' }} />
       </a>
       {ad.disclaimer && <div style={{ fontSize: 9.5, lineHeight: 1.35, color: 'var(--mut)', marginTop: 4, opacity: 0.8 }}>{ad.disclaimer}</div>}
     </div>
