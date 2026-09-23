@@ -18,7 +18,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 //   ]} />
 // ============================================================
 
-export type GuideStep = { target: string; title: string; body: string };
+// Cada paso puede llevar, además del texto:
+//  · example: un caso concreto ("Ej: The5ers, $180/mes…") que se pinta en una
+//    tarjeta resaltada para que se entienda con un ejemplo real.
+//  · svg: un dibujo/diagrama (SVG en texto) que ilustra el paso. Se pinta tal cual.
+export type GuideStep = { target: string; title: string; body: string; example?: string; svg?: string };
 
 const GOLD = '#d9b661';
 
@@ -167,6 +171,21 @@ export default function GuidePanel({ storageKey, title, steps, es = true }: { st
           <div style={{ padding: 12, overflowY: 'auto' }}>
             {!big && <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 6, color: 'var(--tx,#e8ecf5)' }}>{steps[active]?.title}</div>}
             <div style={{ fontSize: 12.5, color: 'var(--mut,#aab0c0)', lineHeight: 1.55, whiteSpace: 'pre-line' }}>{steps[active]?.body}</div>
+
+            {/* Dibujo / diagrama del paso */}
+            {steps[active]?.svg && (
+              <div style={{ marginTop: 12, background: 'rgba(255,255,255,.03)', border: '1px solid var(--line,#262838)', borderRadius: 10, padding: 10, display: 'flex', justifyContent: 'center' }}
+                   dangerouslySetInnerHTML={{ __html: steps[active]!.svg! }} />
+            )}
+
+            {/* Ejemplo concreto */}
+            {steps[active]?.example && (
+              <div style={{ marginTop: 12, background: 'rgba(212,175,90,.08)', border: `1px solid rgba(212,175,90,.35)`, borderLeft: `3px solid ${GOLD}`, borderRadius: 8, padding: '9px 11px' }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, color: GOLD, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>{L('Ejemplo', 'Example')}</div>
+                <div style={{ fontSize: 12, color: 'var(--tx,#d6dae6)', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{steps[active]!.example}</div>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
               <button disabled={active === 0} onClick={() => setActive((a) => Math.max(0, a - 1))} style={{ flex: 1, fontSize: 11.5, background: 'transparent', border: '1px solid var(--line,#39405a)', color: 'var(--tx,#c7ccda)', borderRadius: 8, padding: 6, cursor: active === 0 ? 'default' : 'pointer', opacity: active === 0 ? 0.5 : 1 }}>{L('Anterior', 'Back')}</button>
               {active < steps.length - 1

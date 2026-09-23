@@ -110,31 +110,132 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   const ctr = (c: Campaign) => (c.impressions > 0 ? ((c.clicks / c.impressions) * 100).toFixed(1) + '%' : '—');
   const stColor: Record<string, string> = { active: '#34e2a0', paused: '#f5b23e', draft: '#7c8cff', pending: '#e0a92e', rejected: '#ef6262', scheduled: '#7c8cff', ended: 'var(--mut)' };
 
+  // Dibujos (SVG) que ilustran cada paso de la guía. Estilo oscuro + dorado.
+  const G = '#d9b661', MUT = '#8a91a5', LN = '#39405a', GRN = '#5fd08a', RED = '#e0666b';
+  const gsvg = {
+    // 1 · Las 4 formas de ganar, de más a menos rentable (embudo de barras)
+    ways: `<svg viewBox="0 0 250 132" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cuatro formas de ganar">
+      <text x="4" y="12" fill="${MUT}" font-size="9" font-family="sans-serif">Rentabilidad ↓</text>
+      <g font-family="sans-serif" font-size="9">
+        <rect x="4" y="20" width="200" height="20" rx="4" fill="${G}"/><text x="10" y="34" fill="#1a1400" font-weight="700">1 · Socios CPA</text>
+        <rect x="4" y="46" width="152" height="20" rx="4" fill="${G}" opacity=".72"/><text x="10" y="60" fill="#1a1400" font-weight="700">2 · Vender directo</text>
+        <rect x="4" y="72" width="108" height="20" rx="4" fill="${G}" opacity=".5"/><text x="10" y="86" fill="#1a1400">3 · Autoservicio</text>
+        <rect x="4" y="98" width="64" height="20" rx="4" fill="${MUT}" opacity=".5"/><text x="10" y="112" fill="#0d0f16">4 · AdSense</text>
+      </g></svg>`,
+    // 2 · Dos interruptores maestros ON/OFF
+    switches: `<svg viewBox="0 0 250 96" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interruptores">
+      <g font-family="sans-serif" font-size="10">
+        <text x="6" y="26" fill="#c7ccda">Anuncios (global)</text>
+        <rect x="150" y="14" width="46" height="20" rx="10" fill="${GRN}"/><circle cx="186" cy="24" r="8" fill="#fff"/><text x="158" y="27" fill="#04120b" font-size="8" font-weight="700">ON</text>
+        <text x="6" y="66" fill="#c7ccda">App nativa</text>
+        <rect x="150" y="54" width="46" height="20" rx="10" fill="${LN}"/><circle cx="160" cy="64" r="8" fill="#aab0c0"/><text x="172" y="67" fill="#aab0c0" font-size="8" font-weight="700">OFF</text>
+      </g></svg>`,
+    // 3 · Revisión: tarjeta con banner + aprobar/rechazar
+    review: `<svg viewBox="0 0 250 120" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Revisión de artes">
+      <rect x="4" y="6" width="242" height="108" rx="8" fill="none" stroke="${LN}"/>
+      <rect x="14" y="16" width="90" height="52" rx="4" fill="${LN}"/><text x="30" y="46" fill="${MUT}" font-size="9" font-family="sans-serif">Banner</text>
+      <g font-family="sans-serif" font-size="9" fill="#c7ccda"><text x="114" y="26">Broker XYZ</text><text x="114" y="42" fill="${MUT}">Prop firm · $180</text><text x="114" y="58" fill="${MUT}">link → xyz.com</text></g>
+      <rect x="14" y="80" width="104" height="24" rx="6" fill="${GRN}"/><text x="34" y="96" fill="#04120b" font-size="10" font-weight="700" font-family="sans-serif">✓ Aprobar</text>
+      <rect x="130" y="80" width="104" height="24" rx="6" fill="none" stroke="${RED}"/><text x="150" y="96" fill="${RED}" font-size="10" font-weight="700" font-family="sans-serif">✕ Rechazar</text></svg>`,
+    // 4 · Ajustes: toggles + tope
+    settings: `<svg viewBox="0 0 250 118" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ajustes">
+      <g font-family="sans-serif" font-size="9.5" fill="#c7ccda">
+        <text x="6" y="20">Auto-aprobar</text><rect x="176" y="10" width="40" height="16" rx="8" fill="${LN}"/><circle cx="184" cy="18" r="6" fill="#aab0c0"/>
+        <text x="6" y="48">Tope/día</text><rect x="150" y="38" width="66" height="16" rx="4" fill="none" stroke="${LN}"/><text x="178" y="50" fill="${G}" font-weight="700">3</text>
+        <text x="6" y="76">Programático</text><rect x="176" y="66" width="40" height="16" rx="8" fill="${LN}"/><circle cx="184" cy="74" r="6" fill="#aab0c0"/>
+        <text x="6" y="104" fill="${MUT}">Aviso de riesgo (legal) — no borrar</text>
+      </g></svg>`,
+    // 5 · Tarifario: etiquetas de precio por espacio
+    rates: `<svg viewBox="0 0 250 118" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tarifario">
+      <g font-family="sans-serif" font-size="9.5">
+        <rect x="4" y="8" width="242" height="24" rx="5" fill="none" stroke="${LN}"/><text x="12" y="24" fill="#c7ccda">Portada · 970×90</text><rect x="176" y="12" width="62" height="16" rx="8" fill="${G}"/><text x="186" y="24" fill="#1a1400" font-weight="700">$90/sem</text>
+        <rect x="4" y="38" width="242" height="24" rx="5" fill="none" stroke="${LN}"/><text x="12" y="54" fill="#c7ccda">Blog · 600×300</text><rect x="176" y="42" width="62" height="16" rx="8" fill="${G}"/><text x="186" y="54" fill="#1a1400" font-weight="700">$45/sem</text>
+        <rect x="4" y="68" width="242" height="24" rx="5" fill="none" stroke="${LN}"/><text x="12" y="84" fill="#c7ccda">Artículo · 300×600</text><rect x="176" y="72" width="62" height="16" rx="8" fill="${G}"/><text x="184" y="84" fill="#1a1400" font-weight="700">$180/mes</text>
+      </g></svg>`,
+    // 6 · Campaña: formulario con campos
+    campaign: `<svg viewBox="0 0 250 124" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Crear campaña">
+      <g font-family="sans-serif" font-size="8.5" fill="${MUT}">
+        <text x="6" y="14">Anunciante</text><rect x="6" y="18" width="110" height="14" rx="3" fill="${LN}"/>
+        <text x="130" y="14">Ubicación</text><rect x="130" y="18" width="110" height="14" rx="3" fill="${LN}"/>
+        <text x="6" y="46">País / Tier</text><rect x="6" y="50" width="72" height="14" rx="3" fill="${LN}"/>
+        <text x="88" y="46">Dispositivo</text><rect x="88" y="50" width="70" height="14" rx="3" fill="${LN}"/>
+        <text x="168" y="46">Cobro</text><rect x="168" y="50" width="72" height="14" rx="3" fill="${LN}"/>
+        <text x="6" y="78">Banner + enlace</text><rect x="6" y="82" width="150" height="14" rx="3" fill="${LN}"/>
+      </g>
+      <rect x="164" y="100" width="76" height="18" rx="6" fill="${G}"/><text x="176" y="113" fill="#1a1400" font-size="9" font-weight="700" font-family="sans-serif">Crear</text></svg>`,
+    // 7 · Socios CPA: broker → tu enlace → comisión
+    partner: `<svg viewBox="0 0 250 118" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Socios CPA">
+      <rect x="4" y="10" width="150" height="98" rx="8" fill="none" stroke="${LN}"/>
+      <circle cx="28" cy="34" r="12" fill="${G}"/><text x="46" y="32" fill="#c7ccda" font-size="10" font-family="sans-serif">The5ers</text>
+      <text x="46" y="46" fill="${MUT}" font-size="8" font-family="sans-serif">Prop firm · regulado</text>
+      <rect x="16" y="58" width="126" height="16" rx="8" fill="${G}"/><text x="42" y="70" fill="#1a1400" font-size="9" font-weight="700" font-family="sans-serif">Ver oferta →</text>
+      <text x="16" y="92" fill="${GRN}" font-size="8.5" font-family="sans-serif">tu enlace afiliado</text>
+      <path d="M156 58 L196 58" stroke="${G}" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+      <defs><marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="${G}"/></marker></defs>
+      <rect x="196" y="40" width="50" height="40" rx="6" fill="rgba(95,208,138,.15)" stroke="${GRN}"/><text x="204" y="58" fill="${GRN}" font-size="8" font-family="sans-serif">registro</text><text x="206" y="70" fill="${GRN}" font-size="10" font-weight="700" font-family="sans-serif">= $$</text></svg>`,
+    // 8 · Media Kit: documento con "pisos" y gráfica
+    mediakit: `<svg viewBox="0 0 250 128" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Media Kit">
+      <rect x="4" y="6" width="150" height="116" rx="6" fill="#fff"/>
+      <rect x="4" y="6" width="150" height="22" rx="6" fill="#0b0f1e"/><text x="14" y="21" fill="#fff" font-size="9" font-family="sans-serif">Preparado para: Broker</text>
+      <rect x="14" y="36" width="60" height="6" rx="3" fill="${G}"/>
+      <rect x="14" y="48" width="128" height="4" rx="2" fill="#e5e8ee"/><rect x="14" y="56" width="100" height="4" rx="2" fill="#e5e8ee"/>
+      <g font-family="sans-serif" font-size="7"><rect x="14" y="70" width="40" height="34" rx="3" fill="#faf4e6"/><text x="20" y="82" fill="#7a5a12">12.4k</text><text x="18" y="92" fill="#999">visitas</text>
+      <rect x="58" y="70" width="40" height="34" rx="3" fill="#f3edff"/><text x="66" y="82" fill="#6a3fd0">0.9%</text><text x="70" y="92" fill="#999">CTR</text></g>
+      <text x="168" y="24" fill="${MUT}" font-size="8.5" font-family="sans-serif">Pisos (editable):</text>
+      <rect x="168" y="30" width="76" height="16" rx="4" fill="none" stroke="${LN}"/><text x="174" y="42" fill="${G}" font-size="8.5" font-family="sans-serif">visitas ≥ 10k</text>
+      <text x="168" y="62" fill="${MUT}" font-size="8" font-family="sans-serif">crece con lo real →</text>
+      <path d="M170 96 L182 88 L194 92 L206 78 L220 82 L236 68" fill="none" stroke="${GRN}" stroke-width="2"/></svg>`,
+  };
+
   const guideSteps: GuideStep[] = [
     { target: '[data-guide="global"]', title: L('1 · Cómo funciona (empieza aquí)', '1 · How it works (start here)'),
       body: L('Esta sección gana dinero mostrando anuncios en tu web (blog, artículos, footer, barra inferior) SOLO a usuarios del plan gratis; a los de pago nunca se les muestra nada.\n\nHay 4 formas de ganar, de la que más rinde a la que menos:\n1) Directorio de socios (CPA) — brokers/prop firms te pagan por cada registro. Lo más rentable.\n2) Vender tus banners directo a esos brokers.\n3) Que anunciantes compren solos en /publicidad.\n4) Relleno con AdSense (centavos) cuando un hueco queda vacío.\n\nSin clientes todavía, los huecos muestran tu propio anuncio de "Pro", así que la web nunca se ve vacía.',
-        'This section earns money by showing ads on your site (blog, articles, footer, bottom bar) ONLY to free-plan users; paid users never see any.\n\nThere are 4 ways to earn, highest to lowest:\n1) Partner directory (CPA) — brokers/prop firms pay you per signup. Most profitable.\n2) Sell your banners directly to those brokers.\n3) Advertisers buy on their own at /publicidad.\n4) AdSense fill (pennies) when a slot is empty.\n\nWith no clients yet, empty slots show your own "Pro" ad, so the site never looks blank.') },
+        'This section earns money by showing ads on your site (blog, articles, footer, bottom bar) ONLY to free-plan users; paid users never see any.\n\nThere are 4 ways to earn, highest to lowest:\n1) Partner directory (CPA) — brokers/prop firms pay you per signup. Most profitable.\n2) Sell your banners directly to those brokers.\n3) Advertisers buy on their own at /publicidad.\n4) AdSense fill (pennies) when a slot is empty.\n\nWith no clients yet, empty slots show your own "Pro" ad, so the site never looks blank.'),
+      svg: gsvg.ways,
+      example: L('The5ers te da $X por cada trader que se registra con tu enlace (CPA). Con 20 registros al mes ya ganas más que meses de AdSense. Por eso el paso 7 (socios) es lo primero que conviene llenar.',
+                 'The5ers pays you $X per trader who signs up via your link (CPA). 20 signups a month already beats months of AdSense. That’s why step 7 (partners) is the first thing to fill.') },
     { target: '[data-guide="global"]', title: L('2 · Interruptores globales', '2 · Global switches'),
       body: L('Dos interruptores maestros:\n\n• Anuncios (global): ON = el sistema de anuncios está encendido. OFF = apaga TODOS los espacios de golpe.\n\n• Anuncios en la app nativa: déjalo en OFF hasta que Apple/Google aprueben tus apps. Los anuncios solo deben salir en la web por ahora.\n\nToca la tarjeta para cambiar ON/OFF; se guarda solo.',
-        'Two master switches:\n\n• Ads (global): ON = the ad system is on. OFF = turns OFF every space at once.\n\n• Ads in the native app: leave OFF until Apple/Google approve your apps. Ads should only show on the web for now.\n\nTap the card to toggle ON/OFF; it saves itself.') },
+        'Two master switches:\n\n• Ads (global): ON = the ad system is on. OFF = turns OFF every space at once.\n\n• Ads in the native app: leave OFF until Apple/Google approve your apps. Ads should only show on the web for now.\n\nTap the card to toggle ON/OFF; it saves itself.'),
+      svg: gsvg.switches,
+      example: L('Si un cliente grande te pide "quiten los anuncios esta semana por una campaña especial", apagas "Anuncios (global)" y desaparecen de toda la web al instante. Lo vuelves a encender y regresan.',
+                 'If a big client asks "turn ads off this week for a special campaign", switch "Ads (global)" off and they vanish site-wide instantly. Turn it back on and they return.') },
     { target: '[data-guide="review"]', title: L('3 · Revisión de artes', '3 · Creative review'),
       body: L('Cuando un anunciante paga en /publicidad, su banner NO sale live: espera aquí tu aprobación (así nadie publica cualquier cosa en tu web).\n\nCada anuncio pendiente muestra: la imagen, el anunciante, la categoría, el precio y el enlace de destino. Revisa que el arte sea apropiado y que el enlace no sea una estafa.\n\n• Aprobar → sale live al instante.\n• Rechazar → te pide un motivo y queda rechazado (reembolsa desde Stripe si aplica).\n\nSin clientes todavía, esto está vacío. Es normal.',
-        'When an advertiser pays on /publicidad, their banner does NOT go live: it waits here for your approval (so nobody publishes junk on your site).\n\nEach pending ad shows: the image, advertiser, category, price and destination link. Check the creative is appropriate and the link isn’t a scam.\n\n• Approve → goes live instantly.\n• Reject → asks for a reason and marks it rejected (refund from Stripe if needed).\n\nWith no clients yet, this is empty. That’s normal.') },
+        'When an advertiser pays on /publicidad, their banner does NOT go live: it waits here for your approval (so nobody publishes junk on your site).\n\nEach pending ad shows: the image, advertiser, category, price and destination link. Check the creative is appropriate and the link isn’t a scam.\n\n• Approve → goes live instantly.\n• Reject → asks for a reason and marks it rejected (refund from Stripe if needed).\n\nWith no clients yet, this is empty. That’s normal.'),
+      svg: gsvg.review,
+      example: L('Llega un banner de "Broker XYZ · $180" con enlace a xyz.com. Miras que el arte no engañe y que el link sea real → Aprobar y sale live. Si el link fuera raro o el arte prometiera "ganancias garantizadas" → Rechazar con motivo.',
+                 'A "Broker XYZ · $180" banner comes in linking to xyz.com. You check the creative isn’t misleading and the link is real → Approve and it goes live. If the link looked shady or the art promised "guaranteed profits" → Reject with a reason.') },
     { target: '[data-guide="settings"]', title: L('4 · Ajustes · parte por parte', '4 · Settings · part by part'),
       body: L('Cuatro controles:\n\n• Auto-aprobar artes: déjalo en OFF (recomendado). Con OFF tú revisas cada anuncio antes de que salga. Con ON saldría solo, sin revisión: peligroso.\n\n• Tope de impresiones/visitante/día: cuántas veces como máximo un mismo visitante ve el mismo anuncio al día (3 es buen número). Evita quemar al anunciante y molestar al usuario.\n\n• Relleno programático: pega aquí el código de AdSense y enciéndelo SOLO cuando Google te apruebe. Rellena huecos vacíos con anuncios de Google.\n\n• Aviso de riesgo financiero: ya viene el texto legal (ES/EN) que sale pequeñito bajo los anuncios de brokers/prop firms. No lo borres.',
-        'Four controls:\n\n• Auto-approve creatives: leave OFF (recommended). With OFF you review each ad before it goes live. With ON it would go live with no review: risky.\n\n• Impression cap/visitor/day: the max times one visitor sees the same ad per day (3 is a good number). Avoids burning the advertiser and annoying the user.\n\n• Programmatic fill: paste your AdSense code here and turn it ON ONLY once Google approves you. It fills empty slots with Google ads.\n\n• Financial risk disclaimer: the legal text (ES/EN) that shows small under broker/prop-firm ads is already set. Don’t delete it.') },
+        'Four controls:\n\n• Auto-approve creatives: leave OFF (recommended). With OFF you review each ad before it goes live. With ON it would go live with no review: risky.\n\n• Impression cap/visitor/day: the max times one visitor sees the same ad per day (3 is a good number). Avoids burning the advertiser and annoying the user.\n\n• Programmatic fill: paste your AdSense code here and turn it ON ONLY once Google approves you. It fills empty slots with Google ads.\n\n• Financial risk disclaimer: the legal text (ES/EN) that shows small under broker/prop-firm ads is already set. Don’t delete it.'),
+      svg: gsvg.settings,
+      example: L('Con "Tope/día = 3", si un visitante entra 10 veces al blog, ese banner se le muestra máximo 3 veces ese día; el resto ve otra cosa. Así no quemas al anunciante ni cansas al usuario.',
+                 'With "Cap/day = 3", if a visitor opens the blog 10 times, that banner shows at most 3 times that day; the rest they see something else. That way you don’t burn the advertiser or tire the user.') },
     { target: '[data-guide="rates"]', title: L('5 · Tarifario (precios)', '5 · Rate card (prices)'),
       body: L('Aquí pones cuánto cobras por cada espacio. Es exactamente lo que el anunciante verá en tu página pública /publicidad.\n\nPor cada fila: escribe el precio ($) y elige la unidad:\n• / semana o / mes → precio plano (cobras fijo por ese tiempo).\n• CPM → cobras por cada 1.000 veces que se ve.\n\nLos espacios grandes o muy visibles (billboard de portada, barra sticky) valen más. Cuando termines, pulsa "Guardar precios".',
-        'Here you set how much you charge per space. It’s exactly what advertisers see on your public /publicidad page.\n\nFor each row: type the price ($) and pick the unit:\n• / week or / month → flat price (fixed for that time).\n• CPM → charged per 1,000 views.\n\nBig or highly-visible spaces (landing billboard, sticky bar) are worth more. When done, hit "Save prices".') },
+        'Here you set how much you charge per space. It’s exactly what advertisers see on your public /publicidad page.\n\nFor each row: type the price ($) and pick the unit:\n• / week or / month → flat price (fixed for that time).\n• CPM → charged per 1,000 views.\n\nBig or highly-visible spaces (landing billboard, sticky bar) are worth more. When done, hit "Save prices".'),
+      svg: gsvg.rates,
+      example: L('Portada 970×90 a $90/sem, artículo 300×600 a $180/mes. Lo que pongas aquí es EXACTO lo que el broker ve en /publicidad y en la propuesta PDF. Súbelos con el tiempo si tu tráfico crece.',
+                 'Home 970×90 at $90/wk, article 300×600 at $180/mo. Whatever you set here is EXACTLY what the broker sees on /publicidad and in the PDF proposal. Raise them over time as traffic grows.') },
     { target: '[data-guide="campaign"]', title: L('6 · Crear campaña · los campos', '6 · Create campaign · the fields'),
       body: L('Crea un anuncio a mano (útil si vendiste el espacio por WhatsApp/correo). Campos clave:\n\n• Anunciante: nombre de quién paga.\n• Ubicación: en qué espacio va (elige de la lista).\n• Idioma / Región (tier) / País / Excluir país: a quién se le muestra. Tier 1 = US, UK, CA, AU… (paga más).\n• Dispositivo: escritorio, móvil o todos.\n• Categoría: broker, prop firm, herramienta, educación o general.\n• Modelo de cobro: plano, CPM, CPC o CPA + presupuesto y tope diario.\n• Imagen del banner + Enlace destino.\n• Aviso de riesgo: márcalo si es de broker/prop firm.\n• Estado: Activa lo pone live.\n\nAbajo pulsa "Crear campaña".',
-        'Create an ad manually (handy if you sold the space over WhatsApp/email). Key fields:\n\n• Advertiser: who pays.\n• Placement: which space (pick from the list).\n• Language / Region (tier) / Country / Exclude country: who sees it. Tier 1 = US, UK, CA, AU… (pays more).\n• Device: desktop, mobile or all.\n• Category: broker, prop firm, tool, education or general.\n• Pricing model: flat, CPM, CPC or CPA + budget and daily cap.\n• Banner image + Destination link.\n• Risk disclaimer: tick it for broker/prop-firm ads.\n• Status: Active makes it live.\n\nHit "Create campaign" below.') },
+        'Create an ad manually (handy if you sold the space over WhatsApp/email). Key fields:\n\n• Advertiser: who pays.\n• Placement: which space (pick from the list).\n• Language / Region (tier) / Country / Exclude country: who sees it. Tier 1 = US, UK, CA, AU… (pays more).\n• Device: desktop, mobile or all.\n• Category: broker, prop firm, tool, education or general.\n• Pricing model: flat, CPM, CPC or CPA + budget and daily cap.\n• Banner image + Destination link.\n• Risk disclaimer: tick it for broker/prop-firm ads.\n• Status: Active makes it live.\n\nHit "Create campaign" below.'),
+      svg: gsvg.campaign,
+      example: L('Vendiste por WhatsApp el footer a un broker por 1 mes: Anunciante "FundedX", Ubicación "Footer global", País US, Dispositivo Todos, subes el banner, pones el enlace, marcas aviso de riesgo, Estado Activa → sale live.',
+                 'You sold the footer to a broker for 1 month over WhatsApp: Advertiser "FundedX", Placement "Global footer", Country US, Device All, upload the banner, set the link, tick risk disclaimer, Status Active → it goes live.') },
     { target: '[data-guide="partners"]', title: L('7 · Directorio de socios (CPA) · lo importante', '7 · Partner directory (CPA) · the big one'),
       body: L('EMPIEZA POR AQUÍ para ganar sin anunciantes. Son brokers y prop firms que te pagan por cada registro que les mandes.\n\nCómo: entra a la web del broker → busca "Affiliates/Partners/IB" → regístrate → te dan un enlace único.\n\nLuego rellena los campos:\n• Nombre + Logo (URL).\n• Categoría: broker / prop firm / herramienta.\n• Enlace afiliado: tu enlace único (¡el que te paga!).\n• Descripción ES/EN + Reguladores (da confianza).\n• Pago CPA: cuánto te dan por registro (referencia).\n• Destacado: lo sube arriba y lo resalta.\n• Orden: número menor = aparece primero.\n\nSe publican en tu página /socios. Cada clic sale por tu enlace y se cuenta.',
-        'START HERE to earn without advertisers. These are brokers and prop firms that pay you per signup you send them.\n\nHow: go to the broker’s site → find "Affiliates/Partners/IB" → sign up → they give you a unique link.\n\nThen fill the fields:\n• Name + Logo (URL).\n• Category: broker / prop firm / tool.\n• Affiliate link: your unique link (the one that pays you!).\n• Description ES/EN + Regulators (builds trust).\n• CPA payout: how much per signup (reference).\n• Featured: pushes it to the top and highlights it.\n• Rank: lower number = appears first.\n\nThey publish on your /socios page. Every click goes through your link and is counted.') },
+        'START HERE to earn without advertisers. These are brokers and prop firms that pay you per signup you send them.\n\nHow: go to the broker’s site → find "Affiliates/Partners/IB" → sign up → they give you a unique link.\n\nThen fill the fields:\n• Name + Logo (URL).\n• Category: broker / prop firm / tool.\n• Affiliate link: your unique link (the one that pays you!).\n• Description ES/EN + Regulators (builds trust).\n• CPA payout: how much per signup (reference).\n• Featured: pushes it to the top and highlights it.\n• Rank: lower number = appears first.\n\nThey publish on your /socios page. Every click goes through your link and is counted.'),
+      svg: gsvg.partner,
+      example: L('Cargas The5ers con tu enlace afiliado. Aparece en /socios Y rellena los huecos vacíos de banners por toda la web. Un trader hace clic → va por tu enlace → si se registra, The5ers te paga. Todo sin un solo anunciante de pago.',
+                 'You load The5ers with your affiliate link. It shows on /socios AND fills empty banner slots across the site. A trader clicks → goes through your link → if they sign up, The5ers pays you. All without a single paying advertiser.') },
     { target: '[data-guide="mediakit"]', title: L('8 · Media Kit y propuesta (para clientes)', '8 · Media Kit & proposal (for clients)'),
       body: L('Esto es lo que le enseñas a un cliente que quiere comprar un banner.\n\n• Página pública /publicidad/estadisticas: muestra sola tus estadísticas reales por página (visitas, CTR), la audiencia por país y qué espacios están libres. Se actualiza sola.\n\n• Propuesta PDF /publicidad/propuesta: un documento profesional bilingüe (ES/EN) que el cliente descarga. Sale con tus cifras reales incrustadas.\n\nAquí editas los textos, los "pisos" y los paquetes:\n• Pisos: cifra mínima creíble que se muestra mientras tienes poco tráfico. Cuando el tráfico real la supera, se muestra el real (nunca inventa por encima).\n• Mostrar precios: enséñalos u ocúltalos (para negociar por contacto).\n• Paquetes: Starter/Growth/Enterprise con su precio y qué espacios incluyen.\n\nPulsa "Guardar" y usa "Ver página / Ver propuesta" para revisarlo.',
-        'This is what you show a client who wants to buy a banner.\n\n• Public page /publicidad/estadisticas: automatically shows your real per-page stats (visits, CTR), audience by country and which spaces are open. It updates itself.\n\n• PDF proposal /publicidad/propuesta: a professional bilingual (ES/EN) document the client downloads. It comes with your real figures embedded.\n\nHere you edit the copy, the "floors" and the packages:\n• Floors: a credible minimum shown while traffic is low. Once real traffic beats it, the real number shows (never invents above real).\n• Show prices: display or hide them (to negotiate by contact).\n• Packages: Starter/Growth/Enterprise with price and which spaces they include.\n\nHit "Save" and use "View page / View proposal" to check it.') },
+        'This is what you show a client who wants to buy a banner.\n\n• Public page /publicidad/estadisticas: automatically shows your real per-page stats (visits, CTR), audience by country and which spaces are open. It updates itself.\n\n• PDF proposal /publicidad/propuesta: a professional bilingual (ES/EN) document the client downloads. It comes with your real figures embedded.\n\nHere you edit the copy, the "floors" and the packages:\n• Floors: a credible minimum shown while traffic is low. Once real traffic beats it, the real number shows (never invents above real).\n• Show prices: display or hide them (to negotiate by contact).\n• Packages: Starter/Growth/Enterprise with price and which spaces they include.\n\nHit "Save" and use "View page / View proposal" to check it.'),
+      svg: gsvg.mediakit,
+      example: L('Vas a hablar con un broker. Pones "Piso visitas ≥ 10.000" para verte creíble aunque hoy tengas menos. Generas la propuesta para "Broker XYZ", eliges paquete Growth, y le mandas el enlace o el PDF. Cuando tu tráfico REAL pase de 10.000, la cifra sube sola.',
+                 'You’re about to pitch a broker. You set "Floor visits ≥ 10,000" to look credible even if today it’s less. You generate the proposal for "Broker XYZ", pick the Growth package, and send the link or PDF. Once your REAL traffic passes 10,000, the figure rises on its own.') },
   ];
 
   return (
