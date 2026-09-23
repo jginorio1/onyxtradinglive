@@ -1,0 +1,643 @@
+'use client';
+import { mkL } from '@/lib/i18n';
+import { useEffect, useState } from 'react';
+import { toast, toastErr } from '@/lib/toast';
+import { useLang } from '@/lib/lang';
+import ConfirmNote from './ConfirmNote';
+import DateTimePicker from '@/app/components/DateTimePicker';
+import EmailPreview from './previews/EmailPreview';
+import OnyxIcon from '@/app/components/OnyxIcon';
+
+// ============================================================
+// Admin → Campañas. Correos de seguimiento automáticos a la base de traders +
+// envío manual de promos/noticias, con plantillas editables y borrador IA.
+// Bilingüe por su cuenta (no depende del diccionario del panel).
+// ============================================================
+
+// Variables que la IA integra y que el owner puede insertar a mano.
+const VARS = ['{{nombre}}', '{{plan}}', '{{sitio}}'];
+// Tonos para controlar la voz que genera la IA.
+const TONES: Array<[string, string, string]> = [
+  ['friendly', 'Cercano', 'Friendly'], ['urgent', 'Urgente', 'Urgent'],
+  ['promo', 'Promocional', 'Promo'], ['informative', 'Informativo', 'Informative'],
+];
+// Renderiza las variables con un trader de ejemplo (para la vista previa).
+function fillPreview(text: string): string {
+  return String(text || '')
+    .replace(/\{\{\s*(nombre|name)\s*\}\}/gi, 'Jerry')
+    .replace(/\{\{\s*plan\s*\}\}/gi, 'Pro')
+    .replace(/\{\{\s*(sitio|site)\s*\}\}/gi, 'onyxtradinglive.com');
+}
+
+// Fila de chips de variables: inserta el token en el campo indicado.
+function VarChips({ onInsert, L }: { onInsert: (v: string) => void; L: (a: string, b: string) => string }) {
+  return (
+    <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', margin: '2px 0 4px' }}>
+      <span className="muted" style={{ fontSize: 11.5 }}>{L('Variables:', 'Variables:')}</span>
+      {VARS.map((v) => (
+        <button key={v} type="button" onClick={() => onInsert(v)}
+          style={{ background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand,#7c8cff)', border: '1px solid color-mix(in srgb,var(--soft-brand,#7c8cff) 40%,transparent)', borderRadius: 7, padding: '3px 9px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+          {v}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+type Campaign = {
+  id: string; key: string | null; name: string; kind: 'trigger' | 'scheduled' | 'manual';
+  segment: string; subject_es: string; body_es: string; subject_en: string; body_en: string;
+  enabled: boolean; trigger: any; schedule: string; scheduled_at: string | null; last_run_at: string | null;
+  auto?: boolean;
+};
+type Seg = { id: string; es: string; en: string; auto?: boolean };
+
+export default function Campaigns() {
+  const { lang } = useLang();
+  const L = mkL(lang);
+  const [camps, setCamps] = useState<Campaign[]>([]);
+  const [segs, setSegs] = useState<Seg[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [weeklyCap, setWeeklyCap] = useState<number>(4);
+  const [capStats, setCapStats] = useState<{ cap: number; sent7d: number; usersActive: number; usersAtCap: number; avg: number; pctAtCap: number } | null>(null);
+  const [capBusy, setCapBusy] = useState(false);
+  const [editing, setEditing] = useState<Campaign | null>(null);
+  const [cf, setCf] = useState<any>(null);
+  const [histOpen, setHistOpen] = useState<string | null>(null);   // key con historial abierto
+  const segLabel = (id: string) => { const s = segs.find((x) => x.id === id); return s ? s[lang === 'en' ? 'en' : 'es'] : id; };
+
+  async function load() {
+    const r = await fetch('/api/admin/campaigns'); const j = await r.json();
+    setCamps(j.campaigns || []); setSegs(j.segments || []); setStats(j.stats || null);
+    if (typeof j.weeklyCap === 'number') setWeeklyCap(j.weeklyCap);
+    if (j.capStats) setCapStats(j.capStats);
+  }
+
+  // Guarda el tope semanal de correos por persona (0 = sin tope).
+  async function saveCap(n: number) {
+    setCapBusy(true);
+    try {
+      const r = await fetch('/api/admin/campaigns', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ weeklyCap: n }) });
+      const j = await r.json();
+      if (!r.ok) { toastErr(j); return; }
+      setWeeklyCap(j.weeklyCap ?? n);
+      toast(n === 0 ? L('Tope desactivado.', 'Cap disabled.') : L(`Tope: máx ${n} correos/semana por persona.`, `Cap: max ${n} emails/week per person.`), 'ok');
+    } finally { setCapBusy(false); }
+  }
+  // Auto-refresco: los números (aperturas/clics) suben solos sin pulsar nada.
+  useEffect(() => { load(); const iv = setInterval(load, 15000); return () => clearInterval(iv); }, []);
+  // Acción rápida "＋ Campaña" del panel admin: lleva al compositor de envío manual.
+  useEffect(() => {
+    const onNew = (e: any) => { if (e?.detail === 'campanas') { const el = document.getElementById('admin-camp-composer'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); (el?.querySelector('input,textarea') as HTMLElement | null)?.focus(); } };
+    window.addEventListener('admin-quick-create', onNew as any);
+    return () => window.removeEventListener('admin-quick-create', onNew as any);
+  }, []);
+
+  async function toggle(c: Campaign) {
+    const r = await fetch('/api/admin/campaigns', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, enabled: !c.enabled }) });
+    if (!r.ok) { toastErr(await r.json()); return; }
+    setCamps((list) => list.map((x) => x.id === c.id ? { ...x, enabled: !x.enabled } : x));
+  }
+
+  // Envía una PRUEBA de esta campaña a tu propio correo, en el idioma elegido.
+  // Genera el contenido real (IA incluida) para que veas exactamente lo que sale.
+  const [testing, setTesting] = useState('');
+  async function testCampaign(c: Campaign, lang: 'es' | 'en') {
+    setTesting(c.id + lang);
+    try {
+      const r = await fetch('/api/admin/campaigns/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test_campaign', id: c.id, lang }) });
+      const j = await r.json();
+      if (!r.ok || !j.ok) toastErr(j.error === 'sin_contenido' ? { error: L('Esta campaña aún no tiene contenido (la IA lo redacta al enviar).', 'This campaign has no content yet (AI writes it at send time).') } : j);
+      else toast(L(`Prueba enviada a tu correo en ${lang === 'en' ? 'inglés' : 'español'}.`, `Test sent to your email in ${lang === 'en' ? 'English' : 'Spanish'}.`), 'ok');
+    } finally { setTesting(''); }
+  }
+
+  // Interruptor "Automático (IA)": la IA redacta y agenda esta campaña sola.
+  async function toggleAuto(c: Campaign) {
+    const next = !c.auto;
+    setCamps((list) => list.map((x) => x.id === c.id ? { ...x, auto: next } : x));
+    const r = await fetch('/api/admin/campaigns', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, auto: next }) });
+    if (!r.ok) { toastErr(await r.json()); setCamps((list) => list.map((x) => x.id === c.id ? { ...x, auto: !next } : x)); return; }
+    toast(next ? L('Automático (IA) activado — la IA redacta y envía esta campaña sola.', 'AI auto ON — AI writes and sends this campaign on its own.') : L('Automático apagado — la redactas tú desde ✏️ Editar.', 'Auto OFF — you write it via ✏️ Edit.'), 'ok');
+  }
+
+  const autos = camps.filter((c) => c.kind !== 'manual');
+  const manuals = camps.filter((c) => c.kind === 'manual');
+  const scheduled = manuals.filter((c) => c.scheduled_at);
+  const pct = (n: number, d: number) => d > 0 ? Math.round((n / d) * 100) : 0;
+  const openRate = pct(stats?.opened30 ?? 0, stats?.sent30 ?? 0);
+  const clickRate = pct(stats?.clicked30 ?? 0, stats?.sent30 ?? 0);
+
+  function cancelSchedule(c: Campaign) {
+    setCf({ title: L('¿Cancelar esta promo programada?', 'Cancel this scheduled promo?'), detail: c.name, danger: true, run: async (note: string) => {
+      await fetch('/api/admin/campaigns', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, note }) });
+      load();
+    } });
+  }
+  const fmtWhen = (iso: string | null) => iso ? new Date(iso).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+
+  const kindBadge = (k: string) => k === 'scheduled'
+    ? <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}>{L('Programada', 'Scheduled')}</span>
+    : <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>{L('Por evento', 'Triggered')}</span>;
+
+  return (
+    <>
+      <div className="tabhead"><div className="th-row"><span className="th-ic"><OnyxIcon emoji="📣" size={15} /></span><span className="th-t">{L('Campañas', 'Campaigns')}</span></div>
+        <div className="th-s">{L('Correos de seguimiento automáticos a tus traders + envíos manuales de promos y noticias.', 'Automated follow-up emails to your traders + manual promos and news.')}</div></div>
+
+      {/* Métricas 30 días (aperturas/clics reales del webhook de Resend) */}
+      <div className="grid g4" style={{ marginBottom: 14 }}>
+        <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Enviados (30d)', 'Sent (30d)')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>{(stats?.sent30 ?? 0).toLocaleString()}</div></div>
+        <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Tasa de apertura', 'Open rate')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, color: 'var(--soft-brand)' }}>{openRate}%</div><div className="muted" style={{ fontSize: 11 }}>{(stats?.opened30 ?? 0).toLocaleString()} {L('aperturas', 'opens')}</div></div>
+        <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Tasa de clic', 'Click rate')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, color: 'var(--green)' }}>{clickRate}%</div><div className="muted" style={{ fontSize: 11 }}>{(stats?.clicked30 ?? 0).toLocaleString()} {L('clics', 'clicks')}</div></div>
+        <div className="tile"><div className="muted" style={{ fontSize: 12 }}>{L('Activas', 'Active')}</div><div style={{ fontSize: 22, fontWeight: 800, marginTop: 2 }}>{camps.filter((c) => c.enabled).length}</div></div>
+      </div>
+
+      {/* Estado del webhook de Resend (prueba de que llegan las aperturas) */}
+      {stats && (
+        <div className="row" style={{ gap: 8, marginBottom: 14, fontSize: 12.5, alignItems: 'center', flexWrap: 'wrap' }}>
+          {stats.lastOpenAt
+            ? <span className="pill" style={{ color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' }}>✓ {L('Webhook recibiendo aperturas', 'Webhook receiving opens')}</span>
+            : <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(255,192,77,.16)' }}><OnyxIcon emoji="⚠" size={15} /> {L('Aún sin aperturas registradas', 'No opens recorded yet')}</span>}
+          <span className="muted">{stats.lastOpenAt ? `${L('última', 'last')}: ${fmtWhen(stats.lastOpenAt)}` : L('Manda una Prueba, ábrela y espera ~1 min. Si no sube, revisa el webhook de Resend + el open tracking.', 'Send a Test, open it and wait ~1 min. If it stays at zero, check the Resend webhook + open tracking.')}</span>
+          <span className="muted" style={{ marginLeft: 'auto', opacity: .7 }}>↻ {L('auto', 'auto')}</span>
+        </div>
+      )}
+
+      {/* Tope de frecuencia por persona (anti-fatiga de correo) */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="row between" style={{ gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div style={{ minWidth: 220, flex: 1 }}>
+            <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🛡" size={15} />️ {L('Tope semanal de correos', 'Weekly email cap')}</h3>
+            <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>{L('Nadie recibe más de este número de correos de marketing por semana (campañas + blog + noticias). Protege de la fatiga y del spam. 0 = sin tope.', 'No one gets more than this many marketing emails per week (campaigns + blog + news). Protects from fatigue and spam. 0 = no cap.')}</p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            {/* Presets rápidos */}
+            <div className="row" style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {[0, 2, 3, 4, 5, 7].map((n) => (
+                <button key={n} type="button" disabled={capBusy} onClick={() => saveCap(n)}
+                  className="btn btn-ghost" style={{ padding: '6px 11px', fontSize: 13, fontWeight: 700, border: '1px solid ' + (weeklyCap === n ? 'var(--brand)' : 'var(--line)'), background: weeklyCap === n ? 'rgba(124,140,255,.16)' : 'transparent', color: weeklyCap === n ? 'var(--soft-brand)' : 'var(--tx)' }}>
+                  {n === 0 ? '∞' : n}
+                </button>
+              ))}
+            </div>
+            {/* Stepper: cualquier número */}
+            <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+              <span className="muted" style={{ fontSize: 12 }}>{L('O elige un número:', 'Or pick a number:')}</span>
+              <button type="button" disabled={capBusy || weeklyCap <= 0} onClick={() => saveCap(Math.max(0, weeklyCap - 1))} className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 16, fontWeight: 700, lineHeight: 1 }}>−</button>
+              <input type="number" min={0} max={50} value={weeklyCap} disabled={capBusy}
+                onChange={(e) => setWeeklyCap(Math.max(0, Math.min(50, parseInt(e.target.value, 10) || 0)))}
+                onBlur={(e) => saveCap(Math.max(0, Math.min(50, parseInt(e.target.value, 10) || 0)))}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                style={{ margin: 0, width: 64, textAlign: 'center', fontWeight: 700, fontSize: 14 }} />
+              <button type="button" disabled={capBusy || weeklyCap >= 50} onClick={() => saveCap(Math.min(50, weeklyCap + 1))} className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 16, fontWeight: 700, lineHeight: 1 }}>＋</button>
+              <span className="muted" style={{ fontSize: 12 }}>{weeklyCap === 0 ? L('sin tope', 'no cap') : L('/semana', '/week')}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Contadores en vivo (últimos 7 días) */}
+        {capStats && (
+          <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+            <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>{L('En vivo · últimos 7 días', 'Live · last 7 days')}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 8 }}>
+              {([
+                [String(capStats.sent7d), L('correos enviados', 'emails sent'), 'var(--soft-brand)'],
+                [String(capStats.usersActive), L('personas alcanzadas', 'people reached'), 'var(--tx)'],
+                [capStats.cap ? String(capStats.usersAtCap) : '—', L('llegaron al tope', 'hit the cap'), capStats.usersAtCap > 0 ? 'var(--amber,#f5b23e)' : 'var(--tx)'],
+                [String(capStats.avg), L('promedio por persona', 'avg per person'), 'var(--tx)'],
+              ] as const).map(([v, lab, col], i) => (
+                <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: col }}>{v}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>{lab}</div>
+                </div>
+              ))}
+            </div>
+            {/* Barra de uso: promedio vs tope */}
+            {capStats.cap > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div className="row between" style={{ fontSize: 11.5, marginBottom: 4 }}>
+                  <span className="muted">{L('Uso promedio del tope', 'Average cap usage')}</span>
+                  <span style={{ fontWeight: 700 }}>{Math.min(100, Math.round((capStats.avg / capStats.cap) * 100))}%</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 999, background: 'var(--line)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: Math.min(100, Math.round((capStats.avg / capStats.cap) * 100)) + '%', background: capStats.avg / capStats.cap > 0.85 ? 'var(--amber,#f5b23e)' : 'var(--brand)', transition: 'width .3s' }} />
+                </div>
+                {capStats.pctAtCap > 0 && <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L(`${capStats.pctAtCap}% de las personas alcanzadas ya tocó el tope esta semana.`, `${capStats.pctAtCap}% of reached people already hit the cap this week.`)}</div>}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Automáticas */}
+      <div className="card" style={{ marginBottom: 14 }}>
+        <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🤖" size={15} /> {L('Campañas automáticas', 'Automatic campaigns')}</h3>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L('El sistema las envía solo, a diario, al segmento correcto. Cada trader recibe cada campaña una sola vez y siempre se respeta la baja.', 'The system sends these on its own, daily, to the right segment. Each trader gets each campaign once and opt-out is always respected.')}</p>
+        {autos.map((c, i) => (
+          <div key={c.id} style={{ borderTop: i ? '1px solid var(--line)' : 'none' }}>
+          <div className="row between" style={{ padding: '12px 0', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ minWidth: 200 }}>
+              <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <b>{c.name}</b>{kindBadge(c.kind)}
+                {c.auto && <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.16)' }}><OnyxIcon emoji="🤖" size={15} /> {L('IA automática', 'AI auto')}</span>}
+              </div>
+              <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+                {L('Segmento', 'Segment')}: {segLabel(c.segment)}
+                {c.kind === 'trigger' && c.trigger?.days ? ` · ${L('tras', 'after')} ${c.trigger.days} ${L('días', 'days')}` : ''}
+                {c.kind === 'scheduled' ? ` · ${(() => { const d = Number(c.trigger?.everyDays) || 7; return d <= 1 ? L('diaria', 'daily') : d >= 28 && d <= 31 ? L('mensual', 'monthly') : d === 7 ? L('semanal', 'weekly') : `${L('cada', 'every')} ${d} ${L('días', 'days')}`; })()}` : ''}
+              </div>
+              {c.auto && <div className="muted" style={{ fontSize: 11.5, marginTop: 3, color: 'var(--soft-brand)' }}>{L('La IA la redacta y la envía sola. Apaga el 🤖 para escribirla tú.', 'AI writes and sends it on its own. Turn 🤖 off to write it yourself.')}</div>}
+              {(() => { const k = stats?.byKey?.[c.key || '']; if (!k || !k.sent) return null; return (
+                <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>📬 {k.sent} · <OnyxIcon emoji="👁" size={15} /> {pct(k.opened, k.sent)}% · 🖱 {pct(k.clicked, k.sent)}% <span style={{ opacity: .6 }}>({L('30d', '30d')})</span></div>
+              ); })()}
+            </div>
+            <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Interruptor Automático (IA) */}
+              <div className="row" style={{ gap: 6, alignItems: 'center' }} title={L('La IA redacta y programa esta campaña sola.', 'AI writes and schedules this campaign on its own.')}>
+                <span className="muted" style={{ fontSize: 11.5 }}><OnyxIcon emoji="🤖" size={15} /> {L('IA', 'AI')}</span>
+                <span className="toggle" onClick={() => toggleAuto(c)} style={{ background: c.auto ? 'var(--soft-brand)' : '#556080' }}><span className="knob" style={{ left: c.auto ? 21 : 3 }} /></span>
+              </div>
+              {/* Prueba a tu correo, en el idioma que elijas (verifica el idioma del envío) */}
+              <div className="row" style={{ gap: 4, alignItems: 'center' }} title={L('Envía una prueba a tu correo en ese idioma.', 'Send a test to your email in that language.')}>
+                <span className="muted" style={{ fontSize: 11.5 }}><OnyxIcon emoji="🧪" size={15} /></span>
+                <button className="btn btn-ghost" style={{ padding: '6px 9px', fontSize: 12 }} disabled={testing === c.id + 'es'} onClick={() => testCampaign(c, 'es')}>{testing === c.id + 'es' ? '…' : 'ES'}</button>
+                <button className="btn btn-ghost" style={{ padding: '6px 9px', fontSize: 12 }} disabled={testing === c.id + 'en'} onClick={() => testCampaign(c, 'en')}>{testing === c.id + 'en' ? '…' : 'EN'}</button>
+              </div>
+              <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setHistOpen(histOpen === c.key ? null : (c.key || null))}><OnyxIcon emoji="🗂" size={15} /> {L('Historial', 'History')}</button>
+              <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setEditing(c)} disabled={!!c.auto} title={c.auto ? L('Apaga el 🤖 para editar el texto a mano.', 'Turn 🤖 off to edit the copy by hand.') : ''}>✏️ {L('Editar', 'Edit')}</button>
+              <span className="toggle" onClick={() => toggle(c)} title={L('Encender / apagar la campaña', 'Enable / disable the campaign')} style={{ background: c.enabled ? 'var(--green)' : '#556080' }}><span className="knob" style={{ left: c.enabled ? 21 : 3 }} /></span>
+            </div>
+          </div>
+          {histOpen === c.key && c.key && <RunHistory campKey={c.key} L={L} lang={lang} />}
+          </div>
+        ))}
+      </div>
+
+      {/* Cola de programación */}
+      {scheduled.length > 0 && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <h3 style={{ marginBottom: 4 }}>🕒 {L('Promos programadas', 'Scheduled promos')}</h3>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L('Saldrán solas a su fecha y hora. Puedes editarlas o cancelarlas antes.', 'They go out on their own at the set date/time. You can edit or cancel before then.')}</p>
+          {scheduled.map((c, i) => (
+            <div key={c.id} className="row between" style={{ borderTop: i ? '1px solid var(--line)' : 'none', padding: '11px 0', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 200 }}>
+                <b>{c.name}</b>
+                <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>🕒 {fmtWhen(c.scheduled_at)} · {segLabel(c.segment)}</div>
+              </div>
+              <div className="row" style={{ gap: 8 }}>
+                <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => setEditing(c)}>✏️ {L('Editar', 'Edit')}</button>
+                <button className="btn btn-danger" style={{ padding: '6px 12px', fontSize: 12.5 }} onClick={() => cancelSchedule(c)}>{L('Cancelar', 'Cancel')}</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Envío manual */}
+      <div id="admin-camp-composer">
+        <ManualComposer segs={segs} manuals={manuals} L={L} lang={lang} segLabel={segLabel} reload={load} onEdit={setEditing} ask={setCf} />
+      </div>
+
+      {editing && <Editor c={editing} segs={segs} L={L} lang={lang} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} />}
+      <ConfirmNote act={cf} onClose={() => setCf(null)} />
+    </>
+  );
+}
+
+// ---- Compositor de promos/noticias (envío manual inmediato) ----
+function ManualComposer({ segs, manuals, L, lang, segLabel, reload, onEdit, ask }: any) {
+  const [seg, setSeg] = useState('all');
+  const [topic, setTopic] = useState('');
+  const [tone, setTone] = useState('friendly');
+  const [f, setF] = useState({ subject_es: '', body_es: '', subject_en: '', body_en: '' });
+  const [busy, setBusy] = useState('');
+  const [count, setCount] = useState<number | null>(null);
+  const [when, setWhen] = useState('');
+  const [titles, setTitles] = useState<Array<{ es: string; en: string }>>([]);
+  const [showPrev, setShowPrev] = useState(false);
+  const [lastField, setLastField] = useState<'subject_es' | 'body_es' | 'subject_en' | 'body_en'>('body_es');
+  const set = (k: string, v: string) => setF((o) => ({ ...o, [k]: v }));
+  const insertVar = (v: string) => setF((o) => ({ ...o, [lastField]: (o as any)[lastField] + (((o as any)[lastField] && !(o as any)[lastField].endsWith(' ')) ? ' ' : '') + v }));
+
+  // IA: sugerir 5 títulos (como el blog).
+  async function genTitles() {
+    if (!topic.trim()) { toast(L('Escribe de qué trata el correo.', 'Write what the email is about.')); return; }
+    setBusy('titles');
+    try {
+      const r = await fetch('/api/admin/campaigns/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'titles', topic, segment: seg, tone }) });
+      const j = await r.json();
+      if (!r.ok) { toastErr(j); return; }
+      setTitles(j.titles || []);
+    } finally { setBusy(''); }
+  }
+  // IA: escribir cuerpo (respeta el asunto ya elegido si lo hay), integrando variables.
+  async function draft(chosen?: { es: string; en: string }) {
+    if (!topic.trim()) { toast(L('Escribe de qué trata el correo.', 'Write what the email is about.')); return; }
+    setBusy('draft');
+    try {
+      const body: any = { topic, segment: seg, tone };
+      if (chosen) { body.subject_es = chosen.es; body.subject_en = chosen.en; }
+      const r = await fetch('/api/admin/campaigns/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (!r.ok) { toastErr(j); return; }
+      setF({ subject_es: j.draft.subject_es, body_es: j.draft.body_es, subject_en: j.draft.subject_en, body_en: j.draft.body_en });
+      setTitles([]);
+      toast(L('Borrador listo. Revísalo y edítalo antes de enviar.', 'Draft ready. Review and edit before sending.'), 'ok');
+    } finally { setBusy(''); }
+  }
+  async function preview() {
+    setBusy('count');
+    try { const r = await fetch('/api/admin/campaigns/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'count', segment: seg }) }); const j = await r.json(); setCount(j.count ?? 0); } finally { setBusy(''); }
+  }
+  async function test() {
+    setBusy('test');
+    try { const r = await fetch('/api/admin/campaigns/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test', lang, ...f }) }); const j = await r.json(); if (!r.ok) toastErr(j); else toast(L('Correo de prueba enviado a tu dirección.', 'Test email sent to your address.'), 'ok'); } finally { setBusy(''); }
+  }
+  function send() {
+    if (!f.subject_es && !f.subject_en) { toast(L('Falta el asunto.', 'Subject is missing.')); return; }
+    const n = count ?? '—';
+    ask({
+      title: L(`Enviar esta campaña AHORA a ${n} traders del segmento "${segLabel(seg)}"`, `Send this campaign NOW to ${n} traders in "${segLabel(seg)}"`),
+      detail: (f.subject_es || f.subject_en),
+      danger: true,
+      run: async (note: string) => {
+        setBusy('send');
+        try { const r = await fetch('/api/admin/campaigns/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'send', segment: seg, note, ...f }) }); const j = await r.json(); if (!r.ok) toastErr(j); else { toast(L(`Enviado a ${j.sent} traders.`, `Sent to ${j.sent} traders.`), 'ok'); reload(); } } finally { setBusy(''); }
+      },
+    });
+  }
+  async function schedule() {
+    if (!f.subject_es && !f.subject_en) { toast(L('Falta el asunto.', 'Subject is missing.')); return; }
+    if (!when) { toast(L('Elige fecha y hora.', 'Pick a date and time.')); return; }
+    if (new Date(when).getTime() < Date.now()) { toast(L('Esa fecha ya pasó.', 'That date is in the past.')); return; }
+    setBusy('sched');
+    try {
+      const name = (f.subject_es || f.subject_en).slice(0, 60);
+      const r = await fetch('/api/admin/campaigns', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, segment: seg, scheduled_at: new Date(when).toISOString(), ...f }) });
+      const j = await r.json();
+      if (!r.ok) toastErr(j);
+      else { toast(L('Promo programada ✓', 'Promo scheduled ✓'), 'ok'); setWhen(''); setF({ subject_es: '', body_es: '', subject_en: '', body_en: '' }); reload(); }
+    } finally { setBusy(''); }
+  }
+
+  const ta = { width: '100%', minHeight: 90, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', marginTop: 4, fontFamily: 'inherit', fontSize: 13.5, resize: 'vertical' } as any;
+  const inp = { width: '100%', padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', marginTop: 4 } as any;
+  const fld = (k: any) => ({ onFocus: () => setLastField(k) });
+
+  return (
+    <div className="card">
+      <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="✉" size={15} />️ {L('Envío manual (promos y noticias)', 'Manual send (promos & news)')}</h3>
+      <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Elige a quién, deja que la IA proponga títulos y escriba el copy en ambos idiomas con tus variables, prueba y envía.', 'Pick who, let AI suggest titles and write the copy in both languages with your variables, test and send.')}</p>
+
+      <div className="grid g2" style={{ gap: 12, marginBottom: 12 }}>
+        <label className="muted" style={{ fontSize: 12 }}>{L('Segmento', 'Segment')}
+          <select value={seg} onChange={(e) => { setSeg(e.target.value); setCount(null); }} style={inp}>
+            {segs.map((s: Seg) => <option key={s.id} value={s.id}>{s[lang === 'en' ? 'en' : 'es']}</option>)}
+          </select>
+        </label>
+        <label className="muted" style={{ fontSize: 12 }}>{L('Tono de la IA', 'AI tone')}
+          <select value={tone} onChange={(e) => setTone(e.target.value)} style={inp}>
+            {TONES.map(([id, es, en]) => <option key={id} value={id}>{lang === 'en' ? en : es}</option>)}
+          </select>
+        </label>
+      </div>
+
+      {/* Tema + IA (títulos y borrador, como el blog) */}
+      <div style={{ marginBottom: 12 }}>
+        <label className="muted" style={{ fontSize: 12 }}>{L('Tema para la IA', 'Topic for AI')}
+          <div className="row" style={{ gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+            <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={L('Ej: −30% en Pro por 48h', 'e.g. −30% on Pro for 48h')} style={{ ...inp, marginTop: 0, flex: 1, minWidth: 180 }} />
+            <button className="btn btn-ghost" onClick={genTitles} disabled={busy === 'titles'} style={{ whiteSpace: 'nowrap' }}>{busy === 'titles' ? '…' : '💡 ' + L('Sugerir títulos', 'Suggest titles')}</button>
+            <button className="btn btn-primary" onClick={() => draft()} disabled={busy === 'draft'} style={{ whiteSpace: 'nowrap' }}>{busy === 'draft' ? '…' : '✨ ' + L('Escribir copy', 'Write copy')}</button>
+          </div>
+        </label>
+        {titles.length > 0 && (
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span className="muted" style={{ fontSize: 11.5 }}>{L('Toca un título para usarlo y que la IA escriba el cuerpo:', 'Tap a title to use it and let AI write the body:')}</span>
+            {titles.map((t, i) => (
+              <button key={i} type="button" onClick={() => { set('subject_es', t.es); set('subject_en', t.en); draft(t); }}
+                style={{ textAlign: 'left', border: '1px solid var(--line)', borderRadius: 9, padding: '8px 11px', background: 'var(--bg2)', color: 'var(--tx)', cursor: 'pointer', fontSize: 13 }}>
+                {t.es}<span className="muted" style={{ marginLeft: 6 }}>· EN: {t.en}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <VarChips onInsert={insertVar} L={L} />
+
+      <div className="grid g2" style={{ gap: 12 }}>
+        <div>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (ES)', 'Subject (ES)')}<input value={f.subject_es} onChange={(e) => set('subject_es', e.target.value)} style={inp} {...fld('subject_es')} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (ES)', 'Body (ES)')}<textarea value={f.body_es} onChange={(e) => set('body_es', e.target.value)} style={ta} {...fld('body_es')} /></label>
+        </div>
+        <div>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (EN)', 'Subject (EN)')}<input value={f.subject_en} onChange={(e) => set('subject_en', e.target.value)} style={inp} {...fld('subject_en')} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (EN)', 'Body (EN)')}<textarea value={f.body_en} onChange={(e) => set('body_en', e.target.value)} style={ta} {...fld('body_en')} /></label>
+        </div>
+      </div>
+
+      <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
+        <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowPrev((v) => !v)}><OnyxIcon emoji="👁" size={15} /> {showPrev ? L('Ocultar vista previa', 'Hide preview') : L('Vista previa', 'Preview')}</button>
+        <span className="muted" style={{ fontSize: 11 }}>{L('El pie con enlace de baja se añade solo.', 'The unsubscribe footer is added automatically.')}</span>
+      </div>
+      {showPrev && (
+        <div style={{ marginTop: 8 }}>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 5 }}>{L('Ejemplo con Jerry · plan Pro', 'Example with Jerry · Pro plan')}</div>
+          <EmailPreview
+            subject={fillPreview(lang === 'en' ? (f.subject_en || f.subject_es) : f.subject_es)}
+            body={fillPreview(lang === 'en' ? (f.body_en || f.body_es) : f.body_es)}
+            es={lang !== 'en'}
+          />
+        </div>
+      )}
+
+      <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button className="btn btn-ghost" onClick={preview} disabled={busy === 'count'}>{busy === 'count' ? '…' : '👁 ' + L('Ver cuántos', 'Preview count')}</button>
+        {count !== null && <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}>{count.toLocaleString()} {L('destinatarios', 'recipients')}</span>}
+        <button className="btn btn-ghost" onClick={test} disabled={busy === 'test'}>{busy === 'test' ? '…' : '📧 ' + L('Prueba', 'Test')}</button>
+        <button className="btn btn-primary" onClick={send} disabled={busy === 'send'} style={{ marginLeft: 'auto' }}>{busy === 'send' ? '…' : '🚀 ' + L('Enviar ahora', 'Send now')}</button>
+      </div>
+
+      {/* Programar para más tarde (calendario intuitivo) */}
+      <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+        <span className="muted" style={{ fontSize: 12.5 }}>🕒 {L('O prográmala para más tarde:', 'Or schedule it for later:')}</span>
+        <div style={{ marginTop: 6, maxWidth: 360 }}>
+          <DateTimePicker value={when} onChange={setWhen} es={lang !== 'en'} minNow />
+        </div>
+        <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={schedule} disabled={busy === 'sched'}>{busy === 'sched' ? '…' : L('Programar promo', 'Schedule promo')}</button>
+      </div>
+    </div>
+  );
+}
+
+// ---- Historial de envíos automáticos (IA) de una campaña + métricas por envío ----
+function RunHistory({ campKey, L, lang }: { campKey: string; L: (a: string, b: string) => string; lang: string }) {
+  const [runs, setRuns] = useState<any[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try { const r = await fetch('/api/admin/campaigns/runs?key=' + encodeURIComponent(campKey)); const j = await r.json(); if (alive) setRuns(j.runs || []); }
+      catch { if (alive) setRuns([]); }
+    })();
+    return () => { alive = false; };
+  }, [campKey]);
+  const fmt = (iso: string) => new Date(iso).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const pct = (n: number, d: number) => d > 0 ? Math.round((n / d) * 100) : 0;
+
+  return (
+    <div style={{ padding: '4px 0 12px', borderTop: '1px dashed var(--line)' }}>
+      <div className="muted" style={{ fontSize: 11.5, margin: '8px 0 6px' }}><OnyxIcon emoji="🗂" size={15} /> {L('Envíos automáticos (lo que la IA escribió y envió)', 'Automatic sends (what AI wrote and sent)')}</div>
+      {runs === null && <div className="muted" style={{ fontSize: 12 }}>…</div>}
+      {runs !== null && runs.length === 0 && <div className="muted" style={{ fontSize: 12 }}>{L('Todavía no hay envíos automáticos. Cuando la IA envíe, aparecerán aquí con sus estadísticas.', 'No automatic sends yet. Once AI sends, they show here with stats.')}</div>}
+      {runs !== null && runs.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {runs.map((r) => (
+            <div key={r.id} className="row between" style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 9, padding: '8px 11px', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ minWidth: 180, flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{r.subject || L('(sin asunto)', '(no subject)')}</div>
+                <div className="muted" style={{ fontSize: 11 }}>🕒 {fmt(r.created_at)} · 📬 {(r.sent || r.recipients || 0).toLocaleString()} {L('enviados', 'sent')}</div>
+              </div>
+              <div className="row" style={{ gap: 8, fontSize: 12 }}>
+                <span className="pill" style={{ color: 'var(--soft-brand)', background: 'rgba(124,140,255,.15)' }}><OnyxIcon emoji="👁" size={15} /> {pct(r.opened, r.sent)}% <span style={{ opacity: .7 }}>({r.opened})</span></span>
+                <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>🖱 {pct(r.clicked, r.sent)}% <span style={{ opacity: .7 }}>({r.clicked})</span></span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Editor de plantilla (automáticas y manuales guardadas) ----
+function Editor({ c, segs, L, lang, onClose, onSaved }: any) {
+  const [f, setF] = useState<Campaign>({ ...c });
+  const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState('');
+  const [topic, setTopic] = useState('');
+  const [tone, setTone] = useState('friendly');
+  const [titles, setTitles] = useState<Array<{ es: string; en: string }>>([]);
+  const [showPrev, setShowPrev] = useState(false);
+  const [lastField, setLastField] = useState<'subject_es' | 'body_es' | 'subject_en' | 'body_en'>('body_es');
+  const set = (k: string, v: any) => setF((o) => ({ ...o, [k]: v }));
+  const insertVar = (v: string) => setF((o) => ({ ...o, [lastField]: (o as any)[lastField] + (((o as any)[lastField] && !String((o as any)[lastField]).endsWith(' ')) ? ' ' : '') + v }));
+  const fld = (k: any) => ({ onFocus: () => setLastField(k) });
+  const isAuto = c.kind !== 'manual';
+
+  async function genTitles() {
+    if (!topic.trim()) { toast(L('Escribe de qué trata el correo.', 'Write what the email is about.')); return; }
+    setAiBusy('titles');
+    try {
+      const r = await fetch('/api/admin/campaigns/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'titles', topic, segment: f.segment, tone }) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); return; } setTitles(j.titles || []);
+    } finally { setAiBusy(''); }
+  }
+  async function draft(chosen?: { es: string; en: string }) {
+    if (!topic.trim()) { toast(L('Escribe de qué trata el correo.', 'Write what the email is about.')); return; }
+    setAiBusy('draft');
+    try {
+      const body: any = { topic, segment: f.segment, tone };
+      if (chosen) { body.subject_es = chosen.es; body.subject_en = chosen.en; }
+      const r = await fetch('/api/admin/campaigns/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); return; }
+      setF((o) => ({ ...o, subject_es: j.draft.subject_es, body_es: j.draft.body_es, subject_en: j.draft.subject_en, body_en: j.draft.body_en }));
+      setTitles([]); toast(L('Copy generado. Revísalo antes de guardar.', 'Copy generated. Review before saving.'), 'ok');
+    } finally { setAiBusy(''); }
+  }
+
+  async function save() {
+    setBusy(true);
+    try {
+      const body: any = { id: c.id, name: f.name, segment: f.segment, subject_es: f.subject_es, body_es: f.body_es, subject_en: f.subject_en, body_en: f.body_en };
+      if (c.kind === 'trigger') body.trigger = { days: f.trigger?.days || 0, maxDays: f.trigger?.maxDays || 0 };
+      const r = await fetch('/api/admin/campaigns', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) { toastErr(await r.json()); return; }
+      toast(L('Plantilla guardada.', 'Template saved.'), 'ok'); onSaved();
+    } finally { setBusy(false); }
+  }
+
+  const ta = { width: '100%', minHeight: 120, padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', marginTop: 4, fontFamily: 'inherit', fontSize: 13.5, resize: 'vertical' } as any;
+  const inp = { width: '100%', padding: '9px 11px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', marginTop: 4 } as any;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '24px 12px' }} onClick={onClose}>
+      <div className="card" style={{ maxWidth: 720, width: '100%' }} onClick={(e) => e.stopPropagation()}>
+        <div className="row between" style={{ marginBottom: 12 }}>
+          <h3 style={{ margin: 0 }}>✏️ {L('Editar campaña', 'Edit campaign')}</h3>
+          <button className="btn btn-ghost" onClick={onClose} style={{ padding: '4px 10px' }}>✕</button>
+        </div>
+
+        <label className="muted" style={{ fontSize: 12 }}>{L('Nombre', 'Name')}<input value={f.name} onChange={(e) => set('name', e.target.value)} style={inp} /></label>
+
+        <div className="grid g2" style={{ gap: 12, marginTop: 10 }}>
+          <label className="muted" style={{ fontSize: 12 }}>{L('Segmento', 'Segment')}
+            <select value={f.segment} onChange={(e) => set('segment', e.target.value)} style={inp}>
+              {segs.map((s: Seg) => <option key={s.id} value={s.id}>{s[lang === 'en' ? 'en' : 'es']}</option>)}
+            </select>
+          </label>
+          {c.kind === 'trigger' && (
+            <div className="grid g2" style={{ gap: 8 }}>
+              <label className="muted" style={{ fontSize: 12 }}>{L('Enviar tras (días)', 'Send after (days)')}<input type="number" min={0} value={f.trigger?.days ?? 0} onChange={(e) => set('trigger', { ...f.trigger, days: Number(e.target.value) })} style={inp} /></label>
+              <label className="muted" style={{ fontSize: 12 }}>{L('Tope (días)', 'Cap (days)')}<input type="number" min={0} value={f.trigger?.maxDays ?? 0} onChange={(e) => set('trigger', { ...f.trigger, maxDays: Number(e.target.value) })} style={inp} /></label>
+            </div>
+          )}
+        </div>
+
+        {/* IA: mismos superpoderes que el envío manual (títulos + copy bilingüe con variables) */}
+        <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+          <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={L('Tema para la IA (ej: bienvenida cálida)', 'Topic for AI (e.g. warm welcome)')} style={{ ...inp, marginTop: 0, flex: 1, minWidth: 170 }} />
+            <select value={tone} onChange={(e) => setTone(e.target.value)} style={{ ...inp, marginTop: 0, width: 'auto' }}>
+              {TONES.map(([id, es, en]) => <option key={id} value={id}>{lang === 'en' ? en : es}</option>)}
+            </select>
+            <button className="btn btn-ghost" onClick={genTitles} disabled={aiBusy === 'titles'} style={{ whiteSpace: 'nowrap' }}>{aiBusy === 'titles' ? '…' : '💡 ' + L('Títulos', 'Titles')}</button>
+            <button className="btn btn-primary" onClick={() => draft()} disabled={aiBusy === 'draft'} style={{ whiteSpace: 'nowrap' }}>{aiBusy === 'draft' ? '…' : '✨ ' + L('Copy', 'Copy')}</button>
+          </div>
+          {titles.length > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {titles.map((t, i) => (
+                <button key={i} type="button" onClick={() => { set('subject_es', t.es); set('subject_en', t.en); draft(t); }}
+                  style={{ textAlign: 'left', border: '1px solid var(--line)', borderRadius: 9, padding: '7px 10px', background: 'var(--card)', color: 'var(--tx)', cursor: 'pointer', fontSize: 12.5 }}>
+                  {t.es}<span className="muted" style={{ marginLeft: 6 }}>· EN: {t.en}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: 10 }}><VarChips onInsert={insertVar} L={L} /></div>
+        <div className="grid g2" style={{ gap: 12 }}>
+          <div>
+            <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (ES)', 'Subject (ES)')}<input value={f.subject_es} onChange={(e) => set('subject_es', e.target.value)} style={inp} {...fld('subject_es')} /></label>
+            <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (ES)', 'Body (ES)')}<textarea value={f.body_es} onChange={(e) => set('body_es', e.target.value)} style={ta} {...fld('body_es')} /></label>
+          </div>
+          <div>
+            <label className="muted" style={{ fontSize: 12 }}>{L('Asunto (EN)', 'Subject (EN)')}<input value={f.subject_en} onChange={(e) => set('subject_en', e.target.value)} style={inp} {...fld('subject_en')} /></label>
+            <label className="muted" style={{ fontSize: 12 }}>{L('Cuerpo (EN)', 'Body (EN)')}<textarea value={f.body_en} onChange={(e) => set('body_en', e.target.value)} style={ta} {...fld('body_en')} /></label>
+          </div>
+        </div>
+        <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setShowPrev((v) => !v)}><OnyxIcon emoji="👁" size={15} /> {showPrev ? L('Ocultar vista previa', 'Hide preview') : L('Vista previa', 'Preview')}</button>
+          <span className="muted" style={{ fontSize: 11 }}>{L('Variables: {{nombre}} {{plan}} {{sitio}}', 'Variables: {{nombre}} {{plan}} {{sitio}}')}</span>
+        </div>
+        {showPrev && (
+          <div style={{ marginTop: 8 }}>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 5 }}>{L('Ejemplo con Jerry · plan Pro', 'Example with Jerry · Pro plan')}</div>
+            <EmailPreview
+              subject={fillPreview(lang === 'en' ? (f.subject_en || f.subject_es) : f.subject_es)}
+              body={fillPreview(lang === 'en' ? (f.body_en || f.body_es) : f.body_es)}
+              es={lang !== 'en'}
+            />
+          </div>
+        )}
+
+        <div className="row" style={{ gap: 10, marginTop: 14 }}>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : L('Guardar plantilla', 'Save template')}</button>
+          <button className="btn btn-ghost" onClick={onClose}>{L('Cancelar', 'Cancel')}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
