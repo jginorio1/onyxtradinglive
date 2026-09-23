@@ -186,8 +186,20 @@ export default function Ambassadors() {
   const [payM, setPayM] = useState<any>(null);   // payout que se está confirmando
   const [txid, setTxid] = useState('');
   const [paynote, setPaynote] = useState('');    // nota interna del pago (además del txid)
+  const [newAmb, setNewAmb] = useState('');      // correo del creador a nombrar embajador directo
 
   useEffect(() => { load(); }, []);
+  // Nombrar embajador DIRECTO por correo (YouTubers/creadores que contactas tú).
+  async function createAmb() {
+    const email = newAmb.trim();
+    if (!email) { toast(L('Escribe el correo del creador.', 'Type the creator’s email.')); return; }
+    setBusy('create');
+    const r = await fetch('/api/admin/ambassadors', { method: 'PATCH', body: JSON.stringify({ action: 'create', email }) });
+    const j = await r.json(); setBusy('');
+    if (!r.ok) { toastErr(j); return; }
+    toast(j.existed ? L('Aprobado como embajador ✓', 'Approved as ambassador ✓') : L(`Embajador creado ✓ · código ${j.code}`, `Ambassador created ✓ · code ${j.code}`));
+    setNewAmb(''); load();
+  }
   async function load() {
     const r = await fetch('/api/admin/ambassadors');
     const j = await r.json();
@@ -239,6 +251,16 @@ export default function Ambassadors() {
         <div className="card kpi"><div className="lbl">{t.am_requests}</div><div className="val" style={{ color: pend.length ? 'var(--amber)' : undefined }}>{pend.length}</div></div>
         <div className="card kpi"><div className="lbl">{t.am_brought}</div><div className="val pos">{totalActive}</div></div>
         <div className="card kpi"><div className="lbl">{t.am_toPay}</div><div className="val">${Math.round(totalOwed * 100) / 100}</div></div>
+      </div>
+
+      {/* Nombrar embajador DIRECTO (creadores que contactas tú) */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}><OnyxIcon emoji="📣" size={15} /> {L('Nombrar embajador directo', 'Make ambassador directly')}</div>
+        <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{L('Para YouTubers/creadores que contactas tú. Escribe su correo (debe tener cuenta gratis) y queda aprobado al instante, sin esperar a ningún número de usuarios. Usa su mismo enlace de referido.', 'For YouTubers/creators you reach out to. Type their email (they need a free account) and they’re approved instantly, no user count required. Uses their same referral link.')}</div>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input type="email" value={newAmb} onChange={(e) => setNewAmb(e.target.value)} placeholder={L('correo@delcreador.com', 'creator@email.com')} onKeyDown={(e) => { if (e.key === 'Enter') createAmb(); }} style={{ margin: 0, flex: 1, minWidth: 220 }} />
+          <button className="btn btn-primary" onClick={createAmb} disabled={busy === 'create'} style={{ fontSize: 12.5 }}>{busy === 'create' ? '…' : L('Nombrar embajador', 'Make ambassador')}</button>
+        </div>
       </div>
 
       {/* Pagos solicitados */}

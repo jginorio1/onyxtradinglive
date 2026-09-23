@@ -93,6 +93,35 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ ok: true, promo: !!promoId });
     }
 
+    // NOMBRAR EMBAJADOR DIRECTO por correo (para YouTubers/creadores que contactas
+    // tú). El usuario debe tener cuenta. Queda aprobado al instante, con su MISMO
+    // código de referido (un solo enlace). Requiere permiso de edición.
+    if (b.action === 'create') {
+      const _e = await requirePerm('embajadores', 'edit'); if (!_e.ok) return NextResponse.json({ error: 'sin permiso de edición' }, { status: 403 });
+      const email = String(b.email || '').trim().toLowerCase();
+      if (!email) return NextResponse.json({ error: 'Escribe el correo del creador.', code: 'need_email' }, { status: 400 });
+      const { data: prof } = await supabaseAdmin.from('profiles').select('id').eq('email', email).maybeSingle();
+      if (!prof) return NextResponse.json({ error: 'No hay ninguna cuenta con ese correo. Pídele que se registre gratis primero.', code: 'no_user' }, { status: 404 });
+      const uid = (prof as any).id;
+      const { data: exists } = await supabaseAdmin.from('ambassadors').select('id,status').eq('user_id', uid).maybeSingle();
+      const { ensureRefCode } = await import('@/lib/memberReferral');
+      const code = await ensureRefCode(uid);
+      const promoId = await createPromo(code, settings);
+      if (exists) {
+        // Ya tenía solicitud/registro → solo lo aprobamos.
+        await supabaseAdmin.from('ambassadors').update({ status: 'approved', approved_at: new Date().toISOString(), promo_code_id: (exists as any).promo_code_id || promoId }).eq('id', (exists as any).id);
+        await logAdmin(user.email, 'amb_create_approve', (exists as any).id, { email });
+        return NextResponse.json({ ok: true, code, existed: true });
+      }
+      const { error } = await supabaseAdmin.from('ambassadors').insert({
+        user_id: uid, code, status: 'approved', approved_at: new Date().toISOString(),
+        payout_method: 'stripe', promo_code_id: promoId, audience: 'Nombrado por admin (creador/influencer)',
+      });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      await logAdmin(user.email, 'amb_create', uid, { email, code });
+      return NextResponse.json({ ok: true, code, existed: false });
+    }
+
     if (b.action === 'status') {
       const st = ['pending', 'approved', 'rejected', 'paused'].includes(b.value) ? b.value : 'pending';
       await supabaseAdmin.from('ambassadors').update({ status: st }).eq('id', b.id);

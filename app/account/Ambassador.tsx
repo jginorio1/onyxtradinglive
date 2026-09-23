@@ -212,21 +212,58 @@ export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout'
 
   return (
     <>
-      {/* Nivel */}
-      {showRef && (
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-          <b style={{ color: isGold ? 'var(--gold)' : '#c7ccd6' }}>{t.lvl} {isGold ? t.tierG : t.tierS} · {a.rate}%</b>
-          <span className="muted" style={{ fontSize: 13 }}>{a.active} {isGold ? t.act : `/ ${thr} ${t.act}`}</span>
+      {/* Nivel · barra de dos zonas: Plata (hasta el umbral) → Oro (desde el umbral) */}
+      {showRef && (() => {
+        const goldRate = Number(s.tier_rate || 30);
+        const silverRate = Number(s.rate ?? (isGold ? 20 : a.rate));
+        const SILVER_W = 60;                                  // % del ancho para la zona Plata
+        const posPct = isGold ? 100 : SILVER_W * Math.min(1, a.active / Math.max(thr, 1));
+        const need = Math.max(0, thr - a.active);
+        const en = lang === 'en';
+        const chip = (on: boolean, c: string) => ({ fontSize: 10.5, fontWeight: 800, padding: '2px 8px', borderRadius: 99, border: `1px solid ${on ? c : 'var(--line)'}`, color: on ? c : 'var(--mut)', background: on ? `color-mix(in srgb,${c} 14%,transparent)` : 'transparent' });
+        return (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div className="row between" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            <b style={{ color: isGold ? 'var(--gold)' : '#c7ccd6' }}>{t.lvl} {isGold ? t.tierG : t.tierS} · {a.rate}%</b>
+            <span className="muted" style={{ fontSize: 13 }}><b style={{ color: 'var(--tx)' }}>{a.active}</b> {isGold ? t.act : `/ ${thr} ${t.act}`}</span>
+          </div>
+
+          {/* Cabeceras de zona */}
+          <div style={{ display: 'flex', fontSize: 11, marginBottom: 4 }}>
+            <div style={{ width: SILVER_W + '%', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={chip(!isGold, '#c7ccd6')}>🥈 {t.tierS} {silverRate}%</span>
+            </div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+              <span style={chip(isGold, 'var(--gold,#ffd45e)')}>🥇 {t.tierG} {goldRate}%</span>
+            </div>
+          </div>
+
+          {/* Pista de dos zonas con divisor en el umbral y marcador de posición */}
+          <div style={{ position: 'relative', height: 14, borderRadius: 8, overflow: 'hidden', background: 'var(--bg2)', display: 'flex' }}>
+            <div style={{ width: SILVER_W + '%', background: 'color-mix(in srgb,#c7ccd6 22%,transparent)' }} />
+            <div style={{ flex: 1, background: 'color-mix(in srgb,var(--gold,#ffd45e) 22%,transparent)' }} />
+            {/* relleno de avance */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: posPct + '%', background: isGold ? 'linear-gradient(90deg,var(--gold),#ffb020)' : 'var(--grad)', transition: '.3s', borderRight: '2px solid var(--card)' }} />
+            {/* divisor Plata|Oro */}
+            <div style={{ position: 'absolute', left: SILVER_W + '%', top: -3, bottom: -3, width: 2, background: 'var(--gold,#ffd45e)', opacity: 0.9 }} />
+          </div>
+
+          {/* Rangos bajo la pista */}
+          <div style={{ display: 'flex', fontSize: 11, color: 'var(--mut)', marginTop: 5 }}>
+            <div style={{ width: SILVER_W + '%' }}>{en ? `0–${Math.max(0, thr - 1)} ${t.act}` : `0–${Math.max(0, thr - 1)} ${t.act}`}</div>
+            <div style={{ flex: 1, textAlign: 'right' }}>{en ? `${thr}+ ${t.act} → ${t.tierG}` : `${thr}+ ${t.act} → ${t.tierG}`}</div>
+          </div>
+
+          <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>
+            {isGold
+              ? t.isGold
+              : (en
+                  ? `You’re in ${t.tierS} (${silverRate}%) up to ${Math.max(0, thr - 1)} active subscribers. ${need} more and you jump to ${t.tierG} — ${goldRate}% ${t.toGold2}`
+                  : `Estás en ${t.tierS} (${silverRate}%) hasta ${Math.max(0, thr - 1)} suscriptores activos. ${need} más y saltas a ${t.tierG} — ${goldRate}% ${t.toGold2}`)}
+          </p>
         </div>
-        <div style={{ height: 6, background: 'var(--bg2)', borderRadius: 6, overflow: 'hidden' }}>
-          <div style={{ width: pctTier + '%', height: '100%', background: isGold ? 'linear-gradient(90deg,var(--gold),#ffb020)' : 'var(--grad)', transition: '.3s' }} />
-        </div>
-        <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>
-          {isGold ? t.isGold : `${Math.max(0, thr - a.active)} ${t.toGold} ${s.tier_rate || 30}% ${t.toGold2}`}
-        </p>
-      </div>
-      )}
+        );
+      })()}
 
       {/* Enlace y cupón */}
       {showRef && (
