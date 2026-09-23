@@ -987,12 +987,14 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
 function ProposalCard({ f, names, inp, btnP, card }: any) {
   const btn: React.CSSProperties = { padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--panel,#161c2e)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 12.5 };
   const [price, setPrice] = useState(100);
+  const [cpm, setCpm] = useState(3);           // clientes nuevos por mes (escenario ajustable)
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
   const num = (v: any, d = 0) => { const x = Number(v); return Number.isFinite(x) ? x : d; };
   const p = Math.max(1, num(price, 100));
+  const perM = Math.max(1, Math.round(num(cpm, 3)));
   const boost = !!f.boost_first_month;
   const fd = boost ? num(f.first_direct_rate, num(f.direct_rate)) : num(f.direct_rate);
   const rd = num(f.direct_rate);
@@ -1002,10 +1004,32 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
   const rows = [5, 10, 20].map((c) => ({ c, first: perFirst * c, monthly: perMonthly * c, year: perYear * c }));
   const money = (v: number) => '$' + Math.round(v).toLocaleString('en-US');
 
+  // --- Bola de nieve: cierras perM clientes cada mes; cada uno paga 1.er mes y
+  // luego residual mientras siga en su ventana de comisión (∞ = todo el año). ---
+  const residualCap = cm > 0 ? Math.max(0, cm - 1) : 12;
+  const monthly: number[] = [];
+  for (let m = 1; m <= 12; m++) {
+    let inc = perM * perFirst;
+    for (let k = 1; k < m; k++) { if ((m - k) <= residualCap) inc += perM * perMonthly; }
+    monthly.push(inc);
+  }
+  const totalYear1 = monthly.reduce((a, b) => a + b, 0);
+  const potentialMonthly = monthly[11];
+  const mixFirst = 12 * perM * perFirst;
+  const mixResidual = Math.max(0, totalYear1 - mixFirst);
+  const resPct = totalYear1 > 0 ? Math.round((mixResidual / totalYear1) * 100) : 0;
+
+  // Geometría de la dona (SVG) y de la curva.
+  const C = 2 * Math.PI * 34;
+  const dashRes = (resPct / 100) * C;
+  const maxV = Math.max(...monthly, 1);
+  const pts = monthly.map((v, i) => `${8 + (196) * (i / 11)},${86 - 72 * (v / maxV)}`).join(' ');
+  const areaPts = `8,86 ${pts} 204,86`;
+
   async function call(action: string, extra: any = {}) {
     setBusy(action); setMsg('');
     try {
-      const r = await fetch('/api/admin/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, settings: f, price: p, name, include_overrides: true, ...extra }) });
+      const r = await fetch('/api/admin/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, settings: f, price: p, name, include_overrides: true, clients_per_month: perM, ...extra }) });
       const j = await r.json();
       if (j.error) { setMsg('⚠ ' + j.error); return null; }
       return j;
@@ -1021,26 +1045,39 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
     if (j?.sent) setMsg('Propuesta enviada ✓');
   }
 
+  const why = [
+    { i: 'cash', c: '#5ed6a0', t: 'Ingreso que se repite', s: 'No arrancas de cero: cobras cada mes que el cliente sigue.' },
+    { i: 'stairs', c: '#4f9dff', t: 'Subes de nivel solo', s: `${names.vendedor || 'Advisor'} → ${names.l1 || 'Lead'} → ${names.l2 || 'Director'}, y ganas de tu equipo.` },
+    { i: 'gift', c: '#e5b567', t: 'Bonos de arranque', s: 'Tus primeras ventas y las metas del mes suman extra.' },
+  ];
+
   return (
     <div style={{ ...card, borderLeft: '4px solid #a9b0ff' }}>
-      <b style={{ display: 'flex', alignItems: 'center', gap: 7 }}>{ic('file', 16, '#a9b0ff')} Propuesta para vendedores<Hint text="Genera un PDF de reclutamiento con TUS parámetros actuales (impulso 1.er mes, residual, overrides, metas, bono, ascensos). Si cambias un %, los ejemplos salen recalculados. Descárgalo o envíalo por correo a un candidato. También puedes enviarlo desde cada Solicitud." /></b>
+      <b style={{ display: 'flex', alignItems: 'center', gap: 7 }}>{ic('file', 16, '#a9b0ff')} Propuesta para vendedores<Hint text="Genera un PDF de reclutamiento persuasivo con TUS parámetros actuales (impulso 1.er mes, residual, overrides, metas, bono, ascensos). Elige el escenario de clientes/mes y verás el potencial, la mezcla recurrente y la bola de nieve. Si cambias un %, todo se recalcula. Descárgalo o envíalo por correo. También puedes enviarlo desde cada Solicitud." /></b>
       <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
-        Ejemplos calculados en vivo con los ajustes de esta pantalla. Cambia un número arriba y esto se actualiza solo.
+        Todo se calcula en vivo con los ajustes de esta pantalla. Cambia un número arriba (o el escenario) y esto se actualiza solo.
       </div>
 
       {/* Controles */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '12px 0' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '12px 0', alignItems: 'flex-end' }}>
         <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Cliente de ejemplo<div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}><span className="muted">$</span><input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} style={{ ...inp, width: 90 }} /><span className="muted">/mes</span></div></label>
-        <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Nombre del candidato (opcional)<input value={name} onChange={(e) => setName(e.target.value)} placeholder="María" style={{ ...inp, display: 'block', marginTop: 4, width: 180 }} /></label>
+        <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Escenario<Hint text="Cuántos clientes nuevos cierra el vendedor cada mes. Con esto se calcula el titular, la bola de nieve y el potencial a 12 meses." /><div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}><input type="number" min={1} max={30} value={cpm} onChange={(e) => setCpm(Number(e.target.value))} style={{ ...inp, width: 70 }} /><span className="muted">clientes/mes</span></div></label>
+        <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Nombre del candidato (opcional)<input value={name} onChange={(e) => setName(e.target.value)} placeholder="María" style={{ ...inp, display: 'block', marginTop: 4, width: 160 }} /></label>
       </div>
 
       {/* Vista previa en vivo */}
       <div style={{ background: 'var(--bg,#0e1220)', border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: 14 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 10 }}>Con un cliente de {money(p)}/mes</div>
+        {/* Titular */}
+        <div style={{ background: '#0b0f1c', border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: '12px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 3 }}>Vende una vez. Cobra cada mes.</div>
+          <div style={{ fontSize: 12.5, color: '#c3c2b7' }}>Con <span style={{ color: '#5ed6a0' }}>{perM} clientes nuevos al mes</span>, en 12 meses llegas a <span style={{ color: '#5ed6a0', fontWeight: 700 }}>{money(potentialMonthly)}/mes</span> recurrente.</div>
+        </div>
+
+        {/* Tarjetas por cliente */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {[{ t: 'Primer mes', v: money(perFirst), s: `${fd}% del 1.er pago`, c: '#e5b567' },
+          {[{ t: 'Tu 1.er mes', v: money(perFirst), s: `${fd}% del 1.er pago`, c: '#e5b567' },
             { t: 'Cada mes después', v: money(perMonthly), s: `${rd}% recurrente`, c: '#5ed6a0' },
-            { t: 'En 1 año', v: money(perYear), s: 'por ese cliente', c: 'var(--tx,#e8ecf5)' }].map((x, i) => (
+            { t: 'Ese cliente en 1 año', v: money(perYear), s: 'de un solo cliente', c: 'var(--tx,#e8ecf5)' }].map((x, i) => (
             <div key={i} style={{ flex: '1 1 120px', border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: '8px 10px' }}>
               <div style={{ fontSize: 10.5, color: 'var(--mut,#9aa6bd)', textTransform: 'uppercase', letterSpacing: .3 }}>{x.t}</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: x.c }}>{x.v}</div>
@@ -1048,6 +1085,40 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
             </div>
           ))}
         </div>
+
+        {/* Gráficas: dona + bola de nieve */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
+          <div style={{ border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: 10 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>De dónde viene tu dinero</div>
+            <div className="muted" style={{ fontSize: 10, marginBottom: 6 }}>Año 1 · {perM * 12} clientes</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <svg width="86" height="86" viewBox="0 0 86 86">
+                <circle cx="43" cy="43" r="34" fill="none" stroke="#e5b567" strokeWidth="14" />
+                <circle cx="43" cy="43" r="34" fill="none" stroke="#5ed6a0" strokeWidth="14" strokeDasharray={`${dashRes} ${C - dashRes}`} strokeDashoffset={C / 4} transform="rotate(-90 43 43)" />
+                <text x="43" y="40" textAnchor="middle" fontSize="15" fontWeight="700" fill="#5ed6a0">{resPct}%</text>
+                <text x="43" y="53" textAnchor="middle" fontSize="7.5" fill="#9aa6bd">recurrente</text>
+              </svg>
+              <div style={{ fontSize: 11 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}><span style={{ width: 9, height: 9, borderRadius: 2, background: '#5ed6a0', display: 'inline-block' }} /><span style={{ color: 'var(--tx,#e8ecf5)' }}>Recurrente {resPct}%</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}><span style={{ width: 9, height: 9, borderRadius: 2, background: '#e5b567', display: 'inline-block' }} /><span style={{ color: 'var(--tx,#e8ecf5)' }}>1.er mes {100 - resPct}%</span></div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx,#e8ecf5)' }}>{money(totalYear1)}</div>
+                <div className="muted" style={{ fontSize: 9.5 }}>total año 1</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: 10 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>El efecto bola de nieve</div>
+            <div className="muted" style={{ fontSize: 10, marginBottom: 6 }}>Ingreso mensual, mes 1 → 12</div>
+            <svg width="100%" height="86" viewBox="0 0 212 92" preserveAspectRatio="none">
+              <polygon points={areaPts} fill="#4f9dff" opacity="0.14" />
+              <polyline points={pts} fill="none" stroke="#4f9dff" strokeWidth="2" />
+              <circle cx="204" cy={86 - 72 * (potentialMonthly / maxV)} r="3" fill="#4f9dff" />
+            </svg>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#4f9dff' }}>{money(potentialMonthly)}<span className="muted" style={{ fontSize: 9.5, fontWeight: 400 }}> /mes al mes 12</span></div>
+          </div>
+        </div>
+
+        {/* Tabla por clientes */}
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12, fontSize: 12.5 }}>
           <thead><tr>
             <th style={{ textAlign: 'left', padding: '4px 6px', fontSize: 10.5, color: 'var(--mut,#9aa6bd)' }}>Clientes</th>
@@ -1066,8 +1137,36 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
             ))}
           </tbody>
         </table>
-        <div className="muted" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.5 }}>
-          El PDF incluye además la escalera {names.vendedor || 'Advisor'} → {names.l1 || 'Lead'} → {names.l2 || 'Director'} con overrides, las metas y el bono.
+
+        {/* Por qué Onyx */}
+        <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', margin: '12px 0 6px' }}>Por qué Onyx es tu mejor opción</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+          {why.map((w, i) => (
+            <div key={i} style={{ border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: 9 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>{ic(w.i, 15, w.c)}<span style={{ fontSize: 11, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>{w.t}</span></div>
+              <div className="muted" style={{ fontSize: 10.5, marginTop: 4, lineHeight: 1.4 }}>{w.s}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Escalera de carrera */}
+        <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', margin: '12px 0 6px' }}>Tu carrera y lo que ganas de tu equipo</div>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
+          {[{ t: names.vendedor || 'Advisor', s: 'Tus ventas directas' },
+            { t: names.l1 || 'Lead', s: `+${num(f.override1_rate)}% de tu equipo` },
+            { t: names.l2 || 'Director', s: `+${num(f.override2_rate)}% de la red` }].map((s, i, arr) => (
+            <Fragment key={i}>
+              <div style={{ flex: 1, background: 'rgba(79,157,255,.12)', border: '1px solid rgba(79,157,255,.35)', borderRadius: 8, padding: '8px 9px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#8fc0ff' }}>{s.t}</div>
+                <div style={{ fontSize: 10, color: '#8fc0ff' }}>{s.s}</div>
+              </div>
+              {i < arr.length - 1 && <span style={{ alignSelf: 'center', color: 'var(--mut,#9aa6bd)', fontSize: 12 }}>→</span>}
+            </Fragment>
+          ))}
+        </div>
+
+        <div className="muted" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.5 }}>
+          El PDF lleva todo esto (titular, gráficas, tabla, carrera con overrides, metas y bono) calculado con estos mismos parámetros.
         </div>
       </div>
 
