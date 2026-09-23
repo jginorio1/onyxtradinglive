@@ -2276,7 +2276,7 @@ function MentorPanel({ lang, onClose, openStudent }: { lang: string; onClose: ()
         const shown = results.slice(0, 24);
         return (
           <div className="sk-modal-ov" onClick={() => setNavSearch(false)}>
-            <div className="sk-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <div className="sk-modal sk-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560, background: 'var(--card)' }}>
               <input autoFocus value={nq} onChange={(e) => setNq(e.target.value)} placeholder={L('Buscar aula, lección, alumno o pestaña…', 'Search classroom, lesson, student or tab…')} style={{ margin: 0, width: '100%' }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10, maxHeight: '52vh', overflowY: 'auto' }}>
                 {shown.length === 0 && <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: '12px 0' }}>{q ? L('Sin resultados.', 'No results.') : L('Escribe para buscar…', 'Type to search…')}</p>}

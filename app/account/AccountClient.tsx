@@ -967,7 +967,7 @@ export default function AccountClient({ email }: { email: string }) {
               const res = items.filter((it) => !query || it.label.toLowerCase().includes(query)).slice(0, 10);
               return (
                 <div className="sk-modal-ov" onClick={() => setPal(false)}>
-                  <div className="sk-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+                  <div className="sk-modal sk-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, background: 'var(--card)' }}>
                     <input autoFocus value={palQ} onChange={(e) => setPalQ(e.target.value)} placeholder={lang === 'en' ? 'Jump to a section…' : 'Saltar a una sección…'} style={{ width: '100%', margin: 0 }} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
                       {res.map((it) => (
