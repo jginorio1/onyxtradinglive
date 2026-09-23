@@ -18,6 +18,7 @@ type MailOpts = { kind?: string; userId?: string | null; meta?: any; unsub?: str
   brandName?: string;   // nombre en la cabecera del correo (por defecto "Onyx Trading Live")
   brandLogo?: string;   // logo en la cabecera (por defecto el de Onyx)
   replyTo?: string;     // a dónde llega la respuesta del destinatario (Reply-To)
+  attachments?: { filename: string; content: string }[];  // adjuntos (content en base64)
 };
 
 // Construye un remitente "Nombre <dirección>" reutilizando la dirección verificada
@@ -128,7 +129,7 @@ export async function sendEmailId(to: string, subject: string, text: string, opt
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ from, to, subject, text: plain, html, ...(opts?.replyTo ? { reply_to: opts.replyTo } : {}) }),
+      body: JSON.stringify({ from, to, subject, text: plain, html, ...(opts?.replyTo ? { reply_to: opts.replyTo } : {}), ...(opts?.attachments?.length ? { attachments: opts.attachments } : {}) }),
     });
     let id: string | null = null;
     if (r.ok) { try { const j = await r.json(); id = j?.id || j?.data?.id || null; } catch {} }
