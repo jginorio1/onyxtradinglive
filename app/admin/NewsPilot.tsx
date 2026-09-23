@@ -34,7 +34,8 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
   const [recent, setRecent] = useState<any[]>([]);
   const [lastRun, setLastRun] = useState<{ at: string; via: string; reason: string; posted: number; candidate: string; feeds?: number; feedsOk?: number; fetched?: number; important?: number; fresh?: number } | null>(null);
   const [cronHits1h, setCronHits1h] = useState<number | null>(null);
-  const [stats, setStats] = useState<{ today: number; last7: number; total: number; nextWindowMin: number; gateFree: boolean } | null>(null);
+  const [stats, setStats] = useState<{ today: number; last7: number; total: number; nextWindowMin: number; nextAt: number; capReached: boolean; gateFree: boolean } | null>(null);
+  const [nowMs, setNowMs] = useState(Date.now());  // tick para el countdown en vivo
   const [log, setLog] = useState<any[]>([]);
   const [sim, setSim] = useState<any | null>(null);
   const [aiState, setAiState] = useState<{ ok: boolean; model?: string; error?: string } | null>(null);
@@ -50,12 +51,28 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
       if (j.settings) {
         setCfg(j.settings); setSources(j.sources || []); setRecent(j.recent || []); setLastRun(j.lastRun || null);
         setCronHits1h(typeof j.cronHits1h === 'number' ? j.cronHits1h : null);
-        setStats({ today: j.today || 0, last7: j.last7 || 0, total: j.total || 0, nextWindowMin: j.nextWindowMin || 0, gateFree: j.gateFree !== false });
+        setStats({ today: j.today || 0, last7: j.last7 || 0, total: j.total || 0, nextWindowMin: j.nextWindowMin || 0, nextAt: Number(j.nextAt) || 0, capReached: !!j.capReached, gateFree: j.gateFree !== false });
         setLog(Array.isArray(j.log) ? j.log : []);
       }
     } catch {}
   }
   useEffect(() => { load(); }, []);
+  // Countdown en vivo: tick cada segundo; al llegar a 0, recargamos el estado
+  // (por si ya publicó o se reinició el día) para no quedarnos en "00:00".
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    if (stats?.nextAt && nowMs >= stats.nextAt) { load(); }
+  }, [nowMs, stats?.nextAt]);
+  // Formatea ms restantes como mm:ss (o hh:mm:ss si falta más de una hora).
+  const fmtLeft = (ms: number) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${pad(m)}:${pad(ss)}`;
+  };
 
   function upd<K extends keyof Cfg>(k: K, v: Cfg[K]) { setCfg((c) => (c ? { ...c, [k]: v } : c)); }
   function updTopic(k: keyof Topics) { setCfg((c) => (c ? { ...c, topics: { ...c.topics, [k]: !c.topics[k] } } : c)); }
@@ -286,7 +303,12 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
               <div style={box}><div style={lbl}>{L('Publicados hoy', 'Posted today')}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{stats.today} <span style={{ fontSize: 13, color: 'var(--mut)' }}>/ {cfg.maxPerDay}</span></div><div style={{ height: 5, background: 'var(--line)', borderRadius: 4, marginTop: 6, overflow: 'hidden' }}><span style={{ display: 'block', height: '100%', width: Math.min(100, (stats.today / Math.max(1, cfg.maxPerDay)) * 100) + '%', background: A }} /></div></div>
               <div style={box}><div style={lbl}>{L('Últimos 7 días', 'Last 7 days')}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{stats.last7}</div></div>
               <div style={box}><div style={lbl}>{L('Total artículos', 'Total articles')}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{stats.total}</div></div>
-              <div style={box}><div style={lbl}>{L('Próxima ventana', 'Next window')}</div><div style={{ fontSize: 22, fontWeight: 800 }}>{stats.nextWindowMin > 0 ? stats.nextWindowMin + ' min' : L('lista', 'ready')}</div></div>
+              <div style={box}><div style={lbl}>{stats.capReached ? L('Se reanuda en', 'Resumes in') : L('Próxima ventana', 'Next window')}</div>
+                {stats.nextAt && stats.nextAt > nowMs
+                  ? <><div style={{ fontSize: 22, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{fmtLeft(stats.nextAt - nowMs)}</div>
+                      <div style={{ fontSize: 10.5, color: 'var(--mut)', marginTop: 2 }}>{stats.capReached ? L('tope diario alcanzado', 'daily cap reached') : L('para el próximo post', 'until next post')}</div></>
+                  : <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--green)' }}>{L('lista', 'ready')}</div>}
+              </div>
             </div>
           )}
 

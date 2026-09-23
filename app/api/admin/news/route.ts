@@ -52,7 +52,9 @@ export async function GET() {
   // todo lo publicado del rango (nunca dejamos que un filtro roto devuelva 0).
   async function cnt(fromIso?: string): Promise<number> {
     let q: any = supabaseAdmin.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'published').eq('is_news', true);
-    if (fromIso) q = q.gte('published_at', fromIso);
+    // Contamos por created_at (siempre presente) para que "Publicados hoy" coincida
+    // con el tope diario del piloto y no discrepe de lo que realmente frena.
+    if (fromIso) q = q.gte('created_at', fromIso);
     const r1 = await q;
     if (r1.error) {
       let q2: any = supabaseAdmin.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'published');
@@ -66,13 +68,20 @@ export async function GET() {
   const start7 = new Date(nowMs - 7 * 86400000);
   let today = 0, last7 = 0, total = 0;
   try { today = await cnt(startToday.toISOString()); last7 = await cnt(start7.toISOString()); total = await cnt(); } catch {}
-  // Próxima ventana (cuándo podrá publicar el siguiente, por separación mínima).
+  // Próxima ventana: cuándo podrá publicar el siguiente. Dos motivos de espera:
+  //  · Tope diario alcanzado → se reanuda mañana 00:00 UTC (cuando se reinicia el día).
+  //  · Separación mínima → gate.at + gap.
+  // Devolvemos también nextAt (epoch ms) para que el panel muestre un countdown en vivo.
   const gate = await getSetting<{ at: number }>('news_pilot_gate', { at: 0 });
   const gapMin = settings.minMinutesBetween || 60;
-  const nextWindowMin = gate.at ? Math.max(0, Math.ceil((gate.at + gapMin * 60000 - nowMs) / 60000)) : 0;
-  const gateFree = !gate.at || (nowMs - gate.at) >= gapMin * 60000;
+  const capReached = today >= (settings.maxPerDay || 3);
+  const tomorrow0 = new Date(); tomorrow0.setUTCHours(24, 0, 0, 0);
+  const gateNextMs = gate.at ? gate.at + gapMin * 60000 : nowMs;
+  const nextAt = capReached ? tomorrow0.getTime() : Math.max(gateNextMs, nowMs);
+  const nextWindowMin = Math.max(0, Math.ceil((nextAt - nowMs) / 60000));
+  const gateFree = !capReached && (!gate.at || (nowMs - gate.at) >= gapMin * 60000);
   const log = await getSetting<{ runs: any[] }>('news_pilot_log', { runs: [] });
-  return NextResponse.json({ settings, sources, recent, lastRun, cronHits1h, cronLastAt, today, last7, total, nextWindowMin, gateFree, log: log.runs || [] });
+  return NextResponse.json({ settings, sources, recent, lastRun, cronHits1h, cronLastAt, today, last7, total, nextWindowMin, nextAt, capReached, gateFree, log: log.runs || [] });
 }
 
 // PATCH · guardar ajustes del piloto (owner/gestor de módulos).

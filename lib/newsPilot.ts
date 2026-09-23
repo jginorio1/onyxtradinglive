@@ -111,23 +111,19 @@ async function todayStats(): Promise<{ count: number; lastMs: number }> {
     return m;
   };
   try {
-    // Intento preferido: solo NOTICIAS publicadas hoy (columna is_news si existe).
-    let r = await supabaseAdmin.from('blog_posts')
-      .select('created_at,published_at,is_news').eq('is_news', true).eq('status', 'published')
-      .gte('published_at', sinceIso);
-    // Si la columna is_news no existe (error) o no devolvió filas, contamos TODO lo
-    // publicado hoy — jamás dejamos que un filtro roto cuente 0 y desate la inundación.
-    if (r.error || !r.data || r.data.length === 0) {
-      const r2 = await supabaseAdmin.from('blog_posts')
-        .select('created_at,published_at').eq('status', 'published').gte('published_at', sinceIso);
-      // Respaldo del respaldo: algunas filas fijan created_at pero no published_at.
-      const r3 = (r2.error || !r2.data)
-        ? await supabaseAdmin.from('blog_posts').select('created_at,published_at').eq('status', 'published').gte('created_at', sinceIso)
-        : r2;
-      if (r3.error || !r3.data) return { count: 9999, lastMs: Date.now() }; // falla cerrada
-      return { count: r3.data.length, lastMs: lastMsOf(r3.data) };
-    }
-    return { count: r.data.length, lastMs: lastMsOf(r.data) };
+    // CONTAMOS TODO LO PUBLICADO HOY (no solo is_news) usando created_at, que SIEMPRE
+    // se graba en el insert. Antes se filtraba por is_news+published_at: si eso quedaba
+    // corto, el tope y la separación mínima no frenaban contra el volumen real y se
+    // publicaba de más (se vieron 180/día con tope 3). Al contar por created_at el tope
+    // coincide con "Publicados hoy" del panel y SIEMPRE frena.
+    const r = await supabaseAdmin.from('blog_posts')
+      .select('created_at,published_at').eq('status', 'published').gte('created_at', sinceIso);
+    if (!r.error && r.data) return { count: r.data.length, lastMs: lastMsOf(r.data) };
+    // Respaldo: si por lo que sea created_at fallara, probamos published_at.
+    const r2 = await supabaseAdmin.from('blog_posts')
+      .select('created_at,published_at').eq('status', 'published').gte('published_at', sinceIso);
+    if (!r2.error && r2.data) return { count: r2.data.length, lastMs: lastMsOf(r2.data) };
+    return { count: 9999, lastMs: Date.now() }; // falla cerrada: mejor no publicar
   } catch {
     // Si algo revienta, NO publicamos (falla cerrada).
     return { count: 9999, lastMs: Date.now() };
@@ -185,7 +181,7 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
   if (dayRec.day !== dayKey) {
     try {
       const since0 = new Date(); since0.setUTCHours(0, 0, 0, 0);
-      const { count: c } = await supabaseAdmin.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('published_at', since0.toISOString());
+      const { count: c } = await supabaseAdmin.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('created_at', since0.toISOString());
       if (typeof c === 'number') dayCount = c;
     } catch {}
     try { await saveSetting('news_pilot_day', { day: dayKey, count: dayCount }); } catch {}

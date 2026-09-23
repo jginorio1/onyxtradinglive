@@ -19,6 +19,7 @@ const PLATFORMS: CatalogItem[] = [
   { code: 'mt4', es: 'MetaTrader 4', en: 'MetaTrader 4' },
   { code: 'ctrader', es: 'cTrader', en: 'cTrader' },
   { code: 'matchtrader', es: 'MatchTrader', en: 'MatchTrader' },
+  { code: 'tradelocker', es: 'TradeLocker', en: 'TradeLocker' },
 ];
 
 const TRADER_TYPES: CatalogItem[] = [
