@@ -58,6 +58,7 @@ export default function Invita() {
   const { lang } = useLang();
   const t = dictFor(T, lang);
   const [d, setD] = useState<any>(null);
+  const [amb, setAmb] = useState<{ base: number; rate: number }>({ base: 20, rate: 30 });
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
   const [n, setN] = useState(5);
   const [lcFaqRaw, setLcFaqRaw] = useState<string[][] | null>(null);
@@ -71,6 +72,8 @@ export default function Invita() {
 
   useEffect(() => {
     fetch('/api/referral/info?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then(setD).catch(() => setD({ referrerCredit: 10, friendCredit: 10, holdDays: 21, bridge: 5 }));
+    // % de embajador en vivo (Plata/Oro) desde el panel admin, para la escalera.
+    fetch('/api/stats', { cache: 'no-store' }).then((r) => r.json()).then((sj) => setAmb({ base: Number(sj.ambBase || 20), rate: Number(sj.ambRate || 30) })).catch(() => {});
     fetch('/api/referral').then((r) => setLoggedIn(r.status !== 401)).catch(() => setLoggedIn(false));
     fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json())
       .then((c) => { const rows = c?.faq?.invita; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); setLcPage(c?.pages?.invita || null); }).catch(() => {});
@@ -138,11 +141,28 @@ export default function Invita() {
       </div>
 
       {d?.bridge > 0 && (
-        <div className="card" style={{ maxWidth: 620, margin: '0 auto 40px', textAlign: 'center', border: '1px solid var(--brand)' }}>
+        <div className="card" style={{ maxWidth: 720, margin: '0 auto 40px', textAlign: 'center', border: '1px solid var(--brand)' }}>
           <div style={{ color: 'var(--brand)', display: 'inline-flex', marginBottom: 4 }}><OnyxIcon name="up" size={24} /></div>
           <b style={{ fontSize: 16 }}>{t.bridgeT}</b>
-          <p className="muted" style={{ fontSize: 14, marginTop: 6 }}>{fill(t.bridgeD, { n: d.bridge })}</p>
-          <Link className="btn btn-ghost" href="/embajadores" style={{ marginTop: 10 }}>{lang === 'en' ? 'See the Ambassador program' : 'Ver el programa de Embajadores'}</Link>
+          <p className="muted" style={{ fontSize: 14, marginTop: 6, marginBottom: 14 }}>{fill(t.bridgeD, { n: d.bridge })}</p>
+          {/* Escalera: crédito → Plata → Oro (los % de embajador salen en vivo del panel) */}
+          <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, textAlign: 'left' }}>
+            {[
+              { c: 'var(--brand)', k: lang === 'en' ? 'INVITE & EARN' : 'INVITA Y GANA', v: lang === 'en' ? 'Credit' : 'Crédito', s: `$${you} / $${friend}` },
+              { c: '#c0c6d4', k: 'PLATA', v: `${amb.base}%`, s: lang === 'en' ? 'recurring cash' : 'efectivo recurrente' },
+              { c: 'var(--gold)', k: 'ORO', v: `${amb.rate}%`, s: lang === 'en' ? 'at 10 active · retroactive' : 'a 10 activos · retroactivo' },
+            ].map((r, i, arr) => (
+              <div key={r.k} style={{ display: 'contents' }}>
+                <div style={{ flex: 1, background: 'var(--bg2)', border: `1px solid ${r.c === 'var(--gold)' ? 'var(--gold)' : 'var(--line)'}`, borderRadius: 10, padding: '10px 11px' }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 800, color: r.c }}>{r.k}</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: r.c === '#c0c6d4' ? 'var(--tx)' : r.c }}>{r.v}</div>
+                  <div className="muted" style={{ fontSize: 10.5 }}>{r.s}</div>
+                </div>
+                {i < arr.length - 1 && <span style={{ alignSelf: 'center', color: 'var(--mut)' }}>→</span>}
+              </div>
+            ))}
+          </div>
+          <Link className="btn btn-ghost" href="/embajadores" style={{ marginTop: 14 }}>{lang === 'en' ? 'See the Ambassador program' : 'Ver el programa de Embajadores'}</Link>
         </div>
       )}
 
