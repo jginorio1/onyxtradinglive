@@ -21,6 +21,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   const [partners, setPartners] = useState<any[]>([]);
   const [form, setForm] = useState<any>(emptyForm);
   const [pForm, setPForm] = useState<any>(emptyPartner);
+  const [aiBusy, setAiBusy] = useState(false); // IA rellenando ficha del socio
   const [progCode, setProgCode] = useState('');
   const [busy, setBusy] = useState('');
   const [upBusy, setUpBusy] = useState('');   // '' | 'logo' | 'banner'
@@ -106,6 +107,27 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       if (r.ok) { toast(okMsg, 'ok'); setForm(emptyForm); load(); }
       else toast(j.error || L('No se pudo guardar.', 'Could not save.'), 'err');
     } catch { toast(L('Error de red.', 'Network error.'), 'err'); } finally { setBusy(''); }
+  }
+
+  // IA: rellena la ficha del socio (categoría, descripción ES/EN, reguladores) a
+  // partir del nombre. NO guarda: deja los campos listos para que los revises.
+  async function aiFillPartner() {
+    const name = (pForm.name || '').trim();
+    if (!name) return toast(L('Escribe primero el nombre del socio.', 'Type the partner name first.'), 'err');
+    setAiBusy(true);
+    try {
+      const r = await fetch('/api/admin/ads', { method: 'POST', body: JSON.stringify({ entity: 'partner', action: 'ai', name, category: pForm.category }) });
+      const j = await r.json();
+      if (r.ok && j.fill) {
+        const f = j.fill;
+        setPForm((p: any) => ({ ...p, category: f.category || p.category, blurb_es: f.blurb_es || p.blurb_es, blurb_en: f.blurb_en || p.blurb_en, regulated: f.regulated || p.regulated }));
+        toast(f.confident
+          ? L('Ficha rellenada por IA. Revísala y ajusta el CPA antes de guardar.', 'AI filled the card. Review it and set the CPA before saving.')
+          : L('Rellenado, pero la IA no estaba segura del socio. Revisa bien los datos.', 'Filled, but the AI wasn’t sure about this partner. Double-check the data.'), f.confident ? 'ok' : 'err');
+      } else {
+        toast(j.error === 'no_key' ? L('Falta la clave de IA (ANTHROPIC_API_KEY).', 'Missing AI key (ANTHROPIC_API_KEY).') : L('La IA no pudo rellenar. Inténtalo de nuevo.', 'AI could not fill. Try again.'), 'err');
+      }
+    } catch { toast(L('Error de red.', 'Network error.'), 'err'); } finally { setAiBusy(false); }
   }
 
   // Formateo de miles con COMA (95,587). Para inputs de texto: muestra con coma,
@@ -638,7 +660,16 @@ export default function AdsAdmin({ es }: { es: boolean }) {
         </div>
         <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{L('Brokers y prop firms que pagan por registro. Se listan en /socios. El ángulo que más rinde en este nicho.', 'Brokers and prop firms that pay per signup. Listed on /socios. The highest-yield angle in this niche.')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
-          <div><div style={lbl}>{L('Nombre', 'Name')}</div><input value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} style={{ margin: 0, width: '100%' }} /></div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div style={lbl}>{L('Nombre', 'Name')}</div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <input value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} placeholder={L('Ej. Axi, The5ers, TradingView…', 'e.g. Axi, The5ers, TradingView…')} style={{ margin: 0, flex: 1 }} onKeyDown={(e) => { if (e.key === 'Enter' && !aiBusy) { e.preventDefault(); aiFillPartner(); } }} />
+              <button type="button" onClick={aiFillPartner} disabled={aiBusy || !pForm.name.trim()} title={L('La IA rellena categoría, descripciones y reguladores a partir del nombre. Tú revisas antes de guardar.', 'AI fills category, descriptions and regulators from the name. You review before saving.')} className="btn" style={{ flex: 'none', fontSize: 12, fontWeight: 700, background: 'linear-gradient(135deg,#a679ff,#7c4dff)', color: '#fff', border: 'none', padding: '7px 12px', opacity: (aiBusy || !pForm.name.trim()) ? 0.6 : 1 }}>
+                {aiBusy ? L('Rellenando…', 'Filling…') : L('✨ Rellenar con IA', '✨ Fill with AI')}
+              </button>
+            </div>
+            <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{L('Escribe el nombre del broker o prop firm y pulsa “Rellenar con IA”: completa categoría, descripción ES/EN y reguladores. El pago CPA y tu enlace afiliado los pones tú.', 'Type the broker or prop firm name and hit “Fill with AI”: it completes category, ES/EN description and regulators. You set the CPA payout and your affiliate link.')}</div>
+          </div>
           <div><div style={lbl}>{L('Categoría', 'Category')}</div><select value={pForm.category} onChange={(e) => setPForm({ ...pForm, category: e.target.value })} style={{ margin: 0, width: '100%' }}><option value="broker">Broker</option><option value="propfirm">Prop firm</option><option value="tool">{L('Herramienta', 'Tool')}</option></select></div>
           <div>
             <div style={lbl}>{L('Logo — pega la URL o sube el archivo', 'Logo — paste URL or upload file')}</div>

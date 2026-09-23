@@ -161,6 +161,13 @@ export async function POST(req: Request) {
   // --- F6: directorio de partners (CPA) ---
   if (b.entity === 'partner') {
     if (b.action === 'delete' && b.id) { await supabaseAdmin.from('ad_partners').delete().eq('id', b.id); return NextResponse.json({ ok: true }); }
+    // IA: rellenar ficha del socio a partir del nombre (devuelve valores editables, no guarda).
+    if (b.action === 'ai') {
+      const { describePartner } = await import('@/lib/partnerAI');
+      const res = await describePartner({ name: String(b.name || ''), category: b.category });
+      if (!res.ok) return NextResponse.json({ error: res.reason || 'ai_error' }, { status: 400 });
+      return NextResponse.json({ ok: true, fill: res.fill });
+    }
     const prow: any = {
       name: String(b.name || '').slice(0, 120), logo_url: String(b.logo_url || '').slice(0, 400), banner_url: String(b.banner_url || '').slice(0, 500),
       blurb_es: String(b.blurb_es || '').slice(0, 300), blurb_en: String(b.blurb_en || '').slice(0, 300),
