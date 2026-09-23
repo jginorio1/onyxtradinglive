@@ -61,6 +61,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, settings: s });
     }
 
+    // ---- PROPUESTA PARA VENDEDORES (PDF + email) ----
+    // Usa los parámetros que manda el cliente (b.settings = ajustes en pantalla,
+    // aunque no estén guardados) para que la propuesta salga con lo que ve el admin.
+    if (action === 'proposal_pdf' || action === 'proposal_email') {
+      const { proposalData, proposalPdf } = await import('@/lib/salesProposal');
+      const s = b.settings && Object.keys(b.settings).length ? b.settings : await salesSettings();
+      const data = proposalData(s, { price: Number(b.price) || 100, includeOverrides: b.include_overrides !== false, candidateName: b.name || '' });
+      const pdf = await proposalPdf(data, { company: 'Onyx Trading Live' });
+      const base64 = Buffer.from(pdf).toString('base64');
+      const filename = `propuesta-vendedor-onyx.pdf`;
+      if (action === 'proposal_pdf') return NextResponse.json({ ok: true, pdf: base64, filename });
+      // Enviar por correo con el PDF adjunto.
+      const to = String(b.email || '').trim();
+      if (!to || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return NextResponse.json({ error: 'Escribe un correo válido.', code: 'bad_email' }, { status: 400 });
+      const { sendEmail, mailEnabled } = await import('@/lib/mail');
+      if (!mailEnabled()) return NextResponse.json({ error: 'El correo no está configurado (falta RESEND_API_KEY).', code: 'no_mail' }, { status: 400 });
+      const hi = b.name ? `Hola ${b.name},` : 'Hola,';
+      const text = `${hi}\n\nTe comparto la propuesta para unirte como vendedor de Onyx Trading Live. Ganas un % alto el primer mes de cada cliente y comisión recurrente mientras siga pagando.\n\nEn el PDF adjunto verás los ejemplos con números. Si te interesa, postúlate en:\nhttps://www.onyxtradinglive.com/unete-ventas\n\n— Equipo de Onyx Trading Live`;
+      const sent = await sendEmail(to, 'Propuesta para vendedores · Onyx Trading Live', text, { kind: 'sales_proposal', attachments: [{ filename, content: base64 }] });
+      if (!sent) return NextResponse.json({ error: 'No se pudo enviar el correo.', code: 'send_fail' }, { status: 400 });
+      return NextResponse.json({ ok: true, sent: true });
+    }
+
     // ---- METAS Y BONOS ----
     // Progreso de metas del mes por cada rep (meta propia o global) + estado.
     if (action === 'goals') {

@@ -353,6 +353,7 @@ function AppRow({ a, reps, act, inp, btn, btnP, canManage, lvName }: any) {
         <select value={parent} onChange={(e) => setParent(e.target.value)} style={inp}><option value="">Sin supervisor</option>{reps.filter((r: any) => r.level !== 'vendedor').map((r: any) => <option key={r.id} value={r.id}>{r.display_name || r.email}</option>)}</select>
         <button style={btnP} onClick={() => act({ action: 'approve', app_id: a.id, email: a.email, level, parent_id: parent || null, display_name: a.name })}>Aprobar</button>
         <button style={btn} onClick={() => act({ action: 'reject', app_id: a.id })}>Rechazar</button>
+        {a.email && <button style={btn} title="Envía el PDF de la propuesta (con tus parámetros actuales) al correo del candidato" onClick={() => act({ action: 'proposal_email', email: a.email, name: a.name })}>✉ Enviar propuesta</button>}
       </div>}
     </div>
   );
@@ -973,7 +974,110 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           {tog('recruit_auto_approve', 'Reclutamiento en cascada: aprobar solo a quien entra por el enlace de un supervisor', 'Cada supervisor tiene su enlace personal de reclutamiento (aparece en su panel). Con esto ENCENDIDO, si el candidato ya tiene cuenta en la app, se cuelga solo en la rama de quien lo trajo. Apagado (recomendado al inicio): la solicitud llega a Solicitudes ya marcada con quién lo trajo, y tú la apruebas.')}
         </div>
       </div>
+
+      <ProposalCard f={f} names={names} inp={inp} btn={btn} btnP={btnP} card={card} />
+
       {canManage && <button style={btnP} onClick={() => act({ action: 'save_settings', settings: f })}>Guardar ajustes</button>}
+    </div>
+  );
+}
+
+// Propuesta para vendedores: vista previa en vivo (usa los ajustes en pantalla),
+// descargar PDF y enviar por email. Todo se recalcula al cambiar cualquier %.
+function ProposalCard({ f, names, inp, btn, btnP, card }: any) {
+  const [price, setPrice] = useState(100);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState('');
+  const [msg, setMsg] = useState('');
+  const num = (v: any, d = 0) => { const x = Number(v); return Number.isFinite(x) ? x : d; };
+  const p = Math.max(1, num(price, 100));
+  const boost = !!f.boost_first_month;
+  const fd = boost ? num(f.first_direct_rate, num(f.direct_rate)) : num(f.direct_rate);
+  const rd = num(f.direct_rate);
+  const cm = num(f.commission_months, 0);
+  const monthsPaid = Math.max(1, cm > 0 ? Math.min(cm, 12) : 12);
+  const perFirst = Math.round(p * fd / 100), perMonthly = Math.round(p * rd / 100), perYear = perFirst + perMonthly * (monthsPaid - 1);
+  const rows = [5, 10, 20].map((c) => ({ c, first: perFirst * c, monthly: perMonthly * c, year: perYear * c }));
+  const money = (v: number) => '$' + Math.round(v).toLocaleString('en-US');
+
+  async function call(action: string, extra: any = {}) {
+    setBusy(action); setMsg('');
+    try {
+      const r = await fetch('/api/admin/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, settings: f, price: p, name, include_overrides: true, ...extra }) });
+      const j = await r.json();
+      if (j.error) { setMsg('⚠ ' + j.error); return null; }
+      return j;
+    } catch { setMsg('⚠ Error de red'); return null; } finally { setBusy(''); }
+  }
+  async function download() {
+    const j = await call('proposal_pdf');
+    if (j?.pdf) { const a = document.createElement('a'); a.href = 'data:application/pdf;base64,' + j.pdf; a.download = j.filename || 'propuesta.pdf'; a.click(); }
+  }
+  async function sendMail() {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setMsg('⚠ Escribe un correo válido.'); return; }
+    const j = await call('proposal_email', { email });
+    if (j?.sent) setMsg('Propuesta enviada ✓');
+  }
+
+  return (
+    <div style={{ ...card, borderLeft: '4px solid #a9b0ff' }}>
+      <b style={{ display: 'flex', alignItems: 'center', gap: 7 }}>{ic('file', 16, '#a9b0ff')} Propuesta para vendedores<Hint text="Genera un PDF de reclutamiento con TUS parámetros actuales (impulso 1.er mes, residual, overrides, metas, bono, ascensos). Si cambias un %, los ejemplos salen recalculados. Descárgalo o envíalo por correo a un candidato. También puedes enviarlo desde cada Solicitud." /></b>
+      <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
+        Ejemplos calculados en vivo con los ajustes de esta pantalla. Cambia un número arriba y esto se actualiza solo.
+      </div>
+
+      {/* Controles */}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '12px 0' }}>
+        <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Cliente de ejemplo<div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}><span className="muted">$</span><input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} style={{ ...inp, width: 90 }} /><span className="muted">/mes</span></div></label>
+        <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Nombre del candidato (opcional)<input value={name} onChange={(e) => setName(e.target.value)} placeholder="María" style={{ ...inp, display: 'block', marginTop: 4, width: 180 }} /></label>
+      </div>
+
+      {/* Vista previa en vivo */}
+      <div style={{ background: 'var(--bg,#0e1220)', border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: 14 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 10 }}>Con un cliente de {money(p)}/mes</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {[{ t: 'Primer mes', v: money(perFirst), s: `${fd}% del 1.er pago`, c: '#e5b567' },
+            { t: 'Cada mes después', v: money(perMonthly), s: `${rd}% recurrente`, c: '#5ed6a0' },
+            { t: 'En 1 año', v: money(perYear), s: 'por ese cliente', c: 'var(--tx,#e8ecf5)' }].map((x, i) => (
+            <div key={i} style={{ flex: '1 1 120px', border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: '8px 10px' }}>
+              <div style={{ fontSize: 10.5, color: 'var(--mut,#9aa6bd)', textTransform: 'uppercase', letterSpacing: .3 }}>{x.t}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: x.c }}>{x.v}</div>
+              <div style={{ fontSize: 10.5, color: 'var(--mut,#9aa6bd)' }}>{x.s}</div>
+            </div>
+          ))}
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12, fontSize: 12.5 }}>
+          <thead><tr>
+            <th style={{ textAlign: 'left', padding: '4px 6px', fontSize: 10.5, color: 'var(--mut,#9aa6bd)' }}>Clientes</th>
+            <th style={{ textAlign: 'right', padding: '4px 6px', fontSize: 10.5, color: '#e5b567' }}>1.er mes</th>
+            <th style={{ textAlign: 'right', padding: '4px 6px', fontSize: 10.5, color: '#5ed6a0' }}>Cada mes</th>
+            <th style={{ textAlign: 'right', padding: '4px 6px', fontSize: 10.5, color: 'var(--tx,#e8ecf5)' }}>Año 1</th>
+          </tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.c}>
+                <td style={{ padding: '4px 6px', color: 'var(--tx,#e8ecf5)' }}>{r.c} clientes</td>
+                <td style={{ padding: '4px 6px', textAlign: 'right', color: '#e5b567' }}>{money(r.first)}</td>
+                <td style={{ padding: '4px 6px', textAlign: 'right', color: '#5ed6a0' }}>{money(r.monthly)}</td>
+                <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 700, color: 'var(--tx,#e8ecf5)' }}>{money(r.year)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="muted" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.5 }}>
+          El PDF incluye además la escalera {names.vendedor || 'Advisor'} → {names.l1 || 'Lead'} → {names.l2 || 'Director'} con overrides, las metas y el bono.
+        </div>
+      </div>
+
+      {/* Acciones */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
+        <button style={btn} disabled={!!busy} onClick={download}>{busy === 'proposal_pdf' ? '…' : '⬇ Descargar PDF'}</button>
+        <span className="muted" style={{ fontSize: 12 }}>o enviar a:</span>
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="candidato@correo.com" style={{ ...inp, width: 220 }} />
+        <button style={btnP} disabled={!!busy} onClick={sendMail}>{busy === 'proposal_email' ? 'Enviando…' : 'Enviar por email'}</button>
+      </div>
+      {msg && <div style={{ marginTop: 8, fontSize: 12.5, color: msg.startsWith('⚠') ? 'var(--red,#f0736f)' : 'var(--accent,#8b93ff)' }}>{msg}</div>}
     </div>
   );
 }
