@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     if (action === 'proposal_pdf' || action === 'proposal_email') {
       const { proposalData, proposalPdf } = await import('@/lib/salesProposal');
       const s = b.settings && Object.keys(b.settings).length ? b.settings : await salesSettings();
-      const data = proposalData(s, { price: Number(b.price) || 100, includeOverrides: b.include_overrides !== false, candidateName: b.name || '', clientsPerMonth: Number(b.clients_per_month) || 3 });
+      const data = proposalData(s, { price: Number(b.price) || 100, includeOverrides: b.include_overrides !== false, candidateName: b.name || '', clientsPerMonth: Number(b.clients_per_month) || 3, level: (['vendedor', 'l1', 'l2'].includes(b.level) ? b.level : 'vendedor'), teamSize: Number(b.team_size) || 5, networkSize: Number(b.network_size) || 0 });
       const pdf = await proposalPdf(data, { company: 'Onyx Trading Live' });
       const base64 = Buffer.from(pdf).toString('base64');
       const filename = `propuesta-vendedor-onyx.pdf`;

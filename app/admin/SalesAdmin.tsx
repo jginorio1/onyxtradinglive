@@ -353,7 +353,7 @@ function AppRow({ a, reps, act, inp, btn, btnP, canManage, lvName }: any) {
         <select value={parent} onChange={(e) => setParent(e.target.value)} style={inp}><option value="">Sin supervisor</option>{reps.filter((r: any) => r.level !== 'vendedor').map((r: any) => <option key={r.id} value={r.id}>{r.display_name || r.email}</option>)}</select>
         <button style={btnP} onClick={() => act({ action: 'approve', app_id: a.id, email: a.email, level, parent_id: parent || null, display_name: a.name })}>Aprobar</button>
         <button style={btn} onClick={() => act({ action: 'reject', app_id: a.id })}>Rechazar</button>
-        {a.email && <button style={btn} title="Envía el PDF de la propuesta (con tus parámetros actuales) al correo del candidato" onClick={() => act({ action: 'proposal_email', email: a.email, name: a.name })}>✉ Enviar propuesta</button>}
+        {a.email && <button style={btn} title="Envía el PDF de la propuesta (con tus parámetros actuales, para el nivel seleccionado) al correo del candidato" onClick={() => act({ action: 'proposal_email', email: a.email, name: a.name, level })}>✉ Enviar propuesta ({lvName(level)})</button>}
       </div>}
     </div>
   );
@@ -988,6 +988,9 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
   const btn: React.CSSProperties = { padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--panel,#161c2e)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 12.5 };
   const [price, setPrice] = useState(100);
   const [cpm, setCpm] = useState(3);           // clientes nuevos por mes (escenario ajustable)
+  const [level, setLevel] = useState<'vendedor' | 'l1' | 'l2'>('vendedor');  // tier de la plaza
+  const [team, setTeam] = useState(5);         // vendedores en su equipo directo
+  const [network, setNetwork] = useState(15);  // red total en niveles inferiores (solo Director)
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState('');
@@ -1004,32 +1007,54 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
   const rows = [5, 10, 20].map((c) => ({ c, first: perFirst * c, monthly: perMonthly * c, year: perYear * c }));
   const money = (v: number) => '$' + Math.round(v).toLocaleString('en-US');
 
+  const hasTeam = level === 'l1' || level === 'l2';
+  const levelName = level === 'l2' ? (names.l2 || 'Director') : level === 'l1' ? (names.l1 || 'Lead') : (names.vendedor || 'Advisor');
+  const teamN = hasTeam ? Math.max(1, Math.round(num(team, 5))) : 0;
+  const netN = level === 'l2' ? Math.max(0, Math.round(num(network, 15))) : 0;
+  const ov1First = Math.round(p * (boost ? num(f.first_override1_rate, num(f.override1_rate)) : num(f.override1_rate)) / 100);
+  const ov1Res = Math.round(p * num(f.override1_rate) / 100);
+  const ov2First = Math.round(p * (boost ? num(f.first_override2_rate, num(f.override2_rate)) : num(f.override2_rate)) / 100);
+  const ov2Res = Math.round(p * num(f.override2_rate) / 100);
+
   // --- Bola de nieve: cierras perM clientes cada mes; cada uno paga 1.er mes y
   // luego residual mientras siga en su ventana de comisión (∞ = todo el año). ---
   const residualCap = cm > 0 ? Math.max(0, cm - 1) : 12;
-  const monthly: number[] = [];
-  for (let m = 1; m <= 12; m++) {
-    let inc = perM * perFirst;
-    for (let k = 1; k < m; k++) { if ((m - k) <= residualCap) inc += perM * perMonthly; }
-    monthly.push(inc);
-  }
+  const snow = (count: number, first: number, res: number) => {
+    const arr: number[] = [];
+    for (let m = 1; m <= 12; m++) { let inc = count * perM * first; for (let k = 1; k < m; k++) { if ((m - k) <= residualCap) inc += count * perM * res; } arr.push(inc); }
+    return arr;
+  };
+  const monthly = snow(1, perFirst, perMonthly);                                   // directo
+  const overrideMonthly = hasTeam ? snow(teamN, ov1First, ov1Res).map((v, i) => v + (netN > 0 ? snow(netN, ov2First, ov2Res)[i] : 0)) : new Array(12).fill(0);
+  const combined = monthly.map((v, i) => v + overrideMonthly[i]);
   const totalYear1 = monthly.reduce((a, b) => a + b, 0);
+  const overrideTotal = overrideMonthly.reduce((a, b) => a + b, 0);
+  const combinedTotal = totalYear1 + overrideTotal;
   const potentialMonthly = monthly[11];
+  const overridePotential = overrideMonthly[11];
+  const combinedPotential = combined[11];
   const mixFirst = 12 * perM * perFirst;
   const mixResidual = Math.max(0, totalYear1 - mixFirst);
+  // Mezcla de la dona: recurrente directo / 1.er mes directo / equipo (si aplica).
+  const total3 = Math.max(1, mixFirst + mixResidual + (hasTeam ? overrideTotal : 0));
+  const pResid = Math.round(mixResidual / total3 * 100), pFirst = Math.round(mixFirst / total3 * 100), pTeam = Math.round(overrideTotal / total3 * 100);
   const resPct = totalYear1 > 0 ? Math.round((mixResidual / totalYear1) * 100) : 0;
 
-  // Geometría de la dona (SVG) y de la curva.
-  const C = 2 * Math.PI * 34;
-  const dashRes = (resPct / 100) * C;
-  const maxV = Math.max(...monthly, 1);
-  const pts = monthly.map((v, i) => `${8 + (196) * (i / 11)},${86 - 72 * (v / maxV)}`).join(' ');
+  // Geometría de la curva (usa la serie combinada si hay equipo).
+  const series = hasTeam ? combined : monthly;
+  const maxV = Math.max(...series, 1);
+  const pts = series.map((v, i) => `${8 + (196) * (i / 11)},${86 - 72 * (v / maxV)}`).join(' ');
   const areaPts = `8,86 ${pts} 204,86`;
+  // Dona por segmentos (stroke-dasharray sobre un aro).
+  const C = 2 * Math.PI * 34;
+  const donutSegs = hasTeam
+    ? [{ pct: pResid, c: '#5ed6a0' }, { pct: pFirst, c: '#e5b567' }, { pct: pTeam, c: '#a679ff' }]
+    : [{ pct: pResid, c: '#5ed6a0' }, { pct: pFirst, c: '#e5b567' }];
 
   async function call(action: string, extra: any = {}) {
     setBusy(action); setMsg('');
     try {
-      const r = await fetch('/api/admin/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, settings: f, price: p, name, include_overrides: true, clients_per_month: perM, ...extra }) });
+      const r = await fetch('/api/admin/sales', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, settings: f, price: p, name, include_overrides: true, clients_per_month: perM, level, team_size: teamN, network_size: netN, ...extra }) });
       const j = await r.json();
       if (j.error) { setMsg('⚠ ' + j.error); return null; }
       return j;
@@ -1047,7 +1072,9 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
 
   const why = [
     { i: 'cash', c: '#5ed6a0', t: 'Ingreso que se repite', s: 'No arrancas de cero: cobras cada mes que el cliente sigue.' },
-    { i: 'stairs', c: '#4f9dff', t: 'Subes de nivel solo', s: `${names.vendedor || 'Advisor'} → ${names.l1 || 'Lead'} → ${names.l2 || 'Director'}, y ganas de tu equipo.` },
+    hasTeam
+      ? { i: 'users-group', c: '#a679ff', t: 'Ganas de tu equipo', s: `Tu override entra aunque no cierres tú esa venta.` }
+      : { i: 'stairs', c: '#4f9dff', t: 'Subes de nivel solo', s: `${names.vendedor || 'Advisor'} → ${names.l1 || 'Lead'} → ${names.l2 || 'Director'}, y ganas de tu equipo.` },
     { i: 'gift', c: '#e5b567', t: 'Bonos de arranque', s: 'Tus primeras ventas y las metas del mes suman extra.' },
   ];
 
@@ -1060,8 +1087,11 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
 
       {/* Controles */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '12px 0', alignItems: 'flex-end' }}>
+        <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Plaza / nivel<Hint text="Nivel de la vacante, con los nombres de tus tiers. Un vendedor ve sus ventas directas; un Lead o Director ven además lo que ganan de su equipo (overrides), y el potencial combina ambas fuentes." /><div style={{ marginTop: 4 }}><select value={level} onChange={(e) => setLevel(e.target.value as any)} style={inp}><option value="vendedor">{names.vendedor || 'Advisor'}</option><option value="l1">{names.l1 || 'Lead'}</option><option value="l2">{names.l2 || 'Director'}</option></select></div></label>
         <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Cliente de ejemplo<div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}><span className="muted">$</span><input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} style={{ ...inp, width: 90 }} /><span className="muted">/mes</span></div></label>
-        <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Escenario<Hint text="Cuántos clientes nuevos cierra el vendedor cada mes. Con esto se calcula el titular, la bola de nieve y el potencial a 12 meses." /><div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}><input type="number" min={1} max={30} value={cpm} onChange={(e) => setCpm(Number(e.target.value))} style={{ ...inp, width: 70 }} /><span className="muted">clientes/mes</span></div></label>
+        <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Escenario<Hint text="Cuántos clientes nuevos cierra cada vendedor al mes (tú y cada persona de tu equipo). Con esto se calcula el titular, la bola de nieve y el potencial a 12 meses." /><div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}><input type="number" min={1} max={30} value={cpm} onChange={(e) => setCpm(Number(e.target.value))} style={{ ...inp, width: 70 }} /><span className="muted">clientes/mes</span></div></label>
+        {hasTeam && <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Tu equipo<Hint text="Cuántos vendedores tienes en tu equipo directo. Ganas tu override sobre todo lo que ellos vendan." /><div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}><input type="number" min={1} max={100} value={team} onChange={(e) => setTeam(Number(e.target.value))} style={{ ...inp, width: 70 }} /><span className="muted">vendedores</span></div></label>}
+        {level === 'l2' && <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Red debajo<Hint text="Vendedores en los niveles inferiores (los equipos de tus Leads). Ganas el segundo override sobre sus ventas." /><div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}><input type="number" min={0} max={500} value={network} onChange={(e) => setNetwork(Number(e.target.value))} style={{ ...inp, width: 70 }} /><span className="muted">en la red</span></div></label>}
         <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>Nombre del candidato (opcional)<input value={name} onChange={(e) => setName(e.target.value)} placeholder="María" style={{ ...inp, display: 'block', marginTop: 4, width: 160 }} /></label>
       </div>
 
@@ -1069,8 +1099,11 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
       <div style={{ background: 'var(--bg,#0e1220)', border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: 14 }}>
         {/* Titular */}
         <div style={{ background: '#0b0f1c', border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: '12px 14px', marginBottom: 12 }}>
+          <div style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 700, color: '#0b0f1c', background: '#a9b0ff', borderRadius: 6, padding: '2px 8px', marginBottom: 6 }}>PLAZA: {levelName.toUpperCase()}</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 3 }}>Vende una vez. Cobra cada mes.</div>
-          <div style={{ fontSize: 12.5, color: '#c3c2b7' }}>Con <span style={{ color: '#5ed6a0' }}>{perM} clientes nuevos al mes</span>, en 12 meses llegas a <span style={{ color: '#5ed6a0', fontWeight: 700 }}>{money(potentialMonthly)}/mes</span> recurrente.</div>
+          <div style={{ fontSize: 12.5, color: '#c3c2b7' }}>{hasTeam
+            ? <>Tu venta directa <span style={{ color: '#a679ff' }}>+ un equipo de {teamN}</span>: en 12 meses llegas a <span style={{ color: '#5ed6a0', fontWeight: 700 }}>{money(combinedPotential)}/mes</span>.</>
+            : <>Con <span style={{ color: '#5ed6a0' }}>{perM} clientes nuevos al mes</span>, en 12 meses llegas a <span style={{ color: '#5ed6a0', fontWeight: 700 }}>{money(potentialMonthly)}/mes</span> recurrente.</>}</div>
         </div>
 
         {/* Tarjetas por cliente */}
@@ -1090,33 +1123,47 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
           <div style={{ border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: 10 }}>
             <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>De dónde viene tu dinero</div>
-            <div className="muted" style={{ fontSize: 10, marginBottom: 6 }}>Año 1 · {perM * 12} clientes</div>
+            <div className="muted" style={{ fontSize: 10, marginBottom: 6 }}>{hasTeam ? 'Año 1 · directo + equipo' : `Año 1 · ${perM * 12} clientes`}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <svg width="86" height="86" viewBox="0 0 86 86">
-                <circle cx="43" cy="43" r="34" fill="none" stroke="#e5b567" strokeWidth="14" />
-                <circle cx="43" cy="43" r="34" fill="none" stroke="#5ed6a0" strokeWidth="14" strokeDasharray={`${dashRes} ${C - dashRes}`} strokeDashoffset={C / 4} transform="rotate(-90 43 43)" />
-                <text x="43" y="40" textAnchor="middle" fontSize="15" fontWeight="700" fill="#5ed6a0">{resPct}%</text>
-                <text x="43" y="53" textAnchor="middle" fontSize="7.5" fill="#9aa6bd">recurrente</text>
+                <circle cx="43" cy="43" r="34" fill="none" stroke="var(--line,#2a3350)" strokeWidth="14" />
+                {(() => { let off = 0; return donutSegs.map((sg, i) => { const len = (sg.pct / 100) * C; const el = <circle key={i} cx="43" cy="43" r="34" fill="none" stroke={sg.c} strokeWidth="14" strokeDasharray={`${len} ${C - len}`} strokeDashoffset={-off + C / 4} transform="rotate(-90 43 43)" />; off += len; return el; }); })()}
+                <text x="43" y="40" textAnchor="middle" fontSize="14" fontWeight="700" fill={hasTeam ? '#a679ff' : '#5ed6a0'}>{hasTeam ? `${pTeam}%` : `${resPct}%`}</text>
+                <text x="43" y="52" textAnchor="middle" fontSize="7" fill="#9aa6bd">{hasTeam ? 'de tu equipo' : 'recurrente'}</text>
               </svg>
               <div style={{ fontSize: 11 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}><span style={{ width: 9, height: 9, borderRadius: 2, background: '#5ed6a0', display: 'inline-block' }} /><span style={{ color: 'var(--tx,#e8ecf5)' }}>Recurrente {resPct}%</span></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}><span style={{ width: 9, height: 9, borderRadius: 2, background: '#e5b567', display: 'inline-block' }} /><span style={{ color: 'var(--tx,#e8ecf5)' }}>1.er mes {100 - resPct}%</span></div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx,#e8ecf5)' }}>{money(totalYear1)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}><span style={{ width: 9, height: 9, borderRadius: 2, background: '#5ed6a0', display: 'inline-block' }} /><span style={{ color: 'var(--tx,#e8ecf5)' }}>Recurrente {pResid}%</span></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}><span style={{ width: 9, height: 9, borderRadius: 2, background: '#e5b567', display: 'inline-block' }} /><span style={{ color: 'var(--tx,#e8ecf5)' }}>1.er mes {pFirst}%</span></div>
+                {hasTeam && <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}><span style={{ width: 9, height: 9, borderRadius: 2, background: '#a679ff', display: 'inline-block' }} /><span style={{ color: 'var(--tx,#e8ecf5)' }}>Equipo {pTeam}%</span></div>}
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx,#e8ecf5)', marginTop: 2 }}>{money(hasTeam ? combinedTotal : totalYear1)}</div>
                 <div className="muted" style={{ fontSize: 9.5 }}>total año 1</div>
               </div>
             </div>
           </div>
           <div style={{ border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: 10 }}>
             <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>El efecto bola de nieve</div>
-            <div className="muted" style={{ fontSize: 10, marginBottom: 6 }}>Ingreso mensual, mes 1 → 12</div>
+            <div className="muted" style={{ fontSize: 10, marginBottom: 6 }}>{hasTeam ? 'Directo + equipo, mes 1 → 12' : 'Ingreso mensual, mes 1 → 12'}</div>
             <svg width="100%" height="86" viewBox="0 0 212 92" preserveAspectRatio="none">
               <polygon points={areaPts} fill="#4f9dff" opacity="0.14" />
               <polyline points={pts} fill="none" stroke="#4f9dff" strokeWidth="2" />
-              <circle cx="204" cy={86 - 72 * (potentialMonthly / maxV)} r="3" fill="#4f9dff" />
+              <circle cx="204" cy={86 - 72 * (series[11] / maxV)} r="3" fill="#4f9dff" />
             </svg>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#4f9dff' }}>{money(potentialMonthly)}<span className="muted" style={{ fontSize: 9.5, fontWeight: 400 }}> /mes al mes 12</span></div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#4f9dff' }}>{money(series[11])}<span className="muted" style={{ fontSize: 9.5, fontWeight: 400 }}> /mes al mes 12</span></div>
           </div>
         </div>
+
+        {/* Bloque de override de equipo (Lead / Director) */}
+        {hasTeam && (
+          <div style={{ marginTop: 10, border: '1px solid rgba(166,121,255,.4)', background: 'rgba(166,121,255,.10)', borderRadius: 9, padding: 11 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>{ic('users-group', 15, '#a679ff')}<span style={{ fontSize: 11.5, fontWeight: 700, color: '#c9b3ff' }}>Lo que ganas de tu equipo</span></div>
+            <div style={{ fontSize: 11.5, color: 'var(--tx,#e8ecf5)', lineHeight: 1.5 }}>
+              {level === 'l2'
+                ? <>Como {levelName}: <b>+{num(f.override1_rate)}%</b> de tu equipo directo ({teamN}) y <b>+{num(f.override2_rate)}%</b> de la red ({netN}).</>
+                : <>Como {levelName}: <b>+{num(f.override1_rate)}%</b> de todo lo que venda tu equipo ({teamN} vendedores).</>}
+            </div>
+            <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>Eso suma <b style={{ color: '#a679ff' }}>{money(overridePotential)}/mes</b> al mes 12 · <b style={{ color: '#a679ff' }}>{money(overrideTotal)}</b> extra en el año 1, sin venderlos tú.</div>
+          </div>
+        )}
 
         {/* Tabla por clientes */}
         <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12, fontSize: 12.5 }}>
@@ -1149,20 +1196,23 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
           ))}
         </div>
 
-        {/* Escalera de carrera */}
-        <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', margin: '12px 0 6px' }}>Tu carrera y lo que ganas de tu equipo</div>
+        {/* Escalera de carrera (resalta el tier de entrada) */}
+        <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', margin: '12px 0 6px' }}>{level === 'vendedor' ? 'Tu carrera y lo que ganas de tu equipo' : `Entras como ${levelName}`}</div>
         <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
-          {[{ t: names.vendedor || 'Advisor', s: 'Tus ventas directas' },
-            { t: names.l1 || 'Lead', s: `+${num(f.override1_rate)}% de tu equipo` },
-            { t: names.l2 || 'Director', s: `+${num(f.override2_rate)}% de la red` }].map((s, i, arr) => (
+          {[{ k: 'vendedor', t: names.vendedor || 'Advisor', s: 'Tus ventas directas' },
+            { k: 'l1', t: names.l1 || 'Lead', s: `+${num(f.override1_rate)}% de tu equipo` },
+            { k: 'l2', t: names.l2 || 'Director', s: `+${num(f.override2_rate)}% de la red` }].map((s, i, arr) => {
+            const here = s.k === level;
+            return (
             <Fragment key={i}>
-              <div style={{ flex: 1, background: 'rgba(79,157,255,.12)', border: '1px solid rgba(79,157,255,.35)', borderRadius: 8, padding: '8px 9px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#8fc0ff' }}>{s.t}</div>
-                <div style={{ fontSize: 10, color: '#8fc0ff' }}>{s.s}</div>
+              <div style={{ flex: 1, position: 'relative', background: here ? 'rgba(166,121,255,.18)' : 'rgba(79,157,255,.10)', border: here ? '1.5px solid #a679ff' : '1px solid rgba(79,157,255,.30)', borderRadius: 8, padding: '8px 9px' }}>
+                {here && <span style={{ position: 'absolute', top: -8, right: 6, fontSize: 8.5, fontWeight: 700, color: '#0b0f1c', background: '#a679ff', borderRadius: 5, padding: '1px 6px' }}>TU PLAZA</span>}
+                <div style={{ fontSize: 11, fontWeight: 700, color: here ? '#c9b3ff' : '#8fc0ff' }}>{s.t}</div>
+                <div style={{ fontSize: 10, color: here ? '#c9b3ff' : '#8fc0ff' }}>{s.s}</div>
               </div>
               {i < arr.length - 1 && <span style={{ alignSelf: 'center', color: 'var(--mut,#9aa6bd)', fontSize: 12 }}>→</span>}
             </Fragment>
-          ))}
+          ); })}
         </div>
 
         <div className="muted" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.5 }}>
