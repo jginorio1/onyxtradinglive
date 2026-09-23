@@ -2177,9 +2177,10 @@ function priceLabel(p: any, L: (a: string, b: string) => string) {
 
 function Tiers({ products, purchases, onBuy, L }: any) {
   const ownedIds = new Set((purchases || []).map((x: any) => x.product_id));
+  const ios = useIsIOSApp();   // iOS: sin precios ni "Desbloquear" (Apple 3.1.1)
   return (
     <div className="sk-card" style={{ border: '1px solid color-mix(in srgb, var(--gold) 40%, transparent)', marginBottom: 12 }}>
-      <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}><span style={{ color: 'var(--gold)', display: 'inline-flex' }}><OnyxIcon name="gem" size={18} /></span> {L('Desbloquea más con estos niveles', 'Unlock more with these tiers')}</h3>
+      <h3 style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}><span style={{ color: 'var(--gold)', display: 'inline-flex' }}><OnyxIcon name="gem" size={18} /></span> {ios ? L('Niveles de la comunidad', 'Community tiers') : L('Desbloquea más con estos niveles', 'Unlock more with these tiers')}</h3>
       <div className="sk-grid-courses">
         {products.map((p: any) => {
           const owned = ownedIds.has(p.id);
@@ -2187,7 +2188,7 @@ function Tiers({ products, purchases, onBuy, L }: any) {
             <div key={p.id} className={'sk-card sk-tier-card' + (p.kind === 'audit' ? ' sk-featured' : '')} style={{ margin: 0, background: 'var(--bg2)', textAlign: 'center' }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>{p.name}</div>
               {p.description && <div className="muted" style={{ fontSize: 12.5, margin: '4px 0 8px' }}>{p.description}</div>}
-              <div className="sk-price" style={{ margin: '8px 0' }}>{priceLabel(p, L)}</div>
+              {!ios && <div className="sk-price" style={{ margin: '8px 0' }}>{priceLabel(p, L)}</div>}
               {p.kind === 'audit' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
                   <span style={{ fontSize: 12, color: 'var(--soft-green)' }}>✓ {L('Tu mentor audita tu trading real', 'Your mentor audits your real trading')}</span>
@@ -2200,6 +2201,7 @@ function Tiers({ products, purchases, onBuy, L }: any) {
                 </div>
               )}
               {owned ? <span className="sk-chip" style={{ background: 'color-mix(in srgb,var(--green) 15%,transparent)', color: 'var(--soft-green)' }}>✓ {L('Ya lo tienes', 'You have it')}</span>
+                : ios ? <span className="muted" style={{ fontSize: 11.5 }}>{L('Disponible en onyxtradinglive.com', 'Available at onyxtradinglive.com')}</span>
                 : <button className="btn btn-primary ios-pay-hide" style={{ width: '100%' }} onClick={() => onBuy(p.id)}>{L('Desbloquear', 'Unlock')}</button>}
             </div>
           );
