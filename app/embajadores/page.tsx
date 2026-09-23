@@ -95,6 +95,8 @@ export default function Embajadores() {
   const [busy, setBusy] = useState(false);
   const [lcFaqRaw, setLcFaqRaw] = useState<string[][] | null>(null);
   const [lcPage, setLcPage] = useState<any>(null);
+  const [plans, setPlans] = useState<any[]>([]);          // planes reales (precio en vivo)
+  const [calc, setCalc] = useState({ n: 20, price: 19 }); // suscriptores + precio actuales de la calculadora
   const t = dictFor(T, lang);
   // FAQ editable del Landing Builder (si el admin la puso, reemplaza la del código).
   const _validFaq = (lcFaqRaw || []).filter((r) => (r?.[0] || '').trim() || (r?.[2] || '').trim());
@@ -108,6 +110,8 @@ export default function Embajadores() {
     fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json())
       .then((c) => { const rows = c?.faq?.embajadores; if (Array.isArray(rows) && rows.length) setLcFaqRaw(rows); setLcPage(c?.pages?.embajadores || null); })
       .catch(() => {});
+    // Planes reales (precio en vivo del panel) para el selector de la calculadora.
+    fetch('/api/admin/plans', { cache: 'no-store' }).then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => {});
     fetch('/api/ambassador').then(async (r) => {
       if (r.status === 401) {
         setState('guest');
@@ -144,8 +148,8 @@ export default function Embajadores() {
   const rate = s?.tier_rate || 30;
   const minP = s?.min_payout || 50;
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 12, display: 'block' } as any;
-  // Héroe/bola de nieve: ejemplo con 20 suscriptores de $19, usando el % en vivo del panel.
-  const heroPrice = 19, heroSubs = 20;
+  // Héroe/bola de nieve: se mueven con la calculadora (suscriptores + precio del plan) y el % en vivo.
+  const heroSubs = Math.max(1, calc.n), heroPrice = Math.max(1, calc.price);
   const heroMonthly = Math.round(heroPrice * heroSubs * rate / 100);
   const snow = Array.from({ length: 12 }, (_, i) => { const subs = Math.max(1, Math.round(heroSubs * (i + 1) / 12)); return Math.round(heroPrice * subs * rate / 100); });
   const snowMax = Math.max(...snow, 1);
@@ -160,8 +164,8 @@ export default function Embajadores() {
           <h1 style={{ fontSize: 36, letterSpacing: '-1px' }}>{px('h1', t.h1)}</h1>
           <p className="muted" style={{ margin: '12px auto 0', maxWidth: 620, fontSize: 17 }}>{px('sub', t.sub)}</p>
           <div style={{ display: 'inline-block', marginTop: 16, background: 'rgba(35,197,120,.10)', border: '1px solid var(--green)', borderRadius: 12, padding: '10px 20px' }}>
-            <span className="muted" style={{ fontSize: 12.5 }}>{t.heroPill}</span>
-            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--green)' }}>{money(heroMonthly)}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}> /mes {t.k1}</span></div>
+            <span className="muted" style={{ fontSize: 12.5 }}>{lang === 'en' ? `With ${heroSubs} subscribers at ${money(heroPrice)}/mo` : `Con ${heroSubs} suscriptores de ${money(heroPrice)}/mes`}</span>
+            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--green)' }}>{money(heroMonthly)}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}> /{lang === 'en' ? 'mo' : 'mes'} {t.k1}</span></div>
           </div>
         </div>
 
@@ -184,7 +188,7 @@ export default function Embajadores() {
 
         {/* CALCULADORA DE COMISIÓN (tarjeta iluminada) */}
         <div style={{ marginBottom: 44 }}>
-          <EarningsCalc mode="ambassador" pct={rate} lang={lang} />
+          <EarningsCalc mode="ambassador" pct={rate} lang={lang} plans={plans} onValues={(nn, pp) => setCalc({ n: nn, price: pp })} />
         </div>
 
         {/* BOLA DE NIEVE: el ingreso recurrente crece al acumular suscriptores (usa el % en vivo) */}

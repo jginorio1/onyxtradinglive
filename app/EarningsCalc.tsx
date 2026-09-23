@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { mkL } from '@/lib/i18n';
 import type { Lang } from '@/lib/navText';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -17,13 +17,17 @@ type PlanRow = { id: string; name: string; name_en?: string; price_month?: numbe
 const money = (v: number) => '$' + Math.round(v).toLocaleString('en-US');
 const clampPct = (n: any) => Math.max(0, Math.min(100, Number(n) || 0));
 
-export default function EarningsCalc({ mode, pct, lang, plans }: { mode: 'academy' | 'ambassador'; pct: number; lang: Lang; plans?: PlanRow[] }) {
+export default function EarningsCalc({ mode, pct, lang, plans, onValues }: { mode: 'academy' | 'ambassador'; pct: number; lang: Lang; plans?: PlanRow[]; onValues?: (n: number, price: number) => void }) {
   const L = mkL(lang);
   const acad = mode === 'academy';
 
   // Planes que pueden crear academia (excluye Free y planes sin academia).
   const academyPlans = useMemo(() => (plans || [])
     .filter((p) => p?.capabilities?.academy && Number(p.price_month) > 0)
+    .sort((a, b) => Number(a.price_month) - Number(b.price_month)), [plans]);
+  // Planes de pago (para el embajador: elige el plan real y su precio en vivo).
+  const paidPlans = useMemo(() => (plans || [])
+    .filter((p) => Number(p.price_month) > 0)
     .sort((a, b) => Number(a.price_month) - Number(b.price_month)), [plans]);
 
   // IMPORTANTE (reglas de hooks): estos useState se declaran SIEMPRE, antes de
@@ -32,6 +36,19 @@ export default function EarningsCalc({ mode, pct, lang, plans }: { mode: 'academ
   // cuando los planes cargan de forma asíncrona.
   const [n, setN] = useState(acad ? 50 : 20);
   const [price, setPrice] = useState(acad ? 30 : 19);
+  const [selPlan, setSelPlan] = useState('');   // embajador: plan real elegido
+
+  // Embajador: cuando cargan los planes reales, fija el precio al del plan elegido
+  // (o el más barato). Así "Precio/mes" refleja los planes en vivo del admin.
+  useEffect(() => {
+    if (acad || !paidPlans.length) return;
+    const cur = paidPlans.find((p) => p.id === selPlan) || paidPlans[0];
+    if (!selPlan) setSelPlan(cur.id);
+    setPrice(Number(cur.price_month) || 0);
+  }, [paidPlans, selPlan, acad]);
+
+  // Reporta suscriptores y precio al padre (héroe + gráfica de la página).
+  useEffect(() => { if (!acad) onValues?.(n, price); }, [n, price, acad]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const shell = (children: any) => (
     <div style={{ maxWidth: 560, margin: '0 auto', background: 'var(--card)', border: '2px solid var(--brand)', borderRadius: 18, padding: 22, boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 44px rgba(124,140,255,.35)' }}>
@@ -77,7 +94,27 @@ export default function EarningsCalc({ mode, pct, lang, plans }: { mode: 'academ
     <>
       {chip}
       {row(acad ? L('Alumnos', 'Students') : L('Suscriptores', 'Subscribers'), n, acad ? 5 : 1, acad ? 500 : 300, acad ? 5 : 1, setN, String(n))}
-      {row(L('Precio / mes', 'Price / mo'), price, acad ? 5 : 19, acad ? 200 : 99, acad ? 5 : 20, setPrice, '$' + price)}
+      {(!acad && paidPlans.length)
+        ? (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 7 }}>{L('Plan del suscriptor', 'Subscriber plan')}</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {paidPlans.map((p) => {
+                const on = (selPlan || paidPlans[0].id) === p.id;
+                return (
+                  <button key={p.id} onClick={() => { setSelPlan(p.id); setPrice(Number(p.price_month) || 0); }} style={{
+                    flex: '1 1 0', minWidth: 88, cursor: 'pointer', textAlign: 'center', borderRadius: 12, padding: '9px 8px',
+                    background: on ? 'rgba(124,140,255,.14)' : 'var(--card2)', border: on ? '2px solid var(--brand)' : '1px solid var(--line)', color: 'var(--tx)',
+                  }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 800 }}>{lang === 'en' ? (p.name_en || p.name) : p.name}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--mut)', marginTop: 2 }}>{money(Number(p.price_month))}/{L('mes', 'mo')}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )
+        : row(L('Precio / mes', 'Price / mo'), price, acad ? 5 : 19, acad ? 200 : 99, acad ? 5 : 20, setPrice, '$' + price)}
       {acad ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 10, marginTop: 6 }}>
           {box(L('Ingreso bruto', 'Gross'), money(gross))}
