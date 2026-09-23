@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import SalesPerf from './SalesPerf';
 import { HintPop } from '@/app/components/HintPop';
 import GuidePanel, { type GuideStep } from '@/app/components/GuidePanel';
@@ -833,7 +833,7 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
             {[{ ic: 'user', c: '#5ed6a0', t: names.vendedor || 'Vendedor', s: 'cerró la venta', tag: 'Directo' },
               { ic: 'users-group', c: '#a9b0ff', t: names.l1 || 'Líder', s: 'jefe de arriba', tag: 'Override 1' },
               { ic: 'crown', c: '#e5b567', t: names.l2 || 'Director', s: 'jefe de más arriba', tag: 'Override 2' }].map((p, i) => (
-              <React.Fragment key={i}>
+              <Fragment key={i}>
                 {i > 0 && <span style={{ color: 'var(--mut,#9aa6bd)' }}>→</span>}
                 <div style={{ flex: 1, minWidth: 92, textAlign: 'center', border: `1px solid ${p.c}55`, borderRadius: 9, padding: '8px 6px' }}>
                   <span style={{ color: p.c }}>{ic(p.ic, 17, p.c)}</span>
@@ -841,7 +841,7 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
                   <div style={{ fontSize: 10.5, color: 'var(--mut,#9aa6bd)' }}>{p.s}</div>
                   <div style={{ fontSize: 11.5, fontWeight: 600, color: p.c, marginTop: 2 }}>{p.tag}</div>
                 </div>
-              </React.Fragment>
+              </Fragment>
             ))}
           </div>
         </div>
