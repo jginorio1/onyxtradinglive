@@ -246,6 +246,12 @@ function ic(name: string, size = 16, color = 'currentColor') {
     'plus': 'M12 5v14M5 12h14',
     'rocket': 'M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2 0-2.7a1.9 1.9 0 00-3 0M12 15l-3-3a22 22 0 016-11 8.5 8.5 0 018 8 22 22 0 01-11 6M9 12H4s.5-2.8 2-4c1.7-1.4 5-1 5-1M12 15v5s2.8-.5 4-2c1.4-1.4 1-5 1-5',
     'gift': 'M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z',
+    'target': 'M12 3a9 9 0 100 18 9 9 0 000-18M12 8a4 4 0 100 8 4 4 0 000-8M12 12h.01',
+    'stairs': 'M4 20h4v-4h4v-4h4v-4h4',
+    'crown': 'M4 17h16l-1-8-4 4-3-6-3 6-4-4z',
+    'user': 'M12 12a4 4 0 100-8 4 4 0 000 8M4 21v-1a5 5 0 015-5h6a5 5 0 015 5v1',
+    'school': 'M12 4L2 9l10 5 10-5-10-5zM6 12v4c0 1.5 3 3 6 3s6-1.5 6-3v-4',
+    'robot': 'M9 2h6M12 2v3M6 8h12a1 1 0 011 1v8a1 1 0 01-1 1H6a1 1 0 01-1-1V9a1 1 0 011-1zM9 13h.01M15 13h.01',
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', flex: 'none' }}><path d={p[name] || ''} /></svg>;
 }
@@ -814,33 +820,55 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           {scopeTog('copy', 'Comisiones de Copy')}
         </div>
       </div>
-      <div style={card}>
-        <b>Comisión por línea (opcional)<Hint text="Un % propio (más bajo) solo para Academia, Bot Lab o Copy, que ya pagan al mentor/creador. Así el vendedor cobra un incentivo sin doblar el pago. En blanco = usa el % global de arriba. Recuerda encender la línea en 'Sobre qué servicios se paga comisión'." /></b>
+      <div style={{ ...card, borderLeft: '4px solid #a679ff' }}>
+        <b style={{ display: 'flex', alignItems: 'center', gap: 7 }}>{ic('cash', 16, '#a679ff')} Comisión por línea (opcional)<Hint text="Un % propio (más bajo) solo para Academia, Bot Lab o Copy, que ya pagan al mentor/creador. Así el vendedor cobra un incentivo sin doblar el pago. En blanco = usa el % global de arriba. Recuerda encender la línea en 'Sobre qué servicios se paga comisión'." /></b>
         <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
           Academia y Bot Lab <b>ya pagan</b> al mentor/creador. Si activas su comisión de ventas, pon aquí un <b>% propio más bajo</b> (sale de la parte de Onyx) para no doblar el pago. En blanco = usa el % global de arriba.
         </div>
+
+        {/* Mini-diagrama: cómo se reparte una venta (explica qué es el override). */}
+        <div style={{ background: 'var(--bg,#0e1220)', border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: '10px 12px', margin: '12px 0' }}>
+          <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginBottom: 8 }}>Cuando alguien vende, la comisión sube por la red:</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {[{ ic: 'user', c: '#5ed6a0', t: names.vendedor || 'Vendedor', s: 'cerró la venta', tag: 'Directo' },
+              { ic: 'users-group', c: '#a9b0ff', t: names.l1 || 'Líder', s: 'jefe de arriba', tag: 'Override 1' },
+              { ic: 'crown', c: '#e5b567', t: names.l2 || 'Director', s: 'jefe de más arriba', tag: 'Override 2' }].map((p, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <span style={{ color: 'var(--mut,#9aa6bd)' }}>→</span>}
+                <div style={{ flex: 1, minWidth: 92, textAlign: 'center', border: `1px solid ${p.c}55`, borderRadius: 9, padding: '8px 6px' }}>
+                  <span style={{ color: p.c }}>{ic(p.ic, 17, p.c)}</span>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: p.c }}>{p.t}</div>
+                  <div style={{ fontSize: 10.5, color: 'var(--mut,#9aa6bd)' }}>{p.s}</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: p.c, marginTop: 2 }}>{p.tag}</div>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
         {(() => {
           const lr = f.line_rates || {};
           const ulr = (line: string, slot: string, v: string) => setF((x: any) => ({ ...x, line_rates: { ...(x.line_rates || {}), [line]: { ...((x.line_rates || {})[line] || {}), [slot]: v === '' ? null : Number(v) } } }));
           const val = (line: string, slot: string) => { const v = (lr as any)[line]?.[slot]; return v == null ? '' : v; };
           const inpS: React.CSSProperties = { ...inp, width: 72, textAlign: 'right' };
-          const lines: [string, string][] = [['academy', 'Academia'], ['botlab', 'Bot Lab'], ['copy', 'Copy']];
+          const lines: [string, string, string, string][] = [['academy', 'Academia', 'school', '#a679ff'], ['botlab', 'Bot Lab', 'robot', '#e5b567'], ['copy', 'Copy', 'copy', '#4f9dff']];
           const gl = { direct: f.direct_rate, override1: f.override1_rate, override2: f.override2_rate };
+          const cols: [string, string][] = [['direct', names.vendedor || 'El vendedor'], ['override1', names.l1 || 'Su líder'], ['override2', names.l2 || 'Su director']];
           return (
-            <div style={{ overflowX: 'auto', marginTop: 10 }}>
-              <table style={{ borderCollapse: 'collapse', minWidth: 380 }}>
+            <div style={{ overflowX: 'auto', marginTop: 4 }}>
+              <table style={{ borderCollapse: 'collapse', minWidth: 400, width: '100%' }}>
                 <thead><tr>
                   <th style={{ textAlign: 'left', padding: '4px 8px', fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Línea</th>
-                  <th style={{ textAlign: 'right', padding: '4px 8px', fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Directo %</th>
-                  <th style={{ textAlign: 'right', padding: '4px 8px', fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Ov. 1 %</th>
-                  <th style={{ textAlign: 'right', padding: '4px 8px', fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>Ov. 2 %</th>
+                  {cols.map(([slot, label]) => (
+                    <th key={slot} style={{ textAlign: 'center', padding: '4px 8px', fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>{label}<div style={{ fontSize: 10, opacity: .7 }}>{slot === 'direct' ? 'Directo %' : slot === 'override1' ? 'Override 1 %' : 'Override 2 %'}</div></th>
+                  ))}
                 </tr></thead>
                 <tbody>
-                  {lines.map(([k, label]) => (
+                  {lines.map(([k, label, icn, col]) => (
                     <tr key={k}>
-                      <td style={{ padding: '5px 8px', fontSize: 13, color: 'var(--tx,#e8ecf5)' }}>{label}</td>
+                      <td style={{ padding: '6px 8px', fontSize: 13, color: 'var(--tx,#e8ecf5)', borderLeft: `3px solid ${col}` }}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>{ic(icn, 16, col)} {label}</span></td>
                       {(['direct', 'override1', 'override2'] as const).map((slot) => (
-                        <td key={slot} style={{ padding: '5px 8px', textAlign: 'right' }}>
+                        <td key={slot} style={{ padding: '5px 8px', textAlign: 'center' }}>
                           <input type="number" value={val(k, slot)} onChange={(e) => ulr(k, slot, e.target.value)} placeholder={String((gl as any)[slot] ?? 0)} style={inpS} />
                         </td>
                       ))}
@@ -877,16 +905,29 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           <label style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)' }}>Pedirla después de<input type="number" value={rev.after_days} onChange={(e) => urev('after_days', Number(e.target.value))} style={{ ...inp, width: 90, margin: '0 8px' }} />días de ser cliente</label>
         </div>
       </div>
-      <div style={card}>
-        <b>Metas por defecto (mensuales)</b>
+      <div style={{ ...card, borderLeft: '4px solid #5ed6a0' }}>
+        <b style={{ display: 'flex', alignItems: 'center', gap: 7 }}>{ic('target', 16, '#5ed6a0')} Metas por defecto (mensuales)</b>
         <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
-          Se aplican a todos los vendedores salvo que fijes una meta propia en la pestaña «Metas». El bono se paga solo como comisión al cumplir.
+          Lo que cada vendedor debe lograr al mes. Al cumplir, gana el bono. Puedes fijar una meta propia por persona en la pestaña «Metas».
         </div>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>
-          {num('goal_clients', 'Meta de clientes nuevos', '', 'Cuántos clientes nuevos (que pagaron) debe traer un vendedor al mes para cumplir su meta. 0 = no se mide por clientes.')}
-          {num('goal_amount', 'Meta de comisión', '$', 'Cuánta comisión debe generar en el mes para cumplir. 0 = no se mide por dinero.')}
-          {num('goal_bonus', 'Bono al cumplir', '$', 'Bono extra que se paga (como comisión) cuando el vendedor cumple su meta del mes. 0 = sin bono.')}
+        {/* Fórmula visual: (clientes o comisión) → bono */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'stretch', marginTop: 12 }}>
+          <div style={{ flex: '1 1 130px', border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)' }}>Trae … clientes nuevos</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}><input type="number" value={f.goal_clients ?? 0} onChange={(e) => u('goal_clients', Number(e.target.value))} style={{ ...inp, width: 80 }} /><span className="muted" style={{ fontSize: 12 }}>clientes</span></div>
+          </div>
+          <div style={{ alignSelf: 'center', color: 'var(--mut,#9aa6bd)', fontSize: 12, fontWeight: 700 }}>o</div>
+          <div style={{ flex: '1 1 130px', border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)' }}>… o genera de comisión</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}><span className="muted">$</span><input type="number" value={f.goal_amount ?? 0} onChange={(e) => u('goal_amount', Number(e.target.value))} style={{ ...inp, width: 90 }} /></div>
+          </div>
+          <div style={{ alignSelf: 'center' }}>{ic('plus', 16, '#5ed6a0')}<span style={{ display: 'block', height: 0 }} /></div>
+          <div style={{ flex: '1 1 130px', border: '1px solid #e5b56766', borderRadius: 10, padding: '10px 12px', background: 'rgba(229,181,103,.06)' }}>
+            <div style={{ fontSize: 11, color: '#e5b567', display: 'flex', alignItems: 'center', gap: 5 }}>{ic('gift', 13, '#e5b567')} Bono al cumplir</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}><span style={{ color: '#e5b567' }}>$</span><input type="number" value={f.goal_bonus ?? 0} onChange={(e) => u('goal_bonus', Number(e.target.value))} style={{ ...inp, width: 90 }} /></div>
+          </div>
         </div>
+        <div className="muted" style={{ fontSize: 11, marginTop: 8, lineHeight: 1.5 }}>Pon 0 en clientes o en comisión si no quieres medir por ese lado. El bono se paga como comisión extra al cumplir.</div>
       </div>
       <div style={card}>
         <b>Notificaciones al vendedor</b>
@@ -898,19 +939,38 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           {tog('notify_payout', 'Pago enviado', 'Avisa cuando le pagas su saldo (por Stripe, USDT o manual).')}
         </div>
       </div>
-      <div style={card}>
-        <b>Ascensos y reparto automáticos</b>
+      <div style={{ ...card, borderLeft: '4px solid #4f9dff' }}>
+        <b style={{ display: 'flex', alignItems: 'center', gap: 7 }}>{ic('stairs', 16, '#4f9dff')} Ascensos y reparto automáticos</b>
         <div className="muted" style={{ fontSize: 12, marginTop: 4, lineHeight: 1.5 }}>
-          Reversible: puedes degradar a alguien a mano y apagar esto cuando quieras.
+          Suben solos de nivel al llegar al umbral. Reversible: puedes degradar a alguien a mano y apagar esto cuando quieras.
         </div>
+
+        {/* Escalera visual Vendedor → Líder → Director con su umbral */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, margin: '14px 0 4px' }}>
+          <div style={{ flex: 1, textAlign: 'center', border: '1px solid #5ed6a066', borderRadius: 10, padding: '8px 4px' }}>
+            {ic('user', 17, '#5ed6a0')}<div style={{ fontSize: 12.5, fontWeight: 600, color: '#5ed6a0' }}>{names.vendedor || 'Advisor'}</div>
+          </div>
+          <div style={{ textAlign: 'center', flex: 'none' }}>
+            <input type="number" value={f.promote_to_l1_clients ?? 0} onChange={(e) => u('promote_to_l1_clients', Number(e.target.value))} style={{ ...inp, width: 56, textAlign: 'center', padding: '5px 4px' }} />
+            <div style={{ fontSize: 10, color: 'var(--mut,#9aa6bd)', marginTop: 2 }}>clientes →</div>
+          </div>
+          <div style={{ flex: 1, textAlign: 'center', border: '1px solid #a9b0ff66', borderRadius: 10, padding: '15px 4px' }}>
+            {ic('users-group', 17, '#a9b0ff')}<div style={{ fontSize: 12.5, fontWeight: 600, color: '#a9b0ff' }}>{names.l1 || 'Lead'}</div>
+          </div>
+          <div style={{ textAlign: 'center', flex: 'none' }}>
+            <input type="number" value={f.promote_to_l2_team ?? 0} onChange={(e) => u('promote_to_l2_team', Number(e.target.value))} style={{ ...inp, width: 56, textAlign: 'center', padding: '5px 4px' }} />
+            <div style={{ fontSize: 10, color: 'var(--mut,#9aa6bd)', marginTop: 2 }}>en equipo →</div>
+          </div>
+          <div style={{ flex: 1, textAlign: 'center', border: '1px solid #e5b56766', borderRadius: 10, padding: '22px 4px' }}>
+            {ic('crown', 17, '#e5b567')}<div style={{ fontSize: 12.5, fontWeight: 600, color: '#e5b567' }}>{names.l2 || 'Director'}</div>
+          </div>
+        </div>
+        <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>Escribe el umbral en cada flecha. 0 = desactiva ese ascenso.</div>
+
         <div style={{ display: 'grid', gap: 6, marginTop: 10, maxWidth: 520 }}>
-          {tog('auto_promote', 'Ascender de nivel automáticamente al llegar al umbral', 'Sube solo a un vendedor cuando alcanza los umbrales de abajo. El descenso NO es automático: lo haces tú a mano en la tarjeta de la persona. Apagado, no sube nadie solo.')}
+          {tog('auto_promote', 'Ascender de nivel automáticamente al llegar al umbral', 'Sube solo a un vendedor cuando alcanza los umbrales de arriba. El descenso NO es automático: lo haces tú a mano en la tarjeta de la persona. Apagado, no sube nadie solo.')}
           {tog('auto_assign_leads', 'Repartir leads sin dueño entre vendedores (round-robin)', 'Cuando alguien se registra SIN el enlace de un vendedor, el sistema lo asigna solo al vendedor con menos clientes. Apagado, esos leads quedan sin dueño hasta que los repartas a mano en Crecimiento.')}
           {tog('recruit_auto_approve', 'Reclutamiento en cascada: aprobar solo a quien entra por el enlace de un supervisor', 'Cada supervisor tiene su enlace personal de reclutamiento (aparece en su panel). Con esto ENCENDIDO, si el candidato ya tiene cuenta en la app, se cuelga solo en la rama de quien lo trajo. Apagado (recomendado al inicio): la solicitud llega a Solicitudes ya marcada con quién lo trajo, y tú la apruebas.')}
-        </div>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 12 }}>
-          {num('promote_to_l1_clients', 'Advisor → Lead con … clientes activos', '', 'Cuántos clientes activos (pagando) debe tener un Advisor para subir solo a Lead. 0 = desactiva este ascenso.')}
-          {num('promote_to_l2_team', 'Lead → Director con … en su equipo', '', 'Cuántas personas debe tener un Lead en su equipo para subir solo a Director. 0 = desactiva este ascenso.')}
         </div>
       </div>
       {canManage && <button style={btnP} onClick={() => act({ action: 'save_settings', settings: f })}>Guardar ajustes</button>}

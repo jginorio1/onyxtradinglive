@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 // ============================================================
 // Popup de ayuda ROBUSTO (el "?" o la "i" al lado de las etiquetas).
@@ -13,9 +14,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 // ============================================================
 export function HintPop({ text, glyph = '?' }: { text: string; glyph?: string }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);   // portal solo tras montar (evita SSR)
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const popRef = useRef<HTMLSpanElement | null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
+  // Cierra el globo si te vas de la página o cambias de pestaña.
+  useEffect(() => { if (!open) setPos(null); }, [open]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -51,25 +57,28 @@ export function HintPop({ text, glyph = '?' }: { text: string; glyph?: string })
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o); }}
         style={{ width: 16, height: 16, borderRadius: '50%', border: '1px solid var(--line,#3a4363)', background: 'var(--card,#1b2338)', color: 'var(--mut,#9aa6bd)', fontSize: 10.5, lineHeight: '14px', cursor: 'pointer', padding: 0, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}
       >{glyph}</button>
-      {open && (
+      {/* El globo va por PORTAL al <body>: así el position:fixed nunca se rompe
+          aunque una tarjeta o panel padre tenga transform/filter (era lo que
+          dejaba la capa mal colocada y "congelaba" la página). */}
+      {open && mounted && createPortal(
         <>
-          {/* Capa para cerrar tocando fuera */}
-          <span
-            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
-            style={{ position: 'fixed', inset: 0, zIndex: 4000, background: 'transparent' }}
+          <div
+            onPointerDown={(e) => { e.stopPropagation(); setOpen(false); }}
+            style={{ position: 'fixed', inset: 0, zIndex: 100000, background: 'transparent' }}
           />
-          <span
-            ref={popRef} role="tooltip" onClick={(e) => e.stopPropagation()}
-            style={{ position: 'fixed', top: pos?.top ?? -9999, left: pos?.left ?? -9999, width: pos?.width ?? 260, background: 'var(--panel,#161c2e)', border: '1px solid var(--accent,#8b93ff)', borderRadius: 10, padding: '10px 12px', paddingRight: 28, fontSize: 12, color: 'var(--tx,#e8ecf5)', lineHeight: 1.5, zIndex: 4001, boxShadow: '0 10px 34px rgba(0,0,0,.5)', fontWeight: 400, whiteSpace: 'normal', textAlign: 'left', maxHeight: '60vh', overflowY: 'auto', visibility: pos ? 'visible' : 'hidden' }}
+          <div
+            ref={popRef as any} role="tooltip" onPointerDown={(e) => e.stopPropagation()}
+            style={{ position: 'fixed', top: pos?.top ?? -9999, left: pos?.left ?? -9999, width: pos?.width ?? 260, background: 'var(--panel,#161c2e)', border: '1px solid var(--accent,#8b93ff)', borderRadius: 10, padding: '10px 12px', paddingRight: 28, fontSize: 12, color: 'var(--tx,#e8ecf5)', lineHeight: 1.5, zIndex: 100001, boxShadow: '0 10px 34px rgba(0,0,0,.5)', fontWeight: 400, whiteSpace: 'normal', textAlign: 'left', maxHeight: '60vh', overflowY: 'auto', visibility: pos ? 'visible' : 'hidden' }}
           >
             <button
               type="button" aria-label="Cerrar"
-              onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+              onPointerDown={(e) => { e.stopPropagation(); setOpen(false); }}
               style={{ position: 'absolute', top: 3, right: 3, width: 22, height: 22, borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--mut,#9aa6bd)', fontSize: 14, cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >✕</button>
             {text}
-          </span>
-        </>
+          </div>
+        </>,
+        document.body,
       )}
     </span>
   );
