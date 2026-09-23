@@ -383,8 +383,8 @@ export default function KeysPage() {
               <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.limitD}</p>
               {addon?.enabled ? (
                 <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Link className="btn btn-primary" href="/account">➕ {t.addBuy} · ${addon.price}{t.addMo}</Link>
-                  <span className="muted" style={{ fontSize: 12.5 }}>{t.addOr}</span>
+                  <Link className="btn btn-primary ios-pay-hide" href="/account">➕ {t.addBuy} · ${addon.price}{t.addMo}</Link>
+                  <span className="muted ios-pay-hide" style={{ fontSize: 12.5 }}>{t.addOr}</span>
                   <Link className="btn btn-ghost" href="/pricing">{t.limitCta}</Link>
                 </div>
               ) : (

@@ -52,8 +52,8 @@ export default function ManageOnWeb({ lang, planName }: { lang: 'es' | 'en'; pla
                 ? (es ? `Tu plan actual es ${planName}. ` : `Your current plan is ${planName}. `)
                 : ''}
               {es
-                ? 'Para cambiar tu tarjeta, subir o bajar de plan, entra a onyxtradinglive.com desde tu navegador.'
-                : 'To change your card or upgrade/downgrade your plan, go to onyxtradinglive.com in your browser.'}
+                ? 'Tu suscripción y tu facturación se gestionan en onyxtradinglive.com. Con tu cuenta activa puedes usar la app con normalidad.'
+                : 'Your subscription and billing are managed at onyxtradinglive.com. With an active account you can use the app normally.'}
             </div>
           </div>
         </div>
