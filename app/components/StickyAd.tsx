@@ -31,7 +31,7 @@ export default function StickyAd({ lang }: { lang: 'es' | 'en' }) {
   const close = () => { setClosed(true); try { sessionStorage.setItem('onyx_sticky_closed', '1'); } catch {} };
 
   return (
-    <div className="onyx-ad" style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 60, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, padding: '6px 10px', background: 'color-mix(in srgb, var(--bg, #0d0e12) 92%, transparent)', borderTop: '1px solid var(--line)', backdropFilter: 'blur(6px)' }}>
+    <div className="onyx-ad onyx-sticky" style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 'calc(10px + env(safe-area-inset-bottom))', zIndex: 45, width: 'max-content', maxWidth: 'min(620px, calc(100vw - 150px))', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, padding: '6px 12px', background: 'color-mix(in srgb, var(--bg, #0d0e12) 92%, transparent)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 8px 30px rgba(0,0,0,.4)', backdropFilter: 'blur(6px)' }}>
       <span style={{ fontSize: 9, letterSpacing: '.05em', color: 'var(--mut)', textTransform: 'uppercase' }}>{L('Publicidad', 'Ad')}</span>
       {ad.kind === 'paid' ? (
         <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" onClick={onClick} style={{ lineHeight: 0, display: 'block', maxWidth: 320 }}>
