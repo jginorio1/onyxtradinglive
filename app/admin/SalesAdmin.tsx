@@ -975,7 +975,7 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
         </div>
       </div>
 
-      <ProposalCard f={f} names={names} inp={inp} btn={btn} btnP={btnP} card={card} />
+      <ProposalCard f={f} names={names} inp={inp} btnP={btnP} card={card} />
 
       {canManage && <button style={btnP} onClick={() => act({ action: 'save_settings', settings: f })}>Guardar ajustes</button>}
     </div>
@@ -984,7 +984,8 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
 
 // Propuesta para vendedores: vista previa en vivo (usa los ajustes en pantalla),
 // descargar PDF y enviar por email. Todo se recalcula al cambiar cualquier %.
-function ProposalCard({ f, names, inp, btn, btnP, card }: any) {
+function ProposalCard({ f, names, inp, btnP, card }: any) {
+  const btn: React.CSSProperties = { padding: '7px 12px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--panel,#161c2e)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 12.5 };
   const [price, setPrice] = useState(100);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
