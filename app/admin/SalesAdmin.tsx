@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import SalesPerf from './SalesPerf';
 import { HintPop } from '@/app/components/HintPop';
+import GuidePanel, { type GuideStep } from '@/app/components/GuidePanel';
 
 // Panel ADMIN de la red de ventas · rediseño moderno:
 // tarjetas de color por nivel, arrastrar y soltar para mover vendedores en el
@@ -52,11 +53,96 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
     setDragId('');
   }
 
+  // ===== GUÍA flotante (igual que la de Anuncios): pasos con dibujo + ejemplo.
+  // Cada paso apunta a una sección real por data-guide; al tocarlo cambia de
+  // pestaña y la ilumina con una flecha. Contenido en español (este panel es ES).
+  const GD = '#d9b661', GRN = '#5ed6a0', BLU = '#a9b0ff', MUT = '#8b93a7', LN = '#2a3350';
+  const gsvg: Record<string, string> = {
+    // Motor: vendedor → cliente → % (cadena de override)
+    motor: `<svg viewBox="0 0 250 120" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Motor de ventas">
+      <circle cx="34" cy="60" r="16" fill="rgba(94,214,160,.18)" stroke="${GRN}"/><text x="34" y="63" fill="${GRN}" font-size="8" text-anchor="middle" font-family="sans-serif">Vend.</text>
+      <path d="M52 60 H92" stroke="${MUT}" stroke-width="2" marker-end="url(#a)"/>
+      <rect x="94" y="44" width="46" height="32" rx="6" fill="#fff"/><text x="117" y="63" fill="#0b0f1e" font-size="8" text-anchor="middle" font-family="sans-serif">Cliente</text>
+      <path d="M142 60 H182" stroke="${GD}" stroke-width="2" marker-end="url(#a)"/>
+      <rect x="184" y="42" width="52" height="36" rx="6" fill="rgba(212,175,90,.16)" stroke="${GD}"/><text x="210" y="58" fill="${GD}" font-size="8" text-anchor="middle" font-family="sans-serif">comisión</text><text x="210" y="70" fill="${GD}" font-size="10" font-weight="700" text-anchor="middle" font-family="sans-serif">%</text>
+      <defs><marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="${MUT}"/></marker></defs></svg>`,
+    // Impulso: barra alta 1er mes, baja después
+    impulso: `<svg viewBox="0 0 250 120" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Impulso primer mes">
+      <line x1="20" y1="100" x2="240" y2="100" stroke="${LN}"/>
+      <rect x="30" y="24" width="34" height="76" rx="4" fill="rgba(212,175,90,.85)"/><text x="47" y="18" fill="${GD}" font-size="9" text-anchor="middle" font-family="sans-serif">1.er mes</text><text x="47" y="118" fill="${MUT}" font-size="8" text-anchor="middle" font-family="sans-serif">alto</text>
+      ${[1,2,3,4,5].map((i)=>`<rect x="${78+i*28}" y="76" width="20" height="24" rx="3" fill="rgba(94,214,160,.75)"/>`).join('')}
+      <text x="150" y="70" fill="${GRN}" font-size="9" text-anchor="middle" font-family="sans-serif">residual bajo →</text></svg>`,
+    // Retención: escalera de mecanismos
+    reten: `<svg viewBox="0 0 250 120" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Retencion">
+      ${['Bono','Ascenso','Residual','Metas'].map((t,i)=>`<rect x="${18+i*56}" y="${92-i*20}" width="48" height="${20+i*20}" rx="4" fill="rgba(139,147,255,${.25+i*.12})" stroke="${BLU}"/><text x="${42+i*56}" y="108" fill="${BLU}" font-size="7.5" text-anchor="middle" font-family="sans-serif">${t}</text>`).join('')}</svg>`,
+    // Árbol de la red (3 niveles)
+    red: `<svg viewBox="0 0 250 120" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="La red">
+      <rect x="100" y="10" width="50" height="22" rx="6" fill="rgba(212,175,90,.16)" stroke="${GD}"/><text x="125" y="25" fill="${GD}" font-size="8" text-anchor="middle" font-family="sans-serif">Director</text>
+      <path d="M125 32 V46 M125 46 H70 M125 46 H180 M70 46 V56 M180 46 V56" stroke="${MUT}"/>
+      <rect x="46" y="56" width="48" height="20" rx="5" fill="rgba(139,147,255,.16)" stroke="${BLU}"/><text x="70" y="70" fill="${BLU}" font-size="7.5" text-anchor="middle" font-family="sans-serif">Líder</text>
+      <rect x="156" y="56" width="48" height="20" rx="5" fill="rgba(139,147,255,.16)" stroke="${BLU}"/><text x="180" y="70" fill="${BLU}" font-size="7.5" text-anchor="middle" font-family="sans-serif">Líder</text>
+      <path d="M70 76 V88 M180 76 V88" stroke="${MUT}"/>
+      <rect x="46" y="88" width="48" height="20" rx="5" fill="rgba(94,214,160,.16)" stroke="${GRN}"/><text x="70" y="102" fill="${GRN}" font-size="7.5" text-anchor="middle" font-family="sans-serif">Vend.</text>
+      <rect x="156" y="88" width="48" height="20" rx="5" fill="rgba(94,214,160,.16)" stroke="${GRN}"/><text x="180" y="102" fill="${GRN}" font-size="7.5" text-anchor="middle" font-family="sans-serif">Vend.</text></svg>`,
+    // Pagos: candado madura → $
+    pagos: `<svg viewBox="0 0 250 120" width="230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pagos">
+      <rect x="26" y="46" width="40" height="34" rx="5" fill="none" stroke="${MUT}"/><path d="M34 46 v-6 a6 6 0 0112 0 v6" fill="none" stroke="${MUT}"/><text x="46" y="96" fill="${MUT}" font-size="7.5" text-anchor="middle" font-family="sans-serif">madura</text>
+      <path d="M78 63 H118" stroke="${GRN}" stroke-width="2" marker-end="url(#b)"/>
+      <circle cx="150" cy="63" r="20" fill="rgba(94,214,160,.18)" stroke="${GRN}"/><text x="150" y="67" fill="${GRN}" font-size="14" font-weight="700" text-anchor="middle" font-family="sans-serif">$</text>
+      <text x="150" y="96" fill="${MUT}" font-size="7.5" text-anchor="middle" font-family="sans-serif">disponible</text>
+      <defs><marker id="b" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="${GRN}"/></marker></defs></svg>`,
+  };
+  // Mapea el data-guide del paso a la sub-pestaña que hay que abrir.
+  const guideSub = (t: string): typeof sub => {
+    if (t.includes('impulso') || t.includes('comisiones') || t.includes('ajustes')) return 'ajustes';
+    if (t.includes('red')) return 'red';
+    if (t.includes('metas')) return 'metas';
+    if (t.includes('crecimiento')) return 'crecimiento';
+    if (t.includes('kit')) return 'kit';
+    if (t.includes('pagos')) return 'pagos';
+    return sub;
+  };
+  const guideSteps: GuideStep[] = [
+    { target: '[data-guide="subtabs"]', title: '1 · Cómo funciona (empieza aquí)',
+      body: 'Esta área es tu FUERZA DE VENTAS: personas que venden tus planes a cambio de comisión. La idea es que sean el motor del negocio.\n\nCada vendedor tiene un enlace único. Cuando alguien compra por ese enlace, se vuelve SU cliente y el vendedor cobra un % de cada pago mensual mientras el cliente siga pagando.\n\nHay 3 niveles (Vendedor, Líder, Director). Cuando un Vendedor cierra, su Líder y su Director de arriba también cobran un pequeño "override". Así los buenos vendedores quieren armar equipo.\n\nLas pestañas de arriba controlan cada parte: La red (el árbol), Metas, Crecimiento, Kit, Solicitudes, Ajustes (las reglas) y Pagos.',
+      svg: gsvg.motor,
+      example: 'Un vendedor comparte su enlace en su grupo de Telegram. 3 traders compran el plan Pro de $79. Esos 3 quedan como sus clientes y cobra su % de los $79 cada mes que sigan pagando.' },
+    { target: '[data-guide="impulso"]', title: '2 · Impulso 1.er mes + residual (el corazón)',
+      body: 'Este es el modelo que elegiste para motivar a vender SIN destruir tu margen.\n\n• Primer mes: pagas un % ALTO (ej. 40-50%) del primer pago de cada cliente nuevo. Es el "golpe" que emociona al vendedor y lo hace salir a vender hoy.\n• A partir del 2.º mes: pagas un % MENOR recurrente (ej. 15%). Es el residual que cuida tu margen a largo plazo.\n\nActívalo con el interruptor y pon los tres % del primer mes (directo y overrides). Los % normales de la sección Comisiones se usan del segundo mes en adelante.',
+      svg: gsvg.impulso,
+      example: 'Cliente de $100/mes con 45% primer mes y 15% residual: el vendedor gana $45 el primer mes y $15 cada mes siguiente. En un año son $210 por ESE cliente — más que un embajador el primer mes, pero sin cargar 30% para siempre.' },
+    { target: '[data-guide="impulso"]', title: '3 · Bono primeras ventas',
+      body: 'Dentro de la misma tarjeta de Impulso está el "Bono primeras ventas": un premio ÚNICO (una sola vez por vendedor) cuando llega a X clientes que ya pagaron.\n\nSirve para el arranque: le das una meta clara y una recompensa por despegar rápido, que es cuando más gente se rinde.\n\nPon "Al llegar a (clientes)" y el "Bono" en $. Con 0 en cualquiera de los dos, se desactiva.',
+      svg: gsvg.reten,
+      example: 'Bono = $100 al llegar a 5 clientes. Un vendedor nuevo cierra su 5.º cliente que paga → se le acredita $100 extra una sola vez, además de sus comisiones normales. Es el empujón para que no abandone en las primeras semanas.' },
+    { target: '[data-guide="comisiones"]', title: '4 · Comisiones y overrides (el residual)',
+      body: 'Aquí pones los % NORMALES (recurrentes) y cuántos meses se pagan:\n\n• Vendedor directo: el % de quien cerró la venta.\n• Override 1 y 2: el % para los dos niveles arriba de él en el árbol.\n• Meses (0 = ∞): cuántos meses en total se paga por cada cliente. 0 = para siempre mientras pague.\n\nLa tabla de abajo te muestra, con un cliente de $100, exactamente cuánto gana cada quién según quién cierra. Cambia solo si editas los %.',
+      svg: gsvg.motor,
+      example: 'Directo 15%, Override1 5%, Override2 3%. Si un Vendedor cierra un cliente de $100: él gana $15, su Líder $5 y su Director $3 cada mes. Si el Líder cierra directo, él gana los $15 y su Director el override.' },
+    { target: '[data-guide="red"]', title: '5 · La red (tu árbol de vendedores)',
+      body: 'Aquí está tu equipo en 3 niveles. Puedes ARRASTRAR una tarjeta y soltarla sobre un supervisor para moverla de rama, o soltarla en el tope para quitarle supervisor.\n\nAñade gente de dos formas: aprobando una Solicitud, o "Añadir representante" por su correo (debe tener cuenta). Cada tarjeta abre sus permisos, nivel, supervisor y saldos.',
+      svg: gsvg.red,
+      example: 'Contratas un Director con experiencia. Arrastras 4 vendedores nuevos bajo él para que los entrene. Ahora cada venta de esos 4 le paga un override al Director, así que le conviene que su gente venda.' },
+    { target: '[data-guide="metas"]', title: '6 · Metas y leaderboard',
+      body: 'Pon objetivos con recompensa (ej. "5 ventas este mes = $X") y una tabla de posiciones. La competencia sana y las metas cortas son de las cosas que más retienen vendedores a mediano plazo.\n\nEl leaderboard muestra quién va ganando y motiva al resto a alcanzarlo.',
+      svg: gsvg.reten,
+      example: 'Meta del mes: "8 clientes nuevos = bono $150". El leaderboard muestra a María en 6 y a Luis en 5. Los dos empujan la última semana para llegar a 8. Tú ganas 8+ clientes nuevos por vendedor.' },
+    { target: '[data-guide="crecimiento"]', title: '7 · Crecimiento (ascensos y leads)',
+      body: 'Dos motores de largo plazo:\n\n• Ascensos automáticos: cuando un vendedor cumple X (ventas/equipo), sube de nivel solo (Vendedor → Líder → Director) y gana overrides. Es la "carrera" que los mantiene años.\n• Embudo y leads sin dueño: repartes prospectos y ves en qué etapa va cada uno.',
+      svg: gsvg.red,
+      example: 'Regla: "20 clientes activos → asciende a Líder". Un vendedor los alcanza y sube solo; ahora puede reclutar y cobra override de su equipo. Tiene motivo para quedarse y crecer en vez de irse.' },
+    { target: '[data-guide="pagos"]', title: '8 · Pagos (cómo cobran)',
+      body: 'Cada comisión primero "madura" (retención en días, por si hay reembolso). Cuando madura y pasa el mínimo, queda DISPONIBLE.\n\n• Con Stripe conectado: el pago sale solo (si activaste pago automático en Ajustes).\n• Con USDT/manual: pagas fuera y marcas la referencia.\n\nEn Ajustes controlas retención, mínimo, freno global "revisar antes de pagar" y los candados anti-abuso.',
+      svg: gsvg.pagos,
+      example: 'Retención 14 días, mínimo $50. Un vendedor junta $80 el día 1; el día 15 maduran y, como supera $50, Stripe le transfiere solo. Si el cliente pidió reembolso antes del día 15, esa comisión se anula sin que nadie haya cobrado.' },
+  ];
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
         <h2 style={{ margin: 0, fontSize: 20, display: 'flex', alignItems: 'center', gap: 8 }}>{ic('users-group', 22, 'var(--accent,#8b93ff)')} Red de ventas<Hint text="Tu equipo de comisionistas en 3 niveles (Advisor, Lead, Director). Cada pestaña de arriba controla una parte: La red = el árbol, Desempeño = puntajes, Metas = objetivos, Crecimiento = embudo y leads, Kit = materiales, Solicitudes = quienes aplican, Ajustes = todas las reglas, Pagos = pagarles." /></h2>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <GuidePanel storageKey="sales" title="Guía de Ventas" steps={guideSteps} es={true} onStep={(t) => setSub(guideSub(t))} />
           <span className="muted" style={{ fontSize: 12 }}>Reclutamiento:</span>
           <input readOnly value={recruitLink} style={{ ...inp, width: 230 }} />
           <button style={btn} onClick={() => { navigator.clipboard.writeText(recruitLink); setMsg('Enlace copiado ✓'); }}>{ic('copy', 15)}</button>
@@ -65,7 +151,7 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
 
       {msg && <div style={{ border: '1px solid var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', borderRadius: 10, padding: '8px 12px', marginBottom: 12, fontSize: 13 }}>{msg}</div>}
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+      <div data-guide="subtabs" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         {subBtn('red', 'La red', reps.length)}
         {subBtn('desempeno', 'Desempeño')}
         {subBtn('metas', 'Metas')}
@@ -77,7 +163,7 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
       </div>
 
       {/* ===== LA RED (árbol con drag & drop) ===== */}
-      {sub === 'red' && <div>
+      {sub === 'red' && <div data-guide="red">
         {canManage && <div style={{ background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 12, padding: 14, marginBottom: 12 }}>
           <b style={{ fontSize: 14 }}>Añadir representante manualmente<Hint text="Da de alta a un vendedor por su correo (debe tener cuenta en la app). Eliges su nivel y quién es su supervisor. También puedes arrastrar tarjetas para moverlo de rama, o darle de alta aprobando una Solicitud." /></b>
           <CreateRep reps={reps} act={act} inp={inp} btnP={btnP} lvName={lvName} />
@@ -126,19 +212,19 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
       </div>}
 
       {/* ===== METAS ===== */}
-      {sub === 'metas' && <MetasBox act={act} inp={inp} btn={btn} btnP={btnP} canManage={canManage} lvName={lvName} LV={LV} />}
+      {sub === 'metas' && <div data-guide="metas"><MetasBox act={act} inp={inp} btn={btn} btnP={btnP} canManage={canManage} lvName={lvName} LV={LV} /></div>}
 
       {/* ===== CRECIMIENTO ===== */}
-      {sub === 'crecimiento' && <CrecimientoBox inp={inp} btn={btn} btnP={btnP} canManage={canManage} lvName={lvName} />}
+      {sub === 'crecimiento' && <div data-guide="crecimiento"><CrecimientoBox inp={inp} btn={btn} btnP={btnP} canManage={canManage} lvName={lvName} /></div>}
 
       {/* ===== KIT ===== */}
-      {sub === 'kit' && <KitBox inp={inp} btn={btn} btnP={btnP} canManage={canManage} />}
+      {sub === 'kit' && <div data-guide="kit"><KitBox inp={inp} btn={btn} btnP={btnP} canManage={canManage} /></div>}
 
       {/* ===== AJUSTES ===== */}
       {sub === 'ajustes' && <SettingsBox s={s} names={names} act={act} inp={inp} btnP={btnP} canManage={canManage} />}
 
       {/* ===== PAGOS ===== */}
-      {sub === 'pagos' && <div>
+      {sub === 'pagos' && <div data-guide="pagos">
         <div className="muted" style={{ fontSize: 13, marginBottom: 8, display: 'flex', alignItems: 'center' }}>Paga el saldo disponible (madurado). Stripe = automático · USDT/manual = marcas con referencia.<Hint text="Solo aparecen aquí los vendedores con saldo DISPONIBLE (ya maduró y pasó la retención). Con Stripe el dinero sale solo al conectar su cuenta; con USDT/manual pagas fuera del sistema y marcas la referencia. Si tienes el pago automático activo, esto se hace solo." /></div>
         {reps.filter((r) => (r.balances?.available || 0) > 0).length === 0 && <div className="muted">Nadie tiene saldo disponible ahora mismo.</div>}
         {reps.filter((r) => (r.balances?.available || 0) > 0).map((r) => <PayRow key={r.id} r={r} act={act} inp={inp} btn={btn} btnP={btnP} canManage={canManage} />)}
@@ -158,6 +244,8 @@ function ic(name: string, size = 16, color = 'currentColor') {
     'cash': 'M3 6h18v12H3zM12 15a3 3 0 100-6 3 3 0 000 6z',
     'pencil': 'M4 20h4L18 10l-4-4L4 16v4zM13 5l4 4',
     'plus': 'M12 5v14M5 12h14',
+    'rocket': 'M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2 0-2.7a1.9 1.9 0 00-3 0M12 15l-3-3a22 22 0 016-11 8.5 8.5 0 018 8 22 22 0 01-11 6M9 12H4s.5-2.8 2-4c1.7-1.4 5-1 5-1M12 15v5s2.8-.5 4-2c1.4-1.4 1-5 1-5',
+    'gift': 'M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z',
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', flex: 'none' }}><path d={p[name] || ''} /></svg>;
 }
@@ -532,7 +620,7 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           <label style={{ fontSize: 12.5, color: LV.vendedor.fg }}>Vendedor<input value={f.level_names?.vendedor || ''} onChange={(e) => un('vendedor', e.target.value)} placeholder="Asesor" style={{ ...inp, display: 'block', marginTop: 4, width: 160 }} /></label>
         </div>
       </div>
-      <div style={card}>
+      <div data-guide="comisiones" style={card}>
         <b>Comisiones (% del pago mensual)<Hint text="El % que gana la red por cada pago del cliente. Directo = quien cerró la venta. Override 1 y 2 = los dos niveles arriba de él en el árbol. Se cobra cada mes que el cliente siga pagando." /></b>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>
           {num('direct_rate', 'Vendedor directo', '%')}
@@ -582,6 +670,73 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           );
         })()}
       </div>
+
+      {/* IMPULSO 1.er MES + RESIDUAL · paga fuerte el primer mes para motivar al
+          vendedor y un % menor recurrente para cuidar el margen. */}
+      <div data-guide="impulso" style={{ ...card, borderColor: f.boost_first_month ? '#e5b567' : 'var(--line,#2a3350)' }}>
+        <b style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{ic('rocket', 15)} Impulso 1.er mes + residual
+          <Hint text="El motor de tu equipo. Pagas un % ALTO el primer pago de cada cliente nuevo (motiva a vender) y un % MENOR cada mes siguiente (cuida tu margen a largo plazo). Con esto un vendedor gana más que un embajador el primer mes, pero tú no arrastras 30% para siempre." />
+        </b>
+        <div className="muted" style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.5 }}>
+          Front-load: un golpe fuerte el primer mes atrae y retiene vendedores; el residual bajo mantiene sano el margen. Apagado, se usan los % normales de arriba todos los meses.
+        </div>
+        <div style={{ marginTop: 12 }}>{tog('boost_first_month', 'Activar impulso del primer mes', 'Si está apagado, cada mes (incluido el primero) usa los % normales de la sección Comisiones.')}</div>
+        {f.boost_first_month && (
+          <>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#e5b567', margin: '14px 0 6px' }}>% SOLO del primer pago de cada cliente</div>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {num('first_direct_rate', 'Directo 1.er mes', '%', 'El % que gana quien cerró la venta, solo en el primer pago del cliente. Suele ser alto (ej. 40–50%) para motivar.')}
+              {num('first_override1_rate', 'Override 1 · 1.er mes', '%', 'Override del nivel de arriba, solo el primer pago.')}
+              {num('first_override2_rate', 'Override 2 · 1.er mes', '%', 'Override del segundo nivel arriba, solo el primer pago.')}
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 8, lineHeight: 1.5 }}>
+              A partir del 2.º mes se usan los % normales de la sección <b>Comisiones</b> (el residual). Los <b>Meses (0 = ∞)</b> de esa sección siguen mandando cuántos meses en total se paga.
+            </div>
+
+            {/* BONO PRIMERAS VENTAS */}
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--line,#2a3350)' }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', display: 'flex', alignItems: 'center', gap: 6 }}>{ic('gift', 14)} Bono primeras ventas
+                <Hint text="Un premio único (una sola vez por vendedor) cuando el vendedor llega a X clientes que ya pagaron. Acelera el arranque: le da una meta clara y una recompensa por despegar. Pon 0 en cualquiera para desactivarlo." />
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', margin: '3px 0 10px', lineHeight: 1.5 }}>
+                Extra único al llegar a X clientes de pago. Se paga una sola vez por vendedor. 0 = desactivado.
+              </div>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                {num('first_sales_count', 'Al llegar a (clientes)', '', 'Cuántos clientes que ya pagaron necesita el vendedor para ganar el bono. Ej. 5.')}
+                {num('first_sales_bonus', 'Bono', '$', 'Monto fijo del premio único cuando alcanza la meta. Se acredita como comisión y se paga con su siguiente pago.')}
+              </div>
+            </div>
+
+            {/* EJEMPLO 1.er mes vs recurrente */}
+            {(() => {
+              const fd = Number(f.first_direct_rate) || 0, nd = Number(f.direct_rate) || 0;
+              const price = 100;
+              const box: React.CSSProperties = { flex: '1 1 150px', background: 'var(--bg,#0e1220)', border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: '12px 14px' };
+              const big: React.CSSProperties = { fontSize: 22, fontWeight: 800, lineHeight: 1 };
+              return (
+                <div style={{ marginTop: 14, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ ...box, borderColor: '#e5b567' }}>
+                    <div style={{ fontSize: 11.5, color: '#e5b567', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>Primer mes</div>
+                    <div style={{ ...big, color: '#e5b567', marginTop: 8 }}>${(price * fd / 100).toFixed(0)}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 4 }}>{fd}% de un cliente de ${price}</div>
+                  </div>
+                  <div style={box}>
+                    <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>Cada mes después</div>
+                    <div style={{ ...big, color: '#5ed6a0', marginTop: 8 }}>${(price * nd / 100).toFixed(0)}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 4 }}>{nd}% recurrente</div>
+                  </div>
+                  <div style={{ ...box, flex: '1 1 100%' }}>
+                    <div style={{ fontSize: 12, color: 'var(--tx,#e8ecf5)', lineHeight: 1.55 }}>
+                      Un vendedor que cierra un cliente de <b>${price}/mes</b> gana <b style={{ color: '#e5b567' }}>${(price * fd / 100).toFixed(0)}</b> el primer mes y luego <b style={{ color: '#5ed6a0' }}>${(price * nd / 100).toFixed(0)}</b> cada mes que siga pagando. En un año son <b>${(price * fd / 100 + price * nd / 100 * 11).toFixed(0)}</b> por ese solo cliente — más que un embajador el primer mes, pero sin cargar tu margen para siempre.
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </>
+        )}
+      </div>
+
       <div style={card}>
         <b>Topes, pagos y frenos</b>
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 10 }}>

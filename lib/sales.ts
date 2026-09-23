@@ -12,6 +12,13 @@ export type SalesSettings = {
   override1_rate: number;     // % override para su supervisor N1
   override2_rate: number;     // % override para el supervisor N2
   commission_months: number;  // meses de comisión por cliente; 0 = ilimitado (∞)
+  // IMPULSO 1.er mes: paga % más alto el primer pago del cliente y el residual
+  // (direct/override_rate de arriba) del 2.º mes en adelante. Front-load sano.
+  boost_first_month?: boolean;
+  first_direct_rate?: number; first_override1_rate?: number; first_override2_rate?: number;
+  // BONO primeras ventas: extra único al vendedor cuando junta N clientes que pagan.
+  first_sales_count?: number;   // 0 = apagado
+  first_sales_bonus?: number;   // $
   hold_days: number;          // retención anti-reembolso antes de poder cobrar
   min_payout: number;         // mínimo para pagar
   trial_max_days: number;     // tope de días de prueba que puede dar un vendedor
@@ -69,7 +76,10 @@ const PERM_SELLER: RepPerms = { can_trial: true, can_discount: true, can_clients
 
 const DEFAULTS: SalesSettings = {
   enabled: true, direct_rate: 20, override1_rate: 7, override2_rate: 4,
-  commission_months: 0, hold_days: 30, min_payout: 50,
+  commission_months: 0,
+  boost_first_month: false, first_direct_rate: 40, first_override1_rate: 12, first_override2_rate: 6,
+  first_sales_count: 0, first_sales_bonus: 0,
+  hold_days: 30, min_payout: 50,
   trial_max_days: 14, discount_max_pct: 20,
   trial_max_per_client: 1, trial_max_total_days: 21, trial_daily_cap: 10, discount_daily_cap: 10,
   goal_clients: 5, goal_amount: 0, goal_bonus: 0,
@@ -166,7 +176,7 @@ export async function subtreeRepIds(rootId: string): Promise<string[]> {
 
 // % que le toca a un beneficiario según su nivel en el reparto (el override del
 // rep manda si está puesto).
-export function pctFor(rep: Rep | null, slot: 'direct' | 'override1' | 'override2', s: SalesSettings, line?: string): number {
+export function pctFor(rep: Rep | null, slot: 'direct' | 'override1' | 'override2', s: SalesSettings, line?: string, firstMonth?: boolean): number {
   if (!rep) return 0;
   // % por línea (Academia/Bot Lab con tarifa propia para no doblar comisión) manda si está puesto.
   if (line && s.line_rates && (s.line_rates as any)[line]) {
@@ -174,6 +184,12 @@ export function pctFor(rep: Rep | null, slot: 'direct' | 'override1' | 'override
     if (v != null && v !== '') return Number(v);
   }
   if (rep.rate_override != null && rep.rate_override !== ('' as any)) return Number(rep.rate_override);
+  // IMPULSO 1.er mes: si está activo, el primer pago del cliente usa el % de impulso.
+  if (firstMonth && s.boost_first_month) {
+    return slot === 'direct' ? Number(s.first_direct_rate ?? s.direct_rate)
+      : slot === 'override1' ? Number(s.first_override1_rate ?? s.override1_rate)
+      : Number(s.first_override2_rate ?? s.override2_rate);
+  }
   return slot === 'direct' ? s.direct_rate : slot === 'override1' ? s.override1_rate : s.override2_rate;
 }
 
@@ -212,7 +228,7 @@ export async function creditFromPayment(opts: {
   const rows: any[] = [];
   const add = (rep: Rep | null, slot: 'direct' | 'override1' | 'override2', level: string) => {
     if (!rep || rep.status !== 'active') return;
-    const pct = pctFor(rep, slot, s, line);
+    const pct = pctFor(rep, slot, s, line, firstPay);   // 1.er mes usa el % de impulso si está activo
     if (!(pct > 0)) return;
     rows.push({
       rep_id: rep.id, client_user_id: opts.clientUserId, level, invoice_id: opts.invoiceId,
@@ -230,6 +246,34 @@ export async function creditFromPayment(opts: {
   if (error) return { credited: 0, reason: error.message };
 
   try { await supabaseAdmin.from('sales_clients').update({ first_paid_at: new Date().toISOString() }).eq('user_id', opts.clientUserId).is('first_paid_at', null); } catch {}
+
+  // BONO PRIMERAS VENTAS · un extra único al vendedor directo cuando llega a
+  // X clientes que ya pagaron (retención/arranque). Solo cuenta si está activo,
+  // solo se paga una vez por vendedor, y nunca rompe el cobro.
+  try {
+    if (firstPay && direct && s.boost_first_month && Number(s.first_sales_count) > 0 && Number(s.first_sales_bonus) > 0) {
+      const target = Number(s.first_sales_count);
+      // ¿Cuántos clientes de este vendedor ya han pagado alguna vez?
+      const { count: paidClients } = await supabaseAdmin.from('sales_clients')
+        .select('*', { count: 'exact', head: true })
+        .eq('rep_id', direct.id).not('first_paid_at', 'is', null);
+      if ((paidClients || 0) >= target) {
+        // ¿Ya cobró este bono antes? (una sola vez por vendedor)
+        const { count: had } = await supabaseAdmin.from('sales_commissions')
+          .select('*', { count: 'exact', head: true })
+          .eq('rep_id', direct.id).eq('level', 'bonus_first');
+        if (!had) {
+          await supabaseAdmin.from('sales_commissions').insert({
+            rep_id: direct.id, client_user_id: opts.clientUserId, level: 'bonus_first',
+            invoice_id: `bonusfirst-${direct.id}`, base_amount: 0, pct: 0,
+            amount: Number(s.first_sales_bonus), currency,
+            status: 'pending', available_at: availableAt,
+          });
+          try { const { notifyRep } = await import('@/lib/salesNotify'); await notifyRep(direct.id, 'bonus', { amount: Number(s.first_sales_bonus), reason: 'first_sales' }); } catch {}
+        }
+      }
+    }
+  } catch { /* opcional */ }
 
   // Avisos al vendedor + bono por meta cumplida (nunca rompen el cobro).
   try {
