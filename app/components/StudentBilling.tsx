@@ -60,8 +60,8 @@ export default function StudentBilling({ lang = 'es', mentorId }: { lang?: 'es' 
   if (items === null) return <div className="muted" style={{ fontSize: 13, padding: '10px 0' }}>…</div>;
   if (!items.length) return (
     <div className="card" style={{ padding: 18, color: 'var(--mut)', fontSize: 13.5 }}>
-      {L('No tienes pagos ni membresías de academias. Cuando te suscribas a la academia de un mentor, aparecerá aquí todo tu detalle de facturación.',
-         'You have no academy payments or memberships. Once you subscribe to a mentor’s academy, all your billing details will show here.')}
+      {L('Aún no tienes membresías de academias. Cualquier academia a la que pertenezcas mostrará aquí su detalle.',
+         'You have no academy memberships yet. Any academy you belong to will show its details here.')}
     </div>
   );
 

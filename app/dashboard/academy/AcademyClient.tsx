@@ -374,6 +374,7 @@ function InstallBanner({ L }: { L: (a: string, b: string) => string }) {
 export default function AcademyClient() {
   const { lang } = useLang();
   const L = mkL(lang);
+  const ios = useIsIOSApp();   // iOS: sin upsell a planes de pago (Apple 3.1.1)
   const [d, setD] = useState<any>(null);
   const [active, setActive] = useState<any>(null);
   const [paywall, setPaywall] = useState<any>(null);
@@ -461,8 +462,9 @@ export default function AcademyClient() {
       {!d.isMentor && (d.academies || []).length === 0 && <div className="sk-card muted">{L('Todavía no estás en ninguna academia. Únete con un código o explora el directorio.', 'You are not in any academy yet. Join with a code or browse the directory.')}</div>}
 
       {/* Crear tu propia academia es una función de pago: los usuarios Gratis pueden ser
-          alumnos, pero para TENER su academia necesitan un plan de pago. */}
-      {!d.canMentor && (
+          alumnos, pero para TENER su academia necesitan un plan de pago. En iOS se oculta
+          este upsell a planes (Apple 3.1.1: sin llevar a comprar fuera de la App Store). */}
+      {!d.canMentor && !ios && (
         <div className="sk-card" style={{ border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', background: 'color-mix(in srgb,var(--brand) 6%,transparent)' }}>
           <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
             <div style={{ minWidth: 0 }}>
