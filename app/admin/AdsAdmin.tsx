@@ -130,6 +130,25 @@ export default function AdsAdmin({ es }: { es: boolean }) {
     } catch { toast(L('Error de red.', 'Network error.'), 'err'); } finally { setAiBusy(false); }
   }
 
+  // Pegar el "Copy Html Code" del banner de un afiliado (Axi, etc.) y sacar solo
+  // la IMAGEN (src) y el ENLACE de clic (href). Así el usuario pega el snippet tal
+  // cual y rellenamos banner_url + link_url. Si no es HTML, se usa como URL normal.
+  const onBannerInput = (raw: string) => {
+    const v = raw.trim();
+    if (/<img|<a\s|src\s*=|href\s*=/i.test(v)) {
+      const img = v.match(/<img[^>]*\ssrc\s*=\s*["']([^"']+)["']/i)?.[1] || v.match(/src\s*=\s*["']([^"']+)["']/i)?.[1] || '';
+      const href = v.match(/<a[^>]*\shref\s*=\s*["']([^"']+)["']/i)?.[1] || v.match(/href\s*=\s*["']([^"']+)["']/i)?.[1] || '';
+      if (img || href) {
+        setPForm((p: any) => ({ ...p, banner_url: img || p.banner_url, link_url: href || p.link_url }));
+        toast(img && href ? L('Detecté la imagen y el enlace del banner y los rellené.', 'Detected the banner image and link and filled them.')
+                          : img ? L('Detecté la imagen del banner.', 'Detected the banner image.')
+                                : L('Detecté el enlace del banner.', 'Detected the banner link.'), 'ok');
+        return;
+      }
+    }
+    setPForm((p: any) => ({ ...p, banner_url: v }));
+  };
+
   // Formateo de miles con COMA (95,587). Para inputs de texto: muestra con coma,
   // guarda el número limpio.
   const commaNum = (v: any) => (v || v === 0) ? Number(v).toLocaleString('en-US') : '';
@@ -679,11 +698,16 @@ export default function AdsAdmin({ es }: { es: boolean }) {
             </div>
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
-            <div style={lbl}>{L('Banner del broker — opcional (imagen directa .jpg/.png o sube el archivo)', 'Broker banner — optional (direct .jpg/.png image or upload file)')}</div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input value={pForm.banner_url} onChange={(e) => setPForm({ ...pForm, banner_url: e.target.value })} placeholder={L('https://…/banner.jpg — la IMAGEN, no el enlace de clic', 'https://…/banner.jpg — the IMAGE, not the click link')} style={{ margin: 0, flex: 1 }} />
+            <div style={lbl}>{L('Banner del broker — opcional', 'Broker banner — optional')}</div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+              <textarea value={pForm.banner_url} onChange={(e) => onBannerInput(e.target.value)} rows={2}
+                        placeholder={L('Pega aquí el “Copy Html Code” del banner (saco imagen y enlace solos) · o la URL directa de la imagen (.jpg/.png)',
+                                       'Paste the banner’s “Copy Html Code” here (I extract image + link) · or the direct image URL (.jpg/.png)')}
+                        style={{ margin: 0, flex: 1, fontFamily: 'monospace', fontSize: 11.5, resize: 'vertical' }} />
               <label className="btn btn-ghost" style={{ fontSize: 11, padding: '5px 8px', cursor: 'pointer', flex: 'none' }}>{upBusy === 'banner' ? '…' : L('Subir', 'Upload')}<input type="file" accept="image/*" onChange={(e) => uploadImg('banner', e.target.files?.[0] || null)} style={{ display: 'none' }} /></label>
             </div>
+            <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{L('Truco Axi: en cada banner pulsa “Copy Html Code” y pégalo aquí; saco la imagen y el enlace de clic automáticamente. (El “Copy Click URL” solo va en Enlace afiliado.)',
+                                                                                'Axi tip: on each banner hit “Copy Html Code” and paste it here; I auto-extract the image and click link. (The “Copy Click URL” goes only in Affiliate link.)')}</div>
             {(() => {
               const b = (pForm.banner_url || '').trim();
               const isImg = !b || b.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(b);
