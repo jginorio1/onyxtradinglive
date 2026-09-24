@@ -698,7 +698,8 @@ function AdSpaceSeller({ lang, L, card, btn, btnP, setMsg }: any) {
   if (d.isRep === false) return <div style={card}>{L('No disponible.', 'Not available.')}</div>;
 
   const inp: React.CSSProperties = { width: '100%', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 13 };
-  const lbl: React.CSSProperties = { fontSize: 12, color: 'var(--mut,#9aa6bd)', marginBottom: 4, display: 'block' };
+  const lbl: React.CSSProperties = { fontSize: 12, color: 'var(--mut,#9aa6bd)', marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 5 };
+  const Hint = (a: string, b: string) => <HintPop text={L(a, b)} glyph="?" />;
   const phaseColor: Record<string, string> = { live: 'var(--green,#5ed6a0)', scheduled: 'var(--accent,#8b93ff)', hold: 'var(--amber,#f0b74e)', ended: 'var(--mut,#9aa6bd)', expired: 'var(--mut,#9aa6bd)' };
   const phaseLabel = (p: string) => ({ live: L('En vivo', 'Live'), scheduled: L('Programado', 'Scheduled'), hold: L('Reservado (sin pagar)', 'Held (unpaid)'), ended: L('Terminado', 'Ended'), expired: L('Vencido', 'Expired') } as any)[p] || p;
 
@@ -715,7 +716,7 @@ function AdSpaceSeller({ lang, L, card, btn, btnP, setMsg }: any) {
       <div style={card}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div style={{ gridColumn: '1 / -1' }}>
-            <label style={lbl}>{L('Ubicación', 'Placement')}</label>
+            <label style={lbl}>{L('Ubicación', 'Placement')} {Hint('El lugar de la web donde aparece el banner (blog, artículo, landing, footer…). Cada uno tiene su tamaño y precio.', 'The spot on the site where the banner shows (blog, article, landing, footer…). Each has its own size and price.')}</label>
             <select value={slot} onChange={(e) => onSlot(e.target.value)} style={inp}>
               <option value="">{L('— Elige un espacio —', '— Choose a space —')}</option>
               {(d.slots || []).map((s: any) => (
@@ -724,8 +725,8 @@ function AdSpaceSeller({ lang, L, card, btn, btnP, setMsg }: any) {
             </select>
           </div>
           {cur() && <div style={{ gridColumn: '1 / -1' }}><SlotPreview slotKey={cur().key} page={cur().page} size={cur().size} es={lang === 'es'} /></div>}
-          <div><label style={lbl}>{L('Desde', 'From')}</label><input type="date" min={todayStr} value={start} onChange={(e) => setStart(e.target.value)} style={inp} /></div>
-          <div><label style={lbl}>{L('Hasta', 'To')}</label><input type="date" min={start || todayStr} value={end} onChange={(e) => setEnd(e.target.value)} style={inp} /></div>
+          <div><label style={lbl}>{L('Desde', 'From')} {Hint('Primer día que el anuncio estará al aire.', 'First day the ad is live.')}</label><input type="date" min={todayStr} value={start} onChange={(e) => setStart(e.target.value)} style={inp} /></div>
+          <div><label style={lbl}>{L('Hasta', 'To')} {Hint('Último día del anuncio. El sistema lo apaga solo al terminar.', 'Last day of the ad. The system turns it off automatically when it ends.')}</label><input type="date" min={start || todayStr} value={end} onChange={(e) => setEnd(e.target.value)} style={inp} /></div>
         </div>
 
         {slot && cal.length > 0 && (
@@ -759,11 +760,11 @@ function AdSpaceSeller({ lang, L, card, btn, btnP, setMsg }: any) {
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
-          <div><label style={lbl}>{L('Contacto (anunciante)', 'Contact (advertiser)')}</label><input value={advertiser} onChange={(e) => setAdvertiser(e.target.value)} placeholder={L('Nombre', 'Name')} style={inp} /></div>
-          <div><label style={lbl}>{L('Empresa', 'Company')}</label><input value={company} onChange={(e) => setCompany(e.target.value)} style={inp} /></div>
-          <div><label style={lbl}>{L('Correo del anunciante', 'Advertiser email')}</label><input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="cliente@empresa.com" style={inp} /></div>
-          <div><label style={lbl}>{L('Enlace / web', 'Link / website')}</label><input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" style={inp} /></div>
-          <div><label style={lbl}>{L('Precio total (USD)', 'Total price (USD)')}</label><input type="number" min={0} value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)} style={inp} /></div>
+          <div><label style={lbl}>{L('Contacto (anunciante)', 'Contact (advertiser)')} {Hint('Nombre de la persona con quien tratas en la empresa que se anuncia.', 'Name of the person you deal with at the advertising company.')}</label><input value={advertiser} onChange={(e) => setAdvertiser(e.target.value)} placeholder={L('Nombre', 'Name')} style={inp} /></div>
+          <div><label style={lbl}>{L('Empresa', 'Company')} {Hint('Marca o empresa que se anuncia (aparece en la propuesta PDF).', 'Brand or company being advertised (shown on the PDF proposal).')}</label><input value={company} onChange={(e) => setCompany(e.target.value)} style={inp} /></div>
+          <div><label style={lbl}>{L('Correo del anunciante', 'Advertiser email')} {Hint('A este correo se envía la propuesta y llega la respuesta del cliente.', 'The proposal is sent here and the client’s reply comes back here.')}</label><input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="cliente@empresa.com" style={inp} /></div>
+          <div><label style={lbl}>{L('Enlace / web', 'Link / website')} {Hint('A dónde lleva el banner cuando un visitante hace clic.', 'Where the banner takes a visitor when clicked.')}</label><input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" style={inp} /></div>
+          <div><label style={lbl}>{L('Precio total (USD)', 'Total price (USD)')} {Hint('Lo que paga el anunciante por todo el periodo elegido. Tu comisión sale de aquí.', 'What the advertiser pays for the whole chosen period. Your commission comes from this.')}</label><input type="number" min={0} value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)} style={inp} /></div>
           <div style={{ alignSelf: 'end', fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>{L('Tu comisión estimada:', 'Your est. commission:')} <b style={{ color: 'var(--green,#5ed6a0)' }}>${Math.round((price * (d.commissionPct || 0)) / 100)}</b></div>
         </div>
 

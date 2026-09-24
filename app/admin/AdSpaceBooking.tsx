@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import SlotPreview from '@/app/components/SlotPreview';
+import { HintPop } from '@/app/components/HintPop';
 
 // Panel admin · Reserva de espacios por cupo fijo.
 //  · Editar el cupo (máx anunciantes rotando) por ubicación + parámetros.
@@ -8,6 +9,7 @@ import SlotPreview from '@/app/components/SlotPreview';
 //    comisión del vendedor) o cancelar (libera cupo + revierte comisión).
 export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
   const L = (a: string, b: string) => (es ? a : b);
+  const Hint = (a: string, b: string) => <HintPop text={L(a, b)} glyph="?" />;
   const [d, setD] = useState<any>(null);
   const [caps, setCaps] = useState<Record<string, number>>({});
   const [cfg, setCfg] = useState<any>({ defaultCap: 4, spaceCommissionPct: 15, holdMinutes: 45, maturationDays: 14 });
@@ -96,22 +98,22 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
         <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 12 }}>{L('Arma una cotización, envíala en PDF de marca y reserva el espacio. Puedes atribuirla a un vendedor para que gane su comisión.', 'Build a quote, send it as a branded PDF and reserve the space. You can attribute it to a seller so they earn commission.')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
           <div style={{ gridColumn: '1 / -1' }}>
-            <label style={lblS}>{L('Ubicación', 'Placement')}</label>
+            <label style={lblS}>{L('Ubicación', 'Placement')} {Hint('El lugar de la web donde saldrá el banner. Cada uno con su tamaño y precio.', 'The spot on the site where the banner shows. Each has its own size and price.')}</label>
             <select value={f.slot} onChange={(e) => onSlotF(e.target.value)} style={inpS}>
               <option value="">{L('— Elige un espacio —', '— Choose a space —')}</option>
               {(d.slots || []).map((s: any) => <option key={s.key} value={s.key}>{(es ? s.es : s.en)} · {s.size} · {L('cupo', 'cap')} {s.cap} · ${s.price}</option>)}
             </select>
           </div>
           {f.slot && (() => { const sc = (d.slots || []).find((x: any) => x.key === f.slot); return sc ? <div style={{ gridColumn: '1 / -1' }}><SlotPreview slotKey={sc.key} page={sc.page} size={sc.size} es={es} /></div> : null; })()}
-          <div><label style={lblS}>{L('Desde', 'From')}</label><input type="date" min={todayStr} value={f.start} onChange={(e) => { setFF('start', e.target.value); refreshCal(f.slot, e.target.value, f.end); }} style={inpS} /></div>
-          <div><label style={lblS}>{L('Hasta', 'To')}</label><input type="date" min={f.start || todayStr} value={f.end} onChange={(e) => { setFF('end', e.target.value); refreshCal(f.slot, f.start, e.target.value); }} style={inpS} /></div>
-          <div><label style={lblS}>{L('Contacto (anunciante)', 'Contact (advertiser)')}</label><input value={f.advertiser} onChange={(e) => setFF('advertiser', e.target.value)} style={inpS} /></div>
-          <div><label style={lblS}>{L('Empresa', 'Company')}</label><input value={f.company} onChange={(e) => setFF('company', e.target.value)} style={inpS} /></div>
-          <div><label style={lblS}>{L('Correo del anunciante', 'Advertiser email')}</label><input value={f.email} onChange={(e) => setFF('email', e.target.value)} style={inpS} /></div>
-          <div><label style={lblS}>{L('Enlace / web', 'Link / website')}</label><input value={f.link} onChange={(e) => setFF('link', e.target.value)} style={inpS} /></div>
-          <div><label style={lblS}>{L('Precio total (USD)', 'Total price (USD)')}</label><input type="number" min={0} value={f.price} onChange={(e) => setFF('price', Number(e.target.value) || 0)} style={inpS} /></div>
+          <div><label style={lblS}>{L('Desde', 'From')} {Hint('Primer día que el anuncio estará al aire.', 'First day the ad is live.')}</label><input type="date" min={todayStr} value={f.start} onChange={(e) => { setFF('start', e.target.value); refreshCal(f.slot, e.target.value, f.end); }} style={inpS} /></div>
+          <div><label style={lblS}>{L('Hasta', 'To')} {Hint('Último día del anuncio. Se apaga solo al terminar.', 'Last day of the ad. It turns off automatically when it ends.')}</label><input type="date" min={f.start || todayStr} value={f.end} onChange={(e) => { setFF('end', e.target.value); refreshCal(f.slot, f.start, e.target.value); }} style={inpS} /></div>
+          <div><label style={lblS}>{L('Contacto (anunciante)', 'Contact (advertiser)')} {Hint('Nombre de la persona de la empresa que se anuncia.', 'Name of the person at the advertising company.')}</label><input value={f.advertiser} onChange={(e) => setFF('advertiser', e.target.value)} style={inpS} /></div>
+          <div><label style={lblS}>{L('Empresa', 'Company')} {Hint('Marca/empresa que se anuncia (sale en la propuesta).', 'Brand/company being advertised (shown on the proposal).')}</label><input value={f.company} onChange={(e) => setFF('company', e.target.value)} style={inpS} /></div>
+          <div><label style={lblS}>{L('Correo del anunciante', 'Advertiser email')} {Hint('A este correo se envía la propuesta y llega su respuesta.', 'The proposal is sent here and their reply comes back here.')}</label><input value={f.email} onChange={(e) => setFF('email', e.target.value)} style={inpS} /></div>
+          <div><label style={lblS}>{L('Enlace / web', 'Link / website')} {Hint('A dónde lleva el banner al hacer clic.', 'Where the banner takes a visitor when clicked.')}</label><input value={f.link} onChange={(e) => setFF('link', e.target.value)} style={inpS} /></div>
+          <div><label style={lblS}>{L('Precio total (USD)', 'Total price (USD)')} {Hint('Lo que paga el anunciante por todo el periodo.', 'What the advertiser pays for the whole period.')}</label><input type="number" min={0} value={f.price} onChange={(e) => setFF('price', Number(e.target.value) || 0)} style={inpS} /></div>
           <div>
-            <label style={lblS}>{L('Atribuir a vendedor (opcional)', 'Attribute to seller (optional)')}</label>
+            <label style={lblS}>{L('Atribuir a vendedor (opcional)', 'Attribute to seller (optional)')} {Hint('Si eliges un vendedor, esta venta le cuenta y gana su comisión de 3 niveles. Sin vendedor = venta directa de Onyx.', 'If you pick a seller, this sale counts for them and pays their 3-tier commission. No seller = direct Onyx sale.')}</label>
             <select value={f.rep_id} onChange={(e) => setFF('rep_id', e.target.value)} style={inpS}>
               <option value="">{L('— Sin vendedor (Onyx) —', '— No seller (Onyx) —')}</option>
               {(d.reps || []).map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -134,12 +136,12 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
       <div style={cardS}>
         <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 10 }}>{L('Ajustes de espacios', 'Space settings')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
-          <NumF label={L('Cupo por defecto', 'Default cap')} v={cfg.defaultCap} on={(x) => setCfg({ ...cfg, defaultCap: x })} />
-          <NumF label={L('Comisión vendedor %', 'Seller commission %')} v={cfg.spaceCommissionPct} on={(x) => setCfg({ ...cfg, spaceCommissionPct: x })} />
-          <NumF label={L('Reserva sin pagar (min)', 'Hold (min)')} v={cfg.holdMinutes} on={(x) => setCfg({ ...cfg, holdMinutes: x })} />
-          <NumF label={L('Maduración comisión (días)', 'Commission maturation (days)')} v={cfg.maturationDays} on={(x) => setCfg({ ...cfg, maturationDays: x })} />
+          <NumF label={L('Cupo por defecto', 'Default cap')} hint={Hint('Cuántos anunciantes pueden rotar a la vez en una ubicación que no tenga su propio cupo.', 'How many advertisers can rotate at once in a placement without its own cap.')} v={cfg.defaultCap} on={(x) => setCfg({ ...cfg, defaultCap: x })} />
+          <NumF label={L('Comisión vendedor %', 'Seller commission %')} hint={Hint('Porcentaje que gana el vendedor sobre el precio de cada espacio que venda.', 'Percentage the seller earns on the price of each space they sell.')} v={cfg.spaceCommissionPct} on={(x) => setCfg({ ...cfg, spaceCommissionPct: x })} />
+          <NumF label={L('Reserva sin pagar (min)', 'Hold (min)')} hint={Hint('Minutos que una reserva sin pagar aparta la fecha. Si no se paga a tiempo, el cupo se libera solo.', 'Minutes an unpaid booking holds the date. If not paid in time, the slot is released automatically.')} v={cfg.holdMinutes} on={(x) => setCfg({ ...cfg, holdMinutes: x })} />
+          <NumF label={L('Maduración comisión (días)', 'Commission maturation (days)')} hint={Hint('Días que la comisión queda "en espera" antes de estar disponible para cobro (por si hay reembolso).', 'Days the commission stays "pending" before it becomes available to withdraw (in case of a refund).')} v={cfg.maturationDays} on={(x) => setCfg({ ...cfg, maturationDays: x })} />
         </div>
-        <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', margin: '14px 0 8px' }}>{L('Cupo por ubicación', 'Cap per placement')}</div>
+        <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', margin: '14px 0 8px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>{L('Cupo por ubicación', 'Cap per placement')} {Hint('Máximo de anunciantes que rotan a la vez en cada espacio. Si lo dejas vacío usa el cupo por defecto.', 'Max advertisers rotating at once in each space. Left empty, it uses the default cap.')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(230px,1fr))', gap: 8 }}>
           {(d.slots || []).map((s: any) => (
             <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: '7px 10px' }}>
@@ -159,7 +161,7 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
       </div>
 
       <div style={cardS}>
-        <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 4 }}>{L('Partners por ubicación', 'Partners per placement')}</div>
+        <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 6 }}>{L('Partners por ubicación', 'Partners per placement')} {Hint('“Partners” = socios del directorio (Axi, FTMO, The5ers…). Rellenan un hueco vacío cuando no hay campaña pagada y cada clic paga comisión (CPA). Elige dónde sí y dónde no.', '“Partners” = directory partners (Axi, FTMO, The5ers…). They fill an empty slot when there’s no paid campaign and each click pays commission (CPA). Choose where yes and where no.')}</div>
         <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 12 }}>
           {L('Cuando un hueco no tiene campaña pagada, "partners" lo rellena con un socio del directorio (CPA) y cada clic paga comisión. Elige dónde SÍ y dónde NO. "Por defecto" en cada ubicación usa el global.',
              'When a slot has no paid campaign, "partners" fills it with a directory partner (CPA) and each click earns commission. Choose where YES and where NO. "Default" per placement uses the global one.')}
@@ -169,22 +171,24 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
           <button onClick={() => setPFill(true)} style={pFill ? btnPS : btnS}>{L('Sí', 'Yes')}</button>
           <button onClick={() => setPFill(false)} style={!pFill ? btnPS : btnS}>{L('No', 'No')}</button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 10 }}>
           {(d.slots || []).map((s: any) => {
             const val = pSlots[s.key] === true ? 'yes' : pSlots[s.key] === false ? 'no' : '';
             const eff = pSlots[s.key] === undefined ? pFill : pSlots[s.key];
             return (
-              <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: '7px 10px' }}>
-                <span style={{ width: 8, height: 8, borderRadius: 8, background: eff ? '#22c55e' : '#9aa6bd', flex: 'none' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, color: 'var(--tx,#e8ecf5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{es ? s.es : s.en}</div>
-                  <div style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)' }}>{s.size}</div>
+              <div key={s.key} style={{ display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 8, background: eff ? '#22c55e' : '#9aa6bd', flex: 'none' }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{es ? s.es : s.en}</div>
+                    <div style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)' }}>{s.size} · {eff ? L('Partners ON', 'Partners ON') : L('Partners OFF', 'Partners OFF')}</div>
+                  </div>
                 </div>
                 <select value={val} onChange={(e) => setSlotFill(s.key, e.target.value as any)}
-                  style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 12 }}>
-                  <option value="">{L('Por defecto', 'Default')}</option>
-                  <option value="yes">{L('Sí', 'Yes')}</option>
-                  <option value="no">{L('No', 'No')}</option>
+                  style={{ width: '100%', padding: '7px 8px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 12.5 }}>
+                  <option value="">{L('Por defecto (usa el global)', 'Default (uses global)')}</option>
+                  <option value="yes">{L('Sí · mostrar partners', 'Yes · show partners')}</option>
+                  <option value="no">{L('No · dejar vacío', 'No · leave empty')}</option>
                 </select>
               </div>
             );
@@ -220,10 +224,10 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
   );
 }
 
-function NumF({ label, v, on }: { label: string; v: number; on: (x: number) => void }) {
+function NumF({ label, v, on, hint }: { label: string; v: number; on: (x: number) => void; hint?: React.ReactNode }) {
   return (
     <div>
-      <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'block', marginBottom: 4 }}>{label}</label>
+      <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>{label} {hint}</label>
       <input type="number" value={v} onChange={(e) => on(Number(e.target.value) || 0)}
         style={{ width: '100%', padding: '8px 10px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 13 }} />
     </div>
@@ -234,4 +238,4 @@ const cardS: React.CSSProperties = { background: 'var(--panel,#161c2e)', border:
 const btnS: React.CSSProperties = { padding: '8px 14px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 13 };
 const btnPS: React.CSSProperties = { ...btnS, background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none', fontWeight: 600 };
 const inpS: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 13 };
-const lblS: React.CSSProperties = { fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'block', marginBottom: 4 };
+const lblS: React.CSSProperties = { fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 4 };

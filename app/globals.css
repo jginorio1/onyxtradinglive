@@ -1020,3 +1020,14 @@ html.ios-app .ios-pay-hide{ display:none !important; }
 
 /* Espacios patrocinados: OCULTOS en la app nativa (Apple/Google) hasta aprobación. */
 html.native-app .onyx-ad{ display:none !important; }
+
+/* Artículo del blog: texto + columna lateral de anuncios verticales.
+   El lateral solo aparece a la derecha en pantallas anchas; en medianas y
+   móvil el artículo ocupa todo el ancho y los verticales se apilan debajo,
+   para que el texto nunca quede angosto. */
+.article-shell{ max-width:760px; }
+.article-grid{ display:grid; grid-template-columns:1fr; gap:24px; align-items:start; }
+@media(min-width:1024px){
+  .article-shell{ max-width:1060px; }
+  .article-grid{ grid-template-columns: minmax(0,1fr) 300px; }
+}

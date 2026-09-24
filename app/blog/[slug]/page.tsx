@@ -107,7 +107,7 @@ export default async function BlogArticle({ params }: { params: { slug: string }
   } : null;
 
   return (
-    <div className="wrap section" style={{ maxWidth: 760 }}>
+    <div className="wrap section article-shell">
       <JsonLd data={ld} />
       <JsonLd data={breadcrumbLd} />
       {faqLd && <JsonLd data={faqLd} />}
@@ -140,10 +140,12 @@ export default async function BlogArticle({ params }: { params: { slug: string }
         </div>
       </div>
 
-      {/* Artículo en dos columnas: texto a la izquierda, anuncios LATERALES a la
-          derecha (sticky). En móvil se apilan (flex-wrap) y el lateral baja. */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-start' }}>
-        <div style={{ flex: '1 1 420px', minWidth: 0 }}>
+      {/* Artículo en dos columnas SOLO en pantallas anchas (≥1024px): el texto a
+          la izquierda y los anuncios verticales a la derecha. En pantallas
+          medianas/móvil la rejilla es de una columna: el texto ocupa TODO el
+          ancho y los verticales bajan debajo, para que nunca quede angosto. */}
+      <div className="article-grid">
+        <div style={{ minWidth: 0 }}>
           <img src={cover} alt={coverAlt} decoding="async" fetchPriority="high" width={760} height={399} style={{ width: '100%', height: 'auto', borderRadius: 14, margin: '4px 0 18px' }} />
           <article className="blog-body" dangerouslySetInnerHTML={{ __html: html }} />
           <BlogCharts />
@@ -167,7 +169,7 @@ export default async function BlogArticle({ params }: { params: { slug: string }
         </div>
 
         {/* Columna LATERAL derecha: MPU + media página (pegajosa) */}
-        <aside style={{ flex: '1 1 300px', maxWidth: 336, position: 'sticky', top: 80, alignSelf: 'flex-start' }}>
+        <aside style={{ width: '100%', maxWidth: 300, position: 'sticky', top: 80, alignSelf: 'flex-start', justifySelf: 'center' }}>
           <AdSlot slot="article_sidebar" lang={es ? 'es' : 'en'} />
           <AdSlot slot="article_halfpage" lang={es ? 'es' : 'en'} />
         </aside>
