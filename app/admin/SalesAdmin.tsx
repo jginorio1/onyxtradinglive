@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, Fragment } from 'react';
 import SalesPerf from './SalesPerf';
+import AdSpaceBooking from './AdSpaceBooking';
 import { HintPop } from '@/app/components/HintPop';
 import GuidePanel, { type GuideStep } from '@/app/components/GuidePanel';
 
@@ -16,7 +17,7 @@ const LV = {
 
 export default function SalesAdmin({ canManage = true }: { canManage?: boolean }) {
   const [d, setD] = useState<any>(null);
-  const [sub, setSub] = useState<'solicitudes' | 'red' | 'desempeno' | 'metas' | 'crecimiento' | 'kit' | 'ajustes' | 'pagos'>('red');
+  const [sub, setSub] = useState<'solicitudes' | 'red' | 'desempeno' | 'metas' | 'crecimiento' | 'kit' | 'espacios' | 'ajustes' | 'pagos'>('red');
   const [msg, setMsg] = useState('');
   const [dragId, setDragId] = useState<string>('');
 
@@ -157,6 +158,7 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
         {subBtn('metas', 'Metas')}
         {subBtn('crecimiento', 'Crecimiento')}
         {subBtn('kit', 'Kit')}
+        {subBtn('espacios', 'Espacios')}
         {subBtn('solicitudes', 'Solicitudes', apps.length)}
         {subBtn('ajustes', 'Ajustes')}
         {subBtn('pagos', 'Pagos')}
@@ -219,6 +221,8 @@ export default function SalesAdmin({ canManage = true }: { canManage?: boolean }
 
       {/* ===== KIT ===== */}
       {sub === 'kit' && <div data-guide="kit"><KitBox inp={inp} btn={btn} btnP={btnP} canManage={canManage} /></div>}
+
+      {sub === 'espacios' && <AdSpaceBooking es={true} />}
 
       {/* ===== AJUSTES ===== */}
       {sub === 'ajustes' && <SettingsBox s={s} names={names} act={act} inp={inp} btnP={btnP} canManage={canManage} />}

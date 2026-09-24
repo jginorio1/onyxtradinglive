@@ -12,6 +12,12 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
   const [cfg, setCfg] = useState<any>({ defaultCap: 4, spaceCommissionPct: 15, holdMinutes: 45, maturationDays: 14 });
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  // --- módulo de cotizaciones / propuestas ---
+  const [ok2, setOk2] = useState('');
+  const [f, setF] = useState<any>({ slot: '', start: '', end: '', advertiser: '', company: '', email: '', link: '', price: 0, rep_id: '' });
+  const [cal, setCal] = useState<any[]>([]);
+  const [range, setRange] = useState<any>(null);
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   const load = async () => {
     try {
@@ -36,6 +42,31 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
   const cancel = async (id: string) => { const j = await post({ action: 'cancel', id }); if (j.ok) { await load(); } };
   const sweep = async () => { const j = await post({ action: 'sweep' }); if (j.ok) { setMsg(L(`Limpieza: ${j.expired} vencidas, ${j.released} liberadas`, `Sweep: ${j.expired} expired, ${j.released} released`)); await load(); } };
 
+  // Cotizaciones / propuestas
+  const setFF = (k: string, v: any) => setF((p: any) => ({ ...p, [k]: v }));
+  const refreshCal = async (slot = f.slot, start = f.start, end = f.end) => {
+    if (!slot) { setCal([]); setRange(null); return; }
+    const j = await post({ action: 'availability', slot, from: todayStr, days: 42 });
+    if (j.ok) setCal(j.calendar || []);
+    if (start && end) { const rc = await post({ action: 'availability', slot, from: start, days: 1, start, end }); }
+    // capacidad del rango: reutiliza el calendario para el pico
+    if (start && end && j.calendar) {
+      const inR = j.calendar.filter((c: any) => c.date >= start && c.date <= end);
+      const peak = inR.reduce((m: number, c: any) => Math.max(m, c.used), 0);
+      const cap = inR[0]?.cap ?? 0;
+      setRange({ cap, peak, free: Math.max(0, cap - peak) });
+    } else setRange(null);
+  };
+  const onSlotF = (slot: string) => { const sc = (d?.slots || []).find((x: any) => x.key === slot); setF((p: any) => ({ ...p, slot, price: p.price || (sc?.price || 0) })); refreshCal(slot, f.start, f.end); };
+  const validF = () => f.slot && /^\d{4}-\d{2}-\d{2}$/.test(f.start) && /^\d{4}-\d{2}-\d{2}$/.test(f.end) && f.end >= f.start && f.advertiser.trim();
+  const dl = (b64: string, name: string) => {
+    try { const bin = atob(b64); const arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' })); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000); } catch {}
+  };
+  const quotePdf = async () => { if (!validF()) { setMsg(L('Completa ubicación, fechas y anunciante.', 'Fill placement, dates and advertiser.')); return; } setOk2(''); const j = await post({ action: 'proposal_pdf', ...f }); if (j.pdf) dl(j.pdf, j.filename || 'propuesta.pdf'); };
+  const quoteEmail = async () => { if (!validF()) { setMsg(L('Completa ubicación, fechas y anunciante.', 'Fill placement, dates and advertiser.')); return; } if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email)) { setMsg(L('Escribe el correo del anunciante.', 'Enter the advertiser email.')); return; } setOk2(''); const j = await post({ action: 'proposal_email', ...f }); if (j.sent) setOk2(L('Propuesta enviada ✓', 'Proposal sent ✓')); };
+  const quoteBook = async () => { if (!validF()) { setMsg(L('Completa ubicación, fechas y anunciante.', 'Fill placement, dates and advertiser.')); return; } setOk2(''); const j = await post({ action: 'create', ...f }); if (j.ok) { setOk2(L('Espacio reservado ✓', 'Space reserved ✓')); await load(); await refreshCal(); } };
+
   if (!d) return <div style={cardS}>{L('Cargando…', 'Loading…')}</div>;
   if (d.error) return <div style={cardS}>{d.error}</div>;
 
@@ -53,6 +84,45 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
       </div>
 
       {msg && <div style={{ ...cardS, borderColor: '#8b93ff', color: 'var(--tx,#e8ecf5)', fontSize: 13 }}>{msg}</div>}
+
+      <div style={cardS}>
+        <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 10 }}>{L('Cotizaciones y propuestas', 'Quotes & proposals')}</div>
+        <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 12 }}>{L('Arma una cotización, envíala en PDF de marca y reserva el espacio. Puedes atribuirla a un vendedor para que gane su comisión.', 'Build a quote, send it as a branded PDF and reserve the space. You can attribute it to a seller so they earn commission.')}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={lblS}>{L('Ubicación', 'Placement')}</label>
+            <select value={f.slot} onChange={(e) => onSlotF(e.target.value)} style={inpS}>
+              <option value="">{L('— Elige un espacio —', '— Choose a space —')}</option>
+              {(d.slots || []).map((s: any) => <option key={s.key} value={s.key}>{(es ? s.es : s.en)} · {s.size} · {L('cupo', 'cap')} {s.cap} · ${s.price}</option>)}
+            </select>
+          </div>
+          <div><label style={lblS}>{L('Desde', 'From')}</label><input type="date" min={todayStr} value={f.start} onChange={(e) => { setFF('start', e.target.value); refreshCal(f.slot, e.target.value, f.end); }} style={inpS} /></div>
+          <div><label style={lblS}>{L('Hasta', 'To')}</label><input type="date" min={f.start || todayStr} value={f.end} onChange={(e) => { setFF('end', e.target.value); refreshCal(f.slot, f.start, e.target.value); }} style={inpS} /></div>
+          <div><label style={lblS}>{L('Contacto (anunciante)', 'Contact (advertiser)')}</label><input value={f.advertiser} onChange={(e) => setFF('advertiser', e.target.value)} style={inpS} /></div>
+          <div><label style={lblS}>{L('Empresa', 'Company')}</label><input value={f.company} onChange={(e) => setFF('company', e.target.value)} style={inpS} /></div>
+          <div><label style={lblS}>{L('Correo del anunciante', 'Advertiser email')}</label><input value={f.email} onChange={(e) => setFF('email', e.target.value)} style={inpS} /></div>
+          <div><label style={lblS}>{L('Enlace / web', 'Link / website')}</label><input value={f.link} onChange={(e) => setFF('link', e.target.value)} style={inpS} /></div>
+          <div><label style={lblS}>{L('Precio total (USD)', 'Total price (USD)')}</label><input type="number" min={0} value={f.price} onChange={(e) => setFF('price', Number(e.target.value) || 0)} style={inpS} /></div>
+          <div>
+            <label style={lblS}>{L('Atribuir a vendedor (opcional)', 'Attribute to seller (optional)')}</label>
+            <select value={f.rep_id} onChange={(e) => setFF('rep_id', e.target.value)} style={inpS}>
+              <option value="">{L('— Sin vendedor (Onyx) —', '— No seller (Onyx) —')}</option>
+              {(d.reps || []).map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </div>
+        </div>
+        {range && f.start && f.end && (
+          <div style={{ marginTop: 8, fontSize: 12.5, color: range.free > 0 ? '#22c55e' : '#f0736f' }}>
+            {range.free > 0 ? L(`En estas fechas: cupo ${range.cap}, ocupado ${range.peak} · quedan ${range.free}.`, `These dates: cap ${range.cap}, used ${range.peak} · ${range.free} left.`) : L(`Sin cupo en estas fechas (cupo ${range.cap}).`, `No room on these dates (cap ${range.cap}).`)}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+          <button style={btnS} disabled={busy} onClick={quotePdf}>{L('Vista previa PDF', 'Preview PDF')}</button>
+          <button style={btnS} disabled={busy} onClick={quoteEmail}>{L('Enviar propuesta por correo', 'Email the proposal')}</button>
+          <button style={btnPS} disabled={busy} onClick={quoteBook}>{L('Reservar espacio', 'Reserve space')}</button>
+        </div>
+        {ok2 && <div style={{ marginTop: 10, fontSize: 13, color: '#22c55e' }}>{ok2}</div>}
+      </div>
 
       <div style={cardS}>
         <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 10 }}>{L('Ajustes de espacios', 'Space settings')}</div>
@@ -121,3 +191,5 @@ function NumF({ label, v, on }: { label: string; v: number; on: (x: number) => v
 const cardS: React.CSSProperties = { background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 14, padding: 16 };
 const btnS: React.CSSProperties = { padding: '8px 14px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 13 };
 const btnPS: React.CSSProperties = { ...btnS, background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none', fontWeight: 600 };
+const inpS: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 13 };
+const lblS: React.CSSProperties = { fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'block', marginBottom: 4 };

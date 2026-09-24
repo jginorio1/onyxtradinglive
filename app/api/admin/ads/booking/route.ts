@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { AD_SLOTS, getAdsConfig, saveAdsConfig, rateCard } from '@/lib/ads';
+import { AD_SLOTS, getAdsConfig, saveAdsConfig, rateCard, slotByKey } from '@/lib/ads';
 import { slotCap, dailyAvailability, listBookings, confirmPaid, cancelBooking, createBooking, sweepBookings } from '@/lib/adBooking';
 
 export const dynamic = 'force-dynamic';
@@ -29,10 +29,14 @@ export async function GET() {
   }
   const rows = bookings.map((b: any) => ({ ...b, rep_name: b.rep_id ? (repName[b.rep_id] || '—') : null }));
 
+  // Lista de vendedores (para atribuir una cotización enviada desde admin).
+  const { data: repsAll } = await supabaseAdmin.from('sales_reps').select('id,display_name,code,status').eq('status', 'active').order('display_name', { ascending: true });
+  const reps = (repsAll || []).map((r: any) => ({ id: r.id, name: r.display_name || r.code }));
+
   return NextResponse.json({
     ok: true,
     settings: { defaultCap: cfg.defaultCap, spaceCommissionPct: cfg.spaceCommissionPct, holdMinutes: cfg.holdMinutes, maturationDays: cfg.maturationDays, caps: cfg.caps || {} },
-    slots, bookings: rows,
+    slots, bookings: rows, reps,
   });
 }
 
@@ -91,6 +95,48 @@ export async function POST(req: Request) {
   if (action === 'cancel') {
     await cancelBooking(String(b.id || ''));
     return NextResponse.json({ ok: true });
+  }
+
+  // Generar / enviar la propuesta (cotización) desde admin. Si se pasa rep_id,
+  // la propuesta sale a nombre de ese vendedor y con su correo; si no, sale a
+  // nombre de Onyx con el remitente genérico.
+  if (action === 'proposal_pdf' || action === 'proposal_email') {
+    const slot = slotByKey(String(b.slot || ''));
+    if (!slot) return NextResponse.json({ error: 'slot inválido' }, { status: 400 });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(b.start) || !/^\d{4}-\d{2}-\d{2}$/.test(b.end)) return NextResponse.json({ error: 'fechas inválidas' }, { status: 400 });
+    const lang: 'es' | 'en' = b.lang === 'en' ? 'en' : 'es';
+    let sellerName = 'Onyx Trading Live', sellerEmail = '', repWorkEmail: string | null = null;
+    if (b.rep_id) {
+      const { data: rep } = await supabaseAdmin.from('sales_reps').select('display_name,code,work_email,user_id').eq('id', b.rep_id).maybeSingle();
+      if (rep) {
+        sellerName = (rep as any).display_name || (rep as any).code || sellerName;
+        repWorkEmail = (rep as any).work_email || null;
+        sellerEmail = repWorkEmail || '';
+        if (!sellerEmail && (rep as any).user_id) { const { data: p } = await supabaseAdmin.from('profiles').select('email').eq('id', (rep as any).user_id).maybeSingle(); sellerEmail = (p as any)?.email || ''; }
+      }
+    }
+    const { adProposalPdf, adProposalEmail } = await import('@/lib/adSpaceProposal');
+    const inp = {
+      slotNameEs: slot.es, slotNameEn: slot.en, size: slot.size, pageEs: slot.page, pageEn: slot.page,
+      startDate: String(b.start), endDate: String(b.end), price: Number(b.price) || slot.price,
+      cap: await slotCap(slot.key), holdUntil: b.holdUntil || undefined,
+      sellerName, sellerEmail, advertiser: String(b.advertiser || ''), advertiserCompany: String(b.company || ''),
+      advertiserEmail: String(b.email || ''), linkUrl: String(b.link || ''),
+    };
+    const pdf = await adProposalPdf(inp, { lang });
+    const base64 = Buffer.from(pdf).toString('base64');
+    const filename = lang === 'en' ? 'onyx-ad-space-proposal.pdf' : 'propuesta-espacio-onyx.pdf';
+    if (action === 'proposal_pdf') return NextResponse.json({ ok: true, pdf: base64, filename });
+
+    const to = String(b.email || '').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return NextResponse.json({ error: 'correo del anunciante inválido' }, { status: 400 });
+    const { sendEmail, mailEnabled, fromWithAddr } = await import('@/lib/mail');
+    if (!mailEnabled()) return NextResponse.json({ error: 'correo no configurado' }, { status: 400 });
+    const em = adProposalEmail(inp, lang);
+    const from = fromWithAddr(sellerName, repWorkEmail);
+    const sent = await sendEmail(to, em.subject, em.body, { kind: 'ad_space_proposal', from, replyTo: sellerEmail || undefined, attachments: [{ filename, content: base64 }] });
+    if (!sent) return NextResponse.json({ error: 'no se pudo enviar' }, { status: 500 });
+    return NextResponse.json({ ok: true, sent: true });
   }
 
   // Barrido manual (expira terminadas + libera holds caducados).

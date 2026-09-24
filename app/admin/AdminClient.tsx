@@ -1105,7 +1105,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'carreras' && <CareersAdmin canManage={role === 'owner' || perms.equipo === 'manage'} />}
             {tab === 'formacion' && <Training canManage={role === 'owner' || perms.equipo === 'manage'} lang={lang} />}
             {tab === 'embajadores' && <Ambassadors />}
-            {tab === 'ventas' && <div style={{ display: 'grid', gap: 16 }}><SalesAdmin canManage={role === 'owner' || perms.embajadores === 'manage'} /><AdSpaceBooking es={lang !== 'en'} /></div>}
+            {tab === 'ventas' && <SalesAdmin canManage={role === 'owner' || perms.embajadores === 'manage'} />}
             {tab === 'pagos' && <PayoutsHub canManage={role === 'owner' || perms.finanzas === 'manage' || perms.embajadores === 'manage'} />}
             {tab === 'antifraude' && <PayCheck lang={lang} />}
             {tab === 'retencion' && <Retention />}
