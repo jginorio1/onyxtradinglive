@@ -84,6 +84,7 @@ export type AdsConfig = {
   freqCap: number;                       // impresiones máx por visitante/campaña/día (0 = sin tope)
   partnerFill: boolean;                  // rellenar huecos vacíos con socios del directorio (CPA) en vez del house ad de Pro
   partnerFillSlots: Record<string, boolean>; // override por ubicación: true/false gana sobre partnerFill; sin valor = usa el global
+  partnerSlotPin: Record<string, string>;    // partner FIJO por ubicación (id del ad_partners); sin valor = rotar todos
   // --- Reserva de espacios por cupo fijo (v6) ---
   caps: Record<string, number>;          // cupo (máx anunciantes rotando) por slot_key; editable en admin
   defaultCap: number;                    // cupo por defecto para slots sin valor propio
@@ -101,6 +102,7 @@ const DEFAULT_CFG: AdsConfig = {
   freqCap: 3,
   partnerFill: true,
   partnerFillSlots: {},
+  partnerSlotPin: {},
   caps: {}, defaultCap: 4, spaceCommissionPct: 15, holdMinutes: 45, maturationDays: 14,
 };
 
@@ -116,6 +118,7 @@ export async function getAdsConfig(): Promise<AdsConfig> {
     freqCap: typeof c.freqCap === 'number' ? c.freqCap : DEFAULT_CFG.freqCap,
     partnerFill: c.partnerFill !== false,
     partnerFillSlots: c.partnerFillSlots && typeof c.partnerFillSlots === 'object' ? c.partnerFillSlots : {},
+    partnerSlotPin: c.partnerSlotPin && typeof c.partnerSlotPin === 'object' ? c.partnerSlotPin : {},
     caps: c.caps && typeof c.caps === 'object' ? c.caps : {},
     defaultCap: typeof c.defaultCap === 'number' && c.defaultCap > 0 ? c.defaultCap : DEFAULT_CFG.defaultCap,
     spaceCommissionPct: typeof c.spaceCommissionPct === 'number' ? c.spaceCommissionPct : DEFAULT_CFG.spaceCommissionPct,
@@ -272,6 +275,15 @@ export async function pickAd(
       const live = (parts || []).filter((p: any) => geoMatch(p.geo, '', '', country))
         .sort((a: any, b: any) => String(a.id).localeCompare(String(b.id)));
       if (live.length) {
+        const asPartner = (p: any) => ({ kind: 'partner' as const, id: p.id, name: p.name, logo: p.logo_url || '', banner: p.banner_url || '', blurb: (lang === 'es' ? p.blurb_es : p.blurb_en) || '', link: `/api/ads/partner?id=${p.id}`, size: slot.size });
+        // Partner FIJADO para esta ubicación: si el dueño eligió uno concreto y sigue
+        // activo (y coincide geo), ese sale siempre en este hueco (sin rotar).
+        const pinId = cfg.partnerSlotPin ? cfg.partnerSlotPin[slotKey] : '';
+        if (pinId) {
+          const pinned = live.find((p: any) => String(p.id) === String(pinId));
+          if (pinned) return asPartner(pinned);
+          // Si el fijado ya no está activo/geo, cae a rotación (no dejamos el hueco vacío).
+        }
         // Rotación por hueco: cada slot arranca en un socio distinto (hash del slot)
         // y todo rota con el tiempo (cada 12 min). Así en una misma página no se
         // repite el mismo banner en huecos seguidos, y con el tiempo van cambiando.
@@ -279,7 +291,7 @@ export async function pickAd(
         const bucket = Math.floor(Date.now() / (12 * 60 * 1000)); // cambia cada 12 min
         // + pos: dos huecos seguidos en la misma página NO muestran el mismo socio.
         const p = live[(h + bucket + pos) % live.length];
-        return { kind: 'partner', id: p.id, name: p.name, logo: p.logo_url || '', banner: p.banner_url || '', blurb: (lang === 'es' ? p.blurb_es : p.blurb_en) || '', link: `/api/ads/partner?id=${p.id}`, size: slot.size };
+        return asPartner(p);
       }
     } catch {}
   }

@@ -168,10 +168,9 @@ export default async function BlogArticle({ params }: { params: { slug: string }
           )}
         </div>
 
-        {/* Columna LATERAL derecha: MPU + media página (pegajosa) */}
+        {/* Columna LATERAL derecha: un solo banner vertical (pegajoso). */}
         <aside style={{ width: '100%', maxWidth: 300, position: 'sticky', top: 80, alignSelf: 'flex-start', justifySelf: 'center' }}>
           <AdSlot slot="article_sidebar" lang={es ? 'es' : 'en'} />
-          <AdSlot slot="article_halfpage" lang={es ? 'es' : 'en'} />
         </aside>
       </div>
 

@@ -33,10 +33,14 @@ export async function GET() {
   const { data: repsAll } = await supabaseAdmin.from('sales_reps').select('id,display_name,code,status').eq('status', 'active').order('display_name', { ascending: true });
   const reps = (repsAll || []).map((r: any) => ({ id: r.id, name: r.display_name || r.code }));
 
+  // Socios del directorio activos (para fijar uno por ubicación).
+  const { data: partsAll } = await supabaseAdmin.from('ad_partners').select('id,name,geo,status').eq('status', 'active').order('name', { ascending: true });
+  const partners = (partsAll || []).map((p: any) => ({ id: p.id, name: p.name, geo: p.geo || '' }));
+
   return NextResponse.json({
     ok: true,
-    settings: { defaultCap: cfg.defaultCap, spaceCommissionPct: cfg.spaceCommissionPct, holdMinutes: cfg.holdMinutes, maturationDays: cfg.maturationDays, caps: cfg.caps || {}, partnerFill: cfg.partnerFill, partnerFillSlots: cfg.partnerFillSlots || {} },
-    slots, bookings: rows, reps,
+    settings: { defaultCap: cfg.defaultCap, spaceCommissionPct: cfg.spaceCommissionPct, holdMinutes: cfg.holdMinutes, maturationDays: cfg.maturationDays, caps: cfg.caps || {}, partnerFill: cfg.partnerFill, partnerFillSlots: cfg.partnerFillSlots || {}, partnerSlotPin: cfg.partnerSlotPin || {} },
+    slots, bookings: rows, reps, partners,
   });
 }
 
@@ -65,6 +69,11 @@ export async function POST(req: Request) {
       const pfs: Record<string, boolean> = {};
       for (const k of Object.keys(b.partnerFillSlots)) { const v = b.partnerFillSlots[k]; if (v === true || v === false) pfs[k] = v; }
       patch.partnerFillSlots = pfs;
+    }
+    if (b.partnerSlotPin && typeof b.partnerSlotPin === 'object') {
+      const pin: Record<string, string> = {};
+      for (const k of Object.keys(b.partnerSlotPin)) { const v = b.partnerSlotPin[k]; if (v && typeof v === 'string') pin[k] = v; }
+      patch.partnerSlotPin = pin;
     }
     await saveAdsConfig(patch);
     return NextResponse.json({ ok: true });

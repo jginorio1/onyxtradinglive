@@ -15,6 +15,7 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
   const [cfg, setCfg] = useState<any>({ defaultCap: 4, spaceCommissionPct: 15, holdMinutes: 45, maturationDays: 14 });
   const [pFill, setPFill] = useState(true);                       // partners: por defecto
   const [pSlots, setPSlots] = useState<Record<string, boolean>>({}); // override por ubicación
+  const [pPin, setPPin] = useState<Record<string, string>>({});      // partner fijo por ubicación
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   // --- módulo de cotizaciones / propuestas ---
@@ -33,6 +34,7 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
       setCfg({ defaultCap: j.settings?.defaultCap ?? 4, spaceCommissionPct: j.settings?.spaceCommissionPct ?? 15, holdMinutes: j.settings?.holdMinutes ?? 45, maturationDays: j.settings?.maturationDays ?? 14 });
       setPFill(j.settings?.partnerFill !== false);
       setPSlots(j.settings?.partnerFillSlots || {});
+      setPPin(j.settings?.partnerSlotPin || {});
     } catch {}
   };
   useEffect(() => { load(); }, []);
@@ -44,8 +46,9 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
     if (j.error) setMsg(j.error);
     return j;
   };
-  const saveSettings = async () => { const j = await post({ action: 'save_settings', caps, ...cfg, partnerFill: pFill, partnerFillSlots: pSlots }); if (j.ok) { setMsg(L('Guardado ✓', 'Saved ✓')); await load(); } };
+  const saveSettings = async () => { const j = await post({ action: 'save_settings', caps, ...cfg, partnerFill: pFill, partnerFillSlots: pSlots, partnerSlotPin: pPin }); if (j.ok) { setMsg(L('Guardado ✓', 'Saved ✓')); await load(); } };
   const setSlotFill = (k: string, v: '' | 'yes' | 'no') => setPSlots((p) => { const n = { ...p }; if (v === '') delete n[k]; else n[k] = v === 'yes'; return n; });
+  const setSlotPin = (k: string, v: string) => setPPin((p) => { const n = { ...p }; if (!v) delete n[k]; else n[k] = v; return n; });
   const confirmPaid = async (id: string) => { const j = await post({ action: 'confirm_paid', id }); if (j.ok) { setMsg(L('Pago confirmado ✓', 'Payment confirmed ✓')); await load(); } };
   const cancel = async (id: string) => { const j = await post({ action: 'cancel', id }); if (j.ok) { await load(); } };
   const sweep = async () => { const j = await post({ action: 'sweep' }); if (j.ok) { setMsg(L(`Limpieza: ${j.expired} vencidas, ${j.released} liberadas`, `Sweep: ${j.expired} expired, ${j.released} released`)); await load(); } };
@@ -190,10 +193,24 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
                   <option value="yes">{L('Sí · mostrar partners', 'Yes · show partners')}</option>
                   <option value="no">{L('No · dejar vacío', 'No · leave empty')}</option>
                 </select>
+                {/* ¿Qué partner sale en este hueco? Uno fijo o rotar todos. Solo aplica si Partners está ON aquí. */}
+                <select value={pPin[s.key] || ''} disabled={!eff} onChange={(e) => setSlotPin(s.key, e.target.value)}
+                  style={{ width: '100%', padding: '7px 8px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: eff ? 'var(--tx,#e8ecf5)' : 'var(--mut,#9aa6bd)', fontSize: 12.5, opacity: eff ? 1 : .6 }}>
+                  <option value="">{L('🔁 Rotar todos los partners', '🔁 Rotate all partners')}</option>
+                  {(d.partners || []).map((p: any) => (
+                    <option key={p.id} value={p.id}>{L('📌 Fijar: ', '📌 Pin: ')}{p.name}</option>
+                  ))}
+                </select>
               </div>
             );
           })}
         </div>
+        {(d.partners || []).length === 0 && (
+          <div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', marginTop: 8 }}>
+            {L('Aún no hay partners activos en el directorio. Añádelos en Ads → Directorio para poder fijar uno por espacio.',
+               'No active directory partners yet. Add them in Ads → Directory to pin one per placement.')}
+          </div>
+        )}
         <div style={{ marginTop: 12 }}><button disabled={busy} onClick={saveSettings} style={btnPS}>{L('Guardar partners', 'Save partners')}</button></div>
       </div>
 

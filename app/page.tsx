@@ -924,8 +924,6 @@ export default function Home() {
 
       {/* Anuncio de la portada (leaderboard). Oculto a usuarios de pago y en nativo. */}
       <div className="wrap"><AdSlot slot="landing_top" lang={lang} /></div>
-      {/* Billboard grande de la portada (970x250). */}
-      <div className="wrap"><AdSlot slot="landing_billboard" lang={lang} /></div>
 
       {/* PRICING */}
       <div id="pricing" className="wrap section">
