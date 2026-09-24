@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import SlotPreview from '@/app/components/SlotPreview';
 
 // Panel admin · Reserva de espacios por cupo fijo.
 //  · Editar el cupo (máx anunciantes rotando) por ubicación + parámetros.
@@ -96,6 +97,7 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
               {(d.slots || []).map((s: any) => <option key={s.key} value={s.key}>{(es ? s.es : s.en)} · {s.size} · {L('cupo', 'cap')} {s.cap} · ${s.price}</option>)}
             </select>
           </div>
+          {f.slot && (() => { const sc = (d.slots || []).find((x: any) => x.key === f.slot); return sc ? <div style={{ gridColumn: '1 / -1' }}><SlotPreview slotKey={sc.key} page={sc.page} size={sc.size} es={es} /></div> : null; })()}
           <div><label style={lblS}>{L('Desde', 'From')}</label><input type="date" min={todayStr} value={f.start} onChange={(e) => { setFF('start', e.target.value); refreshCal(f.slot, e.target.value, f.end); }} style={inpS} /></div>
           <div><label style={lblS}>{L('Hasta', 'To')}</label><input type="date" min={f.start || todayStr} value={f.end} onChange={(e) => { setFF('end', e.target.value); refreshCal(f.slot, f.start, e.target.value); }} style={inpS} /></div>
           <div><label style={lblS}>{L('Contacto (anunciante)', 'Contact (advertiser)')}</label><input value={f.advertiser} onChange={(e) => setFF('advertiser', e.target.value)} style={inpS} /></div>

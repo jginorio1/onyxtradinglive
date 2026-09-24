@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { HintPop } from '@/app/components/HintPop';
+import SlotPreview from '@/app/components/SlotPreview';
 
 // Icono "?" con explicación. Popup robusto compartido (cierra al tocar fuera / X /
 // Escape, y no se corta en el borde de la pantalla).
@@ -722,6 +723,7 @@ function AdSpaceSeller({ lang, L, card, btn, btnP, setMsg }: any) {
               ))}
             </select>
           </div>
+          {cur() && <div style={{ gridColumn: '1 / -1' }}><SlotPreview slotKey={cur().key} page={cur().page} size={cur().size} es={lang === 'es'} /></div>}
           <div><label style={lbl}>{L('Desde', 'From')}</label><input type="date" min={todayStr} value={start} onChange={(e) => setStart(e.target.value)} style={inp} /></div>
           <div><label style={lbl}>{L('Hasta', 'To')}</label><input type="date" min={start || todayStr} value={end} onChange={(e) => setEnd(e.target.value)} style={inp} /></div>
         </div>
