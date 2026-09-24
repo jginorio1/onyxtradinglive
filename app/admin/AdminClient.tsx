@@ -42,6 +42,7 @@ const TestConsole = dynamic(() => import('./TestConsole'), { ssr: false, loading
 const Firms = dynamic(() => import('./Firms'), { ssr: false, loading: tabLoad });
 const CatalogAdmin = dynamic(() => import('./CatalogAdmin'), { ssr: false, loading: tabLoad });
 const MtBrokers = dynamic(() => import('./MtBrokers'), { ssr: false, loading: tabLoad });
+const AdSpaceBooking = dynamic(() => import('./AdSpaceBooking'), { ssr: false, loading: tabLoad });
 const SupportInbox = dynamic(() => import('./SupportInbox'), { ssr: false, loading: tabLoad });
 const Diagnostics = dynamic(() => import('./Diagnostics'), { ssr: false, loading: tabLoad });
 const Resources = dynamic(() => import('./Resources'), { ssr: false, loading: tabLoad });
@@ -985,7 +986,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'correos' && <Emails />}
             {tab === 'campanas' && <Campaigns />}
             {tab === 'seo' && <SeoPanel />}
-            {tab === 'ads' && <AdsAdmin es={lang !== 'en'} />}
+            {tab === 'ads' && <div style={{ display: 'grid', gap: 16 }}><AdsAdmin es={lang !== 'en'} /><AdSpaceBooking es={lang !== 'en'} /></div>}
             {tab === 'monitor' && <Monitor />}
             {tab === 'copytraders' && <CopyTradersAdmin />}
             {uDrawer && <UserDrawer userId={uDrawer.id} email={uDrawer.email} onClose={() => setUDrawer(null)} />}

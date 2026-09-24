@@ -10,7 +10,7 @@ function Hint({ text }: { text: string }) { return <HintPop text={text} glyph="?
 // atender tickets, su equipo y cobros (Stripe Connect o USDT).
 export default function VentasPanel() {
   const [d, setD] = useState<any>(null);
-  const [tab, setTab] = useState<'resumen' | 'desempeno' | 'extracto' | 'clientes' | 'equipo' | 'evaluar' | 'soporte' | 'cobros' | 'kit' | 'formacion' | 'guia'>('resumen');
+  const [tab, setTab] = useState<'resumen' | 'desempeno' | 'extracto' | 'clientes' | 'equipo' | 'evaluar' | 'soporte' | 'cobros' | 'kit' | 'espacios' | 'formacion' | 'guia'>('resumen');
   const [msg, setMsg] = useState('');
   const [lang, setLang] = useState<'es' | 'en'>('es');
   const L = (es: string, en: string) => (lang === 'es' ? es : en);
@@ -72,6 +72,7 @@ export default function VentasPanel() {
         {tabBtn('soporte', L('Soporte', 'Support') + (d.tickets.length ? ` (${d.tickets.length})` : ''))}
         {tabBtn('cobros', L('Cobros', 'Payouts'))}
         {d.kit && d.kit.length > 0 && tabBtn('kit', L('Kit', 'Kit'))}
+        {tabBtn('espacios', L('Espacios', 'Ad space'))}
         {d.rep.level !== 'vendedor' && tabBtn('formacion', L('Formación equipo', 'Team training'))}
         {tabBtn('guia', L('Guía', 'Guide'))}
       </div>
@@ -164,6 +165,7 @@ export default function VentasPanel() {
       </div>}
 
       {tab === 'kit' && <KitTab kit={d.kit || []} lang={lang} L={L} card={card} btn={btn} setMsg={setMsg} />}
+      {tab === 'espacios' && <AdSpaceSeller lang={lang} L={L} card={card} btn={btn} btnP={btnP} setMsg={setMsg} />}
       {tab === 'formacion' && <TeamTraining lang={lang} L={L} card={card} />}
 
       {tab === 'guia' && <div style={card}>
@@ -619,6 +621,174 @@ function Evaluate({ d, L, act, card, btn, btnP }: any) {
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10 }}>
         <button style={btnP} disabled={!Object.keys(scores).length} onClick={send}>{L('Enviar evaluación', 'Submit evaluation')}</button>
         {done && <span style={{ color: 'var(--green,#5ed6a0)', fontSize: 13 }}>{L('¡Gracias! Evaluación guardada.', 'Thanks! Evaluation saved.')}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ---- Vender espacios publicitarios (cupo fijo + calendario + propuesta) ----
+function AdSpaceSeller({ lang, L, card, btn, btnP, setMsg }: any) {
+  const [d, setD] = useState<any>(null);
+  const [slot, setSlot] = useState('');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [advertiser, setAdvertiser] = useState('');
+  const [company, setCompany] = useState('');
+  const [email, setEmail] = useState('');
+  const [link, setLink] = useState('');
+  const [price, setPrice] = useState<number>(0);
+  const [cal, setCal] = useState<any[]>([]);
+  const [range, setRange] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [ok, setOk] = useState('');
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const cur = () => (d?.slots || []).find((s: any) => s.key === slot);
+
+  const load = async () => { try { const r = await fetch('/api/sales/ad-space', { cache: 'no-store' }); setD(await r.json()); } catch {} };
+  useEffect(() => { load(); }, []);
+
+  const post = async (body: any) => {
+    const r = await fetch('/api/sales/ad-space', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...body, lang }) });
+    return r.json();
+  };
+  const refreshCal = async (sk = slot, s = start, e = end) => {
+    if (!sk) { setCal([]); setRange(null); return; }
+    const j = await post({ action: 'availability', slot: sk, from: todayStr, days: 42, start: s || undefined, end: e || undefined });
+    if (j.ok) { setCal(j.calendar || []); setRange(j.range || null); }
+  };
+  const onSlot = (sk: string) => { setSlot(sk); const sc = (d?.slots || []).find((x: any) => x.key === sk); if (sc && !price) setPrice(sc.price); refreshCal(sk, start, end); };
+  useEffect(() => { if (slot) refreshCal(slot, start, end); /* eslint-disable-next-line */ }, [start, end]);
+
+  const dl = (b64: string, name: string) => {
+    try {
+      const bin = atob(b64); const arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
+      const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch {}
+  };
+  const validForm = () => slot && /^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end) && end >= start && advertiser.trim();
+
+  const doPdf = async () => {
+    if (!validForm()) { setMsg(L('Completa ubicación, fechas y anunciante.', 'Fill placement, dates and advertiser.')); return; }
+    setBusy(true); setOk('');
+    const j = await post({ action: 'proposal_pdf', slot, start, end, price, advertiser, company, email, link });
+    setBusy(false);
+    if (j.pdf) dl(j.pdf, j.filename || 'propuesta.pdf'); else setMsg(j.error || 'error');
+  };
+  const doEmail = async () => {
+    if (!validForm()) { setMsg(L('Completa ubicación, fechas y anunciante.', 'Fill placement, dates and advertiser.')); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setMsg(L('Escribe el correo del anunciante.', 'Enter the advertiser email.')); return; }
+    setBusy(true); setOk('');
+    const j = await post({ action: 'proposal_email', slot, start, end, price, advertiser, company, email, link });
+    setBusy(false);
+    if (j.sent) { setOk(L('Propuesta enviada ✓', 'Proposal sent ✓')); } else setMsg(j.error || 'error');
+  };
+  const doBook = async () => {
+    if (!validForm()) { setMsg(L('Completa ubicación, fechas y anunciante.', 'Fill placement, dates and advertiser.')); return; }
+    setBusy(true); setOk('');
+    const j = await post({ action: 'book', slot, start, end, price, advertiser, company, email, link });
+    setBusy(false);
+    if (j.ok) { setOk(L('Espacio reservado. El admin confirma el pago para activarlo.', 'Space held. Admin confirms payment to activate.')); await load(); await refreshCal(); }
+    else setMsg(j.error || 'error');
+  };
+
+  if (!d) return <div style={card}>{L('Cargando…', 'Loading…')}</div>;
+  if (d.isRep === false) return <div style={card}>{L('No disponible.', 'Not available.')}</div>;
+
+  const inp: React.CSSProperties = { width: '100%', padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 13 };
+  const lbl: React.CSSProperties = { fontSize: 12, color: 'var(--mut,#9aa6bd)', marginBottom: 4, display: 'block' };
+  const phaseColor: Record<string, string> = { live: 'var(--green,#5ed6a0)', scheduled: 'var(--accent,#8b93ff)', hold: 'var(--amber,#f0b74e)', ended: 'var(--mut,#9aa6bd)', expired: 'var(--mut,#9aa6bd)' };
+  const phaseLabel = (p: string) => ({ live: L('En vivo', 'Live'), scheduled: L('Programado', 'Scheduled'), hold: L('Reservado (sin pagar)', 'Held (unpaid)'), ended: L('Terminado', 'Ended'), expired: L('Vencido', 'Expired') } as any)[p] || p;
+
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={card}>
+        <h3 style={{ color: 'var(--tx,#e8ecf5)', marginTop: 0, marginBottom: 4 }}>{L('Vender espacios publicitarios', 'Sell ad space')}</h3>
+        <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)' }}>
+          {L(`Ganas ${d.commissionPct}% de comisión sobre cada espacio que vendas. Elige la ubicación, revisa las fechas libres, envía una propuesta profesional y reserva. Al confirmarse el pago, el banner sale al aire solo el día de inicio.`,
+             `You earn ${d.commissionPct}% commission on every space you sell. Pick the placement, check open dates, send a professional proposal and reserve. Once payment is confirmed, the banner goes live automatically on the start date.`)}
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={lbl}>{L('Ubicación', 'Placement')}</label>
+            <select value={slot} onChange={(e) => onSlot(e.target.value)} style={inp}>
+              <option value="">{L('— Elige un espacio —', '— Choose a space —')}</option>
+              {(d.slots || []).map((s: any) => (
+                <option key={s.key} value={s.key}>{(lang === 'es' ? s.es : s.en)} · {s.size} · {L('cupo', 'cap')} {s.cap} · ${s.price}</option>
+              ))}
+            </select>
+          </div>
+          <div><label style={lbl}>{L('Desde', 'From')}</label><input type="date" min={todayStr} value={start} onChange={(e) => setStart(e.target.value)} style={inp} /></div>
+          <div><label style={lbl}>{L('Hasta', 'To')}</label><input type="date" min={start || todayStr} value={end} onChange={(e) => setEnd(e.target.value)} style={inp} /></div>
+        </div>
+
+        {slot && cal.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', marginBottom: 6 }}>{L('Disponibilidad (próximas 6 semanas)', 'Availability (next 6 weeks)')}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3 }}>
+              {cal.map((c: any) => {
+                const bg = c.past ? 'transparent' : c.full ? 'color-mix(in srgb, var(--red,#f0736f) 22%, transparent)' : 'color-mix(in srgb, var(--green,#5ed6a0) 18%, transparent)';
+                const bd = c.past ? '1px dashed var(--line,#2a3350)' : c.full ? '1px solid var(--red,#f0736f)' : '1px solid color-mix(in srgb, var(--green,#5ed6a0) 55%, transparent)';
+                const sel = start && end && c.date >= start && c.date <= end;
+                return (
+                  <div key={c.date} title={`${c.date} · ${c.full ? L('lleno', 'full') : L('libre', 'free') + ' ' + c.free + '/' + c.cap}`}
+                    style={{ padding: '4px 0', textAlign: 'center', fontSize: 10.5, borderRadius: 6, background: bg, border: bd, opacity: c.past ? 0.4 : 1, color: 'var(--tx,#e8ecf5)', outline: sel ? '2px solid var(--accent,#8b93ff)' : 'none' }}>
+                    {Number(c.date.slice(8, 10))}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 11, color: 'var(--mut,#9aa6bd)', flexWrap: 'wrap' }}>
+              <span><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 3, background: 'color-mix(in srgb, var(--green,#5ed6a0) 18%, transparent)', border: '1px solid var(--green,#5ed6a0)', verticalAlign: 'middle' }} /> {L('con cupo', 'has room')}</span>
+              <span><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 3, background: 'color-mix(in srgb, var(--red,#f0736f) 22%, transparent)', border: '1px solid var(--red,#f0736f)', verticalAlign: 'middle' }} /> {L('lleno', 'full')}</span>
+            </div>
+            {range && (
+              <div style={{ marginTop: 8, fontSize: 12.5, color: range.free > 0 ? 'var(--green,#5ed6a0)' : 'var(--red,#f0736f)' }}>
+                {range.free > 0
+                  ? L(`En estas fechas: cupo ${range.cap}, ocupado ${range.peak} · quedan ${range.free} espacio(s).`, `These dates: cap ${range.cap}, used ${range.peak} · ${range.free} spot(s) left.`)
+                  : L(`Sin cupo en estas fechas (cupo ${range.cap}). Elige otras fechas.`, `No room on these dates (cap ${range.cap}). Pick other dates.`)}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
+          <div><label style={lbl}>{L('Contacto (anunciante)', 'Contact (advertiser)')}</label><input value={advertiser} onChange={(e) => setAdvertiser(e.target.value)} placeholder={L('Nombre', 'Name')} style={inp} /></div>
+          <div><label style={lbl}>{L('Empresa', 'Company')}</label><input value={company} onChange={(e) => setCompany(e.target.value)} style={inp} /></div>
+          <div><label style={lbl}>{L('Correo del anunciante', 'Advertiser email')}</label><input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="cliente@empresa.com" style={inp} /></div>
+          <div><label style={lbl}>{L('Enlace / web', 'Link / website')}</label><input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" style={inp} /></div>
+          <div><label style={lbl}>{L('Precio total (USD)', 'Total price (USD)')}</label><input type="number" min={0} value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)} style={inp} /></div>
+          <div style={{ alignSelf: 'end', fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>{L('Tu comisión estimada:', 'Your est. commission:')} <b style={{ color: 'var(--green,#5ed6a0)' }}>${Math.round((price * (d.commissionPct || 0)) / 100)}</b></div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+          <button style={btn} disabled={busy} onClick={doPdf}>{L('Vista previa PDF', 'Preview PDF')}</button>
+          <button style={btn} disabled={busy} onClick={doEmail}>{L('Enviar propuesta por correo', 'Email the proposal')}</button>
+          <button style={btnP} disabled={busy} onClick={doBook}>{L('Reservar espacio', 'Reserve space')}</button>
+        </div>
+        {ok && <div style={{ marginTop: 10, fontSize: 13, color: 'var(--green,#5ed6a0)' }}>{ok}</div>}
+        <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--mut,#9aa6bd)' }}>
+          {L(`La propuesta sale con tu nombre y tu correo (${d.seller.work_email || d.seller.login_email}). La reserva queda apartada ${d.holdMinutes} min mientras el cliente paga.`,
+             `The proposal is sent from your name and email (${d.seller.work_email || d.seller.login_email}). The hold lasts ${d.holdMinutes} min while the client pays.`)}
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 8 }}>{L('Mis reservas', 'My bookings')}</div>
+        {(d.bookings || []).length === 0 && <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)' }}>{L('Aún no tienes reservas.', 'No bookings yet.')}</div>}
+        {(d.bookings || []).map((bk: any) => (
+          <div key={bk.id} style={{ borderTop: '1px solid var(--line,#2a3350)', padding: '9px 0', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ color: 'var(--tx,#e8ecf5)', fontSize: 13.5 }}>{bk.advertiser_company || bk.advertiser} · {(lang === 'es' ? bk.slot_name_es : bk.slot_name_en)}</div>
+              <div style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>{(bk.starts_at || '').slice(0, 10)} → {(bk.ends_at || '').slice(0, 10)} · ${Math.round(bk.sold_amount || 0)}</div>
+            </div>
+            <span style={{ fontSize: 11.5, padding: '3px 9px', borderRadius: 20, border: `1px solid ${phaseColor[bk.phase]}`, color: phaseColor[bk.phase] }}>{phaseLabel(bk.phase)}</span>
+          </div>
+        ))}
       </div>
     </div>
   );

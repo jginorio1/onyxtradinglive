@@ -83,6 +83,12 @@ export type AdsConfig = {
   riskDisclaimer: { es: string; en: string };        // aviso financiero
   freqCap: number;                       // impresiones máx por visitante/campaña/día (0 = sin tope)
   partnerFill: boolean;                  // rellenar huecos vacíos con socios del directorio (CPA) en vez del house ad de Pro
+  // --- Reserva de espacios por cupo fijo (v6) ---
+  caps: Record<string, number>;          // cupo (máx anunciantes rotando) por slot_key; editable en admin
+  defaultCap: number;                    // cupo por defecto para slots sin valor propio
+  spaceCommissionPct: number;            // % de comisión del vendedor sobre el espacio vendido
+  holdMinutes: number;                   // minutos que una pre-reserva sin pagar bloquea el cupo
+  maturationDays: number;                // días que la comisión queda "en espera" antes de estar disponible
 };
 const DEFAULT_CFG: AdsConfig = {
   enabled: true, nativeEnabled: false, rates: {}, autoApprove: false,
@@ -93,6 +99,7 @@ const DEFAULT_CFG: AdsConfig = {
   },
   freqCap: 3,
   partnerFill: true,
+  caps: {}, defaultCap: 4, spaceCommissionPct: 15, holdMinutes: 45, maturationDays: 14,
 };
 
 export async function getAdsConfig(): Promise<AdsConfig> {
@@ -106,6 +113,11 @@ export async function getAdsConfig(): Promise<AdsConfig> {
     riskDisclaimer: { es: c.riskDisclaimer?.es || DEFAULT_CFG.riskDisclaimer.es, en: c.riskDisclaimer?.en || DEFAULT_CFG.riskDisclaimer.en },
     freqCap: typeof c.freqCap === 'number' ? c.freqCap : DEFAULT_CFG.freqCap,
     partnerFill: c.partnerFill !== false,
+    caps: c.caps && typeof c.caps === 'object' ? c.caps : {},
+    defaultCap: typeof c.defaultCap === 'number' && c.defaultCap > 0 ? c.defaultCap : DEFAULT_CFG.defaultCap,
+    spaceCommissionPct: typeof c.spaceCommissionPct === 'number' ? c.spaceCommissionPct : DEFAULT_CFG.spaceCommissionPct,
+    holdMinutes: typeof c.holdMinutes === 'number' && c.holdMinutes >= 0 ? c.holdMinutes : DEFAULT_CFG.holdMinutes,
+    maturationDays: typeof c.maturationDays === 'number' && c.maturationDays >= 0 ? c.maturationDays : DEFAULT_CFG.maturationDays,
   };
 }
 export async function saveAdsConfig(c: Partial<AdsConfig>) {
