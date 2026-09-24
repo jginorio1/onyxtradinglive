@@ -130,6 +130,42 @@ async function todayStats(): Promise<{ count: number; lastMs: number }> {
   }
 }
 
+// ===== CANDADO ATÓMICO (Postgres) — la garantía definitiva del tope =====
+// El tope diario y la separación mínima se hacen cumplir dentro de la BD con
+// SELECT ... FOR UPDATE (función news_pilot_claim del archivo sql/news_pilot_atomic.sql).
+// Postgres serializa las corridas concurrentes del cron, así que es IMPOSIBLE pasar
+// del tope aunque caigan muchas a la vez. Estos helpers llaman a esas funciones.
+// Si la función SQL aún no está instalada, devuelven null/valor de respaldo y el
+// motor usa una red LEGACY (tope por blog + cerrojo) para no quedar desprotegido.
+
+// Estado de hoy (publicados + hora del último) para el pre-chequeo y el panel.
+export async function pilotStatus(): Promise<{ count: number; lastMs: number }> {
+  try {
+    const { data, error } = await supabaseAdmin.rpc('news_pilot_status');
+    if (!error && data && typeof (data as any).count !== 'undefined') {
+      const la = (data as any).last_at ? new Date((data as any).last_at).getTime() : 0;
+      return { count: Number((data as any).count) || 0, lastMs: Number.isFinite(la) ? la : 0 };
+    }
+  } catch {}
+  // Respaldo: cuenta directa del blog.
+  try { const t = await todayStats(); return { count: t.count, lastMs: t.lastMs }; } catch { return { count: 9999, lastMs: Date.now() }; }
+}
+
+// Reserva atómica de un turno. { ok:true } concede; { ok:false, reason } deniega;
+// null = la función SQL no está instalada (el llamador usa la red legacy).
+async function pilotClaim(maxPerDay: number, gapMin: number): Promise<{ ok: boolean; reason?: string } | null> {
+  try {
+    const { data, error } = await supabaseAdmin.rpc('news_pilot_claim', { p_max: maxPerDay, p_gap_min: gapMin });
+    if (!error && data && typeof (data as any).ok === 'boolean') return { ok: (data as any).ok, reason: (data as any).reason };
+  } catch {}
+  return null;
+}
+
+// Devuelve un turno reservado si tras reservar falló la generación/guardado.
+async function pilotRelease(): Promise<void> {
+  try { await supabaseAdmin.rpc('news_pilot_release'); } catch {}
+}
+
 export type Candidate = { title: string; source: string; cat: string; ageMin: number };
 export type PilotResult = { ran: boolean; reason?: string; posted?: number; seen?: number; candidate?: string; feeds?: number; feedsOk?: number; fetched?: number; important?: number; fresh?: number; candidates?: Candidate[] };
 
@@ -169,37 +205,21 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
   const cfg = await newsPilotSettings();
   if (!cfg.enabled && !force) return { ran: false, reason: 'disabled' };
 
-  // ===== TOPE DIARIO A PRUEBA DE TODO =====
-  // Contador propio en app_settings, INDEPENDIENTE del blog. Se reinicia cada día
-  // (UTC) y, al empezar un día nuevo, se SIEMBRA con los artículos ya publicados hoy
-  // (por si tras un despliegue el día ya traía artículos). Aunque la consulta del
-  // tope basada en el blog fallara o contara mal, este contador jamás deja pasar del
-  // máximo por día. Es la red que hoy faltaba (publicaba de más pese al tope).
-  const dayKey = new Date().toISOString().slice(0, 10);
-  const dayRec = await getSetting<{ day: string; count: number }>('news_pilot_day', { day: '', count: 0 });
-  let dayCount = dayRec.day === dayKey ? (dayRec.count || 0) : 0;
-  if (dayRec.day !== dayKey) {
-    try {
-      const since0 = new Date(); since0.setUTCHours(0, 0, 0, 0);
-      const { count: c } = await supabaseAdmin.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'published').gte('created_at', since0.toISOString());
-      if (typeof c === 'number') dayCount = c;
-    } catch {}
-    try { await saveSetting('news_pilot_day', { day: dayKey, count: dayCount }); } catch {}
-  }
-  if (!dryRun && dayCount >= (cfg.maxPerDay || 3)) return { ran: true, reason: 'cap_reached', posted: 0 };
+  const maxPerDay = cfg.maxPerDay || 3;
+  const gapMin = Math.max(cfg.minMinutesBetween || 60, 0);
+  // "Publish now" (force) sí puede saltarse la SEPARACIÓN para probar, pero NUNCA el
+  // tope diario (por eso effGap=0 solo afecta a la separación, no al máximo por día).
+  const effGap = force ? 0 : gapMin;
 
-  const { count, lastMs } = await todayStats();
-  if (!dryRun && count >= (cfg.maxPerDay || 3)) return { ran: true, reason: 'cap_reached', posted: 0 };
-  // CERROJO ANTI-CARRERA (defensa en capas): la generación con IA tarda ~10-30s, así que
-  // dos corridas del cron casi simultáneas podrían pasar el tope las dos y publicar doble.
-  // Reservamos el turno en app_settings ANTES de generar: si otra corrida reservó hace
-  // menos que la separación mínima, salimos. Es independiente del blog, así que aunque la
-  // consulta del tope fallara, esto por sí solo impide inundar.
-  const gapMs = Math.max((cfg.minMinutesBetween || 60), 1) * 60000;
-  const gate = await getSetting<{ at: number }>('news_pilot_gate', { at: 0 });
-  if (!force && !dryRun && gate.at && Date.now() - gate.at < gapMs) return { ran: true, reason: 'too_soon', posted: 0 };
-  if (!dryRun) await saveSetting('news_pilot_gate', { at: Date.now() });
-  if (!dryRun && lastMs && Date.now() - lastMs < (cfg.minMinutesBetween || 20) * 60000) return { ran: true, reason: 'too_soon', posted: 0 };
+  // ===== PRE-CHEQUEO BARATO =====
+  // El tope y la separación se hacen cumplir de forma ATÓMICA justo antes de generar
+  // (candado en Postgres, más abajo). Aquí solo evitamos gastar llamadas a los feeds
+  // y a la IA cuando ya se llegó al tope o falta para la próxima ventana.
+  if (!dryRun) {
+    const st = await pilotStatus();
+    if (st.count >= maxPerDay) return { ran: true, reason: 'cap_reached', posted: 0 };
+    if (effGap && st.lastMs && Date.now() - st.lastMs < effGap * 60000) return { ran: true, reason: 'too_soon', posted: 0 };
+  }
 
   // Fuentes activas (por toggle y por tema). Incluye las custom del dueño.
   const all = mergedSources(cfg.custom_sources);
@@ -265,6 +285,32 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
   }
   if (!pick) return { ran: true, reason: 'all_seen', posted: 0, fresh: fresh.length, ...diag };
 
+  // ===== CANDADO ATÓMICO: reserva el turno del día ANTES de generar =====
+  // Este es el punto que hace IMPOSIBLE pasarse del tope. La reserva vive en la BD
+  // (news_pilot_claim, con FOR UPDATE): si otra corrida ya llenó el tope o publicó
+  // hace menos que la separación, aquí se DENIEGA. Al denegar, soltamos la noticia
+  // (borramos su marca de "vista") para reintentarla en la próxima ventana.
+  let claimedAtomic = false;
+  if (!dryRun) {
+    const claim = await pilotClaim(maxPerDay, effGap);
+    if (claim && claim.ok === false) {
+      try { await supabaseAdmin.from('news_seen').delete().eq('hash', pickHash); } catch {}
+      return { ran: true, reason: claim.reason === 'gap' ? 'too_soon' : 'cap_reached', posted: 0, fresh: fresh.length, ...diag };
+    }
+    if (claim && claim.ok === true) {
+      claimedAtomic = true;   // turno reservado atómicamente; si algo falla, lo devolvemos
+    } else {
+      // Red LEGACY (mientras el archivo sql/news_pilot_atomic.sql no esté instalado):
+      // tope por conteo real del blog + cerrojo en app_settings. No es atómica, pero
+      // protege hasta que corras el SQL; después manda el candado de arriba.
+      const { count: c2 } = await todayStats();
+      if (c2 >= maxPerDay) { try { await supabaseAdmin.from('news_seen').delete().eq('hash', pickHash); } catch {} return { ran: true, reason: 'cap_reached', posted: 0, fresh: fresh.length, ...diag }; }
+      const gate = await getSetting<{ at: number }>('news_pilot_gate', { at: 0 });
+      if (effGap && gate.at && Date.now() - gate.at < effGap * 60000) { try { await supabaseAdmin.from('news_seen').delete().eq('hash', pickHash); } catch {} return { ran: true, reason: 'too_soon', posted: 0, fresh: fresh.length, ...diag }; }
+      try { await saveSetting('news_pilot_gate', { at: Date.now() }); } catch {}
+    }
+  }
+
   // SEO ligero (opcional): una keyword de marca para tejer solo si encaja.
   const keyword = cfg.seo ? await pickSeoKeyword() : undefined;
   // Escribe el artículo con la IA.
@@ -274,6 +320,7 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
     // (borramos el registro "visto") para que el siguiente ciclo del cron la
     // reintente y llegue a publicarse sola. Antes se quedaba "quemada" para siempre.
     try { await supabaseAdmin.from('news_seen').delete().eq('hash', pickHash); } catch {}
+    if (claimedAtomic) await pilotRelease();   // devuelve el cupo: la IA falló, no publicamos
     await logError('news_pilot_gen', new Error(gen.reason || 'gen_failed'));
     return { ran: true, reason: 'gen_failed', posted: 0, candidate: pick.title, fresh: fresh.length, ...diag };
   }
@@ -284,6 +331,7 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
   // no volvemos a publicarla: marcamos la noticia como vista y salimos.
   if (await titlePostedRecently(gen.article.title_es || '') || await titlePostedRecently(gen.article.title_en || '')) {
     try { await supabaseAdmin.from('news_seen').update({ posted: true }).eq('hash', pickHash); } catch {}
+    if (claimedAtomic) await pilotRelease();   // no publicamos (duplicada): devuelve el cupo
     return { ran: true, reason: 'dup_title', posted: 0, candidate: pick.title, fresh: fresh.length, ...diag };
   }
 
@@ -300,6 +348,7 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
     });
   } catch (e: any) {
     try { await supabaseAdmin.from('news_seen').delete().eq('hash', pickHash); } catch {}
+    if (claimedAtomic) await pilotRelease();   // guardado falló: devuelve el cupo
     await logError('news_pilot_save', e);
     return { ran: true, reason: 'save_failed', posted: 0, candidate: pick.title, fresh: fresh.length, ...diag };
   }
@@ -315,6 +364,6 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
     } catch (e) { await logError('news_pilot_email', e); }
   }
 
-  try { await saveSetting('news_pilot_day', { day: dayKey, count: dayCount + 1 }); } catch {}
+  // El cupo del día ya quedó contado en el candado atómico (news_pilot_claim).
   return { ran: true, reason: auto ? 'posted' : 'drafted', posted: auto ? 1 : 0, candidate: pick.title, fresh: fresh.length, ...diag };
 }

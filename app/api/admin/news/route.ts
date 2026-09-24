@@ -68,6 +68,18 @@ export async function GET() {
   const start7 = new Date(nowMs - 7 * 86400000);
   let today = 0, last7 = 0, total = 0;
   try { today = await cnt(startToday.toISOString()); last7 = await cnt(start7.toISOString()); total = await cnt(); } catch {}
+  // FUENTE ÚNICA: "Publicados hoy" y la hora del último post salen del MISMO contador
+  // atómico que hace cumplir el tope (función news_pilot_status). Así el panel nunca
+  // discrepa de lo que realmente frena. Si la función SQL aún no está, se queda el
+  // conteo por blog de arriba.
+  let statusLastMs = 0;
+  try {
+    const { data: stat, error: stErr } = await supabaseAdmin.rpc('news_pilot_status');
+    if (!stErr && stat && typeof (stat as any).count !== 'undefined') {
+      today = Number((stat as any).count) || today;
+      statusLastMs = (stat as any).last_at ? new Date((stat as any).last_at).getTime() : 0;
+    }
+  } catch {}
   // Próxima ventana: cuándo podrá publicar el siguiente. Dos motivos de espera:
   //  · Tope diario alcanzado → se reanuda mañana 00:00 UTC (cuando se reinicia el día).
   //  · Separación mínima → gate.at + gap.
@@ -76,10 +88,13 @@ export async function GET() {
   const gapMin = settings.minMinutesBetween || 60;
   const capReached = today >= (settings.maxPerDay || 3);
   const tomorrow0 = new Date(); tomorrow0.setUTCHours(24, 0, 0, 0);
-  const gateNextMs = gate.at ? gate.at + gapMin * 60000 : nowMs;
+  // La hora del último post sale del contador atómico (statusLastMs); si aún no está
+  // la función SQL, se usa el cerrojo legacy en app_settings (gate.at).
+  const lastPostMs = statusLastMs || gate.at || 0;
+  const gateNextMs = lastPostMs ? lastPostMs + gapMin * 60000 : nowMs;
   const nextAt = capReached ? tomorrow0.getTime() : Math.max(gateNextMs, nowMs);
   const nextWindowMin = Math.max(0, Math.ceil((nextAt - nowMs) / 60000));
-  const gateFree = !capReached && (!gate.at || (nowMs - gate.at) >= gapMin * 60000);
+  const gateFree = !capReached && (!lastPostMs || (nowMs - lastPostMs) >= gapMin * 60000);
   const log = await getSetting<{ runs: any[] }>('news_pilot_log', { runs: [] });
   return NextResponse.json({ settings, sources, recent, lastRun, cronHits1h, cronLastAt, today, last7, total, nextWindowMin, nextAt, capReached, gateFree, log: log.runs || [] });
 }
