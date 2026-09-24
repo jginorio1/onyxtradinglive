@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { syncMatchtrader } from '@/lib/matchtrader';
+import { syncPlatform } from '@/lib/matchtraderPlatform';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,7 +17,11 @@ export async function GET(req: Request) {
   const { data: conns } = await supabaseAdmin.from('matchtrader_connections').select('*').eq('enabled', true).limit(500);
   let ok = 0, skipped = 0;
   for (const c of conns || []) {
-    try { const r = await syncMatchtrader(c); if (r.ok) ok++; else skipped++; } catch { skipped++; }
+    try {
+      // Platform API (retail, el modelo de Onyx) vs Broker API (nivel bróker).
+      const r = (c.kind === 'broker') ? await syncMatchtrader(c) : await syncPlatform(c);
+      if (r.ok) ok++; else skipped++;
+    } catch { skipped++; }
   }
   return NextResponse.json({ ok: true, synced: ok, skipped });
 }

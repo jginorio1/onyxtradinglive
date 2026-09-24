@@ -560,41 +560,91 @@ export default function KeysPage() {
 // MatchTrader (beta): se conecta con la API del bróker (no lleva EA). El trader
 // pega la URL de la API y su clave; el motor server-side (lib/matchtrader.ts)
 // aplica el mismo Guardian y Copy en cuanto estén los endpoints del bróker.
+// MatchTrader (retail): el trader elige su bróker del catálogo y entra con SU
+// email + contraseña. Onyx hace login contra la Platform API y guarda solo el
+// token cifrado. Si el bróker es prop firm, se muestra un aviso antes de conectar.
 function MatchtraderConnect({ t }: any) {
-  const [base, setBase] = useState('');
-  const [key, setKey] = useState('');
-  const [uuid, setUuid] = useState('');
-  const [login, setLogin] = useState('');
-  const [role, setRole] = useState('both');
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  const save = async () => {
-    setBusy(true);
-    try {
-      const r = await fetch('/api/matchtrader/connect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ api_base: base, api_key: key, system_uuid: uuid, login, role }) });
-      if (r.ok) { setDone(true); setBase(''); setKey(''); setUuid(''); setLogin(''); setRole('both'); }
-    } finally { setBusy(false); }
-  };
   const en = t.mtrBase === 'API URL';
+  const [brokers, setBrokers] = useState<any[]>([]);
+  const [conns, setConns] = useState<any[]>([]);
+  const [code, setCode] = useState('');
+  const [email, setEmail] = useState('');
+  const [pass, setPass] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [warn, setWarn] = useState(false);
+  const load = async () => {
+    try { const r = await fetch('/api/matchtrader/platform'); const j = await r.json(); setBrokers(j.brokers || []); setConns(j.connections || []); if (!code && j.brokers?.[0]) setCode(j.brokers[0].code); } catch {}
+  };
+  useEffect(() => { load(); }, []);
+  const broker = brokers.find((b) => b.code === code);
+  const doConnect = async () => {
+    setBusy(true); setMsg('');
+    try {
+      const r = await fetch('/api/matchtrader/platform', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ broker_code: code, email, password: pass }) });
+      const j = await r.json();
+      if (r.ok) { setMsg(en ? `Connected ${j.connected?.length || 0} account(s).` : `Conectadas ${j.connected?.length || 0} cuenta(s).`); setEmail(''); setPass(''); load(); }
+      else setMsg((en ? 'Error: ' : 'Error: ') + (j.error || ''));
+    } catch { setMsg('Error'); } finally { setBusy(false); setWarn(false); }
+  };
+  const onConnect = () => { if (broker?.is_prop) setWarn(true); else doConnect(); };
+  const toggleCopy = async (c: any) => { await fetch('/api/matchtrader/platform', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, copy_enabled: !c.copy_enabled }) }); load(); };
+  const remove = async (c: any) => { await fetch('/api/matchtrader/platform', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id }) }); load(); };
+
   return (
     <div className="card" style={{ marginBottom: 18, border: '1px solid var(--brand)' }}>
       <h3 style={{ marginBottom: 4 }}>{t.mtrT}</h3>
-      <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7, marginBottom: 12 }}>{t.mtrD}</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 460 }}>
-        <label className="muted" style={{ fontSize: 12 }}>{t.mtrBase}<input value={base} onChange={(e) => setBase(e.target.value)} placeholder="https://broker-api.tubroker.com" style={{ marginTop: 4 }} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{t.mtrKey}<input value={key} onChange={(e) => setKey(e.target.value)} placeholder={en ? 'CRM token (Bearer)' : 'Token del CRM (Bearer)'} style={{ marginTop: 4 }} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{en ? 'Account login (number)' : 'Login de la cuenta (número)'}<input value={login} onChange={(e) => setLogin(e.target.value)} placeholder={en ? 'e.g. 100234' : 'ej. 100234'} style={{ marginTop: 4 }} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>systemUuid<input value={uuid} onChange={(e) => setUuid(e.target.value)} style={{ marginTop: 4 }} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{en ? 'Role in Copy' : 'Rol en Copy'}
-          <select value={role} onChange={(e) => setRole(e.target.value)} style={{ marginTop: 4, width: '100%' }}>
-            <option value="both">{en ? 'Master + Slave' : 'Máster + Esclava'}</option>
-            <option value="master">{en ? 'Master only (emits)' : 'Solo máster (emite)'}</option>
-            <option value="slave">{en ? 'Slave only (receives)' : 'Solo esclava (recibe)'}</option>
-          </select>
-        </label>
-        <button className="btn btn-primary" disabled={busy || !base || !key || !login} onClick={save}>{busy ? '…' : done ? t.mtrSaved : t.mtrSave}</button>
-        <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.6 }}>{t.mtrBeta}</div>
-      </div>
+      <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7, marginBottom: 12 }}>
+        {en ? 'Connect your MatchTrader account: pick your broker and sign in with your account email and password. We store only an encrypted token — never your password.' : 'Conecta tu cuenta de MatchTrader: elige tu bróker e inicia sesión con el email y contraseña de tu cuenta. Guardamos solo un token cifrado — nunca tu contraseña.'}
+      </p>
+      {!brokers.length ? (
+        <p className="muted" style={{ fontSize: 13 }}>{en ? 'No brokers available yet. Ask the admin to add your broker.' : 'Aún no hay brókers disponibles. Pide al admin que añada tu bróker.'}</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 460 }}>
+          <label className="muted" style={{ fontSize: 12 }}>{en ? 'Broker' : 'Bróker'}
+            <select value={code} onChange={(e) => setCode(e.target.value)} style={{ marginTop: 4, width: '100%' }}>
+              {brokers.map((b) => <option key={b.code} value={b.code}>{b.name}{b.is_prop ? (en ? ' (prop firm)' : ' (prop firm)') : ''}</option>)}
+            </select>
+          </label>
+          <label className="muted" style={{ fontSize: 12 }}>Email<input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" style={{ marginTop: 4 }} /></label>
+          <label className="muted" style={{ fontSize: 12 }}>{en ? 'Password' : 'Contraseña'}<input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••" style={{ marginTop: 4 }} /></label>
+          <button className="btn btn-primary" disabled={busy || !code || !email || !pass} onClick={onConnect}>{busy ? '…' : (en ? 'Connect' : 'Conectar')}</button>
+          {msg ? <div className="muted" style={{ fontSize: 12.5 }}>{msg}</div> : null}
+        </div>
+      )}
+
+      {conns.length ? (
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="muted" style={{ fontSize: 12, fontWeight: 700 }}>{en ? 'Connected accounts' : 'Cuentas conectadas'}</div>
+          {conns.map((c) => (
+            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 10px' }}>
+              <b style={{ fontSize: 13 }}>{c.label || c.account_uuid}</b>
+              <span className="muted" style={{ fontSize: 11 }}>{c.broker_code}{c.status === 'reauth' ? (en ? ' · reconnect needed' : ' · reconectar') : ''}</span>
+              <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                <input type="checkbox" checked={!!c.copy_enabled} onChange={() => toggleCopy(c)} /> Copy
+              </label>
+              <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => remove(c)}>{en ? 'Remove' : 'Quitar'}</button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {warn && broker ? (
+        <div className="sk-modal" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setWarn(false)}>
+          <div className="sk-card" style={{ background: 'var(--card)', maxWidth: 460, padding: 20, borderRadius: 14 }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>⚠️ {en ? 'Prop firm rules' : 'Reglas de la prop firm'}</h3>
+            <p style={{ fontSize: 13.5, lineHeight: 1.7 }}>
+              {en
+                ? `${broker.name} is a prop firm. Many prop firms prohibit copy trading and API automation on challenge/funded accounts. Using Copy or auto-execution could get your account failed or banned. Monitoring (read-only) is lower risk. You decide — proceed at your own responsibility and check your firm's terms.`
+                : `${broker.name} es una prop firm. Muchas props prohíben el copy trading y la automatización por API en cuentas de challenge/fondeadas. Usar Copy o ejecución automática podría hacer que te anulen o baneen la cuenta. El monitoreo (solo lectura) es de menor riesgo. Tú decides — continúa bajo tu responsabilidad y revisa los términos de tu firma.`}
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button className="btn btn-ghost" onClick={() => setWarn(false)}>{en ? 'Cancel' : 'Cancelar'}</button>
+              <button className="btn btn-primary" onClick={doConnect}>{en ? 'I understand, connect' : 'Entiendo, conectar'}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
