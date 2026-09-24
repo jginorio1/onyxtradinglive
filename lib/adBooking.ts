@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getAdsConfig, slotByKey, type AdSlot, type AdsConfig } from '@/lib/ads';
-import { reverseFromInvoice } from '@/lib/sales';
+import { reverseFromInvoice, salesSettings, beneficiaryChain, pctFor } from '@/lib/sales';
 
 // ============================================================
 // Onyx Ads · Reserva de espacios por CUPO FIJO + calendario
@@ -158,22 +158,42 @@ export async function createBooking(opts: {
   return { ok: true, id: (data as any)?.id, holdUntil };
 }
 
-// Acredita la comisión del vendedor por un espacio vendido (idempotente).
-// Se apoya en sales_commissions para que caiga en su extracto/saldos/pagos como
-// cualquier otra comisión, con maduración y clawback por reembolso.
+// Acredita la comisión del espacio vendido a TODA la cadena de 3 niveles
+// (idempotente). El vendedor directo cobra el % de espacios (congelado al
+// vender); su Lead (override1) y su Director (override2) cobran su override
+// sobre la misma venta, exactamente como las suscripciones, reutilizando la
+// cadena de beneficiarios de Ventas. Cae en sales_commissions → aparece en el
+// extracto/saldos/pagos de cada uno, con maduración y clawback por reembolso.
 async function creditSpaceCommission(booking: any, cfg: AdsConfig): Promise<void> {
   if (!booking?.rep_id) return;
   const base = Math.max(0, Number(booking.sold_amount) || 0);
-  const pct = Number(booking.commission_pct) || cfg.spaceCommissionPct || 0;
-  if (base <= 0 || pct <= 0) return;
-  const amount = Math.round(base * pct) / 100;
+  if (base <= 0) return;
+  const s = await salesSettings();
+  const { direct, up1, up2 } = await beneficiaryChain(booking.rep_id);
   const availableAt = new Date(Date.now() + Math.max(0, cfg.maturationDays) * DAY).toISOString();
-  await supabaseAdmin.from('sales_commissions').upsert({
-    rep_id: booking.rep_id, client_user_id: null, level: 'ad_space',
-    invoice_id: `adspace:${booking.id}`, base_amount: base, pct,
-    amount: Number(amount.toFixed(2)), currency: 'USD',
-    status: 'pending', available_at: availableAt,
-  }, { onConflict: 'invoice_id,rep_id,level', ignoreDuplicates: true });
+  const invoiceId = `adspace:${booking.id}`;
+  const rows: any[] = [];
+  const add = (rep: any, pct: number, level: string) => {
+    if (!rep || rep.status !== 'active') return;
+    if (!(pct > 0)) return;
+    rows.push({
+      rep_id: rep.id, client_user_id: null, level, invoice_id: invoiceId,
+      base_amount: base, pct, amount: Math.round(base * pct) / 100, currency: 'USD',
+      status: 'pending', available_at: availableAt,
+    });
+  };
+  // Directo: % de espacios (el congelado al vender, o el actual como respaldo).
+  add(direct, Number(booking.commission_pct) || cfg.spaceCommissionPct || 0, 'ad_space');
+  // Overrides de la cadena: mismos % de override que usa Ventas.
+  add(up1, pctFor(up1, 'override1', s), 'ad_space_ov1');
+  add(up2, pctFor(up2, 'override2', s), 'ad_space_ov2');
+  if (!rows.length) return;
+  await supabaseAdmin.from('sales_commissions').upsert(rows, { onConflict: 'invoice_id,rep_id,level', ignoreDuplicates: true });
+  // Avisos best-effort a cada beneficiario (nunca rompen el flujo).
+  try {
+    const { notifyRep } = await import('@/lib/salesNotify');
+    for (const r of rows) await notifyRep(r.rep_id, 'commission', { amount: r.amount });
+  } catch {}
 }
 
 // Confirma el pago de una reserva: la vuelve 'active' (programada si es a futuro)
