@@ -73,7 +73,7 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
   // Relleno programático (red externa) cuando no hay campaña pagada.
   if (ad.kind === 'programmatic') {
     return (
-      <div className="onyx-ad" style={wrap} ref={ref}>
+      <div className="onyx-ad" data-slot={slot} style={wrap} ref={ref}>
         {label && tag}
         <div dangerouslySetInnerHTML={{ __html: ad.code }} />
       </div>
@@ -88,7 +88,7 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
     // clic/iframe (…/visit/?bta=…): esos NO son imagen → caemos a la tarjeta.
     if (ad.banner && looksLikeImage(ad.banner) && !bannerBad) {
       return (
-        <div className="onyx-ad" style={wrap} ref={ref}>
+        <div className="onyx-ad" data-slot={slot} style={wrap} ref={ref}>
           {label && tag}
           <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" style={{ display: 'block', lineHeight: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
             <img src={ad.banner} alt={ad.name} loading="lazy" decoding="async" onError={() => setBannerBad(true)}
@@ -98,7 +98,7 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
       );
     }
     return (
-      <div className="onyx-ad" style={wrap} ref={ref}>
+      <div className="onyx-ad" data-slot={slot} style={wrap} ref={ref}>
         {label && tag}
         <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', color: 'inherit', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 16px', background: 'color-mix(in srgb, var(--brand) 8%, transparent)' }}>
           {ad.logo
@@ -117,7 +117,7 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
   // House ad (relleno propio): promueve Pro.
   if (ad.kind === 'house') {
     return (
-      <div className="onyx-ad" style={wrap} ref={ref}>
+      <div className="onyx-ad" data-slot={slot} style={wrap} ref={ref}>
         {label && tag}
         <a href={lang === 'es' ? '/#precios' : '/en/#precios'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, textDecoration: 'none', color: 'inherit', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 16px', background: 'color-mix(in srgb, var(--brand) 8%, transparent)' }}>
           <div>
@@ -133,7 +133,7 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
   // Anuncio pagado.
   const onClick = () => { try { navigator.sendBeacon('/api/ads/click', new Blob([JSON.stringify({ id: ad.id })], { type: 'application/json' })); } catch {} };
   return (
-    <div className="onyx-ad" style={wrap} ref={ref}>
+    <div className="onyx-ad" data-slot={slot} style={wrap} ref={ref}>
       {label && tag}
       <a href={ad.link} target="_blank" rel="sponsored nofollow noopener" onClick={onClick} style={{ display: 'block', lineHeight: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--line)' }}>
         <img src={ad.creative} alt={ad.alt || L('Anuncio', 'Ad')} loading="lazy" decoding="async" style={{ width: '100%', height: 'auto', display: 'block' }} />
