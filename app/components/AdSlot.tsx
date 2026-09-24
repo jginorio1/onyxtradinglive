@@ -23,16 +23,22 @@ function looksLikeImage(u: string) {
   return /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(u.trim());
 }
 
+// Contador de huecos por carga de página: cada AdSlot toma una posición (0,1,2…)
+// para que el servidor no repita el mismo anuncio ni la misma marca en huecos seguidos.
+let SLOT_SEQ = 0;
+
 export default function AdSlot({ slot, lang, label = true }: { slot: string; lang: 'es' | 'en'; label?: boolean }) {
   const [ad, setAd] = useState<Served>(null);
   const [done, setDone] = useState(false);
   const [bannerBad, setBannerBad] = useState(false); // el banner del socio no cargó / no es imagen
   const ref = useRef<HTMLDivElement | null>(null);
   const viewed = useRef(false);
+  const posRef = useRef<number>(-1);
+  if (posRef.current < 0) posRef.current = SLOT_SEQ++;   // posición estable de este hueco
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/ads/serve?slot=${encodeURIComponent(slot)}&lang=${lang}`, { cache: 'no-store' })
+    fetch(`/api/ads/serve?slot=${encodeURIComponent(slot)}&lang=${lang}&pos=${posRef.current}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((j) => { if (alive) { setBannerBad(false); setAd(j.hide ? null : (j.ad || null)); setDone(true); } })
       .catch(() => { if (alive) setDone(true); });

@@ -170,11 +170,41 @@ const isBot = (ua: string) => /bot|crawler|spider|crawl|slurp|headless|preview|f
 // Elige el anuncio a mostrar en un slot: campaña pagada APROBADA y activa
 // (rotación ponderada, filtrada por idioma, país/tier, dispositivo y pacing),
 // o house ad, o relleno programático.
+// Marca de un anuncio = dominio de su enlace (o del creativo). Sirve para NO mostrar
+// dos anuncios de la MISMA marca pegados aunque sean campañas distintas (p.ej. dos de Axi).
+function brandOf(c: any): string {
+  const src = String(c?.link_url || c?.creative_url || c?.alt || '');
+  try { const h = new URL(src.startsWith('http') ? src : 'https://' + src).hostname.replace(/^www\./, ''); const p = h.split('.'); return (p.length > 2 ? p.slice(-2).join('.') : h) || src; }
+  catch { return src.toLowerCase().slice(0, 40); }
+}
+
+// Reordena una lista intercalando por marca (round-robin) para que NO haya dos
+// elementos de la misma marca seguidos. Respeta el peso: cada campaña aparece 'weight'
+// veces antes de intercalar.
+function diversify(list: any[]): any[] {
+  const byBrand = new Map<string, any[]>();
+  for (const c of list) {
+    const w = Math.max(1, Math.min(10, Number(c.weight) || 1));
+    const b = brandOf(c);
+    if (!byBrand.has(b)) byBrand.set(b, []);
+    for (let i = 0; i < w; i++) byBrand.get(b)!.push(c);
+  }
+  const queues = Array.from(byBrand.values());
+  const out: any[] = [];
+  let any = true;
+  while (any) {
+    any = false;
+    for (const q of queues) { if (q.length) { out.push(q.shift()); any = true; } }
+  }
+  return out;
+}
+
 export async function pickAd(
   slotKey: string,
   lang: 'es' | 'en',
-  ctx: { country?: string; ua?: string } = {},
+  ctx: { country?: string; ua?: string; pos?: number } = {},
 ): Promise<ServedAd> {
+  const pos = Math.max(0, Number(ctx.pos) || 0);
   const slot = slotByKey(slotKey);
   if (!slot) return null;
   const country = (ctx.country || '').toUpperCase();
@@ -203,9 +233,13 @@ export async function pickAd(
       return true;
     });
     if (live.length) {
-      const total = live.reduce((s: number, c: any) => s + Math.max(1, c.weight || 1), 0);
-      let r = Math.random() * total; let chosen = live[0];
-      for (const c of live) { r -= Math.max(1, c.weight || 1); if (r <= 0) { chosen = c; break; } }
+      // Rotación DETERMINISTA por posición del hueco (pos) + marca diversificada:
+      // huecos seguidos en la misma página caen en posiciones distintas de la lista
+      // intercalada por marca → nunca dos anuncios de la misma marca pegados. Rota
+      // cada ~10 min para que con el tiempo cambien. (Antes era aleatorio por hueco).
+      const order = diversify(live);
+      const bucket = Math.floor(Date.now() / (10 * 60 * 1000));
+      const chosen = order[(bucket + pos) % order.length] || live[0];
       const disc = chosen.disclaimer ? (lang === 'es' ? cfg.riskDisclaimer.es : cfg.riskDisclaimer.en) : undefined;
       return { kind: 'paid', id: chosen.id, creative: chosen.creative_url, link: chosen.link_url, alt: chosen.alt || '', size: slot.size, disclaimer: disc };
     }
@@ -225,7 +259,8 @@ export async function pickAd(
         // repite el mismo banner en huecos seguidos, y con el tiempo van cambiando.
         let h = 0; for (let i = 0; i < slotKey.length; i++) h = (h * 31 + slotKey.charCodeAt(i)) >>> 0;
         const bucket = Math.floor(Date.now() / (12 * 60 * 1000)); // cambia cada 12 min
-        const p = live[(h + bucket) % live.length];
+        // + pos: dos huecos seguidos en la misma página NO muestran el mismo socio.
+        const p = live[(h + bucket + pos) % live.length];
         return { kind: 'partner', id: p.id, name: p.name, logo: p.logo_url || '', banner: p.banner_url || '', blurb: (lang === 'es' ? p.blurb_es : p.blurb_en) || '', link: `/api/ads/partner?id=${p.id}`, size: slot.size };
       }
     } catch {}

@@ -11,6 +11,9 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const slot = url.searchParams.get('slot') || '';
   const lang = (url.searchParams.get('lang') === 'en' ? 'en' : 'es') as 'es' | 'en';
+  // Posición del hueco en la página (0,1,2…). Sirve para que dos huecos seguidos
+  // NO muestren el mismo anuncio ni la misma marca (rotación determinista por posición).
+  const pos = Math.max(0, parseInt(url.searchParams.get('pos') || '0', 10) || 0);
 
   const cfg = await getAdsConfig();
   const noStore = { headers: { 'cache-control': 'no-store' } };
@@ -22,7 +25,7 @@ export async function GET(req: Request) {
   const country = (req.headers.get('x-vercel-ip-country') || req.headers.get('cf-ipcountry') || '').toUpperCase();
   const device = deviceFromUA(ua);
 
-  const ad = await pickAd(slot, lang, { country, ua });
+  const ad = await pickAd(slot, lang, { country, ua, pos });
   if (!ad) return NextResponse.json({ hide: true }, noStore);
 
   if (ad.kind === 'paid') {
