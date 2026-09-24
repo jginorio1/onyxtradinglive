@@ -564,24 +564,35 @@ function MatchtraderConnect({ t }: any) {
   const [base, setBase] = useState('');
   const [key, setKey] = useState('');
   const [uuid, setUuid] = useState('');
+  const [login, setLogin] = useState('');
+  const [role, setRole] = useState('both');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const save = async () => {
     setBusy(true);
     try {
-      const r = await fetch('/api/matchtrader/connect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ api_base: base, api_key: key, system_uuid: uuid }) });
-      if (r.ok) { setDone(true); setBase(''); setKey(''); setUuid(''); }
+      const r = await fetch('/api/matchtrader/connect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ api_base: base, api_key: key, system_uuid: uuid, login, role }) });
+      if (r.ok) { setDone(true); setBase(''); setKey(''); setUuid(''); setLogin(''); setRole('both'); }
     } finally { setBusy(false); }
   };
+  const en = t.mtrBase === 'API URL';
   return (
     <div className="card" style={{ marginBottom: 18, border: '1px solid var(--brand)' }}>
       <h3 style={{ marginBottom: 4 }}>{t.mtrT}</h3>
       <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7, marginBottom: 12 }}>{t.mtrD}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 460 }}>
-        <label className="muted" style={{ fontSize: 12 }}>{t.mtrBase}<input value={base} onChange={(e) => setBase(e.target.value)} placeholder="https://api.tubroker.com" style={{ marginTop: 4 }} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{t.mtrKey}<input value={key} onChange={(e) => setKey(e.target.value)} placeholder="API key / token" style={{ marginTop: 4 }} /></label>
-        <label className="muted" style={{ fontSize: 12 }}>{t.mtrUuid}<input value={uuid} onChange={(e) => setUuid(e.target.value)} style={{ marginTop: 4 }} /></label>
-        <button className="btn btn-primary" disabled={busy || !base || !key} onClick={save}>{busy ? '…' : done ? t.mtrSaved : t.mtrSave}</button>
+        <label className="muted" style={{ fontSize: 12 }}>{t.mtrBase}<input value={base} onChange={(e) => setBase(e.target.value)} placeholder="https://broker-api.tubroker.com" style={{ marginTop: 4 }} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{t.mtrKey}<input value={key} onChange={(e) => setKey(e.target.value)} placeholder={en ? 'CRM token (Bearer)' : 'Token del CRM (Bearer)'} style={{ marginTop: 4 }} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{en ? 'Account login (number)' : 'Login de la cuenta (número)'}<input value={login} onChange={(e) => setLogin(e.target.value)} placeholder={en ? 'e.g. 100234' : 'ej. 100234'} style={{ marginTop: 4 }} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>systemUuid<input value={uuid} onChange={(e) => setUuid(e.target.value)} style={{ marginTop: 4 }} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{en ? 'Role in Copy' : 'Rol en Copy'}
+          <select value={role} onChange={(e) => setRole(e.target.value)} style={{ marginTop: 4, width: '100%' }}>
+            <option value="both">{en ? 'Master + Slave' : 'Máster + Esclava'}</option>
+            <option value="master">{en ? 'Master only (emits)' : 'Solo máster (emite)'}</option>
+            <option value="slave">{en ? 'Slave only (receives)' : 'Solo esclava (recibe)'}</option>
+          </select>
+        </label>
+        <button className="btn btn-primary" disabled={busy || !base || !key || !login} onClick={save}>{busy ? '…' : done ? t.mtrSaved : t.mtrSave}</button>
         <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.6 }}>{t.mtrBeta}</div>
       </div>
     </div>
