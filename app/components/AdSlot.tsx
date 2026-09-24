@@ -27,6 +27,25 @@ function looksLikeImage(u: string) {
 // para que el servidor no repita el mismo anuncio ni la misma marca en huecos seguidos.
 let SLOT_SEQ = 0;
 
+// Anti-duplicado por página: el primer hueco que muestra un contenido lo "reclama";
+// cualquier otro hueco (incluido el del footer) que fuera a mostrar EXACTAMENTE lo
+// mismo se oculta. Así nunca se ve el mismo anuncio dos veces en la misma página.
+const PAGE_ADS = new Map<string, number>(); // firma -> posición dueña
+function adSig(ad: Served): string {
+  if (!ad) return '';
+  if (ad.kind === 'paid') return 'paid:' + ad.id;
+  if (ad.kind === 'partner') return 'partner:' + ad.id;
+  if (ad.kind === 'programmatic') return 'net';
+  if (ad.kind === 'house') return 'house';
+  return '';
+}
+function claimAd(sig: string, pos: number): boolean {
+  if (!sig) return true;
+  const key = (typeof window !== 'undefined' ? window.location.pathname : '') + '|' + sig;
+  if (!PAGE_ADS.has(key)) PAGE_ADS.set(key, pos);
+  return PAGE_ADS.get(key) === pos;
+}
+
 // Tamaño de cada ubicación (para el modo previsualización, sin llamar al servidor).
 const SLOT_SIZE: Record<string, string> = {
   blog_top: '970x90', blog_infeed: '600x300', blog_native: '600x300',
@@ -58,7 +77,15 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
     try { if (new URLSearchParams(window.location.search).get('adpreview') !== null) { setDone(true); return; } } catch {}
     fetch(`/api/ads/serve?slot=${encodeURIComponent(slot)}&lang=${lang}&pos=${posRef.current}`, { cache: 'no-store' })
       .then((r) => r.json())
-      .then((j) => { if (alive) { setBannerBad(false); setAd(j.hide ? null : (j.ad || null)); setDone(true); } })
+      .then((j) => {
+        if (!alive) return;
+        setBannerBad(false);
+        const served: Served = j.hide ? null : (j.ad || null);
+        // No mostrar dos veces el mismo anuncio en la página (ni repetir el del footer).
+        const ok = claimAd(adSig(served), posRef.current);
+        setAd(ok ? served : null);
+        setDone(true);
+      })
       .catch(() => { if (alive) setDone(true); });
     return () => { alive = false; };
   }, [slot, lang]);
