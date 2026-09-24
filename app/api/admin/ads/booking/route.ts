@@ -35,7 +35,7 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
-    settings: { defaultCap: cfg.defaultCap, spaceCommissionPct: cfg.spaceCommissionPct, holdMinutes: cfg.holdMinutes, maturationDays: cfg.maturationDays, caps: cfg.caps || {} },
+    settings: { defaultCap: cfg.defaultCap, spaceCommissionPct: cfg.spaceCommissionPct, holdMinutes: cfg.holdMinutes, maturationDays: cfg.maturationDays, caps: cfg.caps || {}, partnerFill: cfg.partnerFill, partnerFillSlots: cfg.partnerFillSlots || {} },
     slots, bookings: rows, reps,
   });
 }
@@ -60,6 +60,12 @@ export async function POST(req: Request) {
     if (b.spaceCommissionPct !== undefined) patch.spaceCommissionPct = Math.max(0, Math.min(100, Number(b.spaceCommissionPct) || 0));
     if (b.holdMinutes !== undefined) patch.holdMinutes = Math.max(5, Math.round(Number(b.holdMinutes) || 45));
     if (b.maturationDays !== undefined) patch.maturationDays = Math.max(0, Math.round(Number(b.maturationDays) || 14));
+    if (b.partnerFill !== undefined) patch.partnerFill = b.partnerFill !== false;
+    if (b.partnerFillSlots && typeof b.partnerFillSlots === 'object') {
+      const pfs: Record<string, boolean> = {};
+      for (const k of Object.keys(b.partnerFillSlots)) { const v = b.partnerFillSlots[k]; if (v === true || v === false) pfs[k] = v; }
+      patch.partnerFillSlots = pfs;
+    }
     await saveAdsConfig(patch);
     return NextResponse.json({ ok: true });
   }

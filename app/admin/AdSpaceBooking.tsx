@@ -11,6 +11,8 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
   const [d, setD] = useState<any>(null);
   const [caps, setCaps] = useState<Record<string, number>>({});
   const [cfg, setCfg] = useState<any>({ defaultCap: 4, spaceCommissionPct: 15, holdMinutes: 45, maturationDays: 14 });
+  const [pFill, setPFill] = useState(true);                       // partners: por defecto
+  const [pSlots, setPSlots] = useState<Record<string, boolean>>({}); // override por ubicación
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   // --- módulo de cotizaciones / propuestas ---
@@ -27,6 +29,8 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
       setD(j);
       setCaps(j.settings?.caps || {});
       setCfg({ defaultCap: j.settings?.defaultCap ?? 4, spaceCommissionPct: j.settings?.spaceCommissionPct ?? 15, holdMinutes: j.settings?.holdMinutes ?? 45, maturationDays: j.settings?.maturationDays ?? 14 });
+      setPFill(j.settings?.partnerFill !== false);
+      setPSlots(j.settings?.partnerFillSlots || {});
     } catch {}
   };
   useEffect(() => { load(); }, []);
@@ -38,7 +42,8 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
     if (j.error) setMsg(j.error);
     return j;
   };
-  const saveSettings = async () => { const j = await post({ action: 'save_settings', caps, ...cfg }); if (j.ok) { setMsg(L('Guardado ✓', 'Saved ✓')); await load(); } };
+  const saveSettings = async () => { const j = await post({ action: 'save_settings', caps, ...cfg, partnerFill: pFill, partnerFillSlots: pSlots }); if (j.ok) { setMsg(L('Guardado ✓', 'Saved ✓')); await load(); } };
+  const setSlotFill = (k: string, v: '' | 'yes' | 'no') => setPSlots((p) => { const n = { ...p }; if (v === '') delete n[k]; else n[k] = v === 'yes'; return n; });
   const confirmPaid = async (id: string) => { const j = await post({ action: 'confirm_paid', id }); if (j.ok) { setMsg(L('Pago confirmado ✓', 'Payment confirmed ✓')); await load(); } };
   const cancel = async (id: string) => { const j = await post({ action: 'cancel', id }); if (j.ok) { await load(); } };
   const sweep = async () => { const j = await post({ action: 'sweep' }); if (j.ok) { setMsg(L(`Limpieza: ${j.expired} vencidas, ${j.released} liberadas`, `Sweep: ${j.expired} expired, ${j.released} released`)); await load(); } };
@@ -151,6 +156,41 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
           <button disabled={busy} onClick={saveSettings} style={btnPS}>{L('Guardar ajustes', 'Save settings')}</button>
           <button disabled={busy} onClick={sweep} style={btnS}>{L('Limpiar vencidas', 'Sweep expired')}</button>
         </div>
+      </div>
+
+      <div style={cardS}>
+        <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 4 }}>{L('Partners por ubicación', 'Partners per placement')}</div>
+        <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 12 }}>
+          {L('Cuando un hueco no tiene campaña pagada, "partners" lo rellena con un socio del directorio (CPA) y cada clic paga comisión. Elige dónde SÍ y dónde NO. "Por defecto" en cada ubicación usa el global.',
+             'When a slot has no paid campaign, "partners" fills it with a directory partner (CPA) and each click earns commission. Choose where YES and where NO. "Default" per placement uses the global one.')}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <span style={{ fontSize: 13, color: 'var(--tx,#e8ecf5)' }}>{L('Global (por defecto):', 'Global (default):')}</span>
+          <button onClick={() => setPFill(true)} style={pFill ? btnPS : btnS}>{L('Sí', 'Yes')}</button>
+          <button onClick={() => setPFill(false)} style={!pFill ? btnPS : btnS}>{L('No', 'No')}</button>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 8 }}>
+          {(d.slots || []).map((s: any) => {
+            const val = pSlots[s.key] === true ? 'yes' : pSlots[s.key] === false ? 'no' : '';
+            const eff = pSlots[s.key] === undefined ? pFill : pSlots[s.key];
+            return (
+              <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--line,#2a3350)', borderRadius: 9, padding: '7px 10px' }}>
+                <span style={{ width: 8, height: 8, borderRadius: 8, background: eff ? '#22c55e' : '#9aa6bd', flex: 'none' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, color: 'var(--tx,#e8ecf5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{es ? s.es : s.en}</div>
+                  <div style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)' }}>{s.size}</div>
+                </div>
+                <select value={val} onChange={(e) => setSlotFill(s.key, e.target.value as any)}
+                  style={{ padding: '5px 8px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 12 }}>
+                  <option value="">{L('Por defecto', 'Default')}</option>
+                  <option value="yes">{L('Sí', 'Yes')}</option>
+                  <option value="no">{L('No', 'No')}</option>
+                </select>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ marginTop: 12 }}><button disabled={busy} onClick={saveSettings} style={btnPS}>{L('Guardar partners', 'Save partners')}</button></div>
       </div>
 
       <div style={cardS}>

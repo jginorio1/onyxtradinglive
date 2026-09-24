@@ -30,7 +30,7 @@ let SLOT_SEQ = 0;
 // Tamaño de cada ubicación (para el modo previsualización, sin llamar al servidor).
 const SLOT_SIZE: Record<string, string> = {
   blog_top: '970x90', blog_infeed: '600x300', blog_native: '600x300',
-  article_incontent: '728x90', article_sidebar: '300x250', article_halfpage: '300x600',
+  article_incontent: '728x90', article_sidebar: '300x600', article_halfpage: '300x600',
   landing_top: '970x90', landing_billboard: '970x250', footer_site: '728x90',
   sticky_bottom: '320x50', directory_partner: '600x300',
 };

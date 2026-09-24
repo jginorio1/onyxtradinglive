@@ -48,7 +48,7 @@ export const AD_SLOTS: AdSlot[] = [
   { key: 'blog_top',          es: 'Blog · Leaderboard superior', en: 'Blog · Top leaderboard',  size: '970x90',  page: 'blog',    unit: 'week',  price: 60,  model: 'flat', fmt: 'Súper leaderboard' },
   { key: 'blog_infeed',       es: 'Blog · Tarjeta entre posts',  en: 'Blog · In-feed card',      size: '600x300', page: 'blog',    unit: 'week',  price: 45,  model: 'flat', fmt: 'In-feed' },
   { key: 'article_incontent', es: 'Artículo · Dentro del texto', en: 'Article · In-content',     size: '728x90',  page: 'article', unit: 'week',  price: 50,  model: 'flat', fmt: 'Leaderboard' },
-  { key: 'article_sidebar',   es: 'Artículo · Lateral (MPU)',    en: 'Article · Sidebar (MPU)',  size: '300x250', page: 'article', unit: 'month', price: 120, model: 'flat', fmt: 'MPU' },
+  { key: 'article_sidebar',   es: 'Artículo · Lateral vertical',  en: 'Article · Vertical sidebar', size: '300x600', page: 'article', unit: 'month', price: 150, model: 'flat', fmt: 'Half-page' },
   { key: 'landing_top',       es: 'Landing · Leaderboard',       en: 'Landing · Leaderboard',    size: '970x90',  page: 'landing', unit: 'week',  price: 90,  model: 'flat', fmt: 'Súper leaderboard' },
   // --- Fase 4: inventario nuevo ---
   { key: 'landing_billboard', es: 'Landing · Billboard superior',en: 'Landing · Top billboard',  size: '970x250', page: 'landing', unit: 'week',  price: 140, model: 'cpm',  fmt: 'Billboard' },
@@ -83,6 +83,7 @@ export type AdsConfig = {
   riskDisclaimer: { es: string; en: string };        // aviso financiero
   freqCap: number;                       // impresiones máx por visitante/campaña/día (0 = sin tope)
   partnerFill: boolean;                  // rellenar huecos vacíos con socios del directorio (CPA) en vez del house ad de Pro
+  partnerFillSlots: Record<string, boolean>; // override por ubicación: true/false gana sobre partnerFill; sin valor = usa el global
   // --- Reserva de espacios por cupo fijo (v6) ---
   caps: Record<string, number>;          // cupo (máx anunciantes rotando) por slot_key; editable en admin
   defaultCap: number;                    // cupo por defecto para slots sin valor propio
@@ -99,6 +100,7 @@ const DEFAULT_CFG: AdsConfig = {
   },
   freqCap: 3,
   partnerFill: true,
+  partnerFillSlots: {},
   caps: {}, defaultCap: 4, spaceCommissionPct: 15, holdMinutes: 45, maturationDays: 14,
 };
 
@@ -113,6 +115,7 @@ export async function getAdsConfig(): Promise<AdsConfig> {
     riskDisclaimer: { es: c.riskDisclaimer?.es || DEFAULT_CFG.riskDisclaimer.es, en: c.riskDisclaimer?.en || DEFAULT_CFG.riskDisclaimer.en },
     freqCap: typeof c.freqCap === 'number' ? c.freqCap : DEFAULT_CFG.freqCap,
     partnerFill: c.partnerFill !== false,
+    partnerFillSlots: c.partnerFillSlots && typeof c.partnerFillSlots === 'object' ? c.partnerFillSlots : {},
     caps: c.caps && typeof c.caps === 'object' ? c.caps : {},
     defaultCap: typeof c.defaultCap === 'number' && c.defaultCap > 0 ? c.defaultCap : DEFAULT_CFG.defaultCap,
     spaceCommissionPct: typeof c.spaceCommissionPct === 'number' ? c.spaceCommissionPct : DEFAULT_CFG.spaceCommissionPct,
@@ -256,9 +259,12 @@ export async function pickAd(
       return { kind: 'paid', id: chosen.id, creative: chosen.creative_url, link: chosen.link_url, alt: chosen.alt || '', size: slot.size, disclaimer: disc };
     }
   } catch {}
-  // Sin campaña pagada → primero un socio del directorio (CPA), si está activado.
-  // Así The5ers, FTMO, etc. aparecen en TODOS los huecos y cada clic paga comisión.
-  if (cfg.partnerFill) {
+  // Sin campaña pagada → primero un socio del directorio (CPA), si está activado
+  // PARA ESTA UBICACIÓN. El override por hueco (partnerFillSlots) manda sobre el
+  // global: así el dueño elige en qué espacios salen partners y en cuáles no.
+  const slotFill = cfg.partnerFillSlots ? cfg.partnerFillSlots[slotKey] : undefined;
+  const doPartnerFill = (slotFill === true || slotFill === false) ? slotFill : cfg.partnerFill;
+  if (doPartnerFill) {
     try {
       const { data: parts } = await supabaseAdmin.from('ad_partners')
         .select('id,name,logo_url,banner_url,blurb_es,blurb_en,geo').eq('status', 'active').limit(50);
