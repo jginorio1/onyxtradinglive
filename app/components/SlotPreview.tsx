@@ -1,11 +1,11 @@
 'use client';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
-// Maqueta visual de la página que muestra EXACTAMENTE dónde caerá el anuncio.
-// Dibuja un mini-navegador con la estructura de la página (blog, artículo,
-// landing, sitio o directorio) y resalta en dorado el espacio elegido, con su
-// tamaño y una etiqueta "Tu anuncio aquí". Sirve para que el vendedor y el
-// anunciante vean la ubicación real antes de reservar.
+// Vista EN VIVO de dónde caerá el anuncio: carga la página real del sitio en un
+// mini-navegador (iframe) y superpone el recuadro dorado del anuncio en su zona
+// real (leaderboard arriba, lateral, media página, footer, barra fija, etc.),
+// con su tamaño. El iframe es solo lectura (sin clics) para que sea una vista
+// previa segura. Si el iframe no carga, igual se ve el recuadro y la etiqueta.
 //
 // slotKey: clave del espacio (blog_top, article_sidebar, …)
 // page:    grupo de página del catálogo (blog | article | landing | site | directory)
@@ -14,84 +14,33 @@ export default function SlotPreview({ slotKey, page, size, es = true }: { slotKe
   const L = (a: string, b: string) => (es ? a : b);
   const ACC = 'var(--accent,#8b93ff)';
   const line = 'var(--line,#2a3350)';
-  const soft = 'color-mix(in srgb, var(--accent,#8b93ff) 22%, transparent)';
-  const grayBlock = (h: number | string, extra: React.CSSProperties = {}) => ({ height: h, background: 'color-mix(in srgb, var(--mut,#9aa6bd) 16%, transparent)', borderRadius: 5, ...extra } as React.CSSProperties);
+  const [origin, setOrigin] = useState('https://www.onyxtradinglive.com');
+  useEffect(() => { try { if (typeof window !== 'undefined' && window.location?.origin) setOrigin(window.location.origin); } catch {} }, []);
 
-  // El bloque resaltado (el anuncio). w/h opcionales para respetar proporción.
-  const Ad = ({ h = 34, label }: { h?: number; label?: string }) => (
-    <div style={{ position: 'relative', height: h, borderRadius: 6, background: soft, border: `2px solid ${ACC}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 0 3px color-mix(in srgb, var(--accent,#8b93ff) 18%, transparent)` }}>
-      <span style={{ fontSize: 10.5, fontWeight: 700, color: ACC, textAlign: 'center', lineHeight: 1.2 }}>{label || L('Tu anuncio', 'Your ad')}<br /><span style={{ fontSize: 9, opacity: .8 }}>{size}</span></span>
-    </div>
-  );
+  // Página real a mostrar según el grupo del espacio.
+  const path = page === 'blog' || page === 'article' ? '/blog'
+    : page === 'directory' ? '/publicidad'
+    : '/';
+  const src = `${origin}${path}`;
 
-  const isAd = (k: string) => k === slotKey;
-
-  // Estructura por página. Cada zona que puede llevar anuncio comprueba isAd().
-  let body: React.ReactNode = null;
-
-  if (page === 'blog') {
-    body = (
-      <div style={{ display: 'grid', gap: 7 }}>
-        {isAd('blog_top') ? <Ad h={26} /> : <div style={grayBlock(10)} />}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
-          <div style={grayBlock(46)} />
-          {isAd('blog_native') ? <Ad h={46} label={L('Native', 'Native')} /> : <div style={grayBlock(46)} />}
-        </div>
-        {isAd('blog_infeed') ? <Ad h={30} label={L('Entre posts', 'In-feed')} /> : <div style={grayBlock(20)} />}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
-          <div style={grayBlock(46)} /><div style={grayBlock(46)} />
-        </div>
-      </div>
-    );
-  } else if (page === 'article') {
-    body = (
-      <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr', gap: 8 }}>
-        <div style={{ display: 'grid', gap: 6 }}>
-          <div style={grayBlock(12, { width: '70%' })} />
-          <div style={grayBlock(8)} /><div style={grayBlock(8)} />
-          {isAd('article_incontent') ? <Ad h={24} label={L('En el texto', 'In-content')} /> : <div style={grayBlock(8)} />}
-          <div style={grayBlock(8)} /><div style={grayBlock(8)} />
-        </div>
-        <div style={{ display: 'grid', gap: 6 }}>
-          {isAd('article_sidebar') ? <Ad h={70} label={L('Lateral', 'Sidebar')} />
-            : isAd('article_halfpage') ? <Ad h={110} label={L('Media página', 'Half-page')} />
-            : <div style={grayBlock(70)} />}
-        </div>
-      </div>
-    );
-  } else if (page === 'landing') {
-    body = (
-      <div style={{ display: 'grid', gap: 7 }}>
-        {isAd('landing_billboard') ? <Ad h={54} label={L('Billboard', 'Billboard')} />
-          : isAd('landing_top') ? <Ad h={26} />
-          : <div style={grayBlock(22)} />}
-        <div style={grayBlock(30, { width: '60%', margin: '2px auto 0' })} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 7 }}>
-          <div style={grayBlock(34)} /><div style={grayBlock(34)} /><div style={grayBlock(34)} />
-        </div>
-      </div>
-    );
-  } else if (page === 'directory') {
-    body = (
-      <div style={{ display: 'grid', gap: 6 }}>
-        <div style={grayBlock(12, { width: '50%' })} />
-        {isAd('directory_partner') ? <Ad h={30} label={L('Partner destacado', 'Featured partner')} /> : <div style={grayBlock(24)} />}
-        <div style={grayBlock(22)} /><div style={grayBlock(22)} /><div style={grayBlock(22)} />
-      </div>
-    );
-  } else {
-    // site (footer / sticky) u otros
-    body = (
-      <div style={{ display: 'grid', gap: 7, position: 'relative' }}>
-        <div style={grayBlock(10, { width: '60%' })} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}><div style={grayBlock(40)} /><div style={grayBlock(40)} /></div>
-        {isAd('footer_site') ? <Ad h={24} label={L('Footer', 'Footer')} /> : <div style={grayBlock(14)} />}
-        {isAd('sticky_bottom') && (
-          <div style={{ marginTop: 2 }}><Ad h={20} label={L('Barra fija inferior', 'Sticky bottom bar')} /></div>
-        )}
-      </div>
-    );
-  }
+  // Zona del anuncio dentro de la vista (en % del recuadro visible). Aproximada
+  // pero fiel a la posición real de cada ubicación.
+  const zone: React.CSSProperties = (() => {
+    switch (slotKey) {
+      case 'blog_top':
+      case 'landing_top': return { top: '9%', left: '3%', width: '94%', height: '7%' };
+      case 'landing_billboard': return { top: '9%', left: '3%', width: '94%', height: '15%' };
+      case 'article_incontent': return { top: '40%', left: '3%', width: '64%', height: '7%' };
+      case 'article_sidebar': return { top: '26%', right: '3%', width: '30%', height: '16%' };
+      case 'article_halfpage': return { top: '22%', right: '3%', width: '30%', height: '34%' };
+      case 'blog_infeed': return { top: '52%', left: '3%', width: '94%', height: '8%' };
+      case 'blog_native': return { top: '30%', left: '52%', width: '45%', height: '16%' };
+      case 'footer_site': return { bottom: '4%', left: '3%', width: '94%', height: '7%' };
+      case 'sticky_bottom': return { bottom: '2%', left: '3%', width: '94%', height: '5%' };
+      case 'directory_partner': return { top: '26%', left: '3%', width: '94%', height: '9%' };
+      default: return { top: '9%', left: '3%', width: '94%', height: '8%' };
+    }
+  })();
 
   const pageName = ({ blog: L('Blog', 'Blog'), article: L('Artículo', 'Article'), landing: L('Landing', 'Landing'), site: L('Sitio', 'Site'), directory: L('Directorio', 'Directory') } as any)[page] || page;
 
@@ -102,11 +51,32 @@ export default function SlotPreview({ slotKey, page, size, es = true }: { slotKe
         <span style={{ width: 8, height: 8, borderRadius: 8, background: '#f0736f' }} />
         <span style={{ width: 8, height: 8, borderRadius: 8, background: '#f0b74e' }} />
         <span style={{ width: 8, height: 8, borderRadius: 8, background: '#5ed6a0' }} />
-        <span style={{ marginLeft: 8, fontSize: 10.5, color: 'var(--mut,#9aa6bd)' }}>onyxtradinglive.com · {pageName}</span>
+        <span style={{ marginLeft: 8, fontSize: 10.5, color: 'var(--mut,#9aa6bd)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{src.replace(/^https?:\/\//, '')}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 9.5, color: ACC, border: `1px solid ${ACC}`, borderRadius: 20, padding: '1px 7px' }}>{L('EN VIVO', 'LIVE')}</span>
       </div>
-      <div style={{ padding: 12 }}>{body}</div>
+
+      {/* página real (solo lectura) + recuadro del anuncio superpuesto */}
+      <div style={{ position: 'relative', width: '100%', height: 420, background: '#0b0f1a' }}>
+        <iframe
+          src={src}
+          title={pageName}
+          loading="lazy"
+          sandbox="allow-same-origin allow-scripts"
+          scrolling="no"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0, pointerEvents: 'none' }}
+        />
+        {/* capa que bloquea interacción con el iframe */}
+        <div style={{ position: 'absolute', inset: 0 }} />
+        {/* recuadro del anuncio */}
+        <div style={{ position: 'absolute', ...zone, borderRadius: 6, border: `2px solid ${ACC}`, background: 'color-mix(in srgb, var(--accent,#8b93ff) 26%, transparent)', boxShadow: `0 0 0 3px color-mix(in srgb, var(--accent,#8b93ff) 22%, transparent)`, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(1px)' }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,.6)', textAlign: 'center', lineHeight: 1.25 }}>
+            {L('Tu anuncio aquí', 'Your ad here')}<br /><span style={{ fontSize: 10, opacity: .95 }}>{size}</span>
+          </span>
+        </div>
+      </div>
+
       <div style={{ padding: '6px 12px 10px', fontSize: 11, color: 'var(--mut,#9aa6bd)' }}>
-        {L('Vista aproximada de dónde se mostrará el anuncio.', 'Approximate view of where the ad will appear.')}
+        {L('Página real del sitio. El recuadro marca dónde se mostrará el anuncio.', 'Real site page. The box marks where the ad will appear.')}
       </div>
     </div>
   );
