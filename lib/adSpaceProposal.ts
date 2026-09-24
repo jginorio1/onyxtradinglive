@@ -5,6 +5,7 @@
 
 export type AdProposalInput = {
   // ubicación
+  slotKey?: string;
   slotNameEs: string; slotNameEn: string; size: string; pageEs: string; pageEn: string;
   // fechas
   startDate: string; endDate: string;   // YYYY-MM-DD
@@ -116,6 +117,54 @@ export async function adProposalPdf(inp: AdProposalInput, opts?: { lang?: 'es' |
   T(`$${Math.round(inp.price).toLocaleString(en ? 'en-US' : 'es-ES')}`, W - 150, y - 26, 22, bold, brand);
   T('USD', W - 70, y - 20, 10, font, gray);
   y -= 66;
+
+  // Diagrama de la ubicación exacta (esquema de la página con el hueco resaltado).
+  T(en ? 'WHERE IT APPEARS' : 'DÓNDE APARECE', 40, y, 9, bold, brand); y -= 8;
+  page.drawLine({ start: { x: 40, y }, end: { x: W - 40, y }, thickness: 1, color: soft }); y -= 6;
+  {
+    const dx = 40, dw = W - 80, dtop = y, dh = 150;
+    // marco tipo navegador
+    page.drawRectangle({ x: dx, y: dtop - dh, width: dw, height: dh, borderColor: soft, borderWidth: 1, color: rgb(0.985, 0.985, 1) });
+    page.drawRectangle({ x: dx, y: dtop - 16, width: dw, height: 16, color: rgb(0.93, 0.94, 0.98) });
+    T('onyxtradinglive.com', dx + 8, dtop - 12, 7.5, font, gray);
+    const cx = dx + 8, cy0 = dtop - 22, cw = dw - 16, ch = dh - 30;   // lienzo interno
+    const blk = (nx: number, ny: number, nw: number, nh: number, fill = rgb(0.9, 0.91, 0.95)) =>
+      page.drawRectangle({ x: cx + nx * cw, y: cy0 - (ny + nh) * ch, width: nw * cw, height: nh * ch, color: fill });
+    const ad = (nx: number, ny: number, nw: number, nh: number) => {
+      page.drawRectangle({ x: cx + nx * cw, y: cy0 - (ny + nh) * ch, width: nw * cw, height: nh * ch, color: rgb(0.83, 0.85, 1), borderColor: brand, borderWidth: 1.5 });
+      T(en ? 'YOUR AD' : 'TU ANUNCIO', cx + nx * cw + 4, cy0 - (ny + nh) * ch + nh * ch / 2 - 3, 7, bold, rgb(0.32, 0.36, 0.85));
+    };
+    // estructura base
+    blk(0.04, 0.02, 0.92, 0.08);   // nav
+    const sk = inp.slotKey || '';
+    if (inp.pageEs === 'blog' || sk.startsWith('blog')) {
+      if (sk === 'blog_top') ad(0.04, 0.14, 0.92, 0.12); else blk(0.04, 0.14, 0.92, 0.12);
+      if (sk === 'blog_infeed' || sk === 'blog_native') { blk(0.04, 0.30, 0.44, 0.6); ad(0.52, 0.30, 0.44, 0.28); blk(0.52, 0.62, 0.44, 0.28); }
+      else { blk(0.04, 0.30, 0.44, 0.28); blk(0.52, 0.30, 0.44, 0.28); blk(0.04, 0.62, 0.44, 0.28); blk(0.52, 0.62, 0.44, 0.28); }
+    } else if (inp.pageEs === 'article' || sk.startsWith('article')) {
+      // columna + lateral
+      if (sk === 'article_incontent') { blk(0.04, 0.14, 0.6, 0.16); ad(0.04, 0.34, 0.6, 0.12); blk(0.04, 0.50, 0.6, 0.4); }
+      else blk(0.04, 0.14, 0.6, 0.76);
+      if (sk === 'article_sidebar') ad(0.68, 0.14, 0.28, 0.24);
+      else if (sk === 'article_halfpage') ad(0.68, 0.14, 0.28, 0.55);
+      else blk(0.68, 0.14, 0.28, 0.4);
+    } else if (inp.pageEs === 'landing' || sk.startsWith('landing')) {
+      if (sk === 'landing_billboard') ad(0.04, 0.14, 0.92, 0.26);
+      else if (sk === 'landing_top') ad(0.04, 0.14, 0.92, 0.12);
+      else blk(0.04, 0.14, 0.92, 0.16);
+      blk(0.22, 0.46, 0.56, 0.16); blk(0.04, 0.7, 0.28, 0.2); blk(0.36, 0.7, 0.28, 0.2); blk(0.68, 0.7, 0.28, 0.2);
+    } else if (inp.pageEs === 'directory' || sk === 'directory_partner') {
+      blk(0.04, 0.14, 0.5, 0.08);
+      if (sk === 'directory_partner') ad(0.04, 0.26, 0.92, 0.14); else blk(0.04, 0.26, 0.92, 0.14);
+      blk(0.04, 0.44, 0.92, 0.12); blk(0.04, 0.6, 0.92, 0.12); blk(0.04, 0.76, 0.92, 0.12);
+    } else {
+      blk(0.04, 0.14, 0.92, 0.5);
+      if (sk === 'sticky_bottom') ad(0.04, 0.86, 0.92, 0.08);
+      else if (sk === 'footer_site') ad(0.04, 0.72, 0.92, 0.12);
+      else blk(0.04, 0.72, 0.92, 0.12);
+    }
+    y = dtop - dh - 14;
+  }
 
   // Incluye
   T(en ? 'INCLUDED' : 'INCLUYE', 40, y, 9, bold, brand); y -= 8;

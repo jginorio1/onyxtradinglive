@@ -117,6 +117,7 @@ export async function POST(req: Request) {
     }
     const { adProposalPdf, adProposalEmail } = await import('@/lib/adSpaceProposal');
     const inp = {
+      slotKey: slot.key,
       slotNameEs: slot.es, slotNameEn: slot.en, size: slot.size, pageEs: slot.page, pageEn: slot.page,
       startDate: String(b.start), endDate: String(b.end), price: Number(b.price) || slot.price,
       cap: await slotCap(slot.key), holdUntil: b.holdUntil || undefined,

@@ -18,16 +18,15 @@ export default function SlotPreview({ slotKey, page, size, es = true }: { slotKe
   const line = 'var(--line,#2a3350)';
   const bg = '#0e1524';
 
-  // URL fija desde el primer render (evita que el iframe se recargue solo).
-  const [src] = useState(() => {
-    let o = 'https://www.onyxtradinglive.com';
-    try { if (typeof window !== 'undefined' && window.location?.origin) o = window.location.origin; } catch {}
-    const p = page === 'blog' || page === 'article' ? '/blog' : page === 'directory' ? '/publicidad' : '/';
-    return `${o}${p}`;
-  });
+  // Origen fijo desde el primer render (evita recargas por cambio de host).
+  const [origin] = useState(() => { try { if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin; } catch {} return 'https://www.onyxtradinglive.com'; });
+  const path = page === 'blog' || page === 'article' ? '/blog' : page === 'directory' ? '/publicidad' : '/';
+  // La URL lleva ?adpreview=<slot>: la página marca TODOS los huecos y resalta el
+  // elegido, aunque no haya anuncio ni el visitante los vea. Cambia con el slot.
+  const src = `${origin}${path}?adpreview=${encodeURIComponent(slotKey)}`;
 
-  const [mode, setMode] = useState<'mock' | 'live'>('mock');
-  const [everLive, setEverLive] = useState(false);
+  const [mode, setMode] = useState<'mock' | 'live'>('live');
+  const [everLive, setEverLive] = useState(true);
   const [full, setFull] = useState(false);
   const [zoom, setZoom] = useState(0.85);
   const [box, setBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);

@@ -27,6 +27,14 @@ function looksLikeImage(u: string) {
 // para que el servidor no repita el mismo anuncio ni la misma marca en huecos seguidos.
 let SLOT_SEQ = 0;
 
+// Tamaño de cada ubicación (para el modo previsualización, sin llamar al servidor).
+const SLOT_SIZE: Record<string, string> = {
+  blog_top: '970x90', blog_infeed: '600x300', blog_native: '600x300',
+  article_incontent: '728x90', article_sidebar: '300x250', article_halfpage: '300x600',
+  landing_top: '970x90', landing_billboard: '970x250', footer_site: '728x90',
+  sticky_bottom: '320x50', directory_partner: '600x300',
+};
+
 export default function AdSlot({ slot, lang, label = true }: { slot: string; lang: 'es' | 'en'; label?: boolean }) {
   const [ad, setAd] = useState<Served>(null);
   const [done, setDone] = useState(false);
@@ -36,8 +44,18 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
   const posRef = useRef<number>(-1);
   if (posRef.current < 0) posRef.current = SLOT_SEQ++;   // posición estable de este hueco
 
+  // Modo previsualización: si la URL trae ?adpreview=<slot>, mostramos un
+  // marcador del hueco (aunque no haya anuncio ni el visitante los vea), para
+  // que el vendedor/anunciante vea EXACTAMENTE dónde va. adpreview vacío = todos.
+  const [preview, setPreview] = useState<{ on: boolean; target: string }>({ on: false, target: '' });
+  useEffect(() => {
+    try { const p = new URLSearchParams(window.location.search).get('adpreview');
+      if (p !== null) setPreview({ on: true, target: p }); } catch {}
+  }, []);
+
   useEffect(() => {
     let alive = true;
+    try { if (new URLSearchParams(window.location.search).get('adpreview') !== null) { setDone(true); return; } } catch {}
     fetch(`/api/ads/serve?slot=${encodeURIComponent(slot)}&lang=${lang}&pos=${posRef.current}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((j) => { if (alive) { setBannerBad(false); setAd(j.hide ? null : (j.ad || null)); setDone(true); } })
@@ -62,6 +80,30 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
     io.observe(el);
     return () => { io.disconnect(); if (timer) clearTimeout(timer); };
   }, [ad]);
+
+  // Marcador de previsualización: recuadro a tamaño real en la posición exacta.
+  if (preview.on) {
+    const sz = SLOT_SIZE[slot] || '728x90';
+    const [pw, ph] = sz.split('x').map((n) => parseInt(n, 10) || 1);
+    const target = preview.target === slot;
+    const L2 = (a: string, b: string) => (lang === 'es' ? a : b);
+    return (
+      <div ref={ref} data-slot={slot} style={{ margin: '18px auto', maxWidth: pw, width: '100%' }}>
+        <div style={{
+          aspectRatio: `${pw} / ${ph}`, width: '100%', borderRadius: 8,
+          border: `2px ${target ? 'solid' : 'dashed'} #8b93ff`,
+          background: target ? 'rgba(139,147,255,.22)' : 'rgba(139,147,255,.08)',
+          boxShadow: target ? '0 0 0 4px rgba(139,147,255,.28)' : 'none',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#c9ccff', lineHeight: 1.3 }}>
+            {target ? L2('Aquí va TU anuncio', 'YOUR ad goes here') : L2('Espacio publicitario', 'Ad space')}
+            <br /><span style={{ fontSize: 11, opacity: .85 }}>{sz}</span>
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   if (!done || !ad) return null;
 
