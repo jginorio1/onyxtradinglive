@@ -20,7 +20,27 @@ export default function SlotPreview({ slotKey, page, size, es = true }: { slotKe
 
   // Origen fijo desde el primer render (evita recargas por cambio de host).
   const [origin] = useState(() => { try { if (typeof window !== 'undefined' && window.location?.origin) return window.location.origin; } catch {} return 'https://www.onyxtradinglive.com'; });
-  const path = page === 'blog' || page === 'article' ? '/blog' : page === 'directory' ? '/publicidad' : '/';
+  // Los espacios de ARTÍCULO (lateral, media página, dentro del texto) sólo
+  // existen en una página de artículo, no en el listado. Resolvemos un artículo
+  // real (por el sitemap) para poder mostrarlos.
+  const [articlePath, setArticlePath] = useState<string>('/blog');
+  useEffect(() => {
+    if (page !== 'article') return; let alive = true;
+    (async () => {
+      try {
+        const xml = await fetch(`${origin}/sitemap.xml`, { cache: 'no-store' }).then((r) => r.text());
+        let m = xml.match(/https?:\/\/[^<\s]+\/blog\/[a-z0-9\-]+/i);
+        if (m) { if (alive) setArticlePath(new URL(m[0]).pathname); return; }
+      } catch {}
+      try {
+        const html = await fetch(`${origin}/blog`, { cache: 'no-store' }).then((r) => r.text());
+        const m = html.match(/\/blog\/[a-z0-9\-]{3,}/i);
+        if (alive && m) setArticlePath(m[0]);
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, [page, origin]);
+  const path = page === 'blog' ? '/blog' : page === 'article' ? articlePath : page === 'directory' ? '/publicidad' : '/';
   // La URL lleva ?adpreview=<slot>: la página marca TODOS los huecos y resalta el
   // elegido, aunque no haya anuncio ni el visitante los vea. Cambia con el slot.
   const src = `${origin}${path}?adpreview=${encodeURIComponent(slotKey)}`;

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { rateCard, slotAvailability } from '@/lib/ads';
 import { serverLang, localeAlternates } from '@/lib/locale';
 import BuyForm from './BuyForm';
+import AdSlot from '@/app/components/AdSlot';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,11 @@ export default async function AdvertisePage() {
           <div key={i} className="card"><div style={{ fontWeight: 700, marginBottom: 4 }}>{t}</div><div className="muted" style={{ fontSize: 13.5 }}>{d}</div></div>
         ))}
       </div>
+
+      {/* Espacio "Directorio · Partner destacado" (se muestra a visitantes; oculto
+          a usuarios de pago y en nativo). Aquí es donde vive ese inventario. */}
+      <AdSlot slot="directory_partner" lang={es ? 'es' : 'en'} />
+
 
       {/* Mapa visual: dónde cae cada espacio */}
       <h2 style={{ fontSize: 20, marginBottom: 4 }}>{L('Dónde aparece tu anuncio', 'Where your ad appears')}</h2>

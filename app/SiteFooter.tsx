@@ -143,6 +143,15 @@ export default function SiteFooter() {
           <span>Español · English</span>
         </div>
       </div>
+
+      {/* Barra sticky inferior (site-wide). Vacía si no hay anuncio / usuario de
+          pago / nativo; en previsualización muestra el hueco. No bloquea la
+          página cuando está vacía. */}
+      <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div style={{ pointerEvents: 'auto' }}>
+          <AdSlot slot="sticky_bottom" lang={es ? 'es' : 'en'} label={false} />
+        </div>
+      </div>
     </footer>
   );
 }
