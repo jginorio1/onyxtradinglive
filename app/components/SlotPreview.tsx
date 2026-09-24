@@ -45,8 +45,11 @@ export default function SlotPreview({ slotKey, page, size, es = true }: { slotKe
   // elegido, aunque no haya anuncio ni el visitante los vea. Cambia con el slot.
   const src = `${origin}${path}?adpreview=${encodeURIComponent(slotKey)}`;
 
-  const [mode, setMode] = useState<'mock' | 'live'>('live');
-  const [everLive, setEverLive] = useState(true);
+  // Por defecto la MAQUETA (sin iframe): fluida, instantánea y sin recargas. El
+  // iframe "en vivo" solo se monta cuando el usuario lo pide (evita que el SW /
+  // chequeo de versión del sitio provoque refrescos dentro del recuadro).
+  const [mode, setMode] = useState<'mock' | 'live'>('mock');
+  const [everLive, setEverLive] = useState(false);
   const [full, setFull] = useState(false);
   const [zoom, setZoom] = useState(0.85);
   const [box, setBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);

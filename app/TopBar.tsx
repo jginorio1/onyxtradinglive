@@ -1,5 +1,6 @@
 import { dictFor } from '@/lib/i18n';
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { NAV_T, Lang } from '@/lib/navText';
@@ -38,10 +39,16 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
   let botsActive = false;   // hay al menos un robot operando o en espera (EA en línea con bots)
   let tvOn = false;         // TradingView activado en al menos una cuenta
 
+  // En previsualización de espacios (?adpreview) NO usamos la sesión: la web se
+  // renderiza como visitante, sin tomar la cuenta de quien previsualiza.
+  const adPreview = (() => { try { return headers().get('x-onyx-preview') === '1'; } catch { return false; } })();
+
   try {
+    if (!adPreview) {
     const sb = createSupabaseServer();
     const r = await sb.auth.getUser();
     user = r.data?.user || null;
+    }
 
     if (user) {
       const { data: prof } = await supabaseAdmin

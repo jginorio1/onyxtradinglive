@@ -22,6 +22,11 @@ export async function middleware(req: NextRequest) {
   const fwd = new Headers(req.headers);
   if (urlLang) fwd.set('x-onyx-lang', urlLang);
   fwd.set('x-onyx-path', path);   // para que el layout sepa en qué página está (barra de promo)
+  // Previsualización de espacios publicitarios (?adpreview=…): la página se
+  // renderiza como VISITANTE (sin usar la sesión del que previsualiza), para
+  // que el vendedor/anunciante vea la web tal cual la ve un visitante.
+  const isAdPreview = req.nextUrl.searchParams.has('adpreview');
+  if (isAdPreview) fwd.set('x-onyx-preview', '1');
 
   let res: NextResponse;
   if (urlLang) {

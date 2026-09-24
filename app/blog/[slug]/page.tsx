@@ -140,31 +140,38 @@ export default async function BlogArticle({ params }: { params: { slug: string }
         </div>
       </div>
 
-      <img src={cover} alt={coverAlt} decoding="async" fetchPriority="high" width={760} height={399} style={{ width: '100%', height: 'auto', borderRadius: 14, margin: '4px 0 18px' }} />
-      <article className="blog-body" dangerouslySetInnerHTML={{ __html: html }} />
-      <BlogCharts />
+      {/* Artículo en dos columnas: texto a la izquierda, anuncios LATERALES a la
+          derecha (sticky). En móvil se apilan (flex-wrap) y el lateral baja. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-start' }}>
+        <div style={{ flex: '1 1 420px', minWidth: 0 }}>
+          <img src={cover} alt={coverAlt} decoding="async" fetchPriority="high" width={760} height={399} style={{ width: '100%', height: 'auto', borderRadius: 14, margin: '4px 0 18px' }} />
+          <article className="blog-body" dangerouslySetInnerHTML={{ __html: html }} />
+          <BlogCharts />
 
-      {/* Espacio patrocinado · dentro del artículo (al pie del texto) */}
-      <AdSlot slot="article_incontent" lang={es ? 'es' : 'en'} />
-      {/* Rectángulo medio (MPU) dentro del artículo. */}
-      <AdSlot slot="article_sidebar" lang={es ? 'es' : 'en'} />
+          {/* Espacio patrocinado · dentro del artículo (al pie del texto) */}
+          <AdSlot slot="article_incontent" lang={es ? 'es' : 'en'} />
 
-      {/* Bio del autor al pie (autoridad) */}
-      {authorBio && (
-        <div className="card" style={{ marginTop: 28, display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-          {author.avatar_url
-            ? <img src={author.avatar_url} alt={author.name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flex: 'none' }} />
-            : <div style={{ width: 48, height: 48, borderRadius: '50%', flex: 'none', display: 'grid', placeItems: 'center', fontWeight: 800, color: '#0b0f1e', background: 'linear-gradient(135deg,var(--brand),#a679ff)' }}>{initials}</div>}
-          <div>
-            <div style={{ fontWeight: 700 }}>{author.name}</div>
-            <div className="muted" style={{ fontSize: 12.5, marginBottom: 4 }}>{authorRole}</div>
-            <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.5 }}>{authorBio}</div>
-          </div>
+          {/* Bio del autor al pie (autoridad) */}
+          {authorBio && (
+            <div className="card" style={{ marginTop: 28, display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+              {author.avatar_url
+                ? <img src={author.avatar_url} alt={author.name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flex: 'none' }} />
+                : <div style={{ width: 48, height: 48, borderRadius: '50%', flex: 'none', display: 'grid', placeItems: 'center', fontWeight: 800, color: '#0b0f1e', background: 'linear-gradient(135deg,var(--brand),#a679ff)' }}>{initials}</div>}
+              <div>
+                <div style={{ fontWeight: 700 }}>{author.name}</div>
+                <div className="muted" style={{ fontSize: 12.5, marginBottom: 4 }}>{authorRole}</div>
+                <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.5 }}>{authorBio}</div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Espacio patrocinado · al pie del artículo (medio rectángulo) */}
-      <AdSlot slot="article_halfpage" lang={es ? 'es' : 'en'} />
+        {/* Columna LATERAL derecha: MPU + media página (pegajosa) */}
+        <aside style={{ flex: '1 1 300px', maxWidth: 336, position: 'sticky', top: 80, alignSelf: 'flex-start' }}>
+          <AdSlot slot="article_sidebar" lang={es ? 'es' : 'en'} />
+          <AdSlot slot="article_halfpage" lang={es ? 'es' : 'en'} />
+        </aside>
+      </div>
 
       {/* Sigue leyendo (enlazado interno) */}
       {related.length > 0 && (
