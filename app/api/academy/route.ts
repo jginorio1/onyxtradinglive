@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard, recentCount, deleteOwnPost, deleteOwnComment, editOwnPost, editOwnComment, blockUser, unblockUser, listBlocked, listBlockedIds } from '@/lib/academy';
+import { getMentor, myAcademies, getContent, progressSet, markLesson, isEnrolled, listPosts, addPost, addComment, leaderboard, membersList, toggleLike, levelFor, listEvents, nextEvent, dmUnread, tradersBoard, recentCount, deleteOwnPost, deleteOwnComment, editOwnPost, editOwnComment, blockUser, unblockUser, listBlocked, listBlockedIds, consumeWaitlistForUser } from '@/lib/academy';
 import { listProducts, accessibleModules, studentPurchases, perksFor, membershipInfo, hasMembership } from '@/lib/academyPay';
 import { referrerView } from '@/lib/academyReferral';
 import { auditAddon, hasAuditAddon, auditConsent, planVerified } from '@/lib/academyAudit';
@@ -63,6 +63,8 @@ export async function GET(req: Request) {
     const range = boardRange === '7d' ? '7d' : boardRange === '30d' ? '30d' : 'all';
     return NextResponse.json({ leaderboard: await leaderboard(m, range, 50) });
   }
+  // Materializa cualquier pre-inscripción pendiente de este email (import del admin).
+  await consumeWaitlistForUser(user.id, user.email).catch(() => {});
   const [mine, mentorRow] = await Promise.all([myAcademies(user.id), getMentor(user.id)]);
   const out: any = { canMentor: !!caps?.academy, isMentor: !!mentorRow, mentorCode: mentorRow?.code || null, myMentorId: mentorRow?.user_id || null, myAcademyName: mentorRow?.academy_name || null, myLogoUrl: mentorRow?.logo_url || null, academies: mine };
   const enrolledHere = m ? await isEnrolled(m, user.id) : false;

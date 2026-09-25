@@ -57,6 +57,130 @@ function ScholarshipsOverview({ L, es }: { L: (a: string, b: string) => string; 
   );
 }
 
+// Importar la comunidad de un mentor: el admin elige la academia, pega o sube la
+// base (email + nombre) y todos quedan inscritos a ese mentor (plan gratis Onyx).
+// Los que aún no tienen cuenta caen inscritos solos al registrarse con su email.
+function RosterImport({ list, L, es }: { list: any[]; L: (a: string, b: string) => string; es: boolean }) {
+  const [mentor, setMentor] = useState('');
+  const [raw, setRaw] = useState('');
+  const [invite, setInvite] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState<any>(null);
+  const [err, setErr] = useState('');
+
+  // Parsea el pegado/CSV: una fila por línea, "email[,;\t]nombre" o "nombre <email>".
+  function parse(text: string): { email: string; name: string }[] {
+    const out: { email: string; name: string }[] = [];
+    const seen = new Set<string>();
+    for (const lineRaw of String(text || '').split(/\r?\n/)) {
+      const line = lineRaw.trim();
+      if (!line) continue;
+      const emailMatch = line.match(/[^\s,;<>"]+@[^\s,;<>"]+\.[^\s,;<>"]+/);
+      if (!emailMatch) continue;
+      const email = emailMatch[0].toLowerCase();
+      if (seen.has(email)) continue;
+      seen.add(email);
+      // El nombre es lo que queda al quitar el email y separadores.
+      let name = line.replace(emailMatch[0], '').replace(/[,;<>"\t]+/g, ' ').trim();
+      // Salta encabezados tipo "email,nombre".
+      if (/^(email|correo|name|nombre)$/i.test(name)) name = '';
+      out.push({ email, name });
+    }
+    return out;
+  }
+
+  const parsed = parse(raw);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const text = await f.text();
+    setRaw((prev) => (prev ? prev + '\n' : '') + text);
+    e.target.value = '';
+  }
+
+  async function doImport() {
+    setErr(''); setRes(null);
+    if (!mentor) { setErr(L('Elige una academia primero.', 'Pick an academy first.')); return; }
+    if (!parsed.length) { setErr(L('No hay correos válidos en la lista.', 'No valid emails in the list.')); return; }
+    setBusy(true);
+    try {
+      const acadName = (list.find((a: any) => a.userId === mentor)?.name) || '';
+      const r = await fetch('/api/admin/academy', { method: 'POST', body: JSON.stringify({ action: 'import_roster', mentor_id: mentor, rows: parsed, send_invite: invite, academy_name: acadName }) });
+      const j = await r.json();
+      if (j.error) setErr(j.error === 'sin_filas' ? L('No hay correos válidos.', 'No valid emails.') : String(j.error));
+      else { setRes(j); setRaw(''); }
+    } catch { setErr(L('No se pudo importar. Intenta de nuevo.', 'Import failed. Try again.')); }
+    setBusy(false);
+  }
+
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+        <div className="card-ic"><OnyxIcon name="users" /></div>
+        <b>{L('Importar la comunidad de un mentor', 'Import a mentor’s community')}</b>
+      </div>
+      <p className="muted" style={{ margin: '0 0 10px' }}>
+        {L('Sube la base de alumnos del mentor (correo y, si quieres, nombre). Todos quedan inscritos a su academia en el plan gratis de Onyx. El que aún no tenga cuenta cae inscrito solo al registrarse con ese mismo correo. No se crean contraseñas ni se cobra a nadie.',
+           'Upload the mentor’s student list (email and, optionally, name). Everyone is enrolled in their academy on Onyx’s free plan. Anyone without an account yet is auto-enrolled when they sign up with that same email. No passwords are created and no one is charged.')}
+      </p>
+
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+        <select value={mentor} onChange={(e) => setMentor(e.target.value)} style={{ minWidth: 220 }}>
+          <option value="">{L('— Elige la academia —', '— Pick the academy —')}</option>
+          {list.map((a: any) => (
+            <option key={a.userId} value={a.userId}>{a.name}{a.mentorName ? ` · ${a.mentorName}` : ''}</option>
+          ))}
+        </select>
+        <label className="btn btn-ghost" style={{ cursor: 'pointer', margin: 0 }}>
+          {L('Subir CSV', 'Upload CSV')}
+          <input type="file" accept=".csv,.txt,text/csv,text/plain" onChange={onFile} style={{ display: 'none' }} />
+        </label>
+      </div>
+
+      <textarea
+        value={raw}
+        onChange={(e) => setRaw(e.target.value)}
+        rows={7}
+        placeholder={L('Pega aquí una fila por alumno. Ejemplos:\nana@correo.com, Ana Pérez\njuan@correo.com\nLuis Gómez <luis@correo.com>', 'Paste one row per student. Examples:\nana@mail.com, Ana Perez\njuan@mail.com\nLuis Gomez <luis@mail.com>')}
+        style={{ width: '100%', fontFamily: 'inherit', fontSize: 13.5 }}
+      />
+
+      <label className="row" style={{ gap: 8, alignItems: 'center', marginTop: 10, cursor: 'pointer' }}>
+        <input type="checkbox" checked={invite} onChange={(e) => setInvite(e.target.checked)} style={{ width: 'auto', margin: 0 }} />
+        <span style={{ fontSize: 13.5 }}>
+          {L('Enviarles un correo de invitación con enlace de un clic para entrar y poner contraseña.',
+             'Email them an invite with a one-click link to sign in and set a password.')}
+        </span>
+      </label>
+
+      <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+        <span className="pill">{parsed.length} {L('correos detectados', 'emails detected')}</span>
+        <button className="btn" disabled={busy || !mentor || !parsed.length} onClick={doImport}>
+          {busy ? L('Importando…', 'Importing…') : L('Importar a la academia', 'Import to the academy')}
+        </button>
+      </div>
+
+      {err && <p style={{ color: 'var(--red,#f0736f)', fontSize: 13, margin: '8px 0 0' }}>{err}</p>}
+      {res && (
+        <div style={{ marginTop: 10, padding: '10px 12px', border: '1px solid var(--bd)', borderRadius: 10, background: 'var(--card,#1b2338)' }}>
+          <b style={{ color: 'var(--green,#5ed6a0)' }}>{L('Importación lista', 'Import done')}</b>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+            <span className="pill green">{res.enrolled} {L('inscritos ya', 'enrolled now')}</span>
+            {res.invited > 0 && <span className="pill" style={{ color: 'var(--brand,#5b6cff)' }}>{res.invited} {L('correos enviados', 'emails sent')}</span>}
+            <span className="pill">{res.staged} {L('en espera (se registran luego)', 'pending (sign up later)')}</span>
+            {res.invalid > 0 && <span className="pill" style={{ color: 'var(--red,#f0736f)' }}>{res.invalid} {L('inválidos', 'invalid')}</span>}
+          </div>
+          <p className="muted" style={{ margin: '6px 0 0', fontSize: 12.5 }}>
+            {L('Los “en espera” aparecerán en la academia del mentor en cuanto creen su cuenta con ese correo.',
+               'The “pending” ones show up in the mentor’s academy as soon as they create an account with that email.')}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AcademyAdmin({ canManage = false }: { canManage?: boolean }) {
   const { lang } = useLang();
   const es = lang !== 'en';
@@ -165,6 +289,9 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
           </div>
         ))}
       </div>
+
+      {/* Importar la comunidad de un mentor (carga de la base por el admin) */}
+      <RosterImport list={list} L={L} es={es} />
 
       {/* Ingresos reales de la plataforma en Stripe (application fees) + reconciliación */}
       {d.platform && (() => {

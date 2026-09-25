@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { sendEmail } from '@/lib/mail';
 import { approvedReviews } from '@/lib/academyReviews';
 import { computeStats } from '@/lib/stats';
 import crypto from 'crypto';
@@ -95,6 +96,128 @@ export async function addToWaitlist(mentorId: string, email: string) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return { ok: false, error: 'bad_email' };
   await supabaseAdmin.from('academy_waitlist').upsert({ mentor_id: mentorId, email: e }, { onConflict: 'mentor_id,email' });
   return { ok: true };
+}
+
+// ---- Importar la comunidad de un mentor (carga masiva por el admin) ----
+// Recibe filas { email, name? } (parseadas de un CSV/pegado en el panel admin).
+// Al que YA tiene cuenta Onyx lo inscribe de una vez al mentor (plan gratis); al
+// que no, lo deja en lista de espera con su nombre para que caiga inscrito solo
+// cuando se registre con ese email. Nunca crea cuentas ni contraseñas.
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+// Correo de invitación bilingüe con el enlace de un clic (entrar / poner contraseña).
+async function sendRosterInvite(email: string, name: string, academyName: string, link: string, isNew: boolean) {
+  const hi = name ? name.split(' ')[0] : '';
+  const acad = academyName || 'Onyx Academy';
+  const es = isNew
+    ? `¡Hola${hi ? ' ' + hi : ''}! Te damos la bienvenida a **${acad}** en Onyx Trading Live.\n\nToca el botón para entrar y crear tu contraseña. Ya quedas dentro de la comunidad de tu mentor.`
+    : `¡Hola${hi ? ' ' + hi : ''}! Ya formas parte de **${acad}** en Onyx Trading Live.\n\nToca el botón para entrar directo con tu cuenta.`;
+  const en = isNew
+    ? `Hi${hi ? ' ' + hi : ''}! Welcome to **${acad}** on Onyx Trading Live.\n\nTap the button to sign in and set your password. You’re already in your mentor’s community.`
+    : `Hi${hi ? ' ' + hi : ''}! You’re now part of **${acad}** on Onyx Trading Live.\n\nTap the button to sign in with your account.`;
+  const cta = `\n\n👉 ${link}\n\n`;
+  const body = `${es}${cta}———\n\n${en}${cta}`;
+  const subject = isNew ? `Bienvenido a ${acad} · Welcome to ${acad}` : `Entra a ${acad} · Sign in to ${acad}`;
+  try { await sendEmail(email, subject, body, { kind: 'academy_invite' as any }); } catch { /* no rompe el import */ }
+}
+
+export async function adminImportRoster(
+  mentorId: string,
+  rows: { email: string; name?: string }[],
+  opts?: { sendInvite?: boolean; academyName?: string },
+): Promise<{ enrolled: number; staged: number; invalid: number; invited: number; total: number }> {
+  const sendInvite = !!opts?.sendInvite;
+  const academyName = String(opts?.academyName || '').slice(0, 120);
+  const seen = new Set<string>();
+  const clean: { email: string; name: string }[] = [];
+  let invalid = 0;
+  for (const r of rows || []) {
+    const email = String(r?.email || '').trim().toLowerCase().slice(0, 160);
+    const name = String(r?.name || '').trim().slice(0, 80);
+    if (!EMAIL_RE.test(email)) { invalid++; continue; }
+    if (seen.has(email)) continue;
+    seen.add(email);
+    clean.push({ email, name });
+  }
+  if (!clean.length) return { enrolled: 0, staged: 0, invalid, invited: 0, total: (rows || []).length };
+
+  // ¿Cuáles ya tienen cuenta Onyx? (une por email en profiles)
+  const emails = clean.map((c) => c.email);
+  const found = new Map<string, string>(); // email -> profile id
+  const CH = 300;
+  for (let i = 0; i < emails.length; i += CH) {
+    const chunk = emails.slice(i, i + CH);
+    const { data } = await supabaseAdmin.from('profiles').select('id,email').in('email', chunk);
+    (data || []).forEach((p: any) => { if (p.email) found.set(String(p.email).toLowerCase(), p.id); });
+  }
+
+  const redirectTo = ((process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'https://www.onyxtradinglive.com').replace(/\/+$/, '')) + '/academia';
+  // Pide a Supabase un enlace de un clic. 'magiclink' para quien ya tiene cuenta,
+  // 'invite' para quien no (crea el usuario auth → el trigger crea su perfil).
+  async function makeLink(email: string, isNew: boolean): Promise<{ link: string | null; newUserId: string | null }> {
+    try {
+      const { data, error } = await (supabaseAdmin.auth.admin as any).generateLink({
+        type: isNew ? 'invite' : 'magiclink', email, options: { redirectTo },
+      });
+      if (error) return { link: null, newUserId: null };
+      const link = (data as any)?.properties?.action_link || (data as any)?.action_link || null;
+      const newUserId = (data as any)?.user?.id || null;
+      return { link, newUserId };
+    } catch { return { link: null, newUserId: null }; }
+  }
+
+  const enrollRows: any[] = [];
+  const waitRows: any[] = [];
+  let invited = 0;
+
+  for (const c of clean) {
+    let pid = found.get(c.email);
+    if (!pid && sendInvite) {
+      // Sin cuenta + queremos invitar: crea el usuario con el enlace y lo inscribe ya.
+      const { link, newUserId } = await makeLink(c.email, true);
+      if (newUserId) {
+        pid = newUserId;
+        enrollRows.push({ mentor_id: mentorId, student_id: pid, status: 'active', ...(c.name ? { display_name: c.name } : {}) });
+        if (link) { await sendRosterInvite(c.email, c.name, academyName, link, true); invited++; }
+        continue;
+      }
+      // Si no se pudo crear (p. ej. ya existía), cae a lista de espera.
+      waitRows.push({ mentor_id: mentorId, email: c.email, name: c.name || null, source: 'import' });
+      continue;
+    }
+    if (pid) {
+      enrollRows.push({ mentor_id: mentorId, student_id: pid, status: 'active', ...(c.name ? { display_name: c.name } : {}) });
+      if (sendInvite) { const { link } = await makeLink(c.email, false); if (link) { await sendRosterInvite(c.email, c.name, academyName, link, false); invited++; } }
+    } else {
+      waitRows.push({ mentor_id: mentorId, email: c.email, name: c.name || null, source: 'import' });
+    }
+  }
+
+  if (enrollRows.length) {
+    for (let i = 0; i < enrollRows.length; i += CH) {
+      await supabaseAdmin.from('academy_enrollments').upsert(enrollRows.slice(i, i + CH), { onConflict: 'mentor_id,student_id' });
+    }
+  }
+  if (waitRows.length) {
+    for (let i = 0; i < waitRows.length; i += CH) {
+      await supabaseAdmin.from('academy_waitlist').upsert(waitRows.slice(i, i + CH), { onConflict: 'mentor_id,email' });
+    }
+  }
+  return { enrolled: enrollRows.length, staged: waitRows.length, invalid, invited, total: (rows || []).length };
+}
+
+// Al abrir la academia, materializa cualquier pre-inscripción pendiente de este
+// email: lo pasa de la lista de espera a inscrito de verdad y limpia la fila.
+export async function consumeWaitlistForUser(studentId: string, email?: string | null): Promise<number> {
+  const e = String(email || '').trim().toLowerCase();
+  if (!EMAIL_RE.test(e)) return 0;
+  const { data: pend } = await supabaseAdmin.from('academy_waitlist').select('mentor_id,name').eq('email', e);
+  const list = (pend || []) as any[];
+  if (!list.length) return 0;
+  const rows = list.map((w) => ({ mentor_id: w.mentor_id, student_id: studentId, status: 'active', ...(w.name ? { display_name: w.name } : {}) }));
+  await supabaseAdmin.from('academy_enrollments').upsert(rows, { onConflict: 'mentor_id,student_id' });
+  await supabaseAdmin.from('academy_waitlist').delete().eq('email', e);
+  return rows.length;
 }
 
 // ---- Contenido (módulos + lecciones) ----

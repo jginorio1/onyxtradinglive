@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { adminListAcademies, getDefaultFeePct, setDefaultFeePct, setMentorFeePct, getPlanFees, setPlanFee, logFeeChange, feeLog } from '@/lib/academyPay';
 import { academyPerksSettings, guardianAcademySettings, copyMentorSettings, saveSetting } from '@/lib/settings';
+import { adminImportRoster } from '@/lib/academy';
 import { platformBalancePayouts } from '@/lib/academyBilling';
 
 export const dynamic = 'force-dynamic';
@@ -61,6 +62,13 @@ export async function POST(req: Request) {
       await saveSetting('copy_mentor', value);
       await logAdmin(user.email, 'copy_mentor', `on=${value.enabled} fee=${value.onyx_fee_pct}%`);
       return NextResponse.json({ ok: true, copy: value });
+    }
+    if (b.action === 'import_roster' && b.mentor_id) {
+      const rows = Array.isArray(b.rows) ? b.rows.slice(0, 5000) : [];
+      if (!rows.length) return NextResponse.json({ error: 'sin_filas' }, { status: 400 });
+      const res = await adminImportRoster(String(b.mentor_id), rows, { sendInvite: !!b.send_invite, academyName: String(b.academy_name || '') });
+      await logAdmin(user.email, 'academy_import_roster', String(b.mentor_id), res);
+      return NextResponse.json({ ok: true, ...res });
     }
     if (b.action === 'mentor' && b.mentor_id) {
       const raw = b.fee_pct === '' || b.fee_pct == null ? null : Number(b.fee_pct);
