@@ -49,6 +49,7 @@ export async function GET() {
       globalOv1: ss.override1_rate, globalOv2: ss.override2_rate,
       holdMinutes: cfg.holdMinutes, maturationDays: cfg.maturationDays,
       caps: cfg.caps || {}, partnerFill: cfg.partnerFill, partnerFillSlots: cfg.partnerFillSlots || {}, partnerSlotPin: cfg.partnerSlotPin || {},
+      quoteValidityDays: cfg.quoteValidityDays, quoteTemplate: cfg.quoteTemplate,
     },
     slots, bookings: rows, reps, partners,
   });
@@ -87,6 +88,12 @@ export async function POST(req: Request) {
       const pin: Record<string, string> = {};
       for (const k of Object.keys(b.partnerSlotPin)) { const v = b.partnerSlotPin[k]; if (v && typeof v === 'string') pin[k] = v; }
       patch.partnerSlotPin = pin;
+    }
+    if (b.quoteValidityDays !== undefined) patch.quoteValidityDays = Math.max(1, Math.min(365, Math.round(Number(b.quoteValidityDays) || 15)));
+    if (b.quoteTemplate && typeof b.quoteTemplate === 'object') {
+      const keys: (keyof any)[] = ['intro', 'includes', 'whyOnyx', 'terms', 'validityNote', 'closing'];
+      const pick = (o: any) => { const r: any = {}; for (const k of keys) if (typeof o?.[k] === 'string') r[k] = String(o[k]).slice(0, 4000); return r; };
+      patch.quoteTemplate = { es: pick(b.quoteTemplate.es), en: pick(b.quoteTemplate.en) };
     }
     await saveAdsConfig(patch);
     return NextResponse.json({ ok: true });
@@ -144,13 +151,19 @@ export async function POST(req: Request) {
       }
     }
     const { adProposalPdf, adProposalEmail } = await import('@/lib/adSpaceProposal');
+    const cfg2 = await getAdsConfig();
+    // Fecha "válida hasta": la que mande el admin, o hoy + días de validez configurados.
+    const validUntil = /^\d{4}-\d{2}-\d{2}$/.test(b.validUntil)
+      ? String(b.validUntil)
+      : new Date(Date.now() + Math.max(1, cfg2.quoteValidityDays) * 86400000).toISOString().slice(0, 10);
     const inp = {
       slotKey: slot.key,
       slotNameEs: slot.es, slotNameEn: slot.en, size: slot.size, pageEs: slot.page, pageEn: slot.page,
       startDate: String(b.start), endDate: String(b.end), price: Number(b.price) || slot.price,
-      cap: await slotCap(slot.key), holdUntil: b.holdUntil || undefined,
+      cap: await slotCap(slot.key), holdUntil: b.holdUntil || undefined, validUntil,
       sellerName, sellerEmail, advertiser: String(b.advertiser || ''), advertiserCompany: String(b.company || ''),
       advertiserEmail: String(b.email || ''), linkUrl: String(b.link || ''),
+      tpl: cfg2.quoteTemplate[lang],
     };
     const pdf = await adProposalPdf(inp, { lang });
     const base64 = Buffer.from(pdf).toString('base64');

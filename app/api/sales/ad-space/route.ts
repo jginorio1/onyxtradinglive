@@ -90,16 +90,19 @@ export async function POST(req: Request) {
     const cfg = await getAdsConfig();
     const { data: prof } = await supabaseAdmin.from('profiles').select('email').eq('id', user.id).maybeSingle();
     const sellerEmail = ((rep as any).work_email || '').trim() || (prof as any)?.email || '';
+    const validUntil = new Date(Date.now() + Math.max(1, cfg.quoteValidityDays) * 86400000).toISOString().slice(0, 10);
     const { adProposalPdf, adProposalEmail } = await import('@/lib/adSpaceProposal');
     const inp = {
       slotKey: slot.key,
       slotNameEs: slot.es, slotNameEn: slot.en, size: slot.size, pageEs: slot.page, pageEn: slot.page,
       startDate: String(b.start), endDate: String(b.end), price: Number(b.price) || slot.price,
       cap: await slotCap(slot.key, cfg), impressionsPerDay: await estImpressionsPerDay(slot.page),
-      holdUntil: b.holdUntil || undefined,
+      holdUntil: b.holdUntil || undefined, validUntil,
+      // El vendedor NO edita sus datos: salen de su cuenta (rep + perfil).
       sellerName: rep.display_name || rep.code, sellerEmail, sellerPhone: (rep as any).phone || '',
       advertiser: String(b.advertiser || ''), advertiserCompany: String(b.company || ''), advertiserEmail: String(b.email || ''),
       linkUrl: String(b.link || ''),
+      tpl: cfg.quoteTemplate[lang],
     };
     const pdf = await adProposalPdf(inp, { lang });
     const base64 = Buffer.from(pdf).toString('base64');

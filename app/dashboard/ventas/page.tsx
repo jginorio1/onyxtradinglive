@@ -390,7 +390,7 @@ function TicketRow({ t, L, act }: any) {
   return (
     <div style={{ borderTop: '1px solid var(--line,#2a3350)', padding: '10px 0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-        <div><span style={{ color: 'var(--tx,#e8ecf5)', fontSize: 14 }}>{t.subject || '(sin asunto)'}</span> <span style={{ color: 'var(--mut,#9aa6bd)', fontSize: 12 }}>· {t.client} · {t.status}</span></div>
+        <div><span style={{ color: 'var(--tx,#e8ecf5)', fontSize: 14 }}>{t.subject || L('(sin asunto)', '(no subject)')}</span> <span style={{ color: 'var(--mut,#9aa6bd)', fontSize: 12 }}>· {t.client} · {t.status}</span></div>
         <button onClick={() => setOpen(!open)} style={{ background: 'none', border: '1px solid var(--line,#2a3350)', color: 'var(--tx,#e8ecf5)', borderRadius: 8, padding: '5px 10px', cursor: 'pointer', fontSize: 12.5 }}>{L('Responder', 'Reply')}</button>
       </div>
       {open && <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
@@ -454,7 +454,7 @@ function PayoutBox({ d, L, act, btn, btnP, card }: any) {
 }
 
 // ===== Mi desempeño (vendedor ve su propia tarjeta + IA + reseñas) =====
-const TIERC: any = { star: { fg: '#e5b567', lbl: 'Estrella' }, solid: { fg: '#5ed6a0', lbl: 'Sólido' }, risk: { fg: '#f0736f', lbl: 'En riesgo' } };
+const TIERC: any = { star: { fg: '#e5b567', lbl: 'Estrella', lbl_en: 'Star' }, solid: { fg: '#5ed6a0', lbl: 'Sólido', lbl_en: 'Solid' }, risk: { fg: '#f0736f', lbl: 'En riesgo', lbl_en: 'At risk' } };
 const starStr = (r: number) => '★★★★★'.slice(0, Math.round(r)) + '☆☆☆☆☆'.slice(0, 5 - Math.round(r));
 
 function MyPerf({ d, L, act, card, btn }: any) {
@@ -474,7 +474,7 @@ function MyPerf({ d, L, act, card, btn }: any) {
       <div style={{ ...card, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 40, fontWeight: 800, color: t.fg, lineHeight: 1 }}>{sc.score ?? '—'}</div>
-          <div style={{ fontSize: 12, color: t.fg, fontWeight: 600 }}>{t.lbl}</div>
+          <div style={{ fontSize: 12, color: t.fg, fontWeight: 600 }}>{L(t.lbl, t.lbl_en)}</div>
         </div>
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ color: '#e5b567', fontSize: 16 }}>{sc.reviews ? `${starStr(sc.rating)} ${sc.rating}` : L('Aún sin reseñas', 'No reviews yet')}</div>
@@ -549,7 +549,14 @@ function Statement({ rows, L, card }: any) {
     const [c, t] = m[st] || ['#9aa6bd', st];
     return <span style={{ color: c, fontSize: 12, fontWeight: 600 }}>{t}</span>;
   };
-  const lvl = (l: string) => l === 'override1' ? 'Ov.1' : l === 'override2' ? 'Ov.2' : l === 'bonus' ? L('Bono', 'Bonus') : L('Directo', 'Direct');
+  const lvl = (l: string) => l === 'override1' || l?.endsWith('_ov1') ? 'Ov.1' : l === 'override2' || l?.endsWith('_ov2') ? 'Ov.2' : l?.startsWith('bonus') ? L('Bono', 'Bonus') : L('Directo', 'Direct');
+  // Píldora de ORIGEN: de dónde viene la ganancia (color por concepto).
+  const srcColors: Record<string, string> = { adspace: '#8b93ff', subscription: '#5ed6a0', academy: '#f0a94c', botlab: '#e879f9', addon: '#5bc8e6', guardian: '#4cc9f0', bonus: '#f7c948' };
+  const srcPill = (r: any) => {
+    const label = L(r.source_es || 'Suscripción', r.source_en || 'Subscription');
+    const c = srcColors[r.sourceKey] || '#9aa6bd';
+    return <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600, color: c, background: 'color-mix(in srgb, ' + c + ' 16%, transparent)', border: '1px solid color-mix(in srgb, ' + c + ' 35%, transparent)', whiteSpace: 'nowrap' }}>{label}</span>;
+  };
   return (
     <div style={card}>
       <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Extracto de comisiones', 'Commission statement')}</b>
@@ -559,6 +566,7 @@ function Statement({ rows, L, card }: any) {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480, fontSize: 13 }}>
             <thead><tr style={{ color: 'var(--mut,#9aa6bd)', fontSize: 11.5, textAlign: 'left' }}>
               <th style={{ padding: '6px 6px' }}>{L('Cliente', 'Client')}</th>
+              <th style={{ padding: '6px 6px' }}>{L('Origen', 'Source')}</th>
               <th style={{ padding: '6px 6px' }}>{L('Nivel', 'Level')}</th>
               <th style={{ padding: '6px 6px', textAlign: 'right' }}>{L('Base', 'Base')}</th>
               <th style={{ padding: '6px 6px', textAlign: 'right' }}>%</th>
@@ -570,6 +578,7 @@ function Statement({ rows, L, card }: any) {
               {rows.map((r: any, i: number) => (
                 <tr key={i} style={{ borderTop: '1px solid var(--line,#2a3350)' }}>
                   <td style={{ padding: '7px 6px', color: 'var(--tx,#e8ecf5)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.client}</td>
+                  <td style={{ padding: '7px 6px' }}>{srcPill(r)}</td>
                   <td style={{ padding: '7px 6px', color: 'var(--mut,#9aa6bd)' }}>{lvl(r.level)}</td>
                   <td style={{ padding: '7px 6px', textAlign: 'right', color: 'var(--mut,#9aa6bd)' }}>{r.base ? '$' + r.base : '—'}</td>
                   <td style={{ padding: '7px 6px', textAlign: 'right', color: 'var(--mut,#9aa6bd)' }}>{r.pct ? r.pct + '%' : '—'}</td>
@@ -638,6 +647,7 @@ function AdSpaceSeller({ lang, L, card, btn, btnP, setMsg }: any) {
   const [email, setEmail] = useState('');
   const [link, setLink] = useState('');
   const [price, setPrice] = useState<number>(0);
+  const [sendLang, setSendLang] = useState<'es' | 'en'>(lang === 'en' ? 'en' : 'es');  // idioma del envío (auto-sugerido)
   const [cal, setCal] = useState<any[]>([]);
   const [range, setRange] = useState<any>(null);
   const [busy, setBusy] = useState(false);
@@ -650,7 +660,7 @@ function AdSpaceSeller({ lang, L, card, btn, btnP, setMsg }: any) {
   useEffect(() => { load(); }, []);
 
   const post = async (body: any) => {
-    const r = await fetch('/api/sales/ad-space', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...body, lang }) });
+    const r = await fetch('/api/sales/ad-space', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lang, ...body }) });
     return r.json();
   };
   const refreshCal = async (sk = slot, s = start, e = end) => {
@@ -673,7 +683,7 @@ function AdSpaceSeller({ lang, L, card, btn, btnP, setMsg }: any) {
   const doPdf = async () => {
     if (!validForm()) { setMsg(L('Completa ubicación, fechas y anunciante.', 'Fill placement, dates and advertiser.')); return; }
     setBusy(true); setOk('');
-    const j = await post({ action: 'proposal_pdf', slot, start, end, price, advertiser, company, email, link });
+    const j = await post({ action: 'proposal_pdf', slot, start, end, price, advertiser, company, email, link, lang: sendLang });
     setBusy(false);
     if (j.pdf) dl(j.pdf, j.filename || 'propuesta.pdf'); else setMsg(j.error || 'error');
   };
@@ -681,7 +691,7 @@ function AdSpaceSeller({ lang, L, card, btn, btnP, setMsg }: any) {
     if (!validForm()) { setMsg(L('Completa ubicación, fechas y anunciante.', 'Fill placement, dates and advertiser.')); return; }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setMsg(L('Escribe el correo del anunciante.', 'Enter the advertiser email.')); return; }
     setBusy(true); setOk('');
-    const j = await post({ action: 'proposal_email', slot, start, end, price, advertiser, company, email, link });
+    const j = await post({ action: 'proposal_email', slot, start, end, price, advertiser, company, email, link, lang: sendLang });
     setBusy(false);
     if (j.sent) { setOk(L('Propuesta enviada ✓', 'Proposal sent ✓')); } else setMsg(j.error || 'error');
   };
@@ -765,6 +775,12 @@ function AdSpaceSeller({ lang, L, card, btn, btnP, setMsg }: any) {
           <div><label style={lbl}>{L('Correo del anunciante', 'Advertiser email')} {Hint('A este correo se envía la propuesta y llega la respuesta del cliente.', 'The proposal is sent here and the client’s reply comes back here.')}</label><input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="cliente@empresa.com" style={inp} /></div>
           <div><label style={lbl}>{L('Enlace / web', 'Link / website')} {Hint('A dónde lleva el banner cuando un visitante hace clic.', 'Where the banner takes a visitor when clicked.')}</label><input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" style={inp} /></div>
           <div><label style={lbl}>{L('Precio total (USD)', 'Total price (USD)')} {Hint('Lo que paga el anunciante por todo el periodo elegido. Tu comisión sale de aquí.', 'What the advertiser pays for the whole chosen period. Your commission comes from this.')}</label><input type="number" min={0} value={price} onChange={(e) => setPrice(Number(e.target.value) || 0)} style={inp} /></div>
+          <div><label style={lbl}>{L('Idioma del envío', 'Send language')} {Hint('Idioma de la cotización que se genera y envía. Elige el del cliente.', 'Language of the quote that is generated and sent. Pick the client’s.')}</label>
+            <select value={sendLang} onChange={(e) => setSendLang(e.target.value as any)} style={inp}>
+              <option value="es">Español</option>
+              <option value="en">English</option>
+            </select>
+          </div>
           <div style={{ alignSelf: 'end', fontSize: 12, color: 'var(--mut,#9aa6bd)' }}>{L('Tu comisión estimada:', 'Your est. commission:')} <b style={{ color: 'var(--green,#5ed6a0)' }}>${Math.round((price * (d.commissionPct || 0)) / 100)}</b></div>
         </div>
 

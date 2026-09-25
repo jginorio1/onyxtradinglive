@@ -22,13 +22,38 @@ export async function repStatement(repId: string, limit = 200): Promise<any[]> {
       : r.status === 'reversed' ? 'reversed'
       : (r.status === 'available' || (r.available_at && new Date(r.available_at).getTime() <= now)) ? 'available'
       : 'pending';
+    const src = sourceOf(r.level, r.invoice_id);
     return {
       client: r.level === 'bonus' ? (byId[r.client_user_id] || 'Bono') : (byId[r.client_user_id] || '—'),
       level: r.level, base: Number(r.base_amount) || 0, pct: Number(r.pct) || 0,
       amount: Number(r.amount) || 0, currency: r.currency || 'USD', status: eff,
       when: r.created_at, available_at: r.available_at,
+      // De DÓNDE viene esta ganancia (para que el vendedor lo entienda de un vistazo).
+      sourceKey: src.key, source_es: src.es, source_en: src.en,
+      role: r.level.endsWith('_ov1') || r.level === 'override1' ? 'ov1'
+        : r.level.endsWith('_ov2') || r.level === 'override2' ? 'ov2'
+        : r.level.startsWith('bonus') ? 'bonus' : 'direct',
     };
   });
+}
+
+// Traduce el "level"/invoice de una comisión a un concepto legible: de dónde
+// salió la ganancia (suscripción, espacio publicitario, academia, bono…).
+function sourceOf(level: string, invoiceId?: string): { key: string; es: string; en: string } {
+  const inv = String(invoiceId || '');
+  if (level.startsWith('ad_space') || inv.startsWith('adspace:'))
+    return { key: 'adspace', es: 'Espacio publicitario', en: 'Ad space' };
+  if (level.startsWith('bonus'))
+    return { key: 'bonus', es: 'Bono', en: 'Bonus' };
+  if (inv.startsWith('academy:') || level.startsWith('academy'))
+    return { key: 'academy', es: 'Academia', en: 'Academy' };
+  if (inv.startsWith('botlab:') || level.startsWith('botlab'))
+    return { key: 'botlab', es: 'Bot Lab', en: 'Bot Lab' };
+  if (inv.startsWith('addon:') || level.startsWith('addon'))
+    return { key: 'addon', es: 'Complemento (add-on)', en: 'Add-on' };
+  if (inv.startsWith('guardian:') || level.startsWith('guardian'))
+    return { key: 'guardian', es: 'Onyx Guardian', en: 'Onyx Guardian' };
+  return { key: 'subscription', es: 'Suscripción', en: 'Subscription' };
 }
 
 // ---------- METAS Y BONOS ----------

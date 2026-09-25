@@ -93,6 +93,40 @@ export type AdsConfig = {
   spaceOv2Pct: number | null;            // % override Director N2 para espacios; null = usa el global de Ventas
   holdMinutes: number;                   // minutos que una pre-reserva sin pagar bloquea el cupo
   maturationDays: number;                // días que la comisión queda "en espera" antes de estar disponible
+  // --- Cotización / propuesta de espacios (editable + validez) ---
+  quoteValidityDays: number;             // días que vale la cotización (para la fecha "válida hasta")
+  quoteTemplate: { es: QuoteTpl; en: QuoteTpl };  // plantilla por secciones, editable en admin, por idioma
+};
+
+// Plantilla de la propuesta de banners: cada campo es texto editable con
+// variables tipo {advertiser}, {seller}, {slot}, {price}, {validUntil}, etc.
+// includes/whyOnyx son varias líneas (una por viñeta).
+export type QuoteTpl = {
+  intro: string;         // párrafo de saludo/introducción
+  includes: string;      // "qué incluye" (una viñeta por línea)
+  whyOnyx: string;       // "por qué Onyx" (una viñeta por línea)
+  terms: string;         // términos y condiciones (párrafo)
+  validityNote: string;  // nota de validez (usa {validUntil})
+  closing: string;       // cierre / firma
+};
+
+export const DEFAULT_QUOTE_TPL: { es: QuoteTpl; en: QuoteTpl } = {
+  es: {
+    intro: 'Hola {advertiser}, gracias por tu interés en anunciarte en Onyx Trading Live. A continuación tienes la propuesta para el espacio {slot} ({size}) en la sección {page}, con todo lo que incluye y el detalle de fechas y precio.',
+    includes: 'Banner mostrado en el espacio durante todo el rango de fechas\nEncendido automático el día de inicio y apagado al terminar\nReporte de impresiones y clics\nArte en el tamaño IAB exacto, sujeto a una revisión rápida',
+    whyOnyx: 'Audiencia de traders reales y activos (forex y prop firms)\nTarifa plana: sin costo por clic ni sorpresas\nEspacio premium, bien visible en la sección elegida\nAcompañamiento de tu asesor Onyx en todo el proceso',
+    terms: 'El pago se realiza por adelantado. Al confirmar y pagar, reservamos el espacio para las fechas exactas y se activa automáticamente el día de inicio; se apaga solo al finalizar. El arte queda sujeto a una revisión rápida de calidad.',
+    validityNote: 'Esta propuesta es válida hasta el {validUntil}. Después de esa fecha los precios y la disponibilidad pueden cambiar.',
+    closing: 'Quedamos atentos a cualquier duda.\n{seller} · Onyx Trading Live',
+  },
+  en: {
+    intro: 'Hi {advertiser}, thank you for your interest in advertising on Onyx Trading Live. Below is the proposal for the {slot} placement ({size}) in the {page} section, with everything it includes and the dates and price.',
+    includes: 'Banner shown across the placement for the full date range\nAutomatic go-live on the start date and auto-pause at the end\nImpression and click reporting\nCreative in the exact IAB size, subject to a quick review',
+    whyOnyx: 'Real, active trader audience (forex and prop firms)\nFlat rate: no cost per click, no surprises\nPremium, highly visible spot in the chosen section\nSupport from your Onyx rep throughout the process',
+    terms: 'Payment is made in advance. Once you confirm and pay, we reserve the space for the exact dates and it goes live automatically on the start date; it turns off by itself at the end. Creative is subject to a quick quality review.',
+    validityNote: 'This proposal is valid until {validUntil}. After that date, pricing and availability may change.',
+    closing: 'We are happy to answer any questions.\n{seller} · Onyx Trading Live',
+  },
 };
 const DEFAULT_CFG: AdsConfig = {
   enabled: true, nativeEnabled: false, rates: {}, autoApprove: false,
@@ -105,7 +139,8 @@ const DEFAULT_CFG: AdsConfig = {
   partnerFill: true,
   partnerFillSlots: {},
   partnerSlotPin: {},
-  caps: {}, defaultCap: 4, spaceCommissionPct: 15, spaceOv1Pct: null, spaceOv2Pct: null, holdMinutes: 45, maturationDays: 14,
+  caps: {}, defaultCap: 4, spaceCommissionPct: 15, spaceOv1Pct: 5, spaceOv2Pct: 3, holdMinutes: 45, maturationDays: 14,
+  quoteValidityDays: 15, quoteTemplate: DEFAULT_QUOTE_TPL,
 };
 
 export async function getAdsConfig(): Promise<AdsConfig> {
@@ -124,11 +159,25 @@ export async function getAdsConfig(): Promise<AdsConfig> {
     caps: c.caps && typeof c.caps === 'object' ? c.caps : {},
     defaultCap: typeof c.defaultCap === 'number' && c.defaultCap > 0 ? c.defaultCap : DEFAULT_CFG.defaultCap,
     spaceCommissionPct: typeof c.spaceCommissionPct === 'number' ? c.spaceCommissionPct : DEFAULT_CFG.spaceCommissionPct,
-    spaceOv1Pct: typeof c.spaceOv1Pct === 'number' ? c.spaceOv1Pct : null,
-    spaceOv2Pct: typeof c.spaceOv2Pct === 'number' ? c.spaceOv2Pct : null,
+    // null explícito = "vaciado a propósito" → hereda el override global de Ventas.
+    // undefined (nunca configurado) = usa el default individual de banners (5%/3%).
+    spaceOv1Pct: c.spaceOv1Pct === null ? null : (typeof c.spaceOv1Pct === 'number' ? c.spaceOv1Pct : DEFAULT_CFG.spaceOv1Pct),
+    spaceOv2Pct: c.spaceOv2Pct === null ? null : (typeof c.spaceOv2Pct === 'number' ? c.spaceOv2Pct : DEFAULT_CFG.spaceOv2Pct),
     holdMinutes: typeof c.holdMinutes === 'number' && c.holdMinutes >= 0 ? c.holdMinutes : DEFAULT_CFG.holdMinutes,
     maturationDays: typeof c.maturationDays === 'number' && c.maturationDays >= 0 ? c.maturationDays : DEFAULT_CFG.maturationDays,
+    quoteValidityDays: typeof c.quoteValidityDays === 'number' && c.quoteValidityDays > 0 ? c.quoteValidityDays : DEFAULT_CFG.quoteValidityDays,
+    quoteTemplate: {
+      es: { ...DEFAULT_QUOTE_TPL.es, ...(c.quoteTemplate?.es || {}) },
+      en: { ...DEFAULT_QUOTE_TPL.en, ...(c.quoteTemplate?.en || {}) },
+    },
   };
+}
+
+// Sustituye variables {var} en una plantilla con los datos reales. Se usa en el
+// PDF y en el correo; el editor del admin replica la misma sustitución para la
+// vista previa en vivo.
+export function fillQuoteVars(text: string, vars: Record<string, string>): string {
+  return String(text || '').replace(/\{(\w+)\}/g, (_, k) => (vars[k] != null ? vars[k] : `{${k}}`));
 }
 export async function saveAdsConfig(c: Partial<AdsConfig>) {
   const prev = await getAdsConfig();

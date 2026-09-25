@@ -20,7 +20,11 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
   const [busy, setBusy] = useState(false);
   // --- módulo de cotizaciones / propuestas ---
   const [ok2, setOk2] = useState('');
-  const [f, setF] = useState<any>({ slot: '', start: '', end: '', advertiser: '', company: '', email: '', link: '', price: 0, rep_id: '' });
+  const [f, setF] = useState<any>({ slot: '', start: '', end: '', advertiser: '', company: '', email: '', link: '', price: 0, rep_id: '', lang: es ? 'es' : 'en' });
+  // Plantilla de la cotización (editable por idioma) + días de validez + idioma de edición/preview.
+  const [tpl, setTpl] = useState<any>(null);
+  const [validDays, setValidDays] = useState<number>(15);
+  const [tplLang, setTplLang] = useState<'es' | 'en'>(es ? 'es' : 'en');
   const [cal, setCal] = useState<any[]>([]);
   const [range, setRange] = useState<any>(null);
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -40,6 +44,8 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
       setPFill(j.settings?.partnerFill !== false);
       setPSlots(j.settings?.partnerFillSlots || {});
       setPPin(j.settings?.partnerSlotPin || {});
+      setValidDays(j.settings?.quoteValidityDays ?? 15);
+      setTpl(j.settings?.quoteTemplate || null);
     } catch {}
   };
   useEffect(() => { load(); }, []);
@@ -52,6 +58,9 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
     return j;
   };
   const saveSettings = async () => { const j = await post({ action: 'save_settings', caps, ...cfg, partnerFill: pFill, partnerFillSlots: pSlots, partnerSlotPin: pPin }); if (j.ok) { setMsg(L('Guardado ✓', 'Saved ✓')); await load(); } };
+  // Guardar plantilla de cotización + días de validez.
+  const setTplField = (k: string, v: string) => setTpl((p: any) => ({ ...p, [tplLang]: { ...(p?.[tplLang] || {}), [k]: v } }));
+  const saveTemplate = async () => { const j = await post({ action: 'save_settings', quoteValidityDays: validDays, quoteTemplate: tpl }); if (j.ok) { setMsg(L('Plantilla guardada ✓', 'Template saved ✓')); await load(); } };
   const setSlotFill = (k: string, v: '' | 'yes' | 'no') => setPSlots((p) => { const n = { ...p }; if (v === '') delete n[k]; else n[k] = v === 'yes'; return n; });
   const setSlotPin = (k: string, v: string) => setPPin((p) => { const n = { ...p }; if (!v) delete n[k]; else n[k] = v; return n; });
   const confirmPaid = async (id: string) => { const j = await post({ action: 'confirm_paid', id }); if (j.ok) { setMsg(L('Pago confirmado ✓', 'Payment confirmed ✓')); await load(); } };
@@ -120,6 +129,12 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
           <div><label style={lblS}>{L('Correo del anunciante', 'Advertiser email')} {Hint('A este correo se envía la propuesta y llega su respuesta.', 'The proposal is sent here and their reply comes back here.')}</label><input value={f.email} onChange={(e) => setFF('email', e.target.value)} style={inpS} /></div>
           <div><label style={lblS}>{L('Enlace / web', 'Link / website')} {Hint('A dónde lleva el banner al hacer clic.', 'Where the banner takes a visitor when clicked.')}</label><input value={f.link} onChange={(e) => setFF('link', e.target.value)} style={inpS} /></div>
           <div><label style={lblS}>{L('Precio total (USD)', 'Total price (USD)')} {Hint('Lo que paga el anunciante por todo el periodo.', 'What the advertiser pays for the whole period.')}</label><input type="number" min={0} value={f.price} onChange={(e) => setFF('price', Number(e.target.value) || 0)} style={inpS} /></div>
+          <div><label style={lblS}>{L('Idioma del envío', 'Send language')} {Hint('Idioma de la cotización que se genera y envía. Elige el del anunciante.', 'Language of the quote that is generated and sent. Pick the advertiser’s.')}</label>
+            <select value={f.lang} onChange={(e) => setFF('lang', e.target.value)} style={inpS}>
+              <option value="es">Español</option>
+              <option value="en">English</option>
+            </select>
+          </div>
           <div>
             <label style={lblS}>{L('Atribuir a vendedor (opcional)', 'Attribute to seller (optional)')} {Hint('Si eliges un vendedor, esta venta le cuenta y gana su comisión de 3 niveles. Sin vendedor = venta directa de Onyx.', 'If you pick a seller, this sale counts for them and pays their 3-tier commission. No seller = direct Onyx sale.')}</label>
             <select value={f.rep_id} onChange={(e) => setFF('rep_id', e.target.value)} style={inpS}>
@@ -140,6 +155,12 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
         </div>
         {ok2 && <div style={{ marginTop: 10, fontSize: 13, color: '#22c55e' }}>{ok2}</div>}
       </div>
+
+      {/* PLANTILLA DE LA COTIZACIÓN — editable por secciones (por idioma) + validez + vista previa en vivo. */}
+      {tpl && <QuoteTemplateEditor
+        L={L} es={es} tpl={tpl} tplLang={tplLang} setTplLang={setTplLang} setTplField={setTplField}
+        validDays={validDays} setValidDays={setValidDays} saveTemplate={saveTemplate} busy={busy} Hint={Hint}
+      />}
 
       {/* REPARTO DE COMISIÓN — todo en un solo sitio, con ejemplo en vivo. */}
       <div style={cardS}>
@@ -299,6 +320,93 @@ function NumF({ label, v, on, hint }: { label: string; v: number; on: (x: number
       <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>{label} {hint}</label>
       <input type="number" value={v} onChange={(e) => on(Number(e.target.value) || 0)}
         style={{ width: '100%', padding: '8px 10px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 13 }} />
+    </div>
+  );
+}
+
+// Editor de la PLANTILLA de la cotización (por secciones, por idioma) con
+// vista previa EN VIVO: al escribir, el panel derecho se actualiza al instante
+// con datos de ejemplo, mostrando cómo se verá la propuesta.
+function QuoteTemplateEditor({ L, es, tpl, tplLang, setTplLang, setTplField, validDays, setValidDays, saveTemplate, busy, Hint }: any) {
+  const t = (tpl?.[tplLang] || {}) as any;
+  const fill = (s: string, v: Record<string, string>) => String(s || '').replace(/\{(\w+)\}/g, (_: any, k: string) => (v[k] != null ? v[k] : `{${k}}`));
+  // Fecha "válida hasta" de ejemplo = hoy + días de validez.
+  const vu = new Date(Date.now() + Math.max(1, Number(validDays) || 15) * 86400000)
+    .toLocaleDateString(tplLang === 'es' ? 'es-ES' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+  const sv: Record<string, string> = tplLang === 'es'
+    ? { advertiser: 'María', company: 'Acme Broker', seller: 'Juan Pérez', sellerEmail: 'juan@onyxtradinglive.com', slot: 'Artículo · Lateral vertical', size: '300x600', page: 'article', start: '01 oct 2026', end: '31 oct 2026', days: '31', price: '$450', cap: '4', validUntil: vu }
+    : { advertiser: 'Mary', company: 'Acme Broker', seller: 'John Doe', sellerEmail: 'john@onyxtradinglive.com', slot: 'Article · Vertical sidebar', size: '300x600', page: 'article', start: 'Oct 01, 2026', end: 'Oct 31, 2026', days: '31', price: '$450', cap: '4', validUntil: vu };
+
+  const tabBtn = (lng: 'es' | 'en', lbl: string) => (
+    <button onClick={() => setTplLang(lng)} style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: tplLang === lng ? 'var(--accent,#8b93ff)' : 'var(--card,#1b2338)', color: tplLang === lng ? '#fff' : 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 12.5, fontWeight: 600 }}>{lbl}</button>
+  );
+  const field = (k: string, label: string, hint: string, lines = 3) => (
+    <div>
+      <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>{label} {Hint(hint, hint)}</label>
+      <textarea value={t[k] || ''} onChange={(e) => setTplField(k, e.target.value)}
+        style={{ width: '100%', minHeight: lines * 22, resize: 'vertical', padding: '8px 10px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 12.5, lineHeight: 1.5 }} />
+    </div>
+  );
+  // Estilos del panel de vista previa (imita el PDF/correo).
+  const pv: React.CSSProperties = { background: '#fff', color: '#1a1f2e', borderRadius: 10, border: '1px solid var(--line,#2a3350)', padding: 16, fontSize: 12.5, lineHeight: 1.5, maxHeight: 520, overflow: 'auto' };
+  const h = (s: string): React.CSSProperties => ({ fontSize: 10, letterSpacing: '.06em', color: '#8b93ff', fontWeight: 700, textTransform: 'uppercase', margin: '12px 0 4px' });
+  const bl = (s: string) => String(s || '').split('\n').map((x) => x.trim()).filter(Boolean);
+
+  return (
+    <div style={cardS}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+        <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {L('Plantilla de la cotización', 'Quote template')} {Hint('El contenido de la propuesta que se envía. Edítalo por secciones e idioma; usa variables entre llaves. La vista previa de la derecha se actualiza en vivo.', 'The content of the proposal that gets sent. Edit it by section and language; use variables in braces. The preview on the right updates live.')}
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>{tabBtn('es', 'Español')}{tabBtn('en', 'English')}</div>
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 12 }}>
+        {L('Variables: {advertiser} {company} {seller} {slot} {size} {page} {start} {end} {days} {price} {cap} {validUntil}',
+           'Variables: {advertiser} {company} {seller} {slot} {size} {page} {start} {end} {days} {price} {cap} {validUntil}')}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
+        {/* Editor */}
+        <div style={{ display: 'grid', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>{L('Validez (días)', 'Validity (days)')} {Hint('Días que vale la cotización. La fecha “válida hasta” = hoy + estos días, y se envía en el PDF y el correo.', 'Days the quote is valid. The “valid until” date = today + these days, shown in the PDF and email.')}</label>
+            <input type="number" min={1} max={365} value={validDays} onChange={(e) => setValidDays(Math.max(1, Math.min(365, Number(e.target.value) || 15)))}
+              style={{ width: 80, padding: '7px 8px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 13, textAlign: 'center' }} />
+          </div>
+          {field('intro', L('Introducción', 'Intro'), L('Saludo y presentación de la propuesta.', 'Greeting and proposal intro.'), 3)}
+          {field('includes', L('Qué incluye (una viñeta por línea)', 'Included (one bullet per line)'), L('Cada línea es una viñeta.', 'Each line is a bullet.'), 4)}
+          {field('whyOnyx', L('Por qué Onyx (una viñeta por línea)', 'Why Onyx (one bullet per line)'), L('Argumentos de valor, una viñeta por línea.', 'Value points, one bullet per line.'), 4)}
+          {field('terms', L('Términos', 'Terms'), L('Condiciones de pago y activación.', 'Payment and activation terms.'), 3)}
+          {field('validityNote', L('Nota de validez', 'Validity note'), L('Usa {validUntil}. Es la fecha de caducidad de la oferta.', 'Use {validUntil}. It is the offer expiry date.'), 2)}
+          {field('closing', L('Cierre / firma', 'Closing / sign-off'), L('Despedida. {seller} pone el nombre del vendedor.', 'Sign-off. {seller} inserts the seller name.'), 2)}
+          <div><button disabled={busy} onClick={saveTemplate} style={btnPS}>{L('Guardar plantilla', 'Save template')}</button></div>
+        </div>
+
+        {/* Vista previa en vivo */}
+        <div>
+          <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginBottom: 6 }}>{L('Vista previa en vivo (datos de ejemplo)', 'Live preview (sample data)')}</div>
+          <div style={pv}>
+            <div style={{ background: '#0b0f1e', color: '#fff', margin: -16, marginBottom: 12, padding: '12px 16px', borderTopLeftRadius: 10, borderTopRightRadius: 10 }}>
+              <div style={{ fontWeight: 800 }}>Onyx Trading Live</div>
+              <div style={{ fontSize: 11, opacity: .8 }}>{tplLang === 'es' ? 'Propuesta de publicidad' : 'Advertising proposal'}</div>
+            </div>
+            <p style={{ margin: '0 0 8px' }}>{fill(t.intro || '', sv)}</p>
+            <div style={{ background: '#f4f6fb', borderRadius: 8, padding: 10, margin: '8px 0' }}>
+              <div><b>{tplLang === 'es' ? 'Espacio' : 'Placement'}:</b> {sv.slot} · {sv.size}</div>
+              <div><b>{tplLang === 'es' ? 'Fechas' : 'Dates'}:</b> {sv.start} — {sv.end} ({sv.days} {tplLang === 'es' ? 'días' : 'days'})</div>
+              <div><b>{tplLang === 'es' ? 'Total' : 'Total'}:</b> <span style={{ color: '#5b62d6', fontWeight: 700 }}>{sv.price} USD</span></div>
+            </div>
+            <div style={h('inc')}>{tplLang === 'es' ? 'Incluye' : 'Included'}</div>
+            <ul style={{ margin: '2px 0', paddingLeft: 18 }}>{bl(fill(t.includes || '', sv)).map((x, i) => <li key={i}>{x}</li>)}</ul>
+            <div style={h('why')}>{tplLang === 'es' ? 'Por qué Onyx' : 'Why Onyx'}</div>
+            <ul style={{ margin: '2px 0', paddingLeft: 18 }}>{bl(fill(t.whyOnyx || '', sv)).map((x, i) => <li key={i}>{x}</li>)}</ul>
+            <div style={h('terms')}>{tplLang === 'es' ? 'Términos' : 'Terms'}</div>
+            <p style={{ margin: '2px 0', color: '#555' }}>{fill(t.terms || '', sv)}</p>
+            <p style={{ margin: '10px 0 2px', fontWeight: 700 }}>{fill(t.validityNote || '', sv)}</p>
+            <p style={{ margin: '10px 0 0', whiteSpace: 'pre-line' }}>{fill(t.closing || '', sv)}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
