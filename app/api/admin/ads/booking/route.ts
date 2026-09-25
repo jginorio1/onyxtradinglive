@@ -37,9 +37,19 @@ export async function GET() {
   const { data: partsAll } = await supabaseAdmin.from('ad_partners').select('id,name,geo,status').eq('status', 'active').order('name', { ascending: true });
   const partners = (partsAll || []).map((p: any) => ({ id: p.id, name: p.name, geo: p.geo || '' }));
 
+  // Overrides globales de Ventas (para mostrar el valor heredado cuando Espacios los deja en blanco).
+  const { salesSettings } = await import('@/lib/sales');
+  const ss = await salesSettings();
+
   return NextResponse.json({
     ok: true,
-    settings: { defaultCap: cfg.defaultCap, spaceCommissionPct: cfg.spaceCommissionPct, holdMinutes: cfg.holdMinutes, maturationDays: cfg.maturationDays, caps: cfg.caps || {}, partnerFill: cfg.partnerFill, partnerFillSlots: cfg.partnerFillSlots || {}, partnerSlotPin: cfg.partnerSlotPin || {} },
+    settings: {
+      defaultCap: cfg.defaultCap, spaceCommissionPct: cfg.spaceCommissionPct,
+      spaceOv1Pct: cfg.spaceOv1Pct, spaceOv2Pct: cfg.spaceOv2Pct,
+      globalOv1: ss.override1_rate, globalOv2: ss.override2_rate,
+      holdMinutes: cfg.holdMinutes, maturationDays: cfg.maturationDays,
+      caps: cfg.caps || {}, partnerFill: cfg.partnerFill, partnerFillSlots: cfg.partnerFillSlots || {}, partnerSlotPin: cfg.partnerSlotPin || {},
+    },
     slots, bookings: rows, reps, partners,
   });
 }
@@ -62,6 +72,9 @@ export async function POST(req: Request) {
     }
     if (b.defaultCap !== undefined) patch.defaultCap = Math.max(1, Math.round(Number(b.defaultCap) || 4));
     if (b.spaceCommissionPct !== undefined) patch.spaceCommissionPct = Math.max(0, Math.min(100, Number(b.spaceCommissionPct) || 0));
+    // Overrides de espacios: '' o null = heredar el global de Ventas; número = usar ese %.
+    if (b.spaceOv1Pct !== undefined) patch.spaceOv1Pct = (b.spaceOv1Pct === null || b.spaceOv1Pct === '') ? null : Math.max(0, Math.min(100, Number(b.spaceOv1Pct) || 0));
+    if (b.spaceOv2Pct !== undefined) patch.spaceOv2Pct = (b.spaceOv2Pct === null || b.spaceOv2Pct === '') ? null : Math.max(0, Math.min(100, Number(b.spaceOv2Pct) || 0));
     if (b.holdMinutes !== undefined) patch.holdMinutes = Math.max(5, Math.round(Number(b.holdMinutes) || 45));
     if (b.maturationDays !== undefined) patch.maturationDays = Math.max(0, Math.round(Number(b.maturationDays) || 14));
     if (b.partnerFill !== undefined) patch.partnerFill = b.partnerFill !== false;

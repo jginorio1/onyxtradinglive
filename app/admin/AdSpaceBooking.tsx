@@ -31,7 +31,12 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
       const j = await r.json();
       setD(j);
       setCaps(j.settings?.caps || {});
-      setCfg({ defaultCap: j.settings?.defaultCap ?? 4, spaceCommissionPct: j.settings?.spaceCommissionPct ?? 15, holdMinutes: j.settings?.holdMinutes ?? 45, maturationDays: j.settings?.maturationDays ?? 14 });
+      setCfg({
+        defaultCap: j.settings?.defaultCap ?? 4, spaceCommissionPct: j.settings?.spaceCommissionPct ?? 15,
+        spaceOv1Pct: j.settings?.spaceOv1Pct ?? null, spaceOv2Pct: j.settings?.spaceOv2Pct ?? null,
+        globalOv1: j.settings?.globalOv1 ?? 7, globalOv2: j.settings?.globalOv2 ?? 4,
+        holdMinutes: j.settings?.holdMinutes ?? 45, maturationDays: j.settings?.maturationDays ?? 14,
+      });
       setPFill(j.settings?.partnerFill !== false);
       setPSlots(j.settings?.partnerFillSlots || {});
       setPPin(j.settings?.partnerSlotPin || {});
@@ -136,11 +141,58 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
         {ok2 && <div style={{ marginTop: 10, fontSize: 13, color: '#22c55e' }}>{ok2}</div>}
       </div>
 
+      {/* REPARTO DE COMISIÓN — todo en un solo sitio, con ejemplo en vivo. */}
+      <div style={cardS}>
+        <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          {L('Reparto de comisión (3 niveles)', 'Commission split (3 tiers)')}
+          {Hint('Cuando se paga un espacio, la comisión se reparte entre el vendedor y sus dos supervisores. Aquí defines los tres porcentajes en un solo lugar.',
+                'When a space is paid, the commission is split between the seller and their two uplines. Set all three percentages here in one place.')}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 12 }}>
+          {L('Sobre el precio del espacio vendido. Los overrides pueden tener su propio % o dejarlos vacíos para usar el de Ventas.',
+             'On the sold space price. Overrides can have their own % or be left empty to use the Sales one.')}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 10 }}>
+          <PctF label={L('① Vendedor directo', '① Direct seller')} hint={Hint('El que vende el espacio. Este % siempre aplica.', 'Whoever sells the space. This % always applies.')}
+                v={cfg.spaceCommissionPct} placeholder="" on={(x) => setCfg({ ...cfg, spaceCommissionPct: x === '' ? 0 : Number(x) })} />
+          <PctF label={L('② Líder (N1)', '② Lead (T1)')} hint={Hint('El supervisor directo del vendedor. Vacío = usa el override global de Ventas.', 'The seller’s direct upline. Empty = uses the global Sales override.')}
+                v={cfg.spaceOv1Pct} placeholder={`${cfg.globalOv1}`} on={(x) => setCfg({ ...cfg, spaceOv1Pct: x === '' ? null : Number(x) })} />
+          <PctF label={L('③ Director (N2)', '③ Director (T2)')} hint={Hint('El nivel por encima del líder. Vacío = usa el override global de Ventas.', 'The level above the lead. Empty = uses the global Sales override.')}
+                v={cfg.spaceOv2Pct} placeholder={`${cfg.globalOv2}`} on={(x) => setCfg({ ...cfg, spaceOv2Pct: x === '' ? null : Number(x) })} />
+        </div>
+        {/* Ejemplo en vivo del reparto. */}
+        {(() => {
+          const price = 500;
+          const p0 = Number(cfg.spaceCommissionPct) || 0;
+          const p1 = cfg.spaceOv1Pct === null || cfg.spaceOv1Pct === undefined ? Number(cfg.globalOv1) : Number(cfg.spaceOv1Pct);
+          const p2 = cfg.spaceOv2Pct === null || cfg.spaceOv2Pct === undefined ? Number(cfg.globalOv2) : Number(cfg.spaceOv2Pct);
+          const d = (p: number) => `$${((price * p) / 100).toFixed(0)}`;
+          const inh = (v: any) => (v === null || v === undefined);
+          return (
+            <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: 'color-mix(in srgb, var(--brand) 7%, transparent)', border: '1px solid var(--line,#2a3350)' }}>
+              <div style={{ fontSize: 12.5, color: 'var(--tx,#e8ecf5)', marginBottom: 8 }}>
+                {L(`Ejemplo: un banner de $${price} se reparte así`, `Example: a $${price} banner splits like this`)}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontSize: 12.5 }}>
+                <span style={{ color: 'var(--tx,#e8ecf5)' }}>① {L('Vendedor', 'Seller')} <b>{p0}%</b> → <b style={{ color: '#22c55e' }}>{d(p0)}</b></span>
+                <span style={{ color: 'var(--mut,#9aa6bd)' }}>② {L('Líder', 'Lead')} <b>{p1}%</b>{inh(cfg.spaceOv1Pct) ? L(' (Ventas)', ' (Sales)') : ''} → <b style={{ color: '#22c55e' }}>{d(p1)}</b></span>
+                <span style={{ color: 'var(--mut,#9aa6bd)' }}>③ {L('Director', 'Director')} <b>{p2}%</b>{inh(cfg.spaceOv2Pct) ? L(' (Ventas)', ' (Sales)') : ''} → <b style={{ color: '#22c55e' }}>{d(p2)}</b></span>
+                <span style={{ color: 'var(--tx,#e8ecf5)', marginLeft: 'auto' }}>{L('Total repartido', 'Total paid out')}: <b>{d(p0 + p1 + p2)}</b></span>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)', marginTop: 8 }}>
+                {L('Solo aplica si la reserva tiene vendedor. El líder/director solo cobran si existen en la cadena.',
+                   'Only applies if the booking has a seller. Lead/director only earn if they exist in the chain.')}
+              </div>
+            </div>
+          );
+        })()}
+        <div style={{ marginTop: 12 }}><button disabled={busy} onClick={saveSettings} style={btnPS}>{L('Guardar reparto', 'Save split')}</button></div>
+      </div>
+
       <div style={cardS}>
         <div style={{ fontWeight: 600, color: 'var(--tx,#e8ecf5)', marginBottom: 10 }}>{L('Ajustes de espacios', 'Space settings')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
           <NumF label={L('Cupo por defecto', 'Default cap')} hint={Hint('Cuántos anunciantes pueden rotar a la vez en una ubicación que no tenga su propio cupo.', 'How many advertisers can rotate at once in a placement without its own cap.')} v={cfg.defaultCap} on={(x) => setCfg({ ...cfg, defaultCap: x })} />
-          <NumF label={L('Comisión vendedor %', 'Seller commission %')} hint={Hint('Porcentaje que gana el vendedor sobre el precio de cada espacio que venda.', 'Percentage the seller earns on the price of each space they sell.')} v={cfg.spaceCommissionPct} on={(x) => setCfg({ ...cfg, spaceCommissionPct: x })} />
           <NumF label={L('Reserva sin pagar (min)', 'Hold (min)')} hint={Hint('Minutos que una reserva sin pagar aparta la fecha. Si no se paga a tiempo, el cupo se libera solo.', 'Minutes an unpaid booking holds the date. If not paid in time, the slot is released automatically.')} v={cfg.holdMinutes} on={(x) => setCfg({ ...cfg, holdMinutes: x })} />
           <NumF label={L('Maduración comisión (días)', 'Commission maturation (days)')} hint={Hint('Días que la comisión queda "en espera" antes de estar disponible para cobro (por si hay reembolso).', 'Days the commission stays "pending" before it becomes available to withdraw (in case of a refund).')} v={cfg.maturationDays} on={(x) => setCfg({ ...cfg, maturationDays: x })} />
         </div>
@@ -247,6 +299,22 @@ function NumF({ label, v, on, hint }: { label: string; v: number; on: (x: number
       <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>{label} {hint}</label>
       <input type="number" value={v} onChange={(e) => on(Number(e.target.value) || 0)}
         style={{ width: '100%', padding: '8px 10px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 13 }} />
+    </div>
+  );
+}
+
+// Campo de porcentaje que admite vacío (para overrides que heredan el global).
+// v puede ser number o null; on recibe el texto crudo ('' = vacío).
+function PctF({ label, v, on, hint, placeholder }: { label: string; v: number | null | undefined; on: (x: string) => void; hint?: React.ReactNode; placeholder?: string }) {
+  return (
+    <div>
+      <label style={{ fontSize: 12, color: 'var(--mut,#9aa6bd)', display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>{label} {hint}</label>
+      <div style={{ position: 'relative' }}>
+        <input type="number" min={0} max={100} value={v === null || v === undefined ? '' : v} placeholder={placeholder}
+          onChange={(e) => on(e.target.value)}
+          style={{ width: '100%', padding: '8px 26px 8px 10px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 13 }} />
+        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--mut,#9aa6bd)', pointerEvents: 'none' }}>%</span>
+      </div>
     </div>
   );
 }

@@ -88,7 +88,9 @@ export type AdsConfig = {
   // --- Reserva de espacios por cupo fijo (v6) ---
   caps: Record<string, number>;          // cupo (máx anunciantes rotando) por slot_key; editable en admin
   defaultCap: number;                    // cupo por defecto para slots sin valor propio
-  spaceCommissionPct: number;            // % de comisión del vendedor sobre el espacio vendido
+  spaceCommissionPct: number;            // % del VENDEDOR directo sobre el espacio vendido
+  spaceOv1Pct: number | null;            // % override Líder N1 para espacios; null = usa el global de Ventas
+  spaceOv2Pct: number | null;            // % override Director N2 para espacios; null = usa el global de Ventas
   holdMinutes: number;                   // minutos que una pre-reserva sin pagar bloquea el cupo
   maturationDays: number;                // días que la comisión queda "en espera" antes de estar disponible
 };
@@ -103,7 +105,7 @@ const DEFAULT_CFG: AdsConfig = {
   partnerFill: true,
   partnerFillSlots: {},
   partnerSlotPin: {},
-  caps: {}, defaultCap: 4, spaceCommissionPct: 15, holdMinutes: 45, maturationDays: 14,
+  caps: {}, defaultCap: 4, spaceCommissionPct: 15, spaceOv1Pct: null, spaceOv2Pct: null, holdMinutes: 45, maturationDays: 14,
 };
 
 export async function getAdsConfig(): Promise<AdsConfig> {
@@ -122,6 +124,8 @@ export async function getAdsConfig(): Promise<AdsConfig> {
     caps: c.caps && typeof c.caps === 'object' ? c.caps : {},
     defaultCap: typeof c.defaultCap === 'number' && c.defaultCap > 0 ? c.defaultCap : DEFAULT_CFG.defaultCap,
     spaceCommissionPct: typeof c.spaceCommissionPct === 'number' ? c.spaceCommissionPct : DEFAULT_CFG.spaceCommissionPct,
+    spaceOv1Pct: typeof c.spaceOv1Pct === 'number' ? c.spaceOv1Pct : null,
+    spaceOv2Pct: typeof c.spaceOv2Pct === 'number' ? c.spaceOv2Pct : null,
     holdMinutes: typeof c.holdMinutes === 'number' && c.holdMinutes >= 0 ? c.holdMinutes : DEFAULT_CFG.holdMinutes,
     maturationDays: typeof c.maturationDays === 'number' && c.maturationDays >= 0 ? c.maturationDays : DEFAULT_CFG.maturationDays,
   };

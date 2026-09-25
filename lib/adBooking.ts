@@ -184,9 +184,12 @@ async function creditSpaceCommission(booking: any, cfg: AdsConfig): Promise<void
   };
   // Directo: % de espacios (el congelado al vender, o el actual como respaldo).
   add(direct, Number(booking.commission_pct) || cfg.spaceCommissionPct || 0, 'ad_space');
-  // Overrides de la cadena: mismos % de override que usa Ventas.
-  add(up1, pctFor(up1, 'override1', s), 'ad_space_ov1');
-  add(up2, pctFor(up2, 'override2', s), 'ad_space_ov2');
+  // Overrides: si Espacios tiene su propio % lo usa; si está vacío (null), hereda
+  // el override global de Ventas. Así todo el reparto se controla desde un sitio.
+  const ov1 = (cfg.spaceOv1Pct === null || cfg.spaceOv1Pct === undefined) ? pctFor(up1, 'override1', s) : Number(cfg.spaceOv1Pct);
+  const ov2 = (cfg.spaceOv2Pct === null || cfg.spaceOv2Pct === undefined) ? pctFor(up2, 'override2', s) : Number(cfg.spaceOv2Pct);
+  add(up1, ov1, 'ad_space_ov1');
+  add(up2, ov2, 'ad_space_ov2');
   if (!rows.length) return;
   await supabaseAdmin.from('sales_commissions').upsert(rows, { onConflict: 'invoice_id,rep_id,level', ignoreDuplicates: true });
   // Avisos best-effort a cada beneficiario (nunca rompen el flujo).
