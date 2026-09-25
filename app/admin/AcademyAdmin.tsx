@@ -1,6 +1,6 @@
 'use client';
 import { mkL } from '@/lib/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -57,16 +57,113 @@ function ScholarshipsOverview({ L, es }: { L: (a: string, b: string) => string; 
   );
 }
 
+// Editor del correo de invitación: dos plantillas (nuevo / ya tiene cuenta), ES y EN,
+// con variables clicables y vista previa en vivo con datos de ejemplo.
+function InviteEmailEditor({ L, es, initTpl, defTpl, canManage }: { L: (a: string, b: string) => string; es: boolean; initTpl?: any; defTpl?: any; canManage?: boolean }) {
+  const clone = (o: any) => JSON.parse(JSON.stringify(o || {}));
+  const [tpl, setTpl] = useState<any>(() => clone(initTpl || defTpl || {}));
+  const [caso, setCaso] = useState<'nuevo' | 'existente'>('nuevo');
+  const [lang, setLang] = useState<'es' | 'en'>(es ? 'es' : 'en');
+  const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const cur = (tpl?.[lang]?.[caso]) || { subject: '', body: '' };
+  const setField = (field: 'subject' | 'body', val: string) => {
+    setTpl((prev: any) => { const n = clone(prev); n[lang] = n[lang] || {}; n[lang][caso] = { ...(n[lang][caso] || {}), [field]: val }; return n; });
+    setSaved(false);
+  };
+  const insertVar = (v: string) => {
+    const el = bodyRef.current;
+    const body = cur.body || '';
+    if (!el) { setField('body', body + v); return; }
+    const s = el.selectionStart ?? body.length; const e = el.selectionEnd ?? body.length;
+    setField('body', body.slice(0, s) + v + body.slice(e));
+    setTimeout(() => { el.focus(); const p = s + v.length; el.setSelectionRange(p, p); }, 0);
+  };
+  const resetOne = () => { if (defTpl) { setTpl((prev: any) => { const n = clone(prev); n[lang] = n[lang] || {}; n[lang][caso] = clone(defTpl[lang][caso]); return n; }); setSaved(false); } };
+  async function save() {
+    setBusy(true);
+    try { const r = await fetch('/api/admin/academy', { method: 'POST', body: JSON.stringify({ action: 'save_invite_email', tpl }) }); const j = await r.json(); if (j.ok) setSaved(true); } catch {}
+    setBusy(false);
+  }
+
+  const sample = { nombre: es ? 'Ana' : 'Ana', academia: es ? 'Academia FX Pro' : 'FX Pro Academy', mentor: es ? 'Carlos Ruiz' : 'Carlos Ruiz', enlace: '#' };
+  const fill = (s: string) => String(s || '').replace(/\{nombre\}/g, sample.nombre).replace(/\{academia\}/g, sample.academia).replace(/\{mentor\}/g, sample.mentor).replace(/(Hola)\s+([!,.])/g, '$1$2').replace(/(Hi)\s+([!,.])/g, '$1$2');
+  const previewBody = fill((cur.body || '').replace(/\{enlace\}/g, ''));
+
+  const tab = (val: string, active: boolean, on: () => void) => (
+    <button onClick={on} style={{ fontSize: 12.5, padding: '5px 11px', borderRadius: 8, cursor: 'pointer', border: '0.5px solid ' + (active ? 'var(--bd-strong,#3a4568)' : 'var(--bd)'), background: active ? 'var(--card2,#232c44)' : 'transparent', color: active ? 'var(--tx,#e8ecf5)' : 'var(--mut,#9aa6bd)', fontWeight: active ? 700 : 400 }}>{val}</button>
+  );
+
+  return (
+    <div style={{ marginTop: 12, border: '0.5px solid var(--bd)', borderRadius: 12, padding: 14, background: 'var(--card,#1b2338)' }}>
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+        {tab(L('Alumno nuevo', 'New student'), caso === 'nuevo', () => setCaso('nuevo'))}
+        {tab(L('Ya tiene cuenta', 'Has an account'), caso === 'existente', () => setCaso('existente'))}
+        <span style={{ flex: 1 }} />
+        {tab('ES', lang === 'es', () => setLang('es'))}
+        {tab('EN', lang === 'en', () => setLang('en'))}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
+        <div>
+          <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 6 }}>{L('Variables — clic para insertar', 'Variables — click to insert')}</div>
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+            {['{nombre}', '{academia}', '{mentor}', '{enlace}'].map((v) => (
+              <code key={v} onClick={() => insertVar(v)} style={{ fontSize: 12, padding: '4px 8px', borderRadius: 8, cursor: 'pointer', background: v === '{enlace}' ? 'rgba(94,214,160,.16)' : 'rgba(91,108,255,.16)', color: v === '{enlace}' ? 'var(--green,#5ed6a0)' : 'var(--brand,#8aa0ff)' }}>{v}</code>
+            ))}
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 6 }}>{L('Asunto', 'Subject')}</div>
+          <input value={cur.subject || ''} disabled={!canManage} onChange={(e) => setField('subject', e.target.value)} style={{ width: '100%', marginBottom: 12 }} />
+          <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 6 }}>{L('Cuerpo del mensaje', 'Message body')}</div>
+          <textarea ref={bodyRef} value={cur.body || ''} disabled={!canManage} onChange={(e) => setField('body', e.target.value)} rows={8} style={{ width: '100%', fontSize: 13.5, lineHeight: 1.55 }} />
+          <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 8, lineHeight: 1.55 }}>
+            {L('{enlace} se convierte en el botón de acceso. Si lo quitas, se agrega solo al final.', '{enlace} becomes the access button. If you remove it, it’s added at the end.')}
+          </div>
+        </div>
+
+        <div>
+          <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginBottom: 6 }}>{L('Vista previa en vivo', 'Live preview')}</div>
+          <div style={{ border: '0.5px solid var(--bd)', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+            <div style={{ background: '#121829', color: '#fff', padding: '10px 14px', fontSize: 13.5, fontWeight: 700 }}>Onyx Trading Live</div>
+            <div style={{ padding: 14, color: '#1a1d24' }}>
+              <div style={{ color: '#8a90a0', fontSize: 11.5, marginBottom: 10 }}>{L('Asunto', 'Subject')}: {fill(cur.subject || '')}</div>
+              {previewBody.split(/\n{2,}/).filter(Boolean).map((p, i) => (
+                <p key={i} style={{ margin: '0 0 12px', fontSize: 13.5, lineHeight: 1.6 }}>{p.split('\n').map((ln, j) => <span key={j}>{ln}{j < p.split('\n').length - 1 ? <br /> : null}</span>)}</p>
+              ))}
+              <div style={{ textAlign: 'center', margin: '4px 0' }}>
+                <span style={{ display: 'inline-block', background: '#5b6cff', color: '#fff', padding: '10px 22px', borderRadius: 8, fontSize: 14, fontWeight: 600 }}>{caso === 'nuevo' ? (lang === 'es' ? 'Entrar y crear contraseña' : 'Sign in and set password') : (lang === 'es' ? 'Entrar a la academia' : 'Sign in')}</span>
+              </div>
+            </div>
+            <div style={{ borderTop: '0.5px solid #eceef2', padding: '9px 14px', fontSize: 11, color: '#8a90a0' }}>onyxtradinglive.com</div>
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 8 }}>{L('Datos de ejemplo', 'Sample data')}: {sample.nombre} · {sample.academia} · {sample.mentor}</div>
+        </div>
+      </div>
+
+      {canManage && (
+        <div className="row" style={{ gap: 10, marginTop: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button className="btn" disabled={busy} onClick={save}>{busy ? L('Guardando…', 'Saving…') : L('Guardar correo', 'Save email')}</button>
+          <button className="btn btn-ghost" onClick={resetOne} style={{ fontSize: 12.5 }}>{L('Restaurar texto por defecto', 'Restore default text')}</button>
+          {saved && <span className="pill green" style={{ fontSize: 12 }}>{L('Guardado', 'Saved')}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Importar la comunidad de un mentor: el admin elige la academia, pega o sube la
 // base (email + nombre) y todos quedan inscritos a ese mentor (plan gratis Onyx).
 // Los que aún no tienen cuenta caen inscritos solos al registrarse con su email.
-function RosterImport({ list, L, es }: { list: any[]; L: (a: string, b: string) => string; es: boolean }) {
+function RosterImport({ list, L, es, initTpl, defTpl, canManage }: { list: any[]; L: (a: string, b: string) => string; es: boolean; initTpl?: any; defTpl?: any; canManage?: boolean }) {
   const [mentor, setMentor] = useState('');
   const [raw, setRaw] = useState('');
   const [invite, setInvite] = useState(true);
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<any>(null);
   const [err, setErr] = useState('');
+  const [showEditor, setShowEditor] = useState(false);
 
   // Parsea el pegado/CSV: una fila por línea, "email[,;\t]nombre" o "nombre <email>".
   function parse(text: string): { email: string; name: string }[] {
@@ -105,8 +202,8 @@ function RosterImport({ list, L, es }: { list: any[]; L: (a: string, b: string) 
     if (!parsed.length) { setErr(L('No hay correos válidos en la lista.', 'No valid emails in the list.')); return; }
     setBusy(true);
     try {
-      const acadName = (list.find((a: any) => a.userId === mentor)?.name) || '';
-      const r = await fetch('/api/admin/academy', { method: 'POST', body: JSON.stringify({ action: 'import_roster', mentor_id: mentor, rows: parsed, send_invite: invite, academy_name: acadName }) });
+      const row = list.find((a: any) => a.userId === mentor);
+      const r = await fetch('/api/admin/academy', { method: 'POST', body: JSON.stringify({ action: 'import_roster', mentor_id: mentor, rows: parsed, send_invite: invite, academy_name: row?.name || '', mentor_name: row?.mentorName || '' }) });
       const j = await r.json();
       if (j.error) setErr(j.error === 'sin_filas' ? L('No hay correos válidos.', 'No valid emails.') : String(j.error));
       else { setRes(j); setRaw(''); }
@@ -153,6 +250,14 @@ function RosterImport({ list, L, es }: { list: any[]; L: (a: string, b: string) 
              'Email them an invite with a one-click link to sign in and set a password.')}
         </span>
       </label>
+      {invite && (
+        <div style={{ marginTop: 6 }}>
+          <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setShowEditor((s) => !s)}>
+            <OnyxIcon name="mail" /> {showEditor ? L('Ocultar editor del correo', 'Hide email editor') : L('Ver / editar el correo', 'View / edit the email')}
+          </button>
+        </div>
+      )}
+      {invite && showEditor && <InviteEmailEditor L={L} es={es} initTpl={initTpl} defTpl={defTpl} canManage={canManage} />}
 
       <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
         <span className="pill">{parsed.length} {L('correos detectados', 'emails detected')}</span>
@@ -291,7 +396,7 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
       </div>
 
       {/* Importar la comunidad de un mentor (carga de la base por el admin) */}
-      <RosterImport list={list} L={L} es={es} />
+      <RosterImport list={list} L={L} es={es} initTpl={d.inviteEmail} defTpl={d.inviteEmailDefault} canManage={canManage} />
 
       {/* Ingresos reales de la plataforma en Stripe (application fees) + reconciliación */}
       {d.platform && (() => {

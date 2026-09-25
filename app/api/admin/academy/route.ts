@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { adminListAcademies, getDefaultFeePct, setDefaultFeePct, setMentorFeePct, getPlanFees, setPlanFee, logFeeChange, feeLog } from '@/lib/academyPay';
 import { academyPerksSettings, guardianAcademySettings, copyMentorSettings, saveSetting } from '@/lib/settings';
-import { adminImportRoster } from '@/lib/academy';
+import { adminImportRoster, academyInviteEmail, DEFAULT_INVITE_EMAIL } from '@/lib/academy';
 import { platformBalancePayouts } from '@/lib/academyBilling';
 
 export const dynamic = 'force-dynamic';
@@ -12,8 +12,8 @@ export const runtime = 'nodejs';
 export async function GET() {
   const { ok } = await requirePerm('academy', 'view');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  const [data, perks, planFees, log, platform, guardian, copy] = await Promise.all([adminListAcademies(), academyPerksSettings(), getPlanFees(), feeLog(), platformBalancePayouts(), guardianAcademySettings(), copyMentorSettings()]);
-  return NextResponse.json({ ...data, perks, planFees, feeLog: log, platform, guardian, copy });
+  const [data, perks, planFees, log, platform, guardian, copy, inviteEmail] = await Promise.all([adminListAcademies(), academyPerksSettings(), getPlanFees(), feeLog(), platformBalancePayouts(), guardianAcademySettings(), copyMentorSettings(), academyInviteEmail()]);
+  return NextResponse.json({ ...data, perks, planFees, feeLog: log, platform, guardian, copy, inviteEmail, inviteEmailDefault: DEFAULT_INVITE_EMAIL });
 }
 
 // POST · editar la comisión: global (default_pct) o por mentor (mentor_id + fee_pct).
@@ -66,9 +66,21 @@ export async function POST(req: Request) {
     if (b.action === 'import_roster' && b.mentor_id) {
       const rows = Array.isArray(b.rows) ? b.rows.slice(0, 5000) : [];
       if (!rows.length) return NextResponse.json({ error: 'sin_filas' }, { status: 400 });
-      const res = await adminImportRoster(String(b.mentor_id), rows, { sendInvite: !!b.send_invite, academyName: String(b.academy_name || '') });
+      const res = await adminImportRoster(String(b.mentor_id), rows, { sendInvite: !!b.send_invite, academyName: String(b.academy_name || ''), mentorName: String(b.mentor_name || '') });
       await logAdmin(user.email, 'academy_import_roster', String(b.mentor_id), res);
       return NextResponse.json({ ok: true, ...res });
+    }
+    if (b.action === 'save_invite_email') {
+      const clip = (s: any) => String(s || '').slice(0, 4000);
+      const norm = (t: any, dt: any) => ({ subject: clip(t?.subject ?? dt.subject).slice(0, 300), body: clip(t?.body ?? dt.body) });
+      const D = DEFAULT_INVITE_EMAIL;
+      const value = {
+        es: { nuevo: norm(b.tpl?.es?.nuevo, D.es.nuevo), existente: norm(b.tpl?.es?.existente, D.es.existente) },
+        en: { nuevo: norm(b.tpl?.en?.nuevo, D.en.nuevo), existente: norm(b.tpl?.en?.existente, D.en.existente) },
+      };
+      await saveSetting('academy_invite_email', value);
+      await logAdmin(user.email, 'academy_invite_email', 'saved');
+      return NextResponse.json({ ok: true, inviteEmail: value });
     }
     if (b.action === 'mentor' && b.mentor_id) {
       const raw = b.fee_pct === '' || b.fee_pct == null ? null : Number(b.fee_pct);

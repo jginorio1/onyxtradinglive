@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
+import { getSetting } from '@/lib/settings';
 import { approvedReviews } from '@/lib/academyReviews';
 import { computeStats } from '@/lib/stats';
 import crypto from 'crypto';
@@ -105,29 +106,76 @@ export async function addToWaitlist(mentorId: string, email: string) {
 // cuando se registre con ese email. Nunca crea cuentas ni contraseñas.
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-// Correo de invitación bilingüe con el enlace de un clic (entrar / poner contraseña).
-async function sendRosterInvite(email: string, name: string, academyName: string, link: string, isNew: boolean) {
-  const hi = name ? name.split(' ')[0] : '';
-  const acad = academyName || 'Onyx Academy';
-  const es = isNew
-    ? `¡Hola${hi ? ' ' + hi : ''}! Te damos la bienvenida a **${acad}** en Onyx Trading Live.\n\nToca el botón para entrar y crear tu contraseña. Ya quedas dentro de la comunidad de tu mentor.`
-    : `¡Hola${hi ? ' ' + hi : ''}! Ya formas parte de **${acad}** en Onyx Trading Live.\n\nToca el botón para entrar directo con tu cuenta.`;
-  const en = isNew
-    ? `Hi${hi ? ' ' + hi : ''}! Welcome to **${acad}** on Onyx Trading Live.\n\nTap the button to sign in and set your password. You’re already in your mentor’s community.`
-    : `Hi${hi ? ' ' + hi : ''}! You’re now part of **${acad}** on Onyx Trading Live.\n\nTap the button to sign in with your account.`;
-  const cta = `\n\n👉 ${link}\n\n`;
-  const body = `${es}${cta}———\n\n${en}${cta}`;
-  const subject = isNew ? `Bienvenido a ${acad} · Welcome to ${acad}` : `Entra a ${acad} · Sign in to ${acad}`;
+// ---- Plantilla EDITABLE del correo de invitación (asunto + cuerpo, ES y EN) ----
+// El admin la edita en el panel de Academia; se guarda en app_settings.
+// Variables soportadas en asunto y cuerpo: {nombre} {academia} {mentor} {enlace}
+export type InviteTpl = { subject: string; body: string };
+export type InviteEmail = { es: { nuevo: InviteTpl; existente: InviteTpl }; en: { nuevo: InviteTpl; existente: InviteTpl } };
+export const DEFAULT_INVITE_EMAIL: InviteEmail = {
+  es: {
+    nuevo: {
+      subject: 'Bienvenido a {academia}',
+      body: '¡Hola {nombre}! Te damos la bienvenida a {academia} en Onyx Trading Live.\n\nToca el botón para entrar y crear tu contraseña. Ya quedas dentro de la comunidad de {mentor}.\n\n{enlace}',
+    },
+    existente: {
+      subject: 'Entra a {academia}',
+      body: '¡Hola {nombre}! Ya formas parte de {academia} en Onyx Trading Live.\n\nToca el botón para entrar directo con tu cuenta.\n\n{enlace}',
+    },
+  },
+  en: {
+    nuevo: {
+      subject: 'Welcome to {academia}',
+      body: 'Hi {nombre}! Welcome to {academia} on Onyx Trading Live.\n\nTap the button to sign in and set your password. You’re already in {mentor}’s community.\n\n{enlace}',
+    },
+    existente: {
+      subject: 'Sign in to {academia}',
+      body: 'Hi {nombre}! You’re now part of {academia} on Onyx Trading Live.\n\nTap the button to sign in with your account.\n\n{enlace}',
+    },
+  },
+};
+export function fillInviteVars(s: string, v: { nombre?: string; academia?: string; mentor?: string; enlace?: string }): string {
+  let out = String(s || '')
+    .replace(/\{nombre\}/g, v.nombre || '')
+    .replace(/\{academia\}/g, v.academia || '')
+    .replace(/\{mentor\}/g, v.mentor || '')
+    .replace(/\{enlace\}/g, v.enlace || '');
+  // Limpia el saludo cuando no hay nombre: "¡Hola !" → "¡Hola!", "Hi ," → "Hi".
+  out = out.replace(/(Hola)\s+([!,.])/g, '$1$2').replace(/(Hi)\s+([!,.])/g, '$1$2');
+  return out;
+}
+function normTpl(t: any, d: InviteTpl): InviteTpl {
+  return { subject: (t && typeof t.subject === 'string' ? t.subject : d.subject).slice(0, 300), body: (t && typeof t.body === 'string' ? t.body : d.body).slice(0, 4000) };
+}
+export async function academyInviteEmail(): Promise<InviteEmail> {
+  const raw: any = await getSetting('academy_invite_email', DEFAULT_INVITE_EMAIL as any);
+  const D = DEFAULT_INVITE_EMAIL;
+  return {
+    es: { nuevo: normTpl(raw?.es?.nuevo, D.es.nuevo), existente: normTpl(raw?.es?.existente, D.es.existente) },
+    en: { nuevo: normTpl(raw?.en?.nuevo, D.en.nuevo), existente: normTpl(raw?.en?.existente, D.en.existente) },
+  };
+}
+
+// Envía el correo bilingüe (ES + EN) usando la plantilla dada y las variables.
+async function sendRosterInvite(email: string, link: string, isNew: boolean, vars: { nombre?: string; academia?: string; mentor?: string }, tpl: InviteEmail) {
+  const key = isNew ? 'nuevo' : 'existente';
+  const v = { ...vars, enlace: link };
+  const es = (tpl.es as any)[key] as InviteTpl;
+  const en = (tpl.en as any)[key] as InviteTpl;
+  const subject = `${fillInviteVars(es.subject, v)} · ${fillInviteVars(en.subject, v)}`.slice(0, 200);
+  const ensureLink = (b: string) => (b.includes(link) ? b : `${b}\n\n👉 ${link}`);
+  const body = `${ensureLink(fillInviteVars(es.body, v))}\n\n———\n\n${ensureLink(fillInviteVars(en.body, v))}`;
   try { await sendEmail(email, subject, body, { kind: 'academy_invite' as any }); } catch { /* no rompe el import */ }
 }
 
 export async function adminImportRoster(
   mentorId: string,
   rows: { email: string; name?: string }[],
-  opts?: { sendInvite?: boolean; academyName?: string },
+  opts?: { sendInvite?: boolean; academyName?: string; mentorName?: string },
 ): Promise<{ enrolled: number; staged: number; invalid: number; invited: number; total: number }> {
   const sendInvite = !!opts?.sendInvite;
   const academyName = String(opts?.academyName || '').slice(0, 120);
+  const mentorName = String(opts?.mentorName || '').slice(0, 120);
+  const tpl = sendInvite ? await academyInviteEmail() : DEFAULT_INVITE_EMAIL;
   const seen = new Set<string>();
   const clean: { email: string; name: string }[] = [];
   let invalid = 0;
@@ -178,7 +226,7 @@ export async function adminImportRoster(
       if (newUserId) {
         pid = newUserId;
         enrollRows.push({ mentor_id: mentorId, student_id: pid, status: 'active', ...(c.name ? { display_name: c.name } : {}) });
-        if (link) { await sendRosterInvite(c.email, c.name, academyName, link, true); invited++; }
+        if (link) { await sendRosterInvite(c.email, link, true, { nombre: c.name.split(' ')[0], academia: academyName, mentor: mentorName }, tpl); invited++; }
         continue;
       }
       // Si no se pudo crear (p. ej. ya existía), cae a lista de espera.
@@ -187,7 +235,7 @@ export async function adminImportRoster(
     }
     if (pid) {
       enrollRows.push({ mentor_id: mentorId, student_id: pid, status: 'active', ...(c.name ? { display_name: c.name } : {}) });
-      if (sendInvite) { const { link } = await makeLink(c.email, false); if (link) { await sendRosterInvite(c.email, c.name, academyName, link, false); invited++; } }
+      if (sendInvite) { const { link } = await makeLink(c.email, false); if (link) { await sendRosterInvite(c.email, link, false, { nombre: c.name.split(' ')[0], academia: academyName, mentor: mentorName }, tpl); invited++; } }
     } else {
       waitRows.push({ mentor_id: mentorId, email: c.email, name: c.name || null, source: 'import' });
     }
