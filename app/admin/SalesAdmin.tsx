@@ -603,6 +603,7 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
   const uscope = (k: string, v: any) => setF((x: any) => ({ ...x, commission_scope: { ...(x.commission_scope || {}), [k]: v } }));
   const uth = (k: string, v: any) => setF((x: any) => ({ ...x, tier_thresholds: { ...(x.tier_thresholds || {}), [k]: Number(v) } }));
   const urev = (k: string, v: any) => setF((x: any) => ({ ...x, review: { ...(x.review || {}), [k]: v } }));
+  const utier = (k: string, v: any) => setF((x: any) => ({ ...x, commission_months_by_tier: { ...(x.commission_months_by_tier || {}), [k]: Math.max(0, Math.round(Number(v) || 0)) } }));
   const scope = f.commission_scope || {};
   const th = f.tier_thresholds || { star: 75, risk: 45 };
   const rev = f.review || { enabled: true, after_days: 20, email: false };
@@ -639,6 +640,25 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
           {num('override1_rate', 'Override Nivel 1', '%')}
           {num('override2_rate', 'Override Nivel 2', '%')}
           {num('commission_months', 'Meses (0 = ∞)')}
+        </div>
+        {/* TOPE AUTOMÁTICO POR DESEMPEÑO — el sistema decide hasta cuántos meses
+            paga cada cliente según el tier del vendedor. 0 = ∞ (para siempre). */}
+        <div style={{ marginTop: 10, padding: 12, borderRadius: 10, background: 'rgba(139,147,255,.06)', border: '1px solid var(--line,#2a3350)' }}>
+          {tog('commission_auto', 'Tope de meses automático por desempeño', 'Si está activo, el SISTEMA decide cuántos meses paga cada cliente según el tier del vendedor: Estrella / Sólido / En riesgo. Un vendedor Estrella puede cobrar para siempre (∞); uno flojo tiene tope. Pon 0 en un tier = ∞. Si lo apagas, manda el campo "Meses (0 = ∞)" de arriba para todos por igual.')}
+          {f.commission_auto && (
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 10 }}>
+              {([['star', '⭐ Estrella'], ['solid', '✅ Sólido'], ['risk', '⚠️ En riesgo']] as [string, string][]).map(([k, lbl]) => (
+                <label key={k} style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)' }}>{lbl}
+                  <input type="number" min={0} value={(f.commission_months_by_tier || {})[k] ?? 0} onChange={(e) => utier(k, e.target.value)}
+                    style={{ ...inp, display: 'block', marginTop: 4, width: 110 }} />
+                  <span style={{ fontSize: 10.5 }}>{((f.commission_months_by_tier || {})[k] ?? 0) === 0 ? '∞ meses' : `${(f.commission_months_by_tier || {})[k]} meses`}</span>
+                </label>
+              ))}
+            </div>
+          )}
+          <div style={{ marginTop: 10 }}>{num('inactive_freeze_days', 'Congelar residual tras (días sin venta nueva)')}
+            <div style={{ fontSize: 10.5, color: 'var(--mut,#9aa6bd)', marginTop: 2 }}>0 = nunca congelar. Si el vendedor no cierra un cliente nuevo en este tiempo, su residual se pausa hasta que vuelva a vender.</div>
+          </div>
         </div>
         {(() => {
           const dr = Number(f.direct_rate) || 0, o1 = Number(f.override1_rate) || 0, o2 = Number(f.override2_rate) || 0;
