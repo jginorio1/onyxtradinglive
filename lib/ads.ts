@@ -139,7 +139,7 @@ const DEFAULT_CFG: AdsConfig = {
   partnerFill: true,
   partnerFillSlots: {},
   partnerSlotPin: {},
-  caps: {}, defaultCap: 4, spaceCommissionPct: 15, spaceOv1Pct: 5, spaceOv2Pct: 3, holdMinutes: 45, maturationDays: 14,
+  caps: {}, defaultCap: 4, spaceCommissionPct: 15, spaceOv1Pct: 5, spaceOv2Pct: 3, holdMinutes: 45, maturationDays: 21,
   quoteValidityDays: 15, quoteTemplate: DEFAULT_QUOTE_TPL,
 };
 

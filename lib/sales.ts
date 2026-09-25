@@ -11,7 +11,16 @@ export type SalesSettings = {
   direct_rate: number;        // % para el vendedor que trajo al cliente
   override1_rate: number;     // % override para su supervisor N1
   override2_rate: number;     // % override para el supervisor N2
-  commission_months: number;  // meses de comisión por cliente; 0 = ilimitado (∞)
+  commission_months: number;  // meses de comisión por cliente; 0 = ilimitado (∞). Se usa si commission_auto está apagado.
+  // SISTEMA AUTOMÁTICO: cuando está activo, el TOPE de meses por cliente lo decide
+  // solo el sistema según el desempeño (tier) del vendedor. Así un vendedor
+  // Estrella puede cobrar indefinidamente y uno flojo tiene tope. 0 = ∞ por tier.
+  commission_auto: boolean;
+  commission_months_by_tier: { star: number; solid: number; risk: number };
+  // Congelar el residual del vendedor si lleva X días SIN una venta nueva (0 = off).
+  // Solo afecta al residual recurrente (2.º mes en adelante); el 1.er pago y los
+  // banners siempre cuentan. El vendedor debe seguir vendiendo para seguir cobrando.
+  inactive_freeze_days: number;
   // IMPULSO 1.er mes: paga % más alto el primer pago del cliente y el residual
   // (direct/override_rate de arriba) del 2.º mes en adelante. Front-load sano.
   boost_first_month?: boolean;
@@ -76,7 +85,10 @@ const PERM_SELLER: RepPerms = { can_trial: true, can_discount: true, can_clients
 
 const DEFAULTS: SalesSettings = {
   enabled: true, direct_rate: 20, override1_rate: 7, override2_rate: 4,
-  commission_months: 0,
+  commission_months: 0,            // fallback (auto apagado): 0 = ∞
+  commission_auto: true,           // el sistema decide el tope por desempeño
+  commission_months_by_tier: { star: 0, solid: 18, risk: 9 },  // Estrella ∞ · Sólido 18m · En riesgo 9m
+  inactive_freeze_days: 45,       // congela residual tras 45 días sin venta nueva
   boost_first_month: false, first_direct_rate: 40, first_override1_rate: 12, first_override2_rate: 6,
   first_sales_count: 0, first_sales_bonus: 0,
   hold_days: 30, min_payout: 50,
@@ -87,7 +99,7 @@ const DEFAULTS: SalesSettings = {
   auto_assign_leads: false,
   auto_promote: false, promote_to_l1_clients: 10, promote_to_l2_team: 3,
   recruit_auto_approve: false,
-  auto_payout: true, review_before_pay: false, allow_recruit: true,
+  auto_payout: true, review_before_pay: true, allow_recruit: true,
   level_names: { l2: 'Director', l1: 'Lead', vendedor: 'Advisor' },
   commission_scope: { subscriptions: true, addons: true, guardian: true, academy: false, botlab: false, copy: false },
   perms_defaults: { l2: { ...PERM_ALL }, l1: { ...PERM_ALL }, vendedor: { ...PERM_SELLER } },
@@ -201,6 +213,18 @@ async function monthsBilled(clientUserId: string): Promise<number> {
   return count || 0;
 }
 
+// Fecha (ms) de la última VENTA NUEVA del vendedor: el cliente más reciente que
+// pagó por primera vez. Se usa para congelar el residual por inactividad.
+async function repLastNewSaleAt(repId: string): Promise<number | null> {
+  try {
+    const { data } = await supabaseAdmin.from('sales_clients')
+      .select('first_paid_at').eq('rep_id', repId).not('first_paid_at', 'is', null)
+      .order('first_paid_at', { ascending: false }).limit(1).maybeSingle();
+    const v = (data as any)?.first_paid_at;
+    return v ? +new Date(v) : null;
+  } catch { return null; }
+}
+
 // Acredita comisiones de un cobro a toda la cadena. Idempotente por invoice_id.
 export async function creditFromPayment(opts: {
   clientUserId: string; invoiceId: string; baseAmount: number; currency?: string;
@@ -218,13 +242,38 @@ export async function creditFromPayment(opts: {
   if (!directRepId) return { credited: 0, reason: 'no_rep' };
 
   const priorDirect = await monthsBilled(opts.clientUserId);
-  if (s.commission_months > 0 && priorDirect >= s.commission_months) return { credited: 0, reason: 'cap_months' };
+  // TOPE DE MESES por cliente: fijo (commission_months) o AUTOMÁTICO por desempeño.
+  // Con auto, el sistema mira el tier del vendedor y aplica su tope (0 = ∞): un
+  // Estrella cobra indefinidamente, uno flojo tiene límite. Todo editable en admin.
+  let capMonths = Number(s.commission_months) || 0;
+  if (s.commission_auto) {
+    try {
+      const { repScorecard } = await import('@/lib/salesPerf');
+      const scg = await repScorecard(directRepId, s);
+      const byT = (s.commission_months_by_tier || {}) as any;
+      const v = byT[scg.tier];
+      if (v !== undefined && v !== null) capMonths = Number(v) || 0;
+    } catch { /* si falla, cae al tope fijo */ }
+  }
+  if (capMonths > 0 && priorDirect >= capMonths) return { credited: 0, reason: 'cap_months' };
   const firstPay = priorDirect === 0;   // primer pago de este cliente
 
   const { direct, up1, up2 } = await beneficiaryChain(directRepId);
   const availableAt = new Date(Date.now() + (s.hold_days || 0) * 86400000).toISOString();
   const base = Number(opts.baseAmount) || 0;
   const currency = opts.currency || 'USD';
+
+  // CONGELAR RESIDUAL POR INACTIVIDAD: si el vendedor directo lleva más de
+  // inactive_freeze_days sin cerrar un cliente nuevo, su residual (2.º mes en
+  // adelante) no se acredita. El 1.er pago siempre cuenta (es actividad), y los
+  // overrides de sus supervisores no se ven afectados por esta regla.
+  let freezeDirect = false;
+  if (!firstPay && Number(s.inactive_freeze_days) > 0 && direct) {
+    const cutoff = Date.now() - Number(s.inactive_freeze_days) * 86400000;
+    const last = await repLastNewSaleAt(direct.id);
+    if (last == null || last < cutoff) freezeDirect = true;
+  }
+
   const rows: any[] = [];
   const add = (rep: Rep | null, slot: 'direct' | 'override1' | 'override2', level: string) => {
     if (!rep || rep.status !== 'active') return;
@@ -236,7 +285,7 @@ export async function creditFromPayment(opts: {
       status: 'pending', available_at: availableAt,
     });
   };
-  add(direct, 'direct', 'direct');
+  if (!freezeDirect) add(direct, 'direct', 'direct');
   add(up1, 'override1', 'override1');
   add(up2, 'override2', 'override2');
   if (!rows.length) return { credited: 0, reason: 'no_rates' };
