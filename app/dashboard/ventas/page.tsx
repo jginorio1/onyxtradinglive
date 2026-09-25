@@ -488,6 +488,89 @@ function MyPerf({ d, L, act, card, btn }: any) {
         {mini(L('Respuesta', 'Response'), sc.resp_hrs == null ? '—' : `${sc.resp_hrs}h`)}
         {mini(L('Comisión 30d', 'Commission 30d'), '$' + (sc.earned30 || 0), '#e5b567')}
       </div>
+
+      {/* ===== Cómo se evalúa tu desempeño (gráfica de factores) ===== */}
+      {d.scoreExplain && (() => {
+        const ex = d.scoreExplain;
+        const parts = sc.parts || {};
+        const barColor = (v: number) => v >= 75 ? '#5ed6a0' : v >= 45 ? '#e5b567' : '#f0736f';
+        return (
+          <div style={card}>
+            <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Cómo se calcula tu puntaje', 'How your score is calculated')}</b>
+            <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', margin: '4px 0 12px' }}>
+              {L('Tu puntaje es la suma ponderada de 5 factores. El peso indica cuánto influye cada uno.',
+                 'Your score is the weighted sum of 5 factors. The weight is how much each one counts.')}
+            </div>
+            <div style={{ display: 'grid', gap: 12 }}>
+              {(ex.factors || []).map((f: any) => {
+                const v = Math.round(Number(parts[f.key] ?? 0));
+                const w = ex.weights?.[f.key] ?? 0;
+                return (
+                  <div key={f.key}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, marginBottom: 4 }}>
+                      <span style={{ color: 'var(--tx,#e8ecf5)', fontWeight: 600 }}>{L(f.es, f.en)}
+                        <span style={{ color: 'var(--mut,#9aa6bd)', fontWeight: 400 }}> · {L('peso', 'weight')} {w}%</span>
+                      </span>
+                      <span style={{ color: barColor(v), fontWeight: 700 }}>{v}/100</span>
+                    </div>
+                    <div style={{ height: 9, borderRadius: 6, background: 'var(--line,#2a3350)', overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.min(100, Math.max(0, v))}%`, height: '100%', background: barColor(v), borderRadius: 6, transition: 'width .4s' }} />
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 3 }}>{L(f.tipEs, f.tipEn)}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--mut,#9aa6bd)', marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--line,#2a3350)' }}>
+              {L(`Umbrales: ${ex.thresholds?.star ?? 75}+ = Estrella · ${ex.thresholds?.risk ?? 45}– = En riesgo.`,
+                 `Thresholds: ${ex.thresholds?.star ?? 75}+ = Star · ${ex.thresholds?.risk ?? 45}– = At risk.`)}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ===== Cómo vas: este mes vs. meses anteriores ===== */}
+      {!!(d.scoreHistory && d.scoreHistory.length) && (() => {
+        const hist = d.scoreHistory;
+        const barColor = (v: number) => v >= 75 ? '#5ed6a0' : v >= 45 ? '#e5b567' : '#f0736f';
+        const fmtM = (p: string) => { const [y, m] = p.split('-'); const names = L('Ene Feb Mar Abr May Jun Jul Ago Sep Oct Nov Dic', 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec').split(' '); return `${names[Number(m) - 1] || m} ${String(y).slice(2)}`; };
+        return (
+          <div style={card}>
+            <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Cómo vas mes a mes', 'Your month-by-month trend')}</b>
+            <div style={{ fontSize: 12.5, color: 'var(--mut,#9aa6bd)', margin: '4px 0 14px' }}>
+              {L('La última barra es este mes (en curso).', 'The last bar is this month (in progress).')}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 130, padding: '0 2px' }}>
+              {hist.map((h: any, i: number) => {
+                const last = i === hist.length - 1;
+                return (
+                  <div key={h.period} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: barColor(h.score) }}>{h.score}</div>
+                    <div style={{ width: '100%', maxWidth: 40, height: `${Math.max(4, h.score)}%`, minHeight: 4, background: barColor(h.score), borderRadius: '6px 6px 0 0', opacity: last ? 1 : 0.55, outline: last ? '2px solid rgba(255,255,255,.18)' : 'none' }} />
+                    <div style={{ fontSize: 10.5, color: last ? 'var(--tx,#e8ecf5)' : 'var(--mut,#9aa6bd)', fontWeight: last ? 700 : 400 }}>{fmtM(h.period)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ===== Sugerencias en vivo para mejorar ===== */}
+      {!!(d.scoreTips && d.scoreTips.length) && (
+        <div style={{ ...card, borderColor: 'rgba(94,214,160,.35)' }}>
+          <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Qué mejorar ahora', 'What to improve now')}</b>
+          <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+            {d.scoreTips.map((tp: any, i: number) => (
+              <div key={tp.key || i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--card,#1b2338)', border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: '9px 12px' }}>
+                <span style={{ fontSize: 15, lineHeight: 1.3 }}>{tp.key === 'ok' ? '✅' : '💡'}</span>
+                <span style={{ fontSize: 13, color: 'var(--tx,#e8ecf5)', lineHeight: 1.45 }}>{L(tp.es, tp.en)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <b style={{ color: 'var(--tx,#e8ecf5)' }}>{L('Consejo de la IA', 'AI coaching')}</b>

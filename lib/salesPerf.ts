@@ -131,6 +131,50 @@ export async function repScorecard(repId: string, s?: SalesSettings): Promise<Sc
   };
 }
 
+// Pesos FIJOS de cada factor del scorecard (deben sumar 100). Se exponen para
+// que el panel del vendedor pueda dibujar la gráfica que explica la evaluación.
+export const SCORE_WEIGHTS = { rating: 40, conversion: 15, activity: 15, service: 15, retention: 15 } as const;
+
+// Etiquetas y descripción de cada factor (bilingüe) — para la gráfica explicativa.
+export const SCORE_FACTORS: { key: keyof typeof SCORE_WEIGHTS; es: string; en: string; tipEs: string; tipEn: string }[] = [
+  { key: 'rating', es: 'Reseñas de clientes', en: 'Client reviews', tipEs: 'Pide a tus clientes contentos que te dejen reseña; es el 40% de tu nota.', tipEn: 'Ask happy clients to leave a review; it’s 40% of your score.' },
+  { key: 'conversion', es: 'Conversión de pruebas', en: 'Trial conversion', tipEs: 'Da seguimiento a las pruebas antes de que expiren para que se vuelvan clientes que pagan.', tipEn: 'Follow up on trials before they expire so they convert to paying clients.' },
+  { key: 'activity', es: 'Actividad', en: 'Activity', tipEs: 'Trae clientes nuevos y mantén viva tu cartera; los clientes inactivos bajan este puntaje.', tipEn: 'Bring in new clients and keep your book active; inactive clients drag this down.' },
+  { key: 'service', es: 'Servicio (tickets)', en: 'Service (tickets)', tipEs: 'Responde rápido los tickets de tus clientes y no dejes tickets abiertos.', tipEn: 'Answer your clients’ tickets fast and don’t leave tickets open.' },
+  { key: 'retention', es: 'Retención', en: 'Retention', tipEs: 'Cuida a tus clientes para que no cancelen; cada cancelación te baja la retención.', tipEn: 'Keep your clients from cancelling; every churn lowers your retention.' },
+];
+
+// Sugerencias EN VIVO: mira el desglose y arma consejos para los factores más
+// flojos (< 60), ordenados por impacto (peso). Devuelve texto bilingüe listo.
+export function perfTips(parts: Record<string, number>): { es: string; en: string; key: string }[] {
+  const weak = SCORE_FACTORS
+    .map((f) => ({ f, v: Number((parts || {})[f.key]) || 0 }))
+    .filter((x) => x.v < 60)
+    .sort((a, b) => (SCORE_WEIGHTS[b.f.key] - SCORE_WEIGHTS[a.f.key]) || (a.v - b.v))
+    .slice(0, 3);
+  if (!weak.length) return [{ key: 'ok', es: '¡Vas muy bien! Mantén el ritmo para conservar tu nivel.', en: 'You’re doing great! Keep it up to hold your tier.' }];
+  return weak.map((x) => ({ key: x.f.key, es: x.f.tipEs, en: x.f.tipEn }));
+}
+
+// Guarda la foto del mes en curso e devuelve el historial reciente (para la
+// tendencia). No rompe nunca el flujo si falla.
+export async function snapshotAndHistory(repId: string, card: { score: number; tier: string; parts: any }, months = 6): Promise<{ period: string; score: number; tier: string; parts: any }[]> {
+  const now = new Date();
+  const period = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  try {
+    await supabaseAdmin.from('sales_score_history').upsert(
+      { rep_id: repId, period, score: Math.round(card.score) || 0, tier: card.tier || 'solid', parts: card.parts || {}, updated_at: new Date().toISOString() },
+      { onConflict: 'rep_id,period' },
+    );
+  } catch { /* opcional */ }
+  try {
+    const { data } = await supabaseAdmin.from('sales_score_history')
+      .select('period,score,tier,parts').eq('rep_id', repId)
+      .order('period', { ascending: false }).limit(months);
+    return ((data || []) as any[]).reverse();
+  } catch { return []; }
+}
+
 // Tarjetas del equipo. rootRepId null = TODO (admin); si se pasa, solo su rama.
 export async function scoreboard(rootRepId: string | null): Promise<any[]> {
   const s = await salesSettings();

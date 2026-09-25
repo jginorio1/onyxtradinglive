@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { repByUser, repById, salesSettings, balances, listClients, teamRollup, grantTrial, permsFor, subtreeRepIds } from '@/lib/sales';
 import { repStatement, goalProgress } from '@/lib/salesGoals';
 import { listAssets, notesForClient, addNote, setNoteDone, pendingFollowups, signContract, saveTax, saveRepProfile } from '@/lib/salesKit';
-import { repScorecard, scoreboard, reviewsForRep, reviewsForTeam, evaluationsFor, submitEvaluation, logAction } from '@/lib/salesPerf';
+import { repScorecard, scoreboard, reviewsForRep, reviewsForTeam, evaluationsFor, submitEvaluation, logAction, SCORE_WEIGHTS, SCORE_FACTORS, perfTips, snapshotAndHistory } from '@/lib/salesPerf';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -46,6 +46,10 @@ export async function GET() {
   // Desempeño propio + mis reseñas (para que se vea a sí mismo y mejore).
   const perms = permsFor(rep as any, s);
   const myCard = await repScorecard(rep.id, s);
+  // Historial mensual (guarda la foto de este mes + trae los meses anteriores) y
+  // sugerencias EN VIVO de qué mejorar, según los factores más flojos.
+  const scoreHistory = await snapshotAndHistory(rep.id, myCard as any, 6);
+  const scoreTips = perfTips((myCard as any).parts || {});
   const myReviews = await reviewsForRep(rep.id, 40);
   const statement = await repStatement(rep.id, 200);   // extracto línea por línea
   const goal = await goalProgress(rep.id, s);            // progreso de la meta del mes
@@ -80,6 +84,9 @@ export async function GET() {
     rep: { id: rep.id, level: rep.level, code: rep.code, display_name: rep.display_name, from_name: rep.from_name, reply_to: rep.reply_to, payout_method: (rep as any).payout_method || 'stripe', on_hold: rep.on_hold, status: rep.status, contract_signed_at: (rep as any).contract_signed_at || null, contract_name: (rep as any).contract_name || null, tax_form_type: (rep as any).tax_form_type || null, tax_data: (rep as any).tax_data || {}, bio: (rep as any).bio || '', photo_url: (rep as any).photo_url || '' },
     link, balances: bal, caps, clients, team, tickets, connect,
     perms, scorecard: myCard, myReviews, teamBoard, teamReviews, evalTargets, mySupervisor, statement, goal, kit, followups,
+    // Explicación de la evaluación + tendencia + sugerencias para el vendedor.
+    scoreExplain: { weights: SCORE_WEIGHTS, factors: SCORE_FACTORS, thresholds: s.tier_thresholds || { star: 75, risk: 45 } },
+    scoreHistory, scoreTips,
     eval_criteria: s.eval_criteria || [],
     level_names: s.level_names || { l2: 'Director', l1: 'Lead', vendedor: 'Advisor' },
     wallets: { trc20: (prof as any)?.payout_usdt_trc20 || '', erc20: (prof as any)?.payout_usdt_erc20 || '', network: (prof as any)?.payout_usdt_network || 'trc20' },
