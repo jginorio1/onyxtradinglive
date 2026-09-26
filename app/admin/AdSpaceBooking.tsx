@@ -251,7 +251,9 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
           {(d.slots || []).map((s: any) => {
             const val = pSlots[s.key] === true ? 'yes' : pSlots[s.key] === false ? 'no' : '';
             const eff = pSlots[s.key] === undefined ? pFill : pSlots[s.key];
-            const nPartners = (d.partners || []).length;
+            // Partners que rotan aquí = todos menos los fijados a OTRO espacio (exclusivos).
+            const pinnedElsewhere = new Set(Object.entries(pPin).filter(([k, v]) => v && k !== s.key).map(([, v]) => String(v)));
+            const nPartners = (d.partners || []).filter((p: any) => !pinnedElsewhere.has(String(p.id))).length;
             const pinnedName = pPin[s.key] ? ((d.partners || []).find((p: any) => String(p.id) === String(pPin[s.key]))?.name || null) : null;
             // Chip de estado: cuál banner sale en este espacio y si rota o está fijo.
             const chip = !eff
