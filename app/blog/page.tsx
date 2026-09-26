@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { listPublished, blogCoverUrl, slugFor } from '@/lib/blog';
+import { listPublishedLite, blogCoverUrl, slugFor } from '@/lib/blog';
 import { serverLang, localeAlternates } from '@/lib/locale';
 import { getSeoMeta, seoFor } from '@/lib/seo';
 import BlogList, { type BlogCard } from './BlogList';
@@ -35,9 +35,14 @@ function catOf(p: any): string {
   return 'markets';
 }
 function readMin(p: any, es: boolean): number {
-  const body = (es ? p.body_es : p.body_en) || p.body_es || p.body_en || '';
-  const words = String(body).replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.round(words / 200));
+  // La lista ligera NO trae cuerpos (por velocidad). Usamos el conteo de palabras
+  // guardado (words_es/words_en) si existe; si no, un estimado prudente (~5 min).
+  const words = Number(es ? p.words_es : p.words_en) || Number(p.words_es) || Number(p.words_en) || 0;
+  if (words > 0) return Math.max(1, Math.round(words / 200));
+  // Respaldo cuando aún no hay conteo: estimar desde el largo del extracto.
+  const ex = (es ? p.excerpt_es : p.excerpt_en) || p.excerpt_es || p.excerpt_en || '';
+  const exWords = String(ex).split(/\s+/).filter(Boolean).length;
+  return Math.min(12, Math.max(3, Math.round(exWords / 6)));
 }
 function fmtDate(iso: string, es: boolean) {
   try { return new Date(iso).toLocaleDateString(es ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'America/New_York' }); } catch { return ''; }
@@ -45,7 +50,7 @@ function fmtDate(iso: string, es: boolean) {
 
 export default async function BlogIndex() {
   const es = serverLang() === 'es';
-  const raw = await listPublished(300);
+  const raw = await listPublishedLite(300);
   const pref = <T,>(a: T, b: T) => (a || b);
 
   // Aplanamos cada post al idioma actual + categoría + tiempo de lectura.

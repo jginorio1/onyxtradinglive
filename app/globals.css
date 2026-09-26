@@ -847,6 +847,13 @@ details[open] > summary > span:first-child { transform: rotate(90deg); }
 .blog-body figure{margin:22px 0;}
 .blog-body figure.blog-img img{width:100%;height:auto;border-radius:12px;display:block;border:1px solid var(--line);}
 .blog-body figure figcaption{font-size:12.5px;color:var(--mut);text-align:center;margin-top:8px;}
+/* FAQ acordeón: quitar el marcador nativo (en iOS aparecía como flechas raras y
+   la etiqueta "Details") y poner un chevron propio que gira al abrir, para que
+   se vea claramente que es pulsable. */
+.blog-body details>summary,.blog-faq-item>summary{list-style:none;position:relative;padding-right:26px !important;}
+.blog-body details>summary::-webkit-details-marker,.blog-faq-item>summary::-webkit-details-marker{display:none;}
+.blog-body details>summary::after,.blog-faq-item>summary::after{content:"";position:absolute;right:4px;top:50%;width:8px;height:8px;border-right:2px solid var(--brand);border-bottom:2px solid var(--brand);transform:translateY(-70%) rotate(45deg);transition:transform .18s ease;}
+.blog-body details[open]>summary::after,.blog-faq-item[open]>summary::after{transform:translateY(-30%) rotate(-135deg);}
 .blog-body figure.blog-chart{background:var(--card2,var(--bg2));border:1px solid var(--line);border-radius:14px;padding:14px 14px 6px;}
 .blog-body .blog-chart-canvas{position:relative;height:280px;}
 @media(max-width:640px){.blog-body .blog-chart-canvas{height:220px;}}
@@ -1020,6 +1027,23 @@ html.ios-app .ios-pay-hide{ display:none !important; }
 
 /* Espacios patrocinados: OCULTOS en la app nativa (Apple/Google) hasta aprobación. */
 html.native-app .onyx-ad{ display:none !important; }
+
+/* Banner fino fijo de abajo (sticky): OCULTO en TODO el móvil (app y web).
+   Molestaba y tapaba contenido en pantallas pequeñas; en escritorio sigue. */
+@media (max-width: 768px){
+  .onyx-sticky{ display:none !important; }
+}
+
+/* Botón Home (logo del panel): feedback claro al pulsar en las apps.
+   Antes no se notaba el toque (tap-highlight transparente); ahora la píldora
+   se atenúa y se encoge un pelín para que se vea que reaccionó. */
+.logo:active .logo-home-pill,
+.logo.is-pressing .logo-home-pill{
+  transform: scale(0.94);
+  background: rgba(124,140,255,.30) !important;
+  border-color: rgba(124,140,255,.7) !important;
+}
+.logo .logo-home-pill{ transition: transform .08s ease, background .12s ease, border-color .12s ease; }
 
 /* Artículo del blog: texto + columna lateral de anuncios verticales.
    El lateral solo aparece a la derecha en pantallas anchas; en medianas y

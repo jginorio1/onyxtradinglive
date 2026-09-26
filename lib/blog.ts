@@ -156,6 +156,29 @@ async function _listPublished(limit = 60) {
 // solo cada 2 min; al guardar/publicar un post invalidamos la etiqueta.
 export const listPublished = unstable_cache(_listPublished, ['blog_published'], { revalidate: 120, tags: ['blog_posts'] });
 
+// Versión LIGERA para el ÍNDICE público /blog: NO trae los cuerpos (body_es/en),
+// que pesan hasta 20k caracteres cada uno. Con 300 posts eso eran varios MB por
+// render en frío → era la causa de que el blog tardara tanto en abrir. En su lugar
+// traemos words_es/words_en si existen (conteo de palabras para el "min de lectura")
+// y si la columna aún no está, caemos a las columnas base sin cuerpos.
+const PUB_COLS_LITE = 'id,slug,slug_en,title_es,title_en,excerpt_es,excerpt_en,cover_url,cover_alt_es,cover_alt_en,tags,author,author_id,is_news,published_at,updated_at';
+async function _listPublishedLite(limit = 60) {
+  const nowIso = new Date().toISOString();
+  let r = await supabaseAdmin.from('blog_posts')
+    .select(PUB_COLS_LITE + ',words_es,words_en').eq('status', 'published').lte('published_at', nowIso)
+    .order('published_at', { ascending: false }).limit(limit);
+  if (r.error) r = await supabaseAdmin.from('blog_posts')   // sin words_* (columna aún no creada)
+    .select(PUB_COLS_LITE).eq('status', 'published').lte('published_at', nowIso)
+    .order('published_at', { ascending: false }).limit(limit) as any;
+  if (r.error) r = await supabaseAdmin.from('blog_posts')   // sin slug_en tampoco
+    .select('id,slug,title_es,title_en,excerpt_es,excerpt_en,cover_url,cover_alt_es,cover_alt_en,tags,author,published_at,updated_at')
+    .eq('status', 'published').lte('published_at', nowIso)
+    .order('published_at', { ascending: false }).limit(limit) as any;
+  return (r.data || []) as any[];
+}
+// Lista ligera cacheada para el índice público (sin cuerpos → rápido en frío).
+export const listPublishedLite = unstable_cache(_listPublishedLite, ['blog_published_lite'], { revalidate: 120, tags: ['blog_posts'] });
+
 // Un artículo publicado por su slug — matchea el slug ES o el slug EN.
 export async function getPublishedBySlug(slug: string) {
   const s = sanSlug(slug);

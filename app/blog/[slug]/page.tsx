@@ -7,6 +7,7 @@ import { blogAuthorsSettings, resolveBlogAuthor } from '@/lib/settings';
 import { serverLang, localeAlternates, SITE } from '@/lib/locale';
 import JsonLd from '../../JsonLd';
 import BlogCharts from '../BlogCharts';
+import ArticleBack from '../ArticleBack';
 import AdSlot from '@/app/components/AdSlot';
 
 export const dynamic = 'force-dynamic';
@@ -111,6 +112,9 @@ export default async function BlogArticle({ params }: { params: { slug: string }
       <JsonLd data={ld} />
       <JsonLd data={breadcrumbLd} />
       {faqLd && <JsonLd data={faqLd} />}
+
+      {/* Volver (sobre todo móvil/app: antes era difícil salir del artículo) */}
+      <ArticleBack es={es} />
 
       {/* Breadcrumbs visibles */}
       <div className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>

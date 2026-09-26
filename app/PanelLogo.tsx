@@ -43,8 +43,12 @@ export default function PanelLogo() {
 
   return (
     <button type="button" onClick={go} className="logo" aria-label={label} title={label}
+      onPointerDown={(e) => { try { (e.currentTarget as HTMLElement).classList.add('is-pressing'); } catch {} }}
+      onPointerUp={(e) => { try { (e.currentTarget as HTMLElement).classList.remove('is-pressing'); } catch {} }}
+      onPointerLeave={(e) => { try { (e.currentTarget as HTMLElement).classList.remove('is-pressing'); } catch {} }}
+      onPointerCancel={(e) => { try { (e.currentTarget as HTMLElement).classList.remove('is-pressing'); } catch {} }}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', padding: 0, margin: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', lineHeight: 'normal', textAlign: 'left', appearance: 'none' as any, WebkitAppearance: 'none' as any, WebkitTapHighlightColor: 'transparent' as any }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(124,140,255,.14)', border: '1px solid rgba(124,140,255,.4)', borderRadius: 999, padding: '4px 11px 4px 9px' }}>
+      <span className="logo-home-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(124,140,255,.14)', border: '1px solid rgba(124,140,255,.4)', borderRadius: 999, padding: '4px 11px 4px 9px' }}>
         {/* Símbolo Onyx como FONDO (no <img>), para que nada intercepte el toque. */}
         <span aria-hidden="true" style={{ width: 22, height: 22, flex: '0 0 auto', backgroundImage: 'url(/onyx-symbol.png)', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'center' }} />
         <span aria-hidden="true" style={{ width: 1, height: 15, background: 'rgba(124,140,255,.45)', flex: '0 0 auto' }} />

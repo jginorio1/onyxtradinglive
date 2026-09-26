@@ -73,14 +73,30 @@ export default function NativeInit() {
         await SplashScreen.hide();
       } catch {}
 
-      // Teclado: 'none' → el webview no se redimensiona al abrir el teclado, así el
-      // header pegado arriba no se mueve (el teclado solo se superpone). Refuerza
-      // lo del capacitor.config por si el config no se aplicara.
+      // Teclado: 'native' → el webview SÍ se encoge al abrir el teclado, así el campo
+      // enfocado nunca queda tapado (antes estaba en 'none' y el teclado se
+      // superponía sobre el input, ocultando lo que escribías). Además, al enfocar
+      // un campo lo desplazamos a la vista por si quedó justo detrás del teclado.
       try {
         const { Keyboard, KeyboardResize } = await import('@capacitor/keyboard');
-        await Keyboard.setResizeMode({ mode: KeyboardResize.None });
-        try { await Keyboard.setAccessoryBarVisible({ isVisible: false }); } catch {}
+        await Keyboard.setResizeMode({ mode: KeyboardResize.Native });
+        try { await Keyboard.setAccessoryBarVisible({ isVisible: true }); } catch {}
+        // Cuando el teclado termina de abrir, aseguramos que el campo activo se vea.
+        try { Keyboard.addListener('keyboardDidShow', () => {
+          const el = document.activeElement as HTMLElement | null;
+          if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) {
+            try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {}
+          }
+        }); } catch {}
       } catch {}
+      // Respaldo web/webview: al enfocar cualquier campo, lo llevamos a la vista.
+      const onFocusIn = (e: Event) => {
+        const el = e.target as HTMLElement | null;
+        if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) {
+          setTimeout(() => { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} }, 250);
+        }
+      };
+      document.addEventListener('focusin', onFocusIn);
 
       // Push NATIVA (FCM): pide permiso, registra el dispositivo y manda el token
       // a /api/push/native para atarlo a la sesión. Al tocar una notificación,
