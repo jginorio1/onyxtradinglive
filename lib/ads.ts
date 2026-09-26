@@ -209,8 +209,13 @@ export async function rateCard() {
 export async function viewerIsPaid(): Promise<boolean> {
   try {
     const sb = createSupabaseServer();
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return false;
+    // getSession() lee la sesión de la COOKIE local (sin viaje de red a Supabase);
+    // getUser() validaba el JWT contra el servidor en CADA slot (4+ por página),
+    // y eso hacía que los banners tardaran en aparecer. Para decidir si ocultamos
+    // los anuncios no necesitamos validación server-side: la cookie basta.
+    const { data: { session } } = await sb.auth.getSession();
+    const user = session?.user;
+    if (!user) return false;   // visitante anónimo (blog público): instantáneo, sin red.
     const { data } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
     const plan = (data as any)?.plan;
     return !!plan && plan !== 'free';

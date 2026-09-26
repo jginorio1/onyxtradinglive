@@ -93,7 +93,40 @@ export function slugFor(post: any, lang: string): string {
 
 // URL de portada: la subida por el editor, o una portada ON-BRAND generada al vuelo
 // (degradado Onyx + tema) para que TODO artículo tenga imagen coherente sin coste.
+// Paletas on-brand para la portada de reserva (mismas que /api/blog-cover).
+const COVER_PALETTES = [
+  ['#161a33', '#3a1f5e'], ['#0f1b2e', '#0e4b52'], ['#1e1430', '#5a1f3e'],
+  ['#121a2c', '#26407a'], ['#101f1a', '#0f4d3a'],
+];
+function coverHash(s: string): number { let h = 0; for (let i = 0; i < String(s).length; i++) h = (h * 31 + String(s).charCodeAt(i)) >>> 0; return h; }
+const coverEsc = (s: string) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// Portada de reserva como SVG EN LÍNEA (data URI). No hace ninguna petición ni
+// renderizado en el servidor: se pinta al instante en el navegador. Antes el
+// fallback apuntaba a /api/blog-cover, que en CADA tarjeta descargaba una fuente
+// por CDN y renderizaba un PNG con satori — con 9-12 tarjetas por pantalla eso
+// dejaba el blog lentísimo y las portadas en gris. Para el <img> en pantalla no
+// necesitamos un PNG: el SVG en línea es instantáneo. El PNG (para compartir en
+// redes) queda solo en blogCoverOg().
+export function blogCoverDataUri(post: any, lang: 'es' | 'en' = 'es'): string {
+  const title = ((lang === 'es' ? post?.title_es : post?.title_en) || post?.title_es || post?.title_en || 'Onyx').slice(0, 42);
+  const kicker = String(post?.tags || '').split(',')[0].trim().slice(0, 22).toUpperCase();
+  const pal = COVER_PALETTES[coverHash(String(post?.id || post?.slug || title)) % COVER_PALETTES.length];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="399" viewBox="0 0 760 399"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${pal[0]}"/><stop offset="1" stop-color="${pal[1]}"/></linearGradient></defs><rect width="760" height="399" fill="url(#g)"/>${kicker ? `<text x="48" y="92" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="800" letter-spacing="4" fill="#b9c0ff">${coverEsc(kicker)}</text>` : ''}<text x="48" y="210" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="800" fill="#f2f4ff">${coverEsc(title)}</text><text x="48" y="356" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="700" fill="#cfd4ff">Onyx Trading Live</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+// Portada para el <img> EN PANTALLA: la imagen subida si existe, si no el SVG en
+// línea instantáneo (sin peticiones). Úsala en tarjetas y en la cabecera del artículo.
 export function blogCoverUrl(post: any, lang: 'es' | 'en' = 'es'): string {
+  if (post?.cover_url) return post.cover_url;
+  return blogCoverDataUri(post, lang);
+}
+
+// Portada para COMPARTIR EN REDES (og:image / schema): un PNG real por URL, que es
+// lo que leen Facebook/Twitter/LinkedIn (no muestran SVG ni data URIs). Aquí sí vale
+// /api/blog-cover porque el crawler la pide UNA vez, no en cada tarjeta de la lista.
+export function blogCoverOg(post: any, lang: 'es' | 'en' = 'es'): string {
   if (post?.cover_url) return post.cover_url;
   const title = (lang === 'es' ? post?.title_es : post?.title_en) || post?.title_es || post?.title_en || 'Onyx';
   const kicker = String(post?.tags || '').split(',')[0].trim();
