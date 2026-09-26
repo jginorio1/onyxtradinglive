@@ -23,9 +23,38 @@ export async function GET(req: Request) {
   //   /api/ads/serve?slot=blog_top&debug=1
   // y mira "build" y "pins": si "build" no es "ads-pin-exclusive-v2" o "pins" sale
   // vacío, el fix aún no está desplegado.
-  const BUILD = 'ads-pin-exclusive-v3';
+  const BUILD = 'ads-pin-exclusive-v4';
   const cfg = await getAdsConfig();
   const noStore = { headers: { 'cache-control': 'no-store' } };
+
+  // Prueba de ESCRITURA: escribe partnerSlotPin={"__TEST__": ...} directo en la fila
+  // 'ads' y la relee CRUDA, mostrando el error del upsert si lo hay. Así sabemos si
+  // la BD acepta la escritura o la rechaza en silencio (RLS, tamaño, etc.).
+  if (url.searchParams.get('writetest')) {
+    const stamp = 'wt' + Date.now();
+    let writeError: any = null, backKeys: any = null, backPins: any = null, backTest: any = null;
+    try {
+      const { data: cur } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'ads');
+      const curVal: any = (cur && cur[0] && (cur[0] as any).value) || {};
+      const merged = { ...curVal, partnerSlotPin: { ...(curVal.partnerSlotPin || {}), __TEST__: stamp } };
+      const { error } = await supabaseAdmin.from('app_settings').upsert({ key: 'ads', value: merged, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      writeError = error ? (error.message || JSON.stringify(error)) : null;
+      const { data: back } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'ads');
+      const backVal: any = (back && back[0] && (back[0] as any).value) || {};
+      backKeys = Object.keys(backVal);
+      backPins = backVal.partnerSlotPin ?? null;
+      backTest = backVal.partnerSlotPin?.__TEST__ ?? null;
+    } catch (e: any) { writeError = 'THROW:' + (e?.message || 'x'); }
+    return NextResponse.json({
+      build: BUILD,
+      test: 'write-partnerSlotPin-to-ads',
+      wroteStamp: stamp,
+      writeError,                 // null = el upsert no dio error
+      backTest,                   // debe ser === wroteStamp si persistió
+      backPins,                   // partnerSlotPin tras la escritura
+      backKeys,                   // campos de la fila tras escribir
+    }, noStore);
+  }
 
   // Modo diagnóstico: NO registra impresión. Muestra la config normalizada QUE LEE
   // el servidor Y ADEMÁS la fila CRUDA de la BD (rawPins), saltándose toda la
