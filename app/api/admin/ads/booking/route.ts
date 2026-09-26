@@ -82,32 +82,35 @@ export async function POST(req: Request) {
     if (b.holdMinutes !== undefined) patch.holdMinutes = Math.max(5, Math.round(Number(b.holdMinutes) || 45));
     if (b.maturationDays !== undefined) patch.maturationDays = Math.max(0, Math.round(Number(b.maturationDays) || 14));
     if (b.partnerFill !== undefined) patch.partnerFill = b.partnerFill !== false;
-    // PINES y FILLS por ubicación: se guardan en su CLAVE DEDICADA ('ads_placements'),
-    // NO en el bloque grande 'ads'. Escritura completa de reemplazo → inmune al retraso
-    // de lectura de la BD que borraba los datos (leer-modificar-escribir del bloque).
-    if ((b.partnerFillSlots && typeof b.partnerFillSlots === 'object') || (b.partnerSlotPin && typeof b.partnerSlotPin === 'object')) {
-      await saveAdsPlacements({ partnerSlotPin: b.partnerSlotPin || {}, partnerFillSlots: b.partnerFillSlots || {} });
-    }
     if (b.quoteValidityDays !== undefined) patch.quoteValidityDays = Math.max(1, Math.min(365, Math.round(Number(b.quoteValidityDays) || 15)));
     if (b.quoteTemplate && typeof b.quoteTemplate === 'object') {
       const keys: (keyof any)[] = ['intro', 'includes', 'whyOnyx', 'terms', 'validityNote', 'closing'];
       const pick = (o: any) => { const r: any = {}; for (const k of keys) if (typeof o?.[k] === 'string') r[k] = String(o[k]).slice(0, 4000); return r; };
       patch.quoteTemplate = { es: pick(b.quoteTemplate.es), en: pick(b.quoteTemplate.en) };
     }
-    // Solo tocamos el bloque grande 'ads' si de verdad cambió algo suyo (evita
-    // reescribirlo en vano y que el retraso de lectura lo borre).
-    if (Object.keys(patch).length) await saveAdsConfig(patch);
-    // Diagnóstico: devolvemos qué pines RECIBIÓ el servidor del panel y qué pines
-    // QUEDARON guardados tras releer fresco de la BD. Si receivedPins trae el pin
-    // pero savedPins sale vacío, el problema está en la escritura; si receivedPins
-    // ya viene vacío, el panel no lo mandó.
-    const after = await getAdsConfigFresh();
+    // TODO envuelto en try/catch: antes, si algo lanzaba, la ruta daba 500 y el panel
+    // no mostraba nada. Ahora cualquier fallo vuelve como {error} y se ve en el panel.
+    try {
+      // PINES y FILLS por ubicación → CLAVE DEDICADA ('ads_placements'), escritura
+      // completa de reemplazo (inmune al retraso de lectura que borraba el bloque).
+      if ((b.partnerFillSlots && typeof b.partnerFillSlots === 'object') || (b.partnerSlotPin && typeof b.partnerSlotPin === 'object')) {
+        await saveAdsPlacements({ partnerSlotPin: b.partnerSlotPin || {}, partnerFillSlots: b.partnerFillSlots || {} });
+      }
+      // Solo tocamos el bloque grande 'ads' si de verdad cambió algo suyo.
+      if (Object.keys(patch).length) await saveAdsConfig(patch);
+    } catch (e: any) {
+      return NextResponse.json({ error: 'guardar: ' + (e?.message || 'fallo') }, { status: 500 });
+    }
+    // Confirmación: releemos la clave dedicada CRUDA (lo que realmente quedó en la BD).
+    let placementsSaved: any = {};
+    try {
+      const { data: rows } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'ads_placements');
+      placementsSaved = (rows && rows[0] && (rows[0] as any).value?.partnerSlotPin) || {};
+    } catch {}
     return NextResponse.json({
       ok: true,
       receivedPins: b.partnerSlotPin ?? null,
-      receivedFills: b.partnerFillSlots ?? null,
-      savedPins: after.partnerSlotPin || {},
-      savedFills: after.partnerFillSlots || {},
+      placementsSaved,   // pines que quedaron en la clave dedicada (lo definitivo)
     });
   }
 

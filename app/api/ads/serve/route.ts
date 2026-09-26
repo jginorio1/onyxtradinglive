@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   //   /api/ads/serve?slot=blog_top&debug=1
   // y mira "build" y "pins": si "build" no es "ads-pin-exclusive-v2" o "pins" sale
   // vacío, el fix aún no está desplegado.
-  const BUILD = 'ads-pin-exclusive-v6';
+  const BUILD = 'ads-pin-exclusive-v7';
   const cfg = await getAdsConfig();
   const noStore = { headers: { 'cache-control': 'no-store' } };
 
@@ -85,8 +85,15 @@ export async function GET(req: Request) {
       rawFills = raw.partnerFillSlots ?? null;
       rawKeys = Object.keys(raw);          // qué campos tiene la fila 'ads' en la BD
     } catch (e: any) { rawPins = 'ERR:' + (e?.message || 'x'); }
+    // Lectura CRUDA de la clave dedicada 'ads_placements' (donde v671 guarda los pines).
+    let rawPlacements: any = 'n/a';
+    try {
+      const { data: rows } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'ads_placements');
+      rawPlacements = rows && rows[0] ? (rows[0] as any).value : 'NO_ROW';
+    } catch (e: any) { rawPlacements = 'ERR:' + (e?.message || 'x'); }
     return NextResponse.json({
       build: BUILD,
+      rawPlacements,   // ← lo que hay en la clave dedicada de pines/fills
       slot,
       enabled: cfg.enabled,
       pins: cfg.partnerSlotPin || {},        // partner FIJADO por ubicación (normalizado)

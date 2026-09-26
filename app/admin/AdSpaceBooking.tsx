@@ -58,14 +58,22 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
     return j;
   };
   const saveSettings = async () => {
-    const j = await post({ action: 'save_settings', caps, ...cfg, partnerFill: pFill, partnerFillSlots: pSlots, partnerSlotPin: pPin });
-    if (j.ok) {
-      // Diagnóstico visible: cuántos pines quedaron guardados en la BD. Si fijaste uno
-      // y aquí dice "0", el guardado no está persistiendo el pin (avísame ese número).
+    let j: any = {};
+    try {
+      j = await post({ action: 'save_settings', caps, ...cfg, partnerFill: pFill, partnerFillSlots: pSlots, partnerSlotPin: pPin });
+    } catch (e: any) {
+      setMsg(L('Error de red al guardar: ' + (e?.message || 'sin respuesta'), 'Network error saving: ' + (e?.message || 'no response')));
+      return;
+    }
+    const nSent = pPin ? Object.keys(pPin).length : 0;
+    if (j && j.ok) {
       const nSaved = j.savedPins ? Object.keys(j.savedPins).length : 0;
-      const nSent = pPin ? Object.keys(pPin).length : 0;
-      setMsg(L(`Guardado ✓ · pines enviados ${nSent}, guardados ${nSaved}`, `Saved ✓ · pins sent ${nSent}, saved ${nSaved}`));
+      const nPlace = j.placementsSaved ? Object.keys(j.placementsSaved).length : 0;
+      setMsg(L(`Guardado ✓ · pines enviados ${nSent}, guardados ${nPlace || nSaved}`, `Saved ✓ · pins sent ${nSent}, saved ${nPlace || nSaved}`));
       await load();
+    } else {
+      // Antes esto quedaba en silencio; ahora mostramos el error real del servidor.
+      setMsg(L('No se pudo guardar: ' + (j?.error || 'error del servidor'), 'Could not save: ' + (j?.error || 'server error')));
     }
   };
   // Guardar plantilla de cotización + días de validez.
