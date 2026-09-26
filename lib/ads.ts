@@ -154,6 +154,15 @@ export async function getAdsConfig(): Promise<AdsConfig> {
   _adsCfgCache = { at: Date.now(), cfg };
   return cfg;
 }
+// Lee la configuración SIN caché, directo de la BD. Para paneles de admin, que
+// deben mostrar siempre el estado real justo después de guardar (la versión
+// cacheada puede venir de otra instancia serverless y estar hasta 60s atrasada).
+export async function getAdsConfigFresh(): Promise<AdsConfig> {
+  invalidateAdsConfigCache();
+  const cfg = await buildAdsConfig();
+  _adsCfgCache = { at: Date.now(), cfg };
+  return cfg;
+}
 async function buildAdsConfig(): Promise<AdsConfig> {
   const c = await getSetting<Partial<AdsConfig>>('ads', DEFAULT_CFG);
   return {
@@ -191,9 +200,16 @@ export function fillQuoteVars(text: string, vars: Record<string, string>): strin
   return String(text || '').replace(/\{(\w+)\}/g, (_, k) => (vars[k] != null ? vars[k] : `{${k}}`));
 }
 export async function saveAdsConfig(c: Partial<AdsConfig>) {
-  const prev = await getAdsConfig();
+  // IMPORTANTE: leemos la base FRESCA de la BD (buildAdsConfig), NO de la caché de
+  // 60s. Si usáramos getAdsConfig() (cacheado), al guardar tomaríamos una copia
+  // vieja como base y reescribiríamos todo el objeto encima → se perdían los
+  // cambios recién hechos (p. ej. los partners fijados "se despinaban" en cada
+  // guardado, sobre todo con varias instancias serverless calientes). Leer fresco
+  // garantiza que el parche se fusione sobre el estado real y no sobre uno viejo.
+  invalidateAdsConfigCache();
+  const prev = await buildAdsConfig();
   await saveSetting('ads', { ...prev, ...c });
-  invalidateAdsConfigCache();   // los cambios del admin aplican al instante
+  invalidateAdsConfigCache();   // y descarta la caché para que el próximo lea lo recién guardado
 }
 
 // Tarifario efectivo: catálogo + precios sobrescritos por el dueño.

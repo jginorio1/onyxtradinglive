@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { AD_SLOTS, getAdsConfig, saveAdsConfig, rateCard, slotByKey } from '@/lib/ads';
+import { AD_SLOTS, getAdsConfig, getAdsConfigFresh, saveAdsConfig, rateCard, slotByKey } from '@/lib/ads';
 import { slotCap, dailyAvailability, listBookings, confirmPaid, cancelBooking, createBooking, sweepBookings } from '@/lib/adBooking';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,10 @@ export async function GET() {
   const { ok } = await requirePerm(PERM, 'view');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
-  const cfg = await getAdsConfig();
+  // FRESCO (sin caché): el panel debe reflejar SIEMPRE lo último guardado. Con la
+  // versión cacheada, justo tras guardar el admin podía ver datos viejos (la caché
+  // de otra instancia serverless) y parecía que "se despinaban" los partners.
+  const cfg = await getAdsConfigFresh();
   const card = await rateCard();
   const slots = [];
   for (const s of card) slots.push({ key: s.key, es: s.es, en: s.en, size: s.size, page: s.page, price: s.price, cap: await slotCap(s.key, cfg) });
