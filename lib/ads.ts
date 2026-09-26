@@ -293,6 +293,22 @@ export async function pickAd(
   const country = (ctx.country || '').toUpperCase();
   const dev = deviceOf(ctx.ua || '');
   const cfg = await getAdsConfig();
+
+  // Partner FIJADO a este espacio: MANDA sobre todo (incluso campañas pagadas). El
+  // dueño lo eligió a propósito para que ese banner salga SIEMPRE aquí. Si el fijado
+  // ya no está activo o no cumple geo, cae al flujo normal (pagadas → rotación).
+  const pinIdTop = cfg.partnerSlotPin ? cfg.partnerSlotPin[slotKey] : '';
+  if (pinIdTop) {
+    try {
+      const { data: p } = await supabaseAdmin.from('ad_partners')
+        .select('id,name,logo_url,banner_url,blurb_es,blurb_en,geo,status')
+        .eq('id', pinIdTop).eq('status', 'active').maybeSingle();
+      if (p && geoMatch((p as any).geo, '', '', country)) {
+        return { kind: 'partner', id: (p as any).id, name: (p as any).name, logo: (p as any).logo_url || '', banner: (p as any).banner_url || '', blurb: (lang === 'es' ? (p as any).blurb_es : (p as any).blurb_en) || '', link: `/api/ads/partner?id=${(p as any).id}`, size: slot.size };
+      }
+    } catch {}
+  }
+
   try {
     const nowIso = new Date().toISOString();
     const today = nowIso.slice(0, 10);
