@@ -251,14 +251,23 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
           {(d.slots || []).map((s: any) => {
             const val = pSlots[s.key] === true ? 'yes' : pSlots[s.key] === false ? 'no' : '';
             const eff = pSlots[s.key] === undefined ? pFill : pSlots[s.key];
+            const nPartners = (d.partners || []).length;
+            const pinnedName = pPin[s.key] ? ((d.partners || []).find((p: any) => String(p.id) === String(pPin[s.key]))?.name || null) : null;
+            // Chip de estado: cuál banner sale en este espacio y si rota o está fijo.
+            const chip = !eff
+              ? { t: L('Sin partners aquí', 'No partners here'), bg: 'rgba(154,166,189,.15)', fg: '#9aa6bd' }
+              : pinnedName
+                ? { t: '📌 ' + L('Fijo · ', 'Fixed · ') + pinnedName, bg: 'rgba(91,108,255,.16)', fg: '#8aa0ff' }
+                : { t: '🔁 ' + L('Rotando · ', 'Rotating · ') + nPartners, bg: 'rgba(94,214,160,.16)', fg: '#5ed6a0' };
             return (
               <div key={s.key} style={{ display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--line,#2a3350)', borderRadius: 10, padding: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 8, background: eff ? '#22c55e' : '#9aa6bd', flex: 'none' }} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tx,#e8ecf5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{es ? s.es : s.en}</div>
-                    <div style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)' }}>{s.size} · {eff ? L('Partners ON', 'Partners ON') : L('Partners OFF', 'Partners OFF')}</div>
+                    <div style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)' }}>{s.size}</div>
                   </div>
+                  <span style={{ marginLeft: 'auto', fontSize: 10.5, fontWeight: 700, padding: '3px 8px', borderRadius: 999, background: chip.bg, color: chip.fg, whiteSpace: 'nowrap', flex: 'none' }}>{chip.t}</span>
                 </div>
                 <select value={val} onChange={(e) => setSlotFill(s.key, e.target.value as any)}
                   style={{ width: '100%', padding: '7px 8px', borderRadius: 8, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', fontSize: 12.5 }}>
