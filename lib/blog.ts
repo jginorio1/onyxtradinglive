@@ -179,24 +179,58 @@ export async function publishedSlugs(): Promise<{ slug: string; slugEn: string; 
 }
 
 // ---- Admin ----
+// Lista LIGERA para el admin (calendario + lista): NO trae los cuerpos (que pesan
+// hasta 20k chars c/u) para que cargue rápido y no se corte. En su lugar manda
+// banderas has_es/has_en (si cada idioma tiene contenido) para los avisos. El cuerpo
+// completo se pide al abrir a editar (getPostFull). Sube el tope a 3000 para no
+// perder artículos programados.
+// Lista COMPLETA (con cuerpos). La usan los procesos internos: auditoría, piloto de
+// noticias/blog, sugerencias de IA, keywords, cron. Sube el tope a 3000 para no
+// perder artículos programados. NO cambia su forma (todos siguen recibiendo el texto).
 export async function listAllPosts() {
-  const { data } = await supabaseAdmin.from('blog_posts').select('*').order('updated_at', { ascending: false }).limit(300);
+  const { data } = await supabaseAdmin.from('blog_posts').select('*').order('created_at', { ascending: false }).limit(3000);
   return (data || []) as BlogPost[];
+}
+export const listAllPostsFull = listAllPosts;   // alias explícito para acciones en bloque
+
+// Lista LIGERA (SIN cuerpos, con banderas has_es/has_en) — SOLO para la pantalla del
+// admin (lista + calendario): así carga rápido y no se corta. El cuerpo se pide al
+// abrir a editar (getPostFull). No la usan crons ni auditoría.
+export async function listPostsLite() {
+  const { data } = await supabaseAdmin.from('blog_posts').select('*').order('created_at', { ascending: false }).limit(3000);
+  return ((data || []) as any[]).map((p) => {
+    const { body_es, body_en, ...rest } = p;
+    return { ...rest, has_es: !!(body_es && String(body_es).trim()), has_en: !!(body_en && String(body_en).trim()) };
+  }) as any;
+}
+
+// Artículo COMPLETO (con cuerpos) — para abrir a editar.
+export async function getPostFull(id: string): Promise<BlogPost | null> {
+  const { data } = await supabaseAdmin.from('blog_posts').select('*').eq('id', id).maybeSingle();
+  return (data as BlogPost) || null;
 }
 
 export async function savePost(b: any) {
   const clean = (s: any, n = 20000) => (s == null ? '' : String(s).slice(0, n));
   const status: BlogStatus = ['draft', 'scheduled', 'published'].includes(b.status) ? b.status : 'draft';
   const row: any = {
-    title_es: clean(b.title_es, 200), title_en: clean(b.title_en, 200),
-    excerpt_es: clean(b.excerpt_es, 400), excerpt_en: clean(b.excerpt_en, 400),
-    body_es: clean(b.body_es), body_en: clean(b.body_en),
-    cover_url: b.cover_url ? clean(b.cover_url, 500) : null,
-    cover_alt_es: clean(b.cover_alt_es, 300), cover_alt_en: clean(b.cover_alt_en, 300),
-    tags: clean(b.tags, 300), status,
+    status,
     publish_at: status === 'scheduled' && b.publish_at ? new Date(b.publish_at).toISOString() : null,
     updated_at: new Date().toISOString(),
   };
+  // Solo tocamos un campo de CONTENIDO si viene en el payload. Así un guardado parcial
+  // (cambiar estado/fecha desde la lista, que ya NO trae los cuerpos) nunca borra el
+  // texto del artículo. Un edit real sí manda los campos (incluso vacíos a propósito).
+  if (b.title_es !== undefined) row.title_es = clean(b.title_es, 200);
+  if (b.title_en !== undefined) row.title_en = clean(b.title_en, 200);
+  if (b.excerpt_es !== undefined) row.excerpt_es = clean(b.excerpt_es, 400);
+  if (b.excerpt_en !== undefined) row.excerpt_en = clean(b.excerpt_en, 400);
+  if (b.body_es !== undefined) row.body_es = clean(b.body_es);
+  if (b.body_en !== undefined) row.body_en = clean(b.body_en);
+  if (b.cover_url !== undefined) row.cover_url = b.cover_url ? clean(b.cover_url, 500) : null;
+  if (b.cover_alt_es !== undefined) row.cover_alt_es = clean(b.cover_alt_es, 300);
+  if (b.cover_alt_en !== undefined) row.cover_alt_en = clean(b.cover_alt_en, 300);
+  if (b.tags !== undefined) row.tags = clean(b.tags, 300);
   // published_at: se fija al pasar a 'published'; scheduled lo dejará el cron.
   if (status === 'published') row.published_at = b.published_at ? new Date(b.published_at).toISOString() : new Date().toISOString();
   // Autor por artículo (id del plantel). Guardado tolerante si la columna no existe.

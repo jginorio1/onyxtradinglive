@@ -143,7 +143,18 @@ const DEFAULT_CFG: AdsConfig = {
   quoteValidityDays: 15, quoteTemplate: DEFAULT_QUOTE_TPL,
 };
 
+// Caché corta en memoria: la config de ads casi no cambia, pero se lee en CADA
+// hueco de anuncio de cada página. Cachear 60s baja mucho la carga a la BD y hace
+// que los banners aparezcan más rápido. (Se invalida solo al pasar el TTL.)
+let _adsCfgCache: { at: number; cfg: AdsConfig } | null = null;
+export function invalidateAdsConfigCache() { _adsCfgCache = null; }
 export async function getAdsConfig(): Promise<AdsConfig> {
+  if (_adsCfgCache && Date.now() - _adsCfgCache.at < 60000) return _adsCfgCache.cfg;
+  const cfg = await buildAdsConfig();
+  _adsCfgCache = { at: Date.now(), cfg };
+  return cfg;
+}
+async function buildAdsConfig(): Promise<AdsConfig> {
   const c = await getSetting<Partial<AdsConfig>>('ads', DEFAULT_CFG);
   return {
     enabled: c.enabled !== false,
@@ -182,6 +193,7 @@ export function fillQuoteVars(text: string, vars: Record<string, string>): strin
 export async function saveAdsConfig(c: Partial<AdsConfig>) {
   const prev = await getAdsConfig();
   await saveSetting('ads', { ...prev, ...c });
+  invalidateAdsConfigCache();   // los cambios del admin aplican al instante
 }
 
 // Tarifario efectivo: catálogo + precios sobrescritos por el dueño.

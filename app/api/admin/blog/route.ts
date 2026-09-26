@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
-import { listAllPosts, savePost, deletePost } from '@/lib/blog';
+import { listPostsLite, listAllPostsFull, getPostFull, savePost, deletePost } from '@/lib/blog';
 import { sendBlogEmailNow } from '@/lib/blogEmail';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { logError } from '@/lib/errlog';
@@ -9,11 +9,16 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 // GET · todos los artículos (borradores, programados y publicados) para el editor.
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const { ok } = await requirePerm('modulos', 'view');
     if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-    return NextResponse.json({ posts: await listAllPosts() });
+    const sp = new URL(req.url).searchParams;
+    // ?id= → un artículo COMPLETO (con cuerpos) para abrir a editar.
+    if (sp.get('id')) return NextResponse.json({ post: await getPostFull(String(sp.get('id'))) });
+    // ?full=1 → lista COMPLETA con cuerpos (para acciones en bloque que los necesitan).
+    if (sp.get('full')) return NextResponse.json({ posts: await listAllPostsFull() });
+    return NextResponse.json({ posts: await listPostsLite() });
   } catch (e: any) {
     await logError('blog_list', e);
     return NextResponse.json({ error: e?.message || 'error', posts: [] }, { status: 500 });

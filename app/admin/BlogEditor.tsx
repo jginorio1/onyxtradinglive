@@ -265,10 +265,14 @@ export default function BlogEditor() {
   // Un artículo publicado sin ES (o sin EN) hace que esa URL caiga al otro idioma.
   const missingLangs = (p: any) => {
     const m: string[] = [];
+    // Presencia de cuerpo: si el objeto trae el cuerpo (form abierto) lo mira; si es
+    // una fila LIGERA de la lista, usa las banderas has_es/has_en del servidor.
+    const hasEs = p.body_es !== undefined ? !!String(p.body_es || '').trim() : !!p.has_es;
+    const hasEn = p.body_en !== undefined ? !!String(p.body_en || '').trim() : !!p.has_en;
     if (!(p.title_es || '').trim()) m.push(es ? 'Título ES' : 'Title ES');
     if (!(p.title_en || '').trim()) m.push(es ? 'Título EN' : 'Title EN');
-    if (!(p.body_es || '').trim()) m.push(es ? 'Cuerpo ES' : 'Body ES');
-    if (!(p.body_en || '').trim()) m.push(es ? 'Cuerpo EN' : 'Body EN');
+    if (!hasEs) m.push(es ? 'Cuerpo ES' : 'Body ES');
+    if (!hasEn) m.push(es ? 'Cuerpo EN' : 'Body EN');
     return m;
   };
 
@@ -281,7 +285,13 @@ export default function BlogEditor() {
     await load(false);
   }
 
-  function edit(p: any) {
+  async function edit(p: any) {
+    // La lista es LIGERA (sin cuerpos). Traemos el artículo completo al abrir a editar.
+    let full = p;
+    if (p.id && (p.body_es === undefined || p.body_en === undefined)) {
+      try { const r = await fetch(`/api/admin/blog?id=${encodeURIComponent(p.id)}`); const j = await r.json(); if (j?.post) full = { ...p, ...j.post }; } catch {}
+    }
+    p = full;
     const d = p.publish_at ? new Date(p.publish_at) : null;
     const pad = (n: number) => String(n).padStart(2, '0');
     setTitles([]); setTopic('');
@@ -379,8 +389,12 @@ export default function BlogEditor() {
   // Completa el idioma que falte en TODOS los artículos: si a un post le falta el
   // cuerpo en ES o EN, lo traduce del que sí tiene (evita mezclar idiomas).
   async function bulkComplete() {
+    // La lista es ligera (sin cuerpos): pedimos la versión COMPLETA solo para detectar
+    // los idiomas incompletos/desbalanceados (necesita el largo real del texto).
+    let fullList = posts;
+    try { const r = await fetch('/api/admin/blog?full=1'); const j = await r.json(); if (Array.isArray(j.posts)) fullList = j.posts; } catch {}
     // Incompletos = falta un idioma O uno está mucho más corto que el otro (stub/mezclado).
-    const gap = posts.filter((p) => {
+    const gap = fullList.filter((p) => {
       const lenEs = String(p.body_es || '').trim().length, lenEn = String(p.body_en || '').trim().length;
       const max = Math.max(lenEs, lenEn), min = Math.min(lenEs, lenEn);
       if (max === 0) return false;
@@ -422,7 +436,7 @@ export default function BlogEditor() {
       const r = await fetch('/api/admin/blog/ai', { method: 'POST', body: JSON.stringify({ mode: 'enhance', id: p.id }) });
       const j = await r.json();
       if (r.ok && (j.body_es || j.body_en)) {
-        edit(p);
+        await edit(p);
         setF((s: any) => ({ ...s, body_es: j.body_es || s.body_es, body_en: j.body_en || s.body_en, _suggestedSlug: j.suggestedSlug || '' }));
         toast(es ? '✨ Mejorado. Revisa el texto y guarda.' : '✨ Enhanced. Review and save.', 'ok');
       } else toast(j.code === 'no_key' ? (es ? 'IA no configurada.' : 'AI not configured.') : (es ? 'La IA no pudo mejorar.' : 'AI could not enhance.'));
@@ -432,8 +446,10 @@ export default function BlogEditor() {
   // Completa/traduce el idioma que falte de UN post. Si ya tiene ambos, pregunta y
   // fuerza (regenera el idioma más corto a partir del más largo).
   async function completeOne(p: any) {
-    const lenEs = String(p.body_es || '').trim().length, lenEn = String(p.body_en || '').trim().length;
-    const both = lenEs > 0 && lenEn > 0;
+    // La fila de la lista es ligera: usa banderas has_es/has_en si no trae el cuerpo.
+    const both = p.body_es !== undefined
+      ? (String(p.body_es || '').trim().length > 0 && String(p.body_en || '').trim().length > 0)
+      : !!(p.has_es && p.has_en);
     if (both && !await confirmDialog(es ? 'Este artículo ya tiene texto en los dos idiomas. ¿Volver a traducir el idioma más corto a partir del más completo?' : 'This article already has text in both languages. Re-translate the shorter one from the more complete one?')) return;
     setAi(true);
     try {
