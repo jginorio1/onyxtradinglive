@@ -168,8 +168,35 @@ export async function getAdsConfigFresh(): Promise<AdsConfig> {
   _adsCfgCache = { at: Date.now(), cfg };
   return cfg;
 }
+// Los PINES y el on/off por ubicación viven en su PROPIA clave ('ads_placements'),
+// separada del bloque grande 'ads'. Se escribe SIEMPRE completa (sin leer-modificar-
+// escribir), así el retraso de lectura de la BD no puede borrarla. buildAdsConfig la
+// superpone sobre el bloque 'ads'.
+type AdsPlacements = { partnerSlotPin: Record<string, string>; partnerFillSlots: Record<string, boolean> };
+export async function getAdsPlacements(): Promise<AdsPlacements> {
+  const p = await getSetting<Partial<AdsPlacements>>('ads_placements', { partnerSlotPin: {}, partnerFillSlots: {} });
+  return {
+    partnerSlotPin: p.partnerSlotPin && typeof p.partnerSlotPin === 'object' ? p.partnerSlotPin : {},
+    partnerFillSlots: p.partnerFillSlots && typeof p.partnerFillSlots === 'object' ? p.partnerFillSlots : {},
+  };
+}
+// Guarda pines + fills como un objeto COMPLETO (la UI siempre manda el mapa entero).
+// Escritura directa de reemplazo: sin leer antes, así nada se pierde por el retraso.
+export async function saveAdsPlacements(p: Partial<AdsPlacements>) {
+  const clean: AdsPlacements = { partnerSlotPin: {}, partnerFillSlots: {} };
+  if (p.partnerSlotPin && typeof p.partnerSlotPin === 'object') {
+    for (const k of Object.keys(p.partnerSlotPin)) { const v = (p.partnerSlotPin as any)[k]; if (v && typeof v === 'string') clean.partnerSlotPin[k] = v; }
+  }
+  if (p.partnerFillSlots && typeof p.partnerFillSlots === 'object') {
+    for (const k of Object.keys(p.partnerFillSlots)) { const v = (p.partnerFillSlots as any)[k]; if (v === true || v === false) clean.partnerFillSlots[k] = v; }
+  }
+  await saveSetting('ads_placements', clean);
+  invalidateAdsConfigCache();
+}
+
 async function buildAdsConfig(): Promise<AdsConfig> {
   const c = await getSetting<Partial<AdsConfig>>('ads', DEFAULT_CFG);
+  const placements = await getAdsPlacements();   // pines/fills desde su clave dedicada
   return {
     enabled: c.enabled !== false,
     nativeEnabled: c.nativeEnabled === true,
@@ -179,8 +206,12 @@ async function buildAdsConfig(): Promise<AdsConfig> {
     riskDisclaimer: { es: c.riskDisclaimer?.es || DEFAULT_CFG.riskDisclaimer.es, en: c.riskDisclaimer?.en || DEFAULT_CFG.riskDisclaimer.en },
     freqCap: typeof c.freqCap === 'number' ? c.freqCap : DEFAULT_CFG.freqCap,
     partnerFill: c.partnerFill !== false,
-    partnerFillSlots: c.partnerFillSlots && typeof c.partnerFillSlots === 'object' ? c.partnerFillSlots : {},
-    partnerSlotPin: c.partnerSlotPin && typeof c.partnerSlotPin === 'object' ? c.partnerSlotPin : {},
+    // Pines/fills: PRIMERO la clave dedicada 'ads_placements'; si está vacía, se cae
+    // al bloque viejo 'ads' (compatibilidad con datos anteriores).
+    partnerFillSlots: Object.keys(placements.partnerFillSlots).length ? placements.partnerFillSlots
+      : (c.partnerFillSlots && typeof c.partnerFillSlots === 'object' ? c.partnerFillSlots : {}),
+    partnerSlotPin: Object.keys(placements.partnerSlotPin).length ? placements.partnerSlotPin
+      : (c.partnerSlotPin && typeof c.partnerSlotPin === 'object' ? c.partnerSlotPin : {}),
     caps: c.caps && typeof c.caps === 'object' ? c.caps : {},
     defaultCap: typeof c.defaultCap === 'number' && c.defaultCap > 0 ? c.defaultCap : DEFAULT_CFG.defaultCap,
     spaceCommissionPct: typeof c.spaceCommissionPct === 'number' ? c.spaceCommissionPct : DEFAULT_CFG.spaceCommissionPct,

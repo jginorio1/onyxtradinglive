@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { AD_SLOTS, getAdsConfig, getAdsConfigFresh, saveAdsConfig, rateCard, slotByKey } from '@/lib/ads';
+import { AD_SLOTS, getAdsConfig, getAdsConfigFresh, saveAdsConfig, saveAdsPlacements, rateCard, slotByKey } from '@/lib/ads';
 import { slotCap, dailyAvailability, listBookings, confirmPaid, cancelBooking, createBooking, sweepBookings } from '@/lib/adBooking';
 
 export const dynamic = 'force-dynamic';
@@ -82,15 +82,11 @@ export async function POST(req: Request) {
     if (b.holdMinutes !== undefined) patch.holdMinutes = Math.max(5, Math.round(Number(b.holdMinutes) || 45));
     if (b.maturationDays !== undefined) patch.maturationDays = Math.max(0, Math.round(Number(b.maturationDays) || 14));
     if (b.partnerFill !== undefined) patch.partnerFill = b.partnerFill !== false;
-    if (b.partnerFillSlots && typeof b.partnerFillSlots === 'object') {
-      const pfs: Record<string, boolean> = {};
-      for (const k of Object.keys(b.partnerFillSlots)) { const v = b.partnerFillSlots[k]; if (v === true || v === false) pfs[k] = v; }
-      patch.partnerFillSlots = pfs;
-    }
-    if (b.partnerSlotPin && typeof b.partnerSlotPin === 'object') {
-      const pin: Record<string, string> = {};
-      for (const k of Object.keys(b.partnerSlotPin)) { const v = b.partnerSlotPin[k]; if (v && typeof v === 'string') pin[k] = v; }
-      patch.partnerSlotPin = pin;
+    // PINES y FILLS por ubicación: se guardan en su CLAVE DEDICADA ('ads_placements'),
+    // NO en el bloque grande 'ads'. Escritura completa de reemplazo → inmune al retraso
+    // de lectura de la BD que borraba los datos (leer-modificar-escribir del bloque).
+    if ((b.partnerFillSlots && typeof b.partnerFillSlots === 'object') || (b.partnerSlotPin && typeof b.partnerSlotPin === 'object')) {
+      await saveAdsPlacements({ partnerSlotPin: b.partnerSlotPin || {}, partnerFillSlots: b.partnerFillSlots || {} });
     }
     if (b.quoteValidityDays !== undefined) patch.quoteValidityDays = Math.max(1, Math.min(365, Math.round(Number(b.quoteValidityDays) || 15)));
     if (b.quoteTemplate && typeof b.quoteTemplate === 'object') {
@@ -98,7 +94,9 @@ export async function POST(req: Request) {
       const pick = (o: any) => { const r: any = {}; for (const k of keys) if (typeof o?.[k] === 'string') r[k] = String(o[k]).slice(0, 4000); return r; };
       patch.quoteTemplate = { es: pick(b.quoteTemplate.es), en: pick(b.quoteTemplate.en) };
     }
-    await saveAdsConfig(patch);
+    // Solo tocamos el bloque grande 'ads' si de verdad cambió algo suyo (evita
+    // reescribirlo en vano y que el retraso de lectura lo borre).
+    if (Object.keys(patch).length) await saveAdsConfig(patch);
     // Diagnóstico: devolvemos qué pines RECIBIÓ el servidor del panel y qué pines
     // QUEDARON guardados tras releer fresco de la BD. Si receivedPins trae el pin
     // pero savedPins sale vacío, el problema está en la escritura; si receivedPins

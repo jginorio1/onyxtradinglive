@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   //   /api/ads/serve?slot=blog_top&debug=1
   // y mira "build" y "pins": si "build" no es "ads-pin-exclusive-v2" o "pins" sale
   // vacío, el fix aún no está desplegado.
-  const BUILD = 'ads-pin-exclusive-v5';
+  const BUILD = 'ads-pin-exclusive-v6';
   const cfg = await getAdsConfig();
   const noStore = { headers: { 'cache-control': 'no-store' } };
 
