@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   //   /api/ads/serve?slot=blog_top&debug=1
   // y mira "build" y "pins": si "build" no es "ads-pin-exclusive-v2" o "pins" sale
   // vacío, el fix aún no está desplegado.
-  const BUILD = 'ads-pin-exclusive-v4';
+  const BUILD = 'ads-pin-exclusive-v5';
   const cfg = await getAdsConfig();
   const noStore = { headers: { 'cache-control': 'no-store' } };
 
@@ -32,28 +32,39 @@ export async function GET(req: Request) {
   // la BD acepta la escritura o la rechaza en silencio (RLS, tamaño, etc.).
   if (url.searchParams.get('writetest')) {
     const stamp = 'wt' + Date.now();
-    let writeError: any = null, backKeys: any = null, backPins: any = null, backTest: any = null;
+    const out: any = { build: BUILD, wroteStamp: stamp };
+    // (1) ¿EXISTE la fila 'ads' y cuántas hay?
     try {
-      const { data: cur } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'ads');
-      const curVal: any = (cur && cur[0] && (cur[0] as any).value) || {};
-      const merged = { ...curVal, partnerSlotPin: { ...(curVal.partnerSlotPin || {}), __TEST__: stamp } };
+      const { data: rows, error } = await supabaseAdmin.from('app_settings').select('key,value').eq('key', 'ads');
+      out.ads_selectError = error ? (error.message || 'x') : null;
+      out.ads_rowCount = rows ? rows.length : 0;
+      out.ads_rawValue = rows && rows[0] ? (rows[0] as any).value : 'NO_ROW';
+    } catch (e: any) { out.ads_selectError = 'THROW:' + (e?.message || 'x'); }
+    // (2) Escribir a la fila 'ads' y releer.
+    try {
+      const cur: any = out.ads_rawValue && out.ads_rawValue !== 'NO_ROW' ? out.ads_rawValue : {};
+      const merged = { ...cur, partnerSlotPin: { ...(cur.partnerSlotPin || {}), __TEST__: stamp } };
       const { error } = await supabaseAdmin.from('app_settings').upsert({ key: 'ads', value: merged, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-      writeError = error ? (error.message || JSON.stringify(error)) : null;
+      out.ads_writeError = error ? (error.message || JSON.stringify(error)) : null;
       const { data: back } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'ads');
-      const backVal: any = (back && back[0] && (back[0] as any).value) || {};
-      backKeys = Object.keys(backVal);
-      backPins = backVal.partnerSlotPin ?? null;
-      backTest = backVal.partnerSlotPin?.__TEST__ ?? null;
-    } catch (e: any) { writeError = 'THROW:' + (e?.message || 'x'); }
-    return NextResponse.json({
-      build: BUILD,
-      test: 'write-partnerSlotPin-to-ads',
-      wroteStamp: stamp,
-      writeError,                 // null = el upsert no dio error
-      backTest,                   // debe ser === wroteStamp si persistió
-      backPins,                   // partnerSlotPin tras la escritura
-      backKeys,                   // campos de la fila tras escribir
-    }, noStore);
+      const bv: any = (back && back[0] && (back[0] as any).value) || {};
+      out.ads_backKeys = Object.keys(bv);
+      out.ads_backTest = bv.partnerSlotPin?.__TEST__ ?? null;   // === stamp si persistió
+    } catch (e: any) { out.ads_writeError = 'THROW:' + (e?.message || 'x'); }
+    // (3) Escribir a una CLAVE NUEVA de prueba y releer (¿persiste ALGUNA escritura?).
+    try {
+      const testKey = 'ads_wtest';
+      const { error } = await supabaseAdmin.from('app_settings').upsert({ key: testKey, value: { stamp }, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+      out.newkey_writeError = error ? (error.message || 'x') : null;
+      const { data: back } = await supabaseAdmin.from('app_settings').select('value').eq('key', testKey);
+      out.newkey_back = back && back[0] ? (back[0] as any).value : 'NO_ROW';
+      out.newkey_persisted = (out.newkey_back && out.newkey_back.stamp === stamp);   // true = las escrituras SÍ funcionan
+    } catch (e: any) { out.newkey_writeError = 'THROW:' + (e?.message || 'x'); }
+    // (4) ¿Hay clave de servicio configurada? (solo longitud, no la clave)
+    out.hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    out.serviceKeyLen = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').length;
+    out.hasUrl = !!process.env.SUPABASE_URL;
+    return NextResponse.json(out, noStore);
   }
 
   // Modo diagnóstico: NO registra impresión. Muestra la config normalizada QUE LEE
