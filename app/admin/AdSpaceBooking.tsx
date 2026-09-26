@@ -57,7 +57,17 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
     if (j.error) setMsg(j.error);
     return j;
   };
-  const saveSettings = async () => { const j = await post({ action: 'save_settings', caps, ...cfg, partnerFill: pFill, partnerFillSlots: pSlots, partnerSlotPin: pPin }); if (j.ok) { setMsg(L('Guardado ✓', 'Saved ✓')); await load(); } };
+  const saveSettings = async () => {
+    const j = await post({ action: 'save_settings', caps, ...cfg, partnerFill: pFill, partnerFillSlots: pSlots, partnerSlotPin: pPin });
+    if (j.ok) {
+      // Diagnóstico visible: cuántos pines quedaron guardados en la BD. Si fijaste uno
+      // y aquí dice "0", el guardado no está persistiendo el pin (avísame ese número).
+      const nSaved = j.savedPins ? Object.keys(j.savedPins).length : 0;
+      const nSent = pPin ? Object.keys(pPin).length : 0;
+      setMsg(L(`Guardado ✓ · pines enviados ${nSent}, guardados ${nSaved}`, `Saved ✓ · pins sent ${nSent}, saved ${nSaved}`));
+      await load();
+    }
+  };
   // Guardar plantilla de cotización + días de validez.
   const setTplField = (k: string, v: string) => setTpl((p: any) => ({ ...p, [tplLang]: { ...(p?.[tplLang] || {}), [k]: v } }));
   const saveTemplate = async () => { const j = await post({ action: 'save_settings', quoteValidityDays: validDays, quoteTemplate: tpl }); if (j.ok) { setMsg(L('Plantilla guardada ✓', 'Template saved ✓')); await load(); } };

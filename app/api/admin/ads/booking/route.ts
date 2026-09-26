@@ -99,7 +99,18 @@ export async function POST(req: Request) {
       patch.quoteTemplate = { es: pick(b.quoteTemplate.es), en: pick(b.quoteTemplate.en) };
     }
     await saveAdsConfig(patch);
-    return NextResponse.json({ ok: true });
+    // Diagnóstico: devolvemos qué pines RECIBIÓ el servidor del panel y qué pines
+    // QUEDARON guardados tras releer fresco de la BD. Si receivedPins trae el pin
+    // pero savedPins sale vacío, el problema está en la escritura; si receivedPins
+    // ya viene vacío, el panel no lo mandó.
+    const after = await getAdsConfigFresh();
+    return NextResponse.json({
+      ok: true,
+      receivedPins: b.partnerSlotPin ?? null,
+      receivedFills: b.partnerFillSlots ?? null,
+      savedPins: after.partnerSlotPin || {},
+      savedFills: after.partnerFillSlots || {},
+    });
   }
 
   // Calendario de disponibilidad de una ubicación.
