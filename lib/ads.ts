@@ -148,8 +148,13 @@ const DEFAULT_CFG: AdsConfig = {
 // que los banners aparezcan más rápido. (Se invalida solo al pasar el TTL.)
 let _adsCfgCache: { at: number; cfg: AdsConfig } | null = null;
 export function invalidateAdsConfigCache() { _adsCfgCache = null; }
+// TTL corto: la config (incluye los pines de partners) es un solo registro pequeño,
+// así que cachearla 15s ya evita casi todas las lecturas repetidas SIN retrasar los
+// cambios del admin. Antes eran 60s y, como cada instancia serverless tiene su propia
+// caché, tras fijar un partner podía seguir rotando en todos los huecos hasta 1 min.
+const ADS_CFG_TTL = 15000;
 export async function getAdsConfig(): Promise<AdsConfig> {
-  if (_adsCfgCache && Date.now() - _adsCfgCache.at < 60000) return _adsCfgCache.cfg;
+  if (_adsCfgCache && Date.now() - _adsCfgCache.at < ADS_CFG_TTL) return _adsCfgCache.cfg;
   const cfg = await buildAdsConfig();
   _adsCfgCache = { at: Date.now(), cfg };
   return cfg;
