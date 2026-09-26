@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { getPublishedBySlug, relatedByTags, blogCoverUrl, findRedirect, slugFor } from '@/lib/blog';
+import { getPublishedBySlug, relatedByTags, blogCoverUrl, blogCoverOg, findRedirect, slugFor } from '@/lib/blog';
 import { mdToHtml, parseFaq } from '@/lib/md';
 import { blogAuthorsSettings, resolveBlogAuthor } from '@/lib/settings';
 import { serverLang, localeAlternates, SITE } from '@/lib/locale';
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!es && !hasEn && hasEs) es = true;
   const title = pref(es ? p.title_es : p.title_en, es ? p.title_en : p.title_es);
   const desc = pref(es ? p.excerpt_es : p.excerpt_en, es ? p.excerpt_en : p.excerpt_es);
-  const cover = abs(blogCoverUrl(p, es ? 'es' : 'en'));
+  const cover = abs(blogCoverOg(p, es ? 'es' : 'en'));   // PNG real para compartir en redes
   // hreflang con el slug propio de cada idioma.
   const esUrl = `${SITE}/blog/${p.slug}`;
   const enUrl = `${SITE}/en/blog/${slugFor(p, 'en')}`;
@@ -61,18 +61,22 @@ export default async function BlogArticle({ params }: { params: { slug: string }
   const excerpt = pref(es ? p.excerpt_es : p.excerpt_en, es ? p.excerpt_en : p.excerpt_es);
   const body = pref(es ? p.body_es : p.body_en, es ? p.body_en : p.body_es);
   const html = mdToHtml(body);
-  const cover = blogCoverUrl(p, es ? 'es' : 'en');
+  const cover = blogCoverUrl(p, es ? 'es' : 'en');       // <img> visible: SVG en línea instantáneo
+  const coverOg = blogCoverOg(p, es ? 'es' : 'en');      // schema/og: PNG real por URL
   const coverAlt = pref(es ? p.cover_alt_es : p.cover_alt_en, es ? p.cover_alt_en : p.cover_alt_es) || title;
 
   const selfPath = es ? `/blog/${p.slug}` : `/en/blog/${slugFor(p, 'en')}`;
-  // Autor del ARTÍCULO (por su author_id); si no tiene, el por defecto del plantel.
-  const authorRoster = await blogAuthorsSettings();
+  // Autor del ARTÍCULO y artículos relacionados EN PARALELO (antes se pedían en
+  // serie, sumando latencia; el artículo abre más rápido consultándolos a la vez).
+  const [authorRoster, related] = await Promise.all([
+    blogAuthorsSettings(),
+    relatedByTags(p, 3).catch(() => []),
+  ]);
   const author = resolveBlogAuthor(authorRoster, p.author_id);
   const trader = es ? author.trader_es : author.trader_en;
   const exp = es ? author.experience_es : author.experience_en;
   const authorRole = [trader, exp].filter(Boolean).join(' · ');   // "Analista · 8 años en forex"
   const authorBio = es ? author.bio_es : author.bio_en;
-  const related = await relatedByTags(p, 3).catch(() => []);
   const faqs = parseFaq(body);
 
   const updated = p.updated_at || p.published_at;
@@ -89,7 +93,7 @@ export default async function BlogArticle({ params }: { params: { slug: string }
     '@context': 'https://schema.org', '@type': (p as any).is_news ? 'NewsArticle' : 'BlogPosting',
     headline: title, description: excerpt, inLanguage: es ? 'es' : 'en',
     datePublished: p.published_at, dateModified: updated,
-    image: [abs(cover)], wordCount,
+    image: [abs(coverOg)], wordCount,
     mainEntityOfPage: `${SITE}${selfPath}`,
     author: authorLd,
     publisher: { '@type': 'Organization', name: 'Onyx Trading Live', logo: { '@type': 'ImageObject', url: `${SITE}/onyx-symbol.png` } },

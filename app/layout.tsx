@@ -262,7 +262,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <PendingCheckoutGate />
             {!path.startsWith('/admin') && !path.startsWith('/dashboard') && <RepInviteBanner />}
             <VisitorBeacon />
-            {!path.startsWith('/admin') && !path.startsWith('/dashboard') && <StickyAd lang={lang} />}
+            {/* Banner sticky de abajo RETIRADO por completo (molestaba y tapaba
+                contenido en escritorio y móvil). Si algún día se quiere reactivar,
+                volver a montar <StickyAd lang={lang} /> aquí. */}
             {loggedIn && <MonitorBeacon />}
             <TzSync />
             <Toaster />
