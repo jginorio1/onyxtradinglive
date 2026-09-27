@@ -55,7 +55,10 @@ export default function SiteFooter() {
   const extra: [string, string][] = (fx?.links || [])
     .map((l: any) => [l.href, es ? l.es : l.en] as [string, string])
     .filter(([h]: [string, string]) => h && !known.has(h));
-  if (extra.length) cols.push({ title: L('Más', 'More'), items: extra });
+  // Los enlaces extra (ej. "Inicio") NO van como columna aparte "Más": eso dejaba un
+  // grupo suelto y descuadrado en móvil. Se anexan a la última columna (Empresa) para
+  // que el pie quede en una rejilla pareja de 4 grupos (2×2 en móvil).
+  if (extra.length) cols[cols.length - 1].items = [...cols[cols.length - 1].items, ...extra];
 
   const tagline = (es ? (fx?.tagline_es) : (fx?.tagline_en)) || L('Tu trading bajo control: estadísticas en vivo, Onyx Guardian y robots.', 'Your trading under control: live stats, Onyx Guardian and robots.');
   const social: any[] = (fx?.social || []).filter((x: any) => x && x.url && x.on !== false);
