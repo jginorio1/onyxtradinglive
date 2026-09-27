@@ -105,16 +105,18 @@ export default function SiteFooter() {
           </div>
         </div>
 
-        {/* Contacto (QR) + columnas de enlaces */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px 30px', alignItems: 'flex-start' }}>
+        {/* Contacto (QR) + columnas de enlaces.
+            En móvil: columnas primero en 2 parejas, y el QR baja centrado al pie
+            (ver .footer-contact/.footer-cols/.footer-qr en globals.css). */}
+        <div className="footer-contact" style={{ display: 'flex', flexWrap: 'wrap', gap: '24px 30px', alignItems: 'flex-start' }}>
           {qrUrl && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '0 0 auto' }}>
+            <div className="footer-qr" style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '0 0 auto' }}>
               <span style={lbl}>{L('Contacto', 'Contact')}</span>
               <img src={`/api/qr?data=${encodeURIComponent(qrUrl)}&size=200&fg=0b1020&bg=ffffff`} alt={L('Código QR', 'QR code')} width={92} height={92} loading="lazy" decoding="async" style={{ borderRadius: 10, background: '#fff', padding: 6 }} />
               {qrHandle && <span className="muted" style={{ fontSize: 12 }}>{qrHandle}</span>}
             </div>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 22, flex: 1, minWidth: 240 }}>
+          <div className="footer-cols" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 22, flex: 1, minWidth: 240 }}>
             {cols.map((c, i) => (
               <div key={i}>
                 <div style={lbl}>{c.title}</div>

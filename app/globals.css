@@ -827,6 +827,16 @@ html[data-theme="light"] .sk-bnav.on{color:#8b93ff;}
   .topbar .logo img{ width:32px !important; height:32px !important; }
 }
 
+/* Footer en móvil: las columnas de enlaces van primero en 2 parejas alineadas
+   arriba, y el bloque del QR baja al pie, centrado y compacto (antes el QR quedaba
+   grande y solo a la izquierda, dejando las columnas descuadradas). En escritorio
+   no cambia nada. */
+@media (max-width: 640px) {
+  .footer-contact { flex-direction: column; }
+  .footer-cols { order: 1; width: 100%; grid-template-columns: 1fr 1fr !important; gap: 18px 16px !important; align-content: start; }
+  .footer-qr { order: 2; width: 100%; align-items: center; text-align: center; margin-top: 4px; }
+}
+
 /* FAQ desplegables (details/summary): oculta la flecha nativa para dejar solo la ▶ morada,
    y gira la ▶ cuando la pregunta está abierta. Mismo estilo en landing, embajadores y mentores. */
 summary::-webkit-details-marker { display: none; }
