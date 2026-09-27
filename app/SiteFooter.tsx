@@ -26,17 +26,17 @@ export default function SiteFooter() {
   // Columnas por categoría (rutas reales de la app). Si el admin personalizó
   // enlaces en Landing Builder, los añadimos como columna extra "Más".
   const cols: { title: string; items: [string, string][] }[] = [
-    { title: L('Producto', 'Product'), items: [
-      ['/bot-lab', L('Bot Lab · Marketplace', 'Bot Lab · Marketplace')],
-      ['/bot-builder', L('Crea tu bot', 'Build a bot')],
-      ['/pricing', L('Planes', 'Plans')],
-      ['/copy', 'Onyx Copy'],
-    ] },
     { title: L('Recursos', 'Resources'), items: [
       ['/guia', L('Guía', 'Guide')],
       ['/blog', 'Blog'],
       ['/prop-firms', L('Prop firms', 'Prop firms')],
       ['/analiza', L('Analiza gratis', 'Free analysis')],
+    ] },
+    { title: L('Producto', 'Product'), items: [
+      ['/bot-lab', L('Bot Lab · Marketplace', 'Bot Lab · Marketplace')],
+      ['/bot-builder', L('Crea tu bot', 'Build a bot')],
+      ['/pricing', L('Planes', 'Plans')],
+      ['/copy', 'Onyx Copy'],
     ] },
     { title: L('Programa', 'Program'), items: [
       ['/embajadores', L('Embajadores', 'Ambassadors')],
