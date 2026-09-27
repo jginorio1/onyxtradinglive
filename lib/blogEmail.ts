@@ -3,6 +3,15 @@ import { sendManual } from '@/lib/campaigns';
 import { slugFor } from '@/lib/blog';
 import { articleUrl } from '@/lib/social';
 import { logError } from '@/lib/errlog';
+import { blogAutopilotSettings } from '@/lib/settings';
+
+// Interruptor GLOBAL de correos del blog. Un solo lugar de control: si el dueño
+// apaga "autoEmail" en el autopiloto del blog, NO sale ningún correo de artículos
+// (ni de los generados por el piloto ni de los manuales). Así se evita el "me
+// llegan 5 artículos por email" sin tener que apagar cada post uno por uno.
+async function blogEmailGloballyOn(): Promise<boolean> {
+  try { const s = await blogAutopilotSettings(); return s?.autoEmail !== false; } catch { return true; }
+}
 
 // ============================================================
 // Envío de un artículo del blog por email a la base de datos (segmento de
@@ -42,6 +51,7 @@ async function markSent(id: string) {
 // (email_sent_at) no repite, salvo force.
 export async function sendBlogEmailNow(post: any, segment = 'all', force = false): Promise<{ count: number; sent: number } | null> {
   if (!post) return null;
+  if (!(await blogEmailGloballyOn())) return null;   // interruptor global apagado → no enviar
   if (post.email_sent_at && !force) return null;
   // Necesita contenido y al menos un título.
   if (!(post.body_es || post.body_en) || !(post.title_es || post.title_en)) return null;
@@ -58,6 +68,7 @@ export async function sendBlogEmailNow(post: any, segment = 'all', force = false
 //  · when 'schedule' → cuando llega email_at (independiente de la publicación).
 //  · when 'now'      → normalmente ya salió al guardar; si quedó pendiente, sale.
 export async function sendDueBlogEmails(): Promise<number> {
+  if (!(await blogEmailGloballyOn())) return 0;   // interruptor global apagado → no enviar nada
   const nowIso = new Date().toISOString();
   let rows: any[] = [];
   try {

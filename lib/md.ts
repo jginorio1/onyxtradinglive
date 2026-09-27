@@ -68,11 +68,14 @@ function renderFigure(lines: string[]): string {
 
 // :::faq … ::: → acordeón. Cada par se escribe "Q: pregunta" / "A: respuesta".
 function renderFaq(lines: string[]): string {
-  const pairs = parseFaqLines(lines);
+  // Blindaje: solo pares con pregunta Y respuesta reales. Sin esto, un par con la
+  // pregunta vacía dibujaba un <details> sin <summary> y el navegador mostraba su
+  // texto por defecto "Details" que al abrir no llevaba a nada (bug reportado en móvil).
+  const pairs = parseFaqLines(lines).filter((p) => p.q.trim() && p.a.trim());
   if (!pairs.length) return '';
   const items = pairs.map((p) =>
     `<details class="blog-faq-item" style="border:1px solid var(--line);border-radius:10px;padding:2px 12px;margin:8px 0;background:var(--card)">`
-    + `<summary style="cursor:pointer;font-weight:600;padding:10px 0;list-style:none">${esc(p.q)}</summary>`
+    + `<summary style="cursor:pointer;font-weight:600;padding:10px 0;list-style:none;-webkit-appearance:none">${esc(p.q.trim())}</summary>`
     + `<div style="padding:0 0 12px;color:var(--mut,#9aa3b8);line-height:1.6">${inline(p.a)}</div></details>`
   ).join('');
   return `<div class="blog-faq" style="margin:16px 0">${items}</div>`;

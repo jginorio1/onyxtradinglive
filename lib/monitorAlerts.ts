@@ -74,11 +74,32 @@ export async function runAlerts(): Promise<{ checked: number; fired: string[] }>
   if (!cfg.enabled) return { checked: 0, fired };
 
   // 1) Blog atascado: última publicación hace demasiado.
+  // IMPORTANTE: excluimos published_at NULL. Postgres ordena los NULL PRIMERO en
+  // "DESC", así que si un post publicado quedó sin published_at, la consulta antigua
+  // leía ese NULL como "el más reciente", creía que no había fecha y disparaba 999 h
+  // (falsa alarma: "el blog no publica" cuando SÍ había publicado). Con .not(is null)
+  // y, de respaldo, la fecha real más reciente entre published_at y created_at.
   try {
-    const { data } = await supabaseAdmin.from('blog_posts').select('published_at').eq('status', 'published').order('published_at', { ascending: false }).limit(1);
-    const last = (data || [])[0]?.published_at;
-    const hrs = last ? (Date.now() - new Date(last).getTime()) / H : 999;
-    if (hrs > cfg.blogStuckHours) { if (await fire(cfg, 'blog_stuck', `📝 El *blog automático* no publica desde hace ${Math.round(hrs)} h. Revisa el autopiloto o el crédito de la IA.`)) fired.push('blog_stuck'); }
+    const { data } = await supabaseAdmin.from('blog_posts')
+      .select('published_at, created_at')
+      .eq('status', 'published')
+      .not('published_at', 'is', null)
+      .order('published_at', { ascending: false })
+      .limit(1);
+    let last = (data || [])[0]?.published_at || null;
+    // Respaldo: si por lo que sea no vino published_at, usa el created_at más reciente
+    // de un post publicado (así nunca dispara por un dato faltante, solo por atasco real).
+    if (!last) {
+      const { data: d2 } = await supabaseAdmin.from('blog_posts')
+        .select('created_at').eq('status', 'published')
+        .order('created_at', { ascending: false }).limit(1);
+      last = (d2 || [])[0]?.created_at || null;
+    }
+    // Si de plano no hay ningún post publicado, NO avisamos (no es un "atasco").
+    if (last) {
+      const hrs = (Date.now() - new Date(last).getTime()) / H;
+      if (hrs > cfg.blogStuckHours) { if (await fire(cfg, 'blog_stuck', `📝 El *blog automático* no publica desde hace ${Math.round(hrs)} h. Revisa el autopiloto o el crédito de la IA.`)) fired.push('blog_stuck'); }
+    }
   } catch {}
 
   // 2) Pico de errores en la última hora.
