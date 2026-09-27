@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   //   /api/ads/serve?slot=blog_top&debug=1
   // y mira "build" y "pins": si "build" no es "ads-pin-exclusive-v2" o "pins" sale
   // vacío, el fix aún no está desplegado.
-  const BUILD = 'ads-pin-exclusive-v8';
+  const BUILD = 'ads-pin-exclusive-v9';
   const cfg = await getAdsConfig();
   const noStore = { headers: { 'cache-control': 'no-store' } };
 
@@ -91,8 +91,21 @@ export async function GET(req: Request) {
       const { data: rows } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'ads_placements');
       rawPlacements = rows && rows[0] ? (rows[0] as any).value : 'NO_ROW';
     } catch (e: any) { rawPlacements = 'ERR:' + (e?.message || 'x'); }
+    // A QUÉ BASE se conecta la app (solo el host, nunca la clave). Compáralo con el
+    // Project URL de tu Supabase (Settings → API). Si el "ref" difiere → es OTRA base.
+    let dbHost = 'n/a';
+    try { dbHost = new URL(process.env.SUPABASE_URL || '').host; } catch {}
+    // updated_at de la fila 'ads' que LEE la app: si no coincide con el de tu panel
+    // de Supabase tras el SQL, o es viejo, confirma caché o base distinta.
+    let adsUpdatedAt = 'n/a';
+    try {
+      const { data: r2 } = await supabaseAdmin.from('app_settings').select('updated_at').eq('key', 'ads');
+      adsUpdatedAt = r2 && r2[0] ? String((r2[0] as any).updated_at) : 'NO_ROW';
+    } catch {}
     return NextResponse.json({
       build: BUILD,
+      dbHost,          // ← host de la base que usa la app (compáralo con tu Supabase)
+      adsUpdatedAt,    // ← cuándo se actualizó la fila 'ads' que ve la app
       rawPlacements,   // ← lo que hay en la clave dedicada de pines/fills
       slot,
       enabled: cfg.enabled,
