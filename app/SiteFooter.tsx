@@ -63,6 +63,22 @@ export default function SiteFooter() {
     empresa.items = [...empresa.items, ...extra];
   }
 
+  // Atribuciones de marcas de terceros (integraciones de plataformas). El admin puede
+  // sobreescribirlas en Landing Builder (footer.trademarks): texto con una línea por
+  // marca, o un arreglo de líneas. Si no hay override, usamos las de nuestras
+  // integraciones actuales. Deja el arreglo vacío ('') para ocultar el bloque.
+  const DEFAULT_TRADEMARKS = [
+    'MetaTrader 4 & MetaTrader 5 are trademarks of MetaQuotes Ltd.',
+    'cTrader is a trademark of Spotware Systems Ltd.',
+    'TradingView is a trademark of TradingView, Inc.',
+    'Match-Trader is a trademark of Match-Trade Technologies.',
+  ];
+  const rawTm = fx?.trademarks;
+  const trademarks: string[] = rawTm === undefined
+    ? DEFAULT_TRADEMARKS
+    : (Array.isArray(rawTm) ? rawTm : String(rawTm).split('\n'))
+        .map((s: string) => String(s || '').trim()).filter(Boolean);
+
   const tagline = (es ? (fx?.tagline_es) : (fx?.tagline_en)) || L('Tu trading bajo control: estadísticas en vivo, Onyx Guardian y robots.', 'Your trading under control: live stats, Onyx Guardian and robots.');
   const social: any[] = (fx?.social || []).filter((x: any) => x && x.url && x.on !== false);
   const email = (fx?.email || 'support@onyxtradinglive.com').trim();
@@ -146,6 +162,16 @@ export default function SiteFooter() {
             {legal} <Link href="/terms" style={{ color: 'var(--tx)', textDecoration: 'underline' }}>{L('Ver términos', 'See terms')}</Link>
           </div>
         </div>
+
+        {/* Atribuciones de marcas de terceros (integraciones de plataformas).
+            Editable en Admin → Landing Builder (footer.trademarks): una línea por marca.
+            Nota: mostrar estas atribuciones puede ser requisito de la licencia/API de
+            cada proveedor; revisa tus acuerdos. */}
+        {trademarks.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', textAlign: 'center', fontSize: 11.5, color: 'var(--mut)', lineHeight: 1.6, paddingTop: 4 }}>
+            {trademarks.map((t, i) => <span key={i}>{t}</span>)}
+          </div>
+        )}
 
         {/* Barra inferior */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--mut)' }}>
