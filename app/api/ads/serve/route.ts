@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   //   /api/ads/serve?slot=blog_top&debug=1
   // y mira "build" y "pins": si "build" no es "ads-pin-exclusive-v2" o "pins" sale
   // vacío, el fix aún no está desplegado.
-  const BUILD = 'ads-pin-exclusive-v9';
+  const BUILD = 'ads-pin-exclusive-v10';
   const cfg = await getAdsConfig();
   const noStore = { headers: { 'cache-control': 'no-store' } };
 
@@ -95,6 +95,20 @@ export async function GET(req: Request) {
     // Project URL de tu Supabase (Settings → API). Si el "ref" difiere → es OTRA base.
     let dbHost = 'n/a';
     try { dbHost = new URL(process.env.SUPABASE_URL || '').host; } catch {}
+    // A QUÉ PROYECTO pertenece la SERVICE KEY. La key es un JWT: su parte central
+    // (payload) lleva en claro el "ref" del proyecto y el "role". NO exponemos el
+    // secreto (la firma queda opaca). Si keyRef !== el subdominio de dbHost, la app
+    // tiene la URL de un proyecto y la CLAVE de OTRO → escrituras/lecturas no cuajan.
+    let keyRef = 'n/a', keyRole = 'n/a', keyProjectMatches: any = 'n/a';
+    try {
+      const k = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+      const payload = k.split('.')[1] || '';
+      const json = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+      keyRef = json.ref || 'no-ref';
+      keyRole = json.role || 'no-role';
+      const urlRef = dbHost.split('.')[0];
+      keyProjectMatches = (keyRef === urlRef);   // false = URL y KEY de proyectos distintos
+    } catch (e: any) { keyRef = 'DECODE_ERR:' + (e?.message || 'x'); }
     // updated_at de la fila 'ads' que LEE la app: si no coincide con el de tu panel
     // de Supabase tras el SQL, o es viejo, confirma caché o base distinta.
     let adsUpdatedAt = 'n/a';
@@ -105,6 +119,9 @@ export async function GET(req: Request) {
     return NextResponse.json({
       build: BUILD,
       dbHost,          // ← host de la base que usa la app (compáralo con tu Supabase)
+      keyRef,          // ← proyecto al que pertenece la SERVICE KEY
+      keyRole,         // ← debe ser "service_role"
+      keyProjectMatches, // ← false = URL y KEY de proyectos DISTINTOS (bug de env)
       adsUpdatedAt,    // ← cuándo se actualizó la fila 'ads' que ve la app
       rawPlacements,   // ← lo que hay en la clave dedicada de pines/fills
       slot,

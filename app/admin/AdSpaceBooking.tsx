@@ -239,7 +239,10 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
             </div>
           );
         })()}
-        <div style={{ marginTop: 12 }}><button disabled={busy} onClick={saveSettings} style={btnPS}>{L('Guardar reparto', 'Save split')}</button></div>
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button disabled={busy} onClick={saveSettings} style={btnPS}>{L('Guardar reparto', 'Save split')}</button>
+          {msg && <span style={{ fontSize: 13, fontWeight: 600, color: msg.includes('✓') ? '#5ed6a0' : '#ff8a8a' }}>{msg}</span>}
+        </div>
       </div>
 
       <div style={cardS}>
@@ -265,6 +268,7 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
           <button disabled={busy} onClick={saveSettings} style={btnPS}>{L('Guardar ajustes', 'Save settings')}</button>
           <button disabled={busy} onClick={sweep} style={btnS}>{L('Limpiar vencidas', 'Sweep expired')}</button>
+          {msg && <span style={{ fontSize: 13, fontWeight: 600, color: msg.includes('✓') ? '#5ed6a0' : '#ff8a8a', alignSelf: 'center' }}>{msg}</span>}
         </div>
       </div>
 
@@ -327,7 +331,10 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
                'No active directory partners yet. Add them in Ads → Directory to pin one per placement.')}
           </div>
         )}
-        <div style={{ marginTop: 12 }}><button disabled={busy} onClick={saveSettings} style={btnPS}>{L('Guardar partners', 'Save partners')}</button></div>
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button disabled={busy} onClick={saveSettings} style={btnPS}>{L('Guardar partners', 'Save partners')}</button>
+          {msg && <span style={{ fontSize: 13, fontWeight: 600, color: msg.includes('✓') ? '#5ed6a0' : '#ff8a8a' }}>{msg}</span>}
+        </div>
       </div>
 
       <div style={cardS}>
