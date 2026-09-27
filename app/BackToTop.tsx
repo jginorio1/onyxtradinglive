@@ -33,7 +33,10 @@ export default function BackToTop() {
       style={{
         position: 'fixed',
         left: 16,
-        bottom: `calc(18px + env(safe-area-inset-bottom))`,
+        // Se apila ENCIMA de la píldora "en línea ahora" (abajo-izquierda, ~48px de
+        // alto en bottom:16) para no taparla. +64px la deja justo arriba de la píldora;
+        // si la píldora no está, solo queda un poco más alta, sin molestar.
+        bottom: `calc(72px + env(safe-area-inset-bottom))`,
         zIndex: 900,
         width: 46,
         height: 46,
