@@ -831,6 +831,13 @@ html[data-theme="light"] .sk-bnav.on{color:#8b93ff;}
    arriba, y el bloque del QR baja al pie, centrado y compacto (antes el QR quedaba
    grande y solo a la izquierda, dejando las columnas descuadradas). En escritorio
    no cambia nada. */
+/* Botón "subir al inicio": en escritorio va arriba de la píldora "en línea ahora"
+   (72px); en móvil queda a la misma altura que el botón del chat (22px). */
+.onyx-backtotop { bottom: calc(72px + env(safe-area-inset-bottom)); }
+@media (max-width: 640px) {
+  .onyx-backtotop { bottom: calc(22px + env(safe-area-inset-bottom)); }
+}
+
 @media (max-width: 640px) {
   .footer-contact { flex-direction: column; }
   .footer-cols { order: 1; width: 100%; grid-template-columns: 1fr 1fr !important; gap: 18px 16px !important; align-content: start; }

@@ -38,10 +38,6 @@ export default function SiteFooter() {
       ['/pricing', L('Planes', 'Plans')],
       ['/copy', 'Onyx Copy'],
     ] },
-    { title: L('Programa', 'Program'), items: [
-      ['/embajadores', L('Embajadores', 'Ambassadors')],
-      ['/invita', L('Invita y gana', 'Invite & earn')],
-    ] },
     { title: L('Empresa', 'Company'), items: [
       ['/contacto', L('Contacto', 'Contact')],
       ['/publicidad', L('Publicidad', 'Advertise')],
@@ -50,15 +46,22 @@ export default function SiteFooter() {
       ['/privacy', L('Privacidad', 'Privacy')],
       ['/cookies', 'Cookies'],
     ] },
+    { title: L('Programa', 'Program'), items: [
+      ['/embajadores', L('Embajadores', 'Ambassadors')],
+      ['/invita', L('Invita y gana', 'Invite & earn')],
+    ] },
   ];
   const known = new Set(cols.flatMap((c) => c.items.map(([h]) => h)));
   const extra: [string, string][] = (fx?.links || [])
     .map((l: any) => [l.href, es ? l.es : l.en] as [string, string])
     .filter(([h]: [string, string]) => h && !known.has(h));
-  // Los enlaces extra (ej. "Inicio") NO van como columna aparte "Más": eso dejaba un
-  // grupo suelto y descuadrado en móvil. Se anexan a la última columna (Empresa) para
-  // que el pie quede en una rejilla pareja de 4 grupos (2×2 en móvil).
-  if (extra.length) cols[cols.length - 1].items = [...cols[cols.length - 1].items, ...extra];
+  // Los enlaces extra (ej. "Inicio") NO van como columna aparte "Más" (eso dejaba un
+  // grupo suelto en móvil). Se anexan a la columna EMPRESA (no a la última, que ahora
+  // es Programa) para que "Inicio" quede en un grupo con sentido.
+  if (extra.length) {
+    const empresa = cols.find((c) => c.title === L('Empresa', 'Company')) || cols[cols.length - 1];
+    empresa.items = [...empresa.items, ...extra];
+  }
 
   const tagline = (es ? (fx?.tagline_es) : (fx?.tagline_en)) || L('Tu trading bajo control: estadísticas en vivo, Onyx Guardian y robots.', 'Your trading under control: live stats, Onyx Guardian and robots.');
   const social: any[] = (fx?.social || []).filter((x: any) => x && x.url && x.on !== false);
@@ -72,7 +75,9 @@ export default function SiteFooter() {
     'Legal notice: Onyx Trading Live is a software tool; we are not financial advisors and do not offer investment services. Trading FOREX and in general involves risk of total loss and is not suitable for everyone. Past results do not guarantee future results; hypothetical performance has inherent limitations. Never invest money you cannot afford to lose. Consult a professional before trading.',
   );
 
-  const lbl = { fontSize: 11.5, letterSpacing: '.04em', color: 'var(--mut)', fontWeight: 700, marginBottom: 9, textTransform: 'uppercase' as const };
+  // Encabezados de columna más notables: texto claro (no gris), pastilla de color y
+  // una línea de acento debajo para que se distingan de los enlaces.
+  const lbl = { fontSize: 12.5, letterSpacing: '.06em', color: 'var(--tx,#e8ecf5)', fontWeight: 800, marginBottom: 12, paddingBottom: 6, textTransform: 'uppercase' as const, borderBottom: '2px solid color-mix(in srgb, var(--brand) 55%, transparent)', display: 'inline-block' };
   const lnk = { color: 'var(--mut)', fontSize: 13.5, textDecoration: 'none' };
 
   return (

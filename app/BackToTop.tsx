@@ -30,13 +30,14 @@ export default function BackToTop() {
       onClick={up}
       aria-label="Subir al inicio"
       title="Subir al inicio"
+      className="onyx-backtotop"
       style={{
         position: 'fixed',
         left: 16,
-        // Se apila ENCIMA de la píldora "en línea ahora" (abajo-izquierda, ~48px de
-        // alto en bottom:16) para no taparla. +64px la deja justo arriba de la píldora;
-        // si la píldora no está, solo queda un poco más alta, sin molestar.
-        bottom: `calc(72px + env(safe-area-inset-bottom))`,
+        // La ALTURA (bottom) la controla globals.css:
+        //  · Escritorio: 72px → queda ENCIMA de la píldora "en línea ahora" (abajo-izq).
+        //  · Móvil (≤640px): 22px → queda a la MISMA altura que el botón del chat
+        //    (que está a 18px y mide 54px; 22px centra la flecha de 46px con él).
         zIndex: 900,
         width: 46,
         height: 46,
