@@ -108,11 +108,44 @@ const coverEsc = (s: string) => String(s || '').replace(/&/g, '&amp;').replace(/
 // dejaba el blog lentísimo y las portadas en gris. Para el <img> en pantalla no
 // necesitamos un PNG: el SVG en línea es instantáneo. El PNG (para compartir en
 // redes) queda solo en blogCoverOg().
+// Parte un título en varias líneas para que NO se salga de la portada. Reparte por
+// palabras con un máximo de caracteres por línea; recorta a maxLines con puntos
+// suspensivos si es larguísimo. (Arial 34px bold ≈ 20px/carácter → ~30 caracteres
+// caben en el ancho útil de 664px; usamos 26 para dejar margen.)
+function wrapCoverTitle(raw: string, maxChars = 26, maxLines = 3): string[] {
+  const words = String(raw || '').split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    const next = cur ? cur + ' ' + w : w;
+    if (next.length > maxChars && cur) { lines.push(cur); cur = w; }
+    else cur = next;
+    if (lines.length >= maxLines) break;
+  }
+  if (cur && lines.length < maxLines) lines.push(cur);
+  if (lines.length >= maxLines) {
+    // ¿quedó texto fuera? añade elipsis a la última línea.
+    const used = lines.join(' ').length;
+    if (used < String(raw || '').trim().length) {
+      let last = lines[maxLines - 1];
+      if (last.length > maxChars - 1) last = last.slice(0, maxChars - 1).replace(/\s+\S*$/, '');
+      lines[maxLines - 1] = last.replace(/[\s.]+$/, '') + '…';
+    }
+  }
+  return lines.slice(0, maxLines);
+}
+
 export function blogCoverDataUri(post: any, lang: 'es' | 'en' = 'es'): string {
-  const title = ((lang === 'es' ? post?.title_es : post?.title_en) || post?.title_es || post?.title_en || 'Onyx').slice(0, 42);
+  const rawTitle = (lang === 'es' ? post?.title_es : post?.title_en) || post?.title_es || post?.title_en || 'Onyx';
+  const lines = wrapCoverTitle(rawTitle);
   const kicker = String(post?.tags || '').split(',')[0].trim().slice(0, 22).toUpperCase();
-  const pal = COVER_PALETTES[coverHash(String(post?.id || post?.slug || title)) % COVER_PALETTES.length];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="399" viewBox="0 0 760 399"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${pal[0]}"/><stop offset="1" stop-color="${pal[1]}"/></linearGradient></defs><rect width="760" height="399" fill="url(#g)"/>${kicker ? `<text x="48" y="92" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="800" letter-spacing="4" fill="#b9c0ff">${coverEsc(kicker)}</text>` : ''}<text x="48" y="210" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="800" fill="#f2f4ff">${coverEsc(title)}</text><text x="48" y="356" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="700" fill="#cfd4ff">Onyx Trading Live</text></svg>`;
+  const pal = COVER_PALETTES[coverHash(String(post?.id || post?.slug || rawTitle)) % COVER_PALETTES.length];
+  // Bloque de título centrado verticalmente en la mitad de la portada.
+  const lh = 42, blockH = lines.length * lh, startY = 205 - blockH / 2 + lh - 8;
+  const titleSvg = lines.map((ln, i) =>
+    `<text x="48" y="${startY + i * lh}" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="800" fill="#f2f4ff">${coverEsc(ln)}</text>`
+  ).join('');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="760" height="399" viewBox="0 0 760 399"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${pal[0]}"/><stop offset="1" stop-color="${pal[1]}"/></linearGradient></defs><rect width="760" height="399" fill="url(#g)"/>${kicker ? `<text x="48" y="72" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="800" letter-spacing="4" fill="#b9c0ff">${coverEsc(kicker)}</text>` : ''}${titleSvg}<text x="48" y="356" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="700" fill="#cfd4ff">Onyx Trading Live</text></svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 

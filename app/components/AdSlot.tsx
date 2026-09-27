@@ -31,6 +31,17 @@ let SLOT_SEQ = 0;
 // cualquier otro hueco (incluido el del footer) que fuera a mostrar EXACTAMENTE lo
 // mismo se oculta. Así nunca se ve el mismo anuncio dos veces en la misma página.
 const PAGE_ADS = new Map<string, number>(); // firma -> posición dueña
+
+// IMPORTANTE: al navegar DENTRO de la app (sin recargar), este estado a nivel de
+// módulo NO se reinicia solo. Antes eso dejaba posiciones "corridas" y reclamos
+// viejos de la página anterior, y el banner NO salía hasta hacer un refresh completo.
+// Reiniciamos SLOT_SEQ y los reclamos cada vez que cambia la ruta.
+let LAST_PATH = '';
+function resetPageAdsIfNavigated() {
+  if (typeof window === 'undefined') return;
+  const p = window.location.pathname;
+  if (p !== LAST_PATH) { LAST_PATH = p; SLOT_SEQ = 0; PAGE_ADS.clear(); }
+}
 function adSig(ad: Served): string {
   if (!ad) return '';
   if (ad.kind === 'paid') return 'paid:' + ad.id;
@@ -61,7 +72,7 @@ export default function AdSlot({ slot, lang, label = true }: { slot: string; lan
   const ref = useRef<HTMLDivElement | null>(null);
   const viewed = useRef(false);
   const posRef = useRef<number>(-1);
-  if (posRef.current < 0) posRef.current = SLOT_SEQ++;   // posición estable de este hueco
+  if (posRef.current < 0) { resetPageAdsIfNavigated(); posRef.current = SLOT_SEQ++; }   // posición estable de este hueco
 
   // Modo previsualización: si la URL trae ?adpreview=<slot>, mostramos un
   // marcador del hueco (aunque no haya anuncio ni el visitante los vea), para
