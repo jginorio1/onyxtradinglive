@@ -835,6 +835,12 @@ html[data-theme="light"] .sk-bnav.on{color:#8b93ff;}
   .footer-contact { flex-direction: column; }
   .footer-cols { order: 1; width: 100%; grid-template-columns: 1fr 1fr !important; gap: 18px 16px !important; align-content: start; }
   .footer-qr { order: 2; width: 100%; align-items: center; text-align: center; margin-top: 4px; }
+  /* Banda superior de marca (logo, tagline, redes, botón, email) centrada en móvil. */
+  .footer-brand-row { justify-content: center; text-align: center; }
+  .footer-brand { max-width: 100% !important; display: flex; flex-direction: column; align-items: center; }
+  .footer-brand .logo { justify-content: center; }
+  .footer-brand > div { justify-content: center; }       /* fila de redes */
+  .footer-cta { width: 100%; align-items: center !important; }
 }
 
 /* FAQ desplegables (details/summary): oculta la flecha nativa para dejar solo la ▶ morada,

@@ -80,8 +80,8 @@ export default function SiteFooter() {
         <AdSlot slot="footer_site" lang={es ? 'es' : 'en'} />
 
         {/* Fila de marca + CTA */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--line)', paddingBottom: 20 }}>
-          <div style={{ maxWidth: 440 }}>
+        <div className="footer-brand-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 18, justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--line)', paddingBottom: 20 }}>
+          <div className="footer-brand" style={{ maxWidth: 440 }}>
             <Link href="/" className="logo" aria-label="Onyx Trading Live" style={{ fontSize: 16 }}>
               <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 26, height: 26, objectFit: 'contain' }} />
               <span className="logo-text">Onyx Trading Live</span>
@@ -99,7 +99,7 @@ export default function SiteFooter() {
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 9 }}>
+          <div className="footer-cta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 9 }}>
             <Link className="btn btn-primary" href="/login?mode=signup">{L('Empieza gratis', 'Start free')}</Link>
             {email && <a href={`mailto:${email}`} className="muted" style={{ fontSize: 12.5, textDecoration: 'none' }}><OnyxIcon emoji="✉" size={15} /> {email}</a>}
           </div>
