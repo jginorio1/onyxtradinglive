@@ -52,17 +52,31 @@ export default function AdSpaceBooking({ es = true }: { es?: boolean }) {
 
   const post = async (body: any) => {
     setBusy(true); setMsg('');
-    const r = await fetch('/api/admin/ads/booking', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    const j = await r.json(); setBusy(false);
-    if (j.error) setMsg(j.error);
-    return j;
+    // Timeout: si la BD/red tarda mucho, cortamos a los 20 s para NO quedar colgados
+    // sin feedback (pasaba en la app iOS: la petición se colgaba y no salía ningún
+    // mensaje). credentials:'include' asegura que la cookie de admin viaje siempre.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20000);
+    try {
+      const r = await fetch('/api/admin/ads/booking', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        credentials: 'include', signal: ctrl.signal, body: JSON.stringify(body),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok && !j.error) j.error = 'HTTP ' + r.status;
+      if (j.error) setMsg(j.error);
+      return j;
+    } finally { clearTimeout(timer); setBusy(false); }
   };
   const saveSettings = async () => {
+    setMsg(L('Guardando…', 'Saving…'));   // feedback inmediato SIEMPRE
     let j: any = {};
     try {
       j = await post({ action: 'save_settings', caps, ...cfg, partnerFill: pFill, partnerFillSlots: pSlots, partnerSlotPin: pPin });
     } catch (e: any) {
-      setMsg(L('Error de red al guardar: ' + (e?.message || 'sin respuesta'), 'Network error saving: ' + (e?.message || 'no response')));
+      const aborted = e?.name === 'AbortError';
+      setMsg(L(aborted ? 'El guardado tardó demasiado (timeout). Reintenta.' : 'Error de red al guardar: ' + (e?.message || 'sin respuesta'),
+               aborted ? 'Save timed out. Try again.' : 'Network error saving: ' + (e?.message || 'no response')));
       return;
     }
     const nSent = pPin ? Object.keys(pPin).length : 0;

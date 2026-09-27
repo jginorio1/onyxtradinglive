@@ -88,30 +88,20 @@ export async function POST(req: Request) {
       const pick = (o: any) => { const r: any = {}; for (const k of keys) if (typeof o?.[k] === 'string') r[k] = String(o[k]).slice(0, 4000); return r; };
       patch.quoteTemplate = { es: pick(b.quoteTemplate.es), en: pick(b.quoteTemplate.en) };
     }
-    // TODO envuelto en try/catch: antes, si algo lanzaba, la ruta daba 500 y el panel
-    // no mostraba nada. Ahora cualquier fallo vuelve como {error} y se ve en el panel.
+    // Escritura RÁPIDA y envuelta en try/catch. NO releemos después (la BD tiene
+    // retraso de lectura y una relectura podía colgar la petición hasta el timeout).
+    // Devolvemos de inmediato lo que RECIBIMOS como confirmación.
+    let placementsSaved: any = {};
     try {
-      // PINES y FILLS por ubicación → CLAVE DEDICADA ('ads_placements'), escritura
-      // completa de reemplazo (inmune al retraso de lectura que borraba el bloque).
       if ((b.partnerFillSlots && typeof b.partnerFillSlots === 'object') || (b.partnerSlotPin && typeof b.partnerSlotPin === 'object')) {
         await saveAdsPlacements({ partnerSlotPin: b.partnerSlotPin || {}, partnerFillSlots: b.partnerFillSlots || {} });
+        placementsSaved = b.partnerSlotPin || {};
       }
-      // Solo tocamos el bloque grande 'ads' si de verdad cambió algo suyo.
       if (Object.keys(patch).length) await saveAdsConfig(patch);
     } catch (e: any) {
       return NextResponse.json({ error: 'guardar: ' + (e?.message || 'fallo') }, { status: 500 });
     }
-    // Confirmación: releemos la clave dedicada CRUDA (lo que realmente quedó en la BD).
-    let placementsSaved: any = {};
-    try {
-      const { data: rows } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'ads_placements');
-      placementsSaved = (rows && rows[0] && (rows[0] as any).value?.partnerSlotPin) || {};
-    } catch {}
-    return NextResponse.json({
-      ok: true,
-      receivedPins: b.partnerSlotPin ?? null,
-      placementsSaved,   // pines que quedaron en la clave dedicada (lo definitivo)
-    });
+    return NextResponse.json({ ok: true, receivedPins: b.partnerSlotPin ?? null, placementsSaved });
   }
 
   // Calendario de disponibilidad de una ubicación.
