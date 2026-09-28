@@ -105,8 +105,10 @@ export default function NativeInit() {
       };
       try {
         const { Keyboard, KeyboardResize } = await import('@capacitor/keyboard');
-        try { await Keyboard.setResizeMode({ mode: KeyboardResize.Body }); } catch {}
-        try { await Keyboard.setScroll?.({ isDisabled: true }); } catch {}   // controlamos el scroll nosotros
+        // Modo 'native': el webview se encoge al abrir el teclado SIN desactivar el
+        // scroll. (NO usar setScroll({isDisabled:true}): eso congela el scroll de toda
+        // la app.) Con la altura del teclado empujamos el campo enfocado a la vista.
+        try { await Keyboard.setResizeMode({ mode: KeyboardResize.Native }); } catch {}
         try { await Keyboard.setAccessoryBarVisible({ isVisible: true }); } catch {}
         // willShow trae la altura del teclado ANTES de que termine la animación.
         try { Keyboard.addListener('keyboardWillShow', (info: any) => { kbH = (info && info.keyboardHeight) || 0; setTimeout(revealActive, 60); }); } catch {}
