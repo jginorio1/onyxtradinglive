@@ -155,8 +155,14 @@ function LoginInner() {
   // login quede en el historial y se repita el rebote.
   useEffect(() => {
     let alive = true;
-    sb.auth.getSession().then(({ data }) => {
-      if (alive && data?.session) { router.replace(nextDest || '/dashboard'); }
+    sb.auth.getSession().then(async ({ data }) => {
+      if (!alive || !data?.session) return;
+      // CLAVE de seguridad: una sesión con contraseña sigue en aal1. Si la cuenta
+      // tiene 2FA, NO rebotamos al panel (eso dejaba entrar sin el código al pulsar
+      // "atrás"): abrimos el paso del código. Solo si el 2FA ya está resuelto (o no
+      // hay) mandamos al panel.
+      if (await needsMfa()) { if (alive) setMfa(true); return; }
+      if (alive) router.replace(nextDest || '/dashboard');
     }).catch(() => {});
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
