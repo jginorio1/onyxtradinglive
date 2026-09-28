@@ -5,7 +5,7 @@ import { getSeoMeta, seoFor } from '@/lib/seo';
 export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
   const seo = seoFor(await getSeoMeta(), 'academias', es,
-    es ? 'Academias de trading en Onyx · Encuentra tu mentor' : 'Trading academies on Onyx · Find your mentor',
+    es ? 'Academias de Trading en Onyx | Encuentra tu Mentor' : 'Trading Academies on Onyx | Find Your Mentor',
     es ? 'Explora las academias y comunidades de trading que usan Onyx: cursos, clases en vivo y mentores verificados. Aprende con datos, disciplina y acompañamiento.'
        : 'Explore the trading academies and communities on Onyx: courses, live classes and verified mentors. Learn with data, discipline and support.');
   return {

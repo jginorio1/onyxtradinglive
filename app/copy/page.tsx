@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
-  const title = es ? 'Onyx Copy · Copia a traders calificados por Onyx AI' : 'Onyx Copy · Copy traders graded by Onyx AI';
+  const title = es ? 'Onyx Copy | Copy Trading de Traders Calificados' : 'Onyx Copy | Copy Trading of Graded Traders';
   const description = es
     ? 'Onyx AI califica a cada trader por su disciplina, gestión de riesgo y KPIs, y lo ubica en un ranking (Silver, Gold, Diamond). Copia a los mejores y ellos ganan por su operativa.'
     : 'Onyx AI grades every trader by discipline, risk management and KPIs, and ranks them (Silver, Gold, Diamond). Copy the best and they earn from their trading.';

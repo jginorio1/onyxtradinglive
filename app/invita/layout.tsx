@@ -5,7 +5,7 @@ import { getSeoMeta, seoFor } from '@/lib/seo';
 export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
   const seo = seoFor(await getSeoMeta(), 'invita', es,
-    es ? 'Invita y gana con Onyx · Programa de referidos' : 'Refer & earn with Onyx',
+    es ? 'Invita y Gana | Programa de Referidos de Onyx' : 'Refer & Earn | Onyx Referral Program',
     es ? 'Comparte tu enlace de Onyx Trading Live, dale un descuento a tu gente y gana recompensas por cada persona que se una.'
        : 'Share your Onyx Trading Live link, give your people a discount and earn rewards for everyone who joins.');
   return {

@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
-  const title = es ? 'Onyx Bot Lab · Construye, compra o vende robots de trading' : 'Onyx Bot Lab · Build, buy or sell trading robots';
+  const title = es ? 'Onyx Bot Lab | Robots de Trading: Crea, Compra, Vende' : 'Onyx Bot Lab | Trading Robots: Build, Buy, Sell';
   const description = es
     ? 'Construye tu robot sin código, compra robots listos de traders verificados o deja que automaticemos tu estrategia a medida. Vende tus robots y cobra en USDT o con tarjeta.'
     : 'Build your robot without coding, buy ready robots from verified traders, or let us automate your strategy. Sell your robots and get paid in USDT or by card.';
