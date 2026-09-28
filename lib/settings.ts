@@ -347,7 +347,13 @@ export type BlogKeywords = {
   gscMax: number;            // cuántas consultas-oportunidad de GSC mezclar (tope)
   es: string[]; en: string[];
 };
-const BK: BlogKeywords = { enabled: false, intensity: 'normal', variants: true, internalLinks: true, useGsc: true, gscMax: 6, es: [], en: [] };
+// Semilla por defecto: 7 ES + 7 EN alineadas con la demanda real de Search Console
+// (prop firm, drawdown, day trading, breakeven) + producto (diario, riesgo, copy).
+const BK: BlogKeywords = {
+  enabled: false, intensity: 'normal', variants: true, internalLinks: true, useGsc: true, gscMax: 6,
+  es: ['diario de trading', 'gestión de riesgo trading', 'retos de prop firm', 'drawdown diario vs máximo', 'copy trading', 'breakeven trading', 'mejores prop firms para day trading'],
+  en: ['trading journal', 'risk management trading', 'prop firm challenge', 'daily drawdown vs max drawdown', 'copy trading', 'breakeven trading', 'best prop firms for day traders'],
+};
 export const blogKeywordsSettings = () => getSetting<BlogKeywords>('blog_keywords', BK);
 
 // Piloto automático del blog: planifica un mes de fechas (día sí, día no) que se
