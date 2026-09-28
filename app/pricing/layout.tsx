@@ -6,9 +6,9 @@ import { getSeoMeta, seoFor } from '@/lib/seo';
 export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
   const seo = seoFor(await getSeoMeta(), 'pricing', es,
-    es ? 'Planes y precios · Onyx Trading Live' : 'Plans and pricing · Onyx Trading Live',
-    es ? 'Compara los planes de Onyx Trading Live: Gratis, Pro y Elite. Diario de trading, estadísticas automáticas, control de fondeo y Onyx Guardian para MetaTrader (MT4/MT5) y cTrader.'
-       : 'Compare Onyx Trading Live plans: Free, Pro and Elite. Trading journal, automatic stats, funding control and Onyx Guardian for MetaTrader (MT4/MT5) and cTrader.');
+    es ? 'Planes Onyx Trading Live | Precios para Prop Firms' : 'Onyx Trading Live Plans | Pricing for Prop Firms',
+    es ? 'Compara los planes Free, Pro y Elite. Gestión de riesgo, copy trading y diario para forex y CFDs. Conecta MT4, MT5 o cTrader sin comisión.'
+       : 'Compare Free, Pro and Elite plans. Risk management, copy trading and journal for forex and CFDs. Connect MT4, MT5 or cTrader with no fees.');
   return {
     title: seo.title,
     description: seo.description,

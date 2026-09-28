@@ -6,9 +6,9 @@ import { getSeoMeta, seoFor } from '@/lib/seo';
 export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
   const seo = seoFor(await getSeoMeta(), 'contacto', es,
-    es ? 'Contacto y soporte · Onyx Trading Live' : 'Contact & support · Onyx Trading Live',
-    es ? 'Contáctanos: Onyx AI resuelve tus dudas al instante sobre conexión, Onyx Guardian, planes y fondeo; si hace falta, te responde una persona por correo.'
-       : 'Contact us: Onyx AI answers your questions instantly about connection, Onyx Guardian, plans and funding; if needed, a person replies by email.');
+    es ? 'Contacto y Soporte | Onyx Trading Live' : 'Contact & Support | Onyx Trading Live',
+    es ? '¿Dudas sobre tu diario de trading, prop firm o copy trading? Escríbenos: soporte por IA o correo. Gestión de riesgo en forex y CFDs.'
+       : 'Questions about your trading journal, funded account or copy trading? Reach Onyx support by AI or email. Risk help for forex and CFDs.');
   return { title: seo.title, description: seo.description, alternates: localeAlternates('/contacto') };
 }
 

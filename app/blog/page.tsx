@@ -12,9 +12,9 @@ const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.onyxtradinglive.c
 export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
   const seo = seoFor(await getSeoMeta(), 'blog', es,
-    es ? 'Blog de Onyx Trading Live · Trading, disciplina y prop firms' : 'Onyx Trading Live Blog · Trading, discipline & prop firms',
-    es ? 'Artículos y noticias sobre gestión de riesgo, macro, mercados, cripto, earnings y prop firms. Filtra por categoría y encuentra lo que buscas.'
-       : 'Articles and news on risk management, macro, markets, crypto, earnings and prop firms. Filter by category and find what you need.');
+    es ? 'Blog | Prop Firms, Gestión de Riesgo y Disciplina' : 'Blog | Prop Firms, Risk Management & Discipline',
+    es ? 'Retos de prop firm, drawdown diario, diario de trading, psicología y gestión de riesgo. Estrategias reales para traders fondeados.'
+       : 'Prop firm challenges, daily drawdown, trading journal, psychology and risk management. Real strategies for funded traders.');
   return { title: seo.title, description: seo.description, alternates: localeAlternates('/blog') };
 }
 

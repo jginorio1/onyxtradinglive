@@ -8,9 +8,9 @@ import { getSeoMeta, seoFor } from '@/lib/seo';
 export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
   const seo = seoFor(await getSeoMeta(), 'guia', es,
-    es ? 'Guía de Onyx · Cómo sacarle partido a tu diario de trading' : 'Onyx Guide · How to get the most out of your trading journal',
-    es ? 'Instalación, métricas explicadas sin tecnicismos, gestión de riesgo y reglas de prop firms. La guía completa de Onyx Trading Live.'
-       : 'Install, metrics explained in plain words, risk management and prop-firm rules. The complete Onyx Trading Live guide.');
+    es ? 'Guía Onyx: Instalar, Métricas y Reglas de Prop Firm' : 'Onyx Guide: Install, Metrics & Prop Firm Rules',
+    es ? 'Aprende a instalar Onyx en MT4, MT5 y cTrader, gestionar el riesgo en fondeos y dominar las reglas de prop firm y el drawdown diario.'
+       : 'Learn to install Onyx on MT4, MT5 and cTrader, manage risk in funded accounts, and master prop firm rules and daily drawdown.');
   return { title: seo.title, description: seo.description, alternates: localeAlternates('/guia') };
 }
 

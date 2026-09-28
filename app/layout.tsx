@@ -60,9 +60,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
   // Overrides de título/descripción que el owner edita en Admin → SEO (si vacío, usa el default).
   const seo = seoFor(await getSeoMeta(), 'home', es,
-    es ? 'Onyx Trading Live · El sistema operativo del trader de fondeo' : 'Onyx Trading Live · The operating system for funded traders',
-    es ? 'Journal y gestión de riesgo para forex y CFDs. Conecta MT4, MT5, cTrader y MatchTrader, sigue las reglas de tu prop firm en vivo, protege tu riesgo con Onyx Guardian y copia entre cuentas. Analítica y ganancia neta. Empieza gratis.'
-       : 'Journal and risk management for forex and CFDs. Connect MT4, MT5, cTrader and MatchTrader, track your prop-firm rules live, protect your risk with Onyx Guardian and copy across accounts. Analytics and net profit. Start free.');
+    es ? 'Diario de Trading y Gestión de Riesgo | Onyx Trading Live' : 'Trading Journal & Risk Management | Onyx Trading Live',
+    es ? 'Diario de trading y gestión de riesgo para forex y CFDs. Onyx Guardian, copy trading y retos de prop firm en MT4, MT5 y cTrader. Empieza gratis.'
+       : 'Trading journal and risk management for forex and CFDs. Onyx Guardian, copy trading and prop firm challenges on MT4, MT5 and cTrader. Start free.');
   const gVer = process.env.GOOGLE_SITE_VERIFICATION;
   const bVer = process.env.BING_SITE_VERIFICATION;
   const adsenseId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;   // ej. ca-pub-7228105221509555
