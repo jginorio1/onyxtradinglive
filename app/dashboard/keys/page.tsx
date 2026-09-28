@@ -51,6 +51,7 @@ const K = {
       { key: 'mt4', name: 'MetaTrader 4', badge: 'Nuevo', kind: 'mt' },
       { key: 'ctrader', name: 'cTrader', badge: 'cBot', kind: 'ctrader' },
       { key: 'matchtrader', name: 'MatchTrader', badge: 'Beta', kind: 'matchtrader' },
+      { key: 'tradelocker', name: 'TradeLocker', badge: 'Beta', kind: 'tradelocker' },
     ],
     dlCardT: 'Descarga el conector',
     ctDoes: ['Sincroniza tus operaciones al diario', 'Break even, trailing y cierres parciales', 'Tu plan, límites y bloqueo fuera de plan'],
@@ -133,6 +134,7 @@ const K = {
       { key: 'mt4', name: 'MetaTrader 4', badge: 'New', kind: 'mt' },
       { key: 'ctrader', name: 'cTrader', badge: 'cBot', kind: 'ctrader' },
       { key: 'matchtrader', name: 'MatchTrader', badge: 'Beta', kind: 'matchtrader' },
+      { key: 'tradelocker', name: 'TradeLocker', badge: 'Beta', kind: 'tradelocker' },
     ],
     dlCardT: 'Download the connector',
     ctDoes: ['Syncs your trades to the journal', 'Break even, trailing and partial closes', 'Your plan, limits and out-of-plan block'],
@@ -472,6 +474,8 @@ export default function KeysPage() {
 
         {kind === 'matchtrader' ? (
           <MatchtraderConnect t={t} />
+        ) : kind === 'tradelocker' ? (
+          <TradeLockerConnect t={t} />
         ) : (
           <>
             {/* Paso 3: descarga el conector de la plataforma elegida */}
@@ -563,6 +567,104 @@ export default function KeysPage() {
 // MatchTrader (retail): el trader elige su bróker del catálogo y entra con SU
 // email + contraseña. Onyx hace login contra la Platform API y guarda solo el
 // token cifrado. Si el bróker es prop firm, se muestra un aviso antes de conectar.
+// TradeLocker (retail): el trader elige su bróker del catálogo (o escribe el server),
+// entorno demo/real, e inicia sesión con email + contraseña. Guardamos solo tokens
+// cifrados (nunca la contraseña). Si el bróker es prop, avisa antes de conectar.
+function TradeLockerConnect({ t }: any) {
+  const en = t.mtrBase === 'API URL';
+  const [servers, setServers] = useState<any[]>([]);
+  const [conns, setConns] = useState<any[]>([]);
+  const [code, setCode] = useState('');
+  const [manualServer, setManualServer] = useState('');
+  const [demo, setDemo] = useState(false);
+  const [email, setEmail] = useState('');
+  const [pass, setPass] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [warn, setWarn] = useState(false);
+  const load = async () => {
+    try { const r = await fetch('/api/tradelocker'); const j = await r.json(); setServers(j.servers || []); setConns(j.connections || []); if (!code) { if (j.servers?.[0]) { setCode(j.servers[0].code); setDemo(!!j.servers[0].demo_default); } else setCode('__manual__'); } } catch {}
+  };
+  useEffect(() => { load(); }, []);
+  const srv = servers.find((s) => s.code === code);
+  const doConnect = async () => {
+    setBusy(true); setMsg('');
+    try {
+      const body: any = { demo, email, password: pass };
+      if (code === '__manual__') body.server = manualServer.trim(); else body.server_code = code;
+      const r = await fetch('/api/tradelocker', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (r.ok) { setMsg(en ? `Connected ${j.connected?.length || 0} account(s).` : `Conectadas ${j.connected?.length || 0} cuenta(s).`); setEmail(''); setPass(''); load(); }
+      else setMsg('Error: ' + (j.error || ''));
+    } catch { setMsg('Error'); } finally { setBusy(false); setWarn(false); }
+  };
+  const onConnect = () => { if (srv?.is_prop) setWarn(true); else doConnect(); };
+  const toggleCopy = async (c: any) => { await fetch('/api/tradelocker', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, copy_enabled: !c.copy_enabled }) }); load(); };
+  const remove = async (c: any) => { await fetch('/api/tradelocker', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id }) }); load(); };
+
+  return (
+    <div className="card" style={{ marginBottom: 18, border: '1px solid var(--brand)' }}>
+      <h3 style={{ marginBottom: 4 }}>TradeLocker</h3>
+      <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7, marginBottom: 12 }}>
+        {en ? 'Connect your TradeLocker account: pick your broker (or type its server), choose demo/live and sign in with your account email and password. We store only an encrypted token — never your password.' : 'Conecta tu cuenta de TradeLocker: elige tu bróker (o escribe su server), demo/real e inicia sesión con el email y contraseña de tu cuenta. Guardamos solo un token cifrado — nunca tu contraseña.'}
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 460 }}>
+        <label className="muted" style={{ fontSize: 12 }}>{en ? 'Broker' : 'Bróker'}
+          <select value={code} onChange={(e) => { setCode(e.target.value); const s = servers.find((x) => x.code === e.target.value); if (s) setDemo(!!s.demo_default); }} style={{ marginTop: 4, width: '100%' }}>
+            {servers.map((s) => <option key={s.code} value={s.code}>{s.name}{s.is_prop ? ' (prop firm)' : ''}</option>)}
+            <option value="__manual__">{en ? 'Other (type your server)' : 'Otro (escribir tu server)'}</option>
+          </select>
+        </label>
+        {code === '__manual__' ? (
+          <label className="muted" style={{ fontSize: 12 }}>{en ? 'Server (the same one you use to log in to TradeLocker)' : 'Server (el mismo que usas para entrar a TradeLocker)'}
+            <input value={manualServer} onChange={(e) => setManualServer(e.target.value)} placeholder={en ? 'e.g. YourBroker-Live' : 'ej. TuBroker-Live'} style={{ marginTop: 4 }} />
+          </label>
+        ) : null}
+        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} /> {en ? 'Demo account' : 'Cuenta demo'}
+        </label>
+        <label className="muted" style={{ fontSize: 12 }}>Email<input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" style={{ marginTop: 4 }} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{en ? 'Password' : 'Contraseña'}<input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••" style={{ marginTop: 4 }} /></label>
+        <button className="btn btn-primary" disabled={busy || !email || !pass || (code === '__manual__' ? !manualServer.trim() : !code)} onClick={onConnect}>{busy ? '…' : (en ? 'Connect' : 'Conectar')}</button>
+        {msg ? <div className="muted" style={{ fontSize: 12.5 }}>{msg}</div> : null}
+      </div>
+
+      {conns.length ? (
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="muted" style={{ fontSize: 12, fontWeight: 700 }}>{en ? 'Connected accounts' : 'Cuentas conectadas'}</div>
+          {conns.map((c) => (
+            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 10px' }}>
+              <b style={{ fontSize: 13 }}>{c.label || c.tl_account_id}</b>
+              <span className="muted" style={{ fontSize: 11 }}>{c.server}{c.demo ? ' · demo' : ''}{c.status === 'reauth' ? (en ? ' · reconnect needed' : ' · reconectar') : ''}</span>
+              <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                <input type="checkbox" checked={!!c.copy_enabled} onChange={() => toggleCopy(c)} /> Copy
+              </label>
+              <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => remove(c)}>{en ? 'Remove' : 'Quitar'}</button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {warn && srv ? (
+        <div className="sk-modal" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setWarn(false)}>
+          <div className="sk-card" style={{ background: 'var(--card)', maxWidth: 460, padding: 20, borderRadius: 14 }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>⚠️ {en ? 'Prop firm rules' : 'Reglas de la prop firm'}</h3>
+            <p style={{ fontSize: 13.5, lineHeight: 1.7 }}>
+              {en
+                ? `${srv.name} is a prop firm. Many prop firms prohibit copy trading and API automation on challenge/funded accounts. Using Copy or auto-execution could get your account failed or banned. Monitoring (read-only) is lower risk. You decide — proceed at your own responsibility and check your firm's terms.`
+                : `${srv.name} es una prop firm. Muchas props prohíben el copy trading y la automatización por API en cuentas de challenge/fondeadas. Usar Copy o ejecución automática podría hacer que te anulen o baneen la cuenta. El monitoreo (solo lectura) es de menor riesgo. Tú decides — continúa bajo tu responsabilidad y revisa los términos de tu firma.`}
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button className="btn btn-ghost" onClick={() => setWarn(false)}>{en ? 'Cancel' : 'Cancelar'}</button>
+              <button className="btn btn-primary" onClick={doConnect}>{en ? 'I understand, connect' : 'Entiendo, conectar'}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MatchtraderConnect({ t }: any) {
   const en = t.mtrBase === 'API URL';
   const [brokers, setBrokers] = useState<any[]>([]);
