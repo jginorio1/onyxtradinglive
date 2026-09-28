@@ -1043,12 +1043,9 @@ html.native-app a.logo{ pointer-events:none !important; cursor:default !importan
    también). Cubre de una vez todos los <Link href="/pricing"> de la app. Los
    botones de compra por onClick se ocultan además en cada componente (useIsIOSApp).
    Marca .ios-pay-hide para ocultar cualquier otro elemento de pago en iOS. */
-html.ios-app a[href="/pricing"],
-html.ios-app a[href^="/pricing"],
-html.ios-app a[href^="/en/pricing"],
-html.ios-app a[href*="upgrade=1"],
-html.ios-app a[href*="cuenta?upgrade"],
-html.ios-app a[href*="?view=plan"],
+/* En iOS los planes se compran con Apple In-App Purchase (ver app/pricing/IosPlans),
+   así que /pricing SÍ se muestra. Solo ocultamos elementos marcados a mano con
+   .ios-pay-hide (por si queda alguna superficie de pago que no deba verse en iOS). */
 html.ios-app .ios-pay-hide{ display:none !important; }
 
 /* Espacios patrocinados: OCULTOS en la app nativa (Apple/Google) hasta aprobación. */

@@ -29,6 +29,7 @@
     "@capacitor/splash-screen": "^6.0.2",
     "@capacitor/status-bar": "^6.0.1",
     "@napi-rs/canvas": "^0.1.52",
+    "@revenuecat/purchases-capacitor": "^9.1.0",
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.105.0",
     "exceljs": "^4.4.0",

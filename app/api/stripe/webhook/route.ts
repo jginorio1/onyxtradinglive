@@ -3,6 +3,7 @@ import { stripe, planFromPriceId } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ambSettings, rateFor } from '@/lib/ambassadors';
 import { enforcePlanLimits, notifyPlanChange, planRank } from '@/lib/planNotify';
+import { applyEffectivePlan } from '@/lib/entitlements';
 import { qualifyOnPaid, reverseMemberRewards } from '@/lib/memberReferral';
 import { clawbackCommission } from '@/lib/ambassadorPayout';
 import { setGuardianTier, revokeGuardianBySub, type GuardianTier } from '@/lib/guardianAccess';
@@ -31,14 +32,15 @@ async function applyPlanTransition(customerId: string, newPlan: string) {
   // Pagó con tarjeta: la suscripción real manda. Limpiamos cualquier prueba de
   // cortesía para que no la revierta el cron ni le salga el popup de "expiró".
   const compClear = { comp_plan: null, comp_until: null, comp_warned: false, comp_expired_seen: true };
-  if (!prof) { await setByCustomer(customerId, { plan: newPlan, ...compClear }); return; }
+  if (!prof) { await setByCustomer(customerId, { plan: newPlan, stripe_plan: newPlan, ...compClear }); return; }
 
   const oldPlan = prof.plan;
   const rank = await planRank();
   const isDown = (rank[newPlan] ?? 0) < (rank[oldPlan] ?? 0);
 
   // Guardar el plan nuevo y, si era un downgrade programado que ya llegó, limpiar.
-  const fields: any = { plan: newPlan, ...compClear };
+  // stripe_plan = base para la capa de entitlements (ver lib/entitlements.ts).
+  const fields: any = { plan: newPlan, stripe_plan: newPlan, ...compClear };
   if (prof.pending_plan === newPlan) {
     Object.assign(fields, { pending_plan: null, pending_plan_at: null, pending_schedule_id: null, pending_notified_3d: false, pending_keep: null });
   }
@@ -53,6 +55,9 @@ async function applyPlanTransition(customerId: string, newPlan: string) {
       { es: `Tu plan ahora es ${nm.es}. Si alguna función quedó pausada por el nuevo límite, vuelve a estar disponible en cuanto subas de plan.`,
         en: `Your plan is now ${nm.en}. If any feature was paused by the new limit, it becomes available again as soon as you upgrade.` });
   }
+  // Reconciliar con una posible suscripción de Apple (iOS): gana el de mayor rango.
+  // Para el 99% (sin compra en iOS) es un no-op; solo corrige a quien pagó en ambos.
+  try { await applyEffectivePlan(prof.id); } catch {}
 }
 
 // Acredita la comisión del embajador cuando el cliente paga una factura.
@@ -166,8 +171,9 @@ export async function POST(req: Request) {
       } else if (s.subscription && s.customer) {
         const sub: any = await stripe.subscriptions.retrieve(s.subscription);
         const priceId = sub.items.data[0]?.price?.id;
+        const paidPlan = await planFromPriceId(priceId);
         await setByCustomer(s.customer, {
-          plan: await planFromPriceId(priceId),
+          plan: paidPlan, stripe_plan: paidPlan,
           subscription_status: sub.status,
           stripe_subscription_id: sub.id,
           comp_plan: null, comp_until: null, comp_warned: false, comp_expired_seen: true,   // fin de la prueba: pagó
