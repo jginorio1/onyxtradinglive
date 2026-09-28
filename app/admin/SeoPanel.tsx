@@ -24,6 +24,49 @@ const PAGES: Array<[string, string, string, string]> = [
   ['contacto', 'Contacto', 'Contact', '/contacto'],
 ];
 
+// Textos por defecto (mismos que usa el código si la casilla queda vacía). El
+// botón "Cargar textos por defecto" los pinta en las casillas para verlos y
+// guardarlos. Optimizados con la demanda real de Search Console (prop firm,
+// drawdown) + forex/CFDs; sin "futuros".
+const META_DEFAULTS: Record<string, { title_es: string; title_en: string; desc_es: string; desc_en: string }> = {
+  home: {
+    title_es: 'Diario de Trading y Gestión de Riesgo | Onyx Trading Live',
+    title_en: 'Trading Journal & Risk Management | Onyx Trading Live',
+    desc_es: 'Diario de trading y gestión de riesgo para forex y CFDs. Onyx Guardian, copy trading y retos de prop firm en MT4, MT5 y cTrader. Empieza gratis.',
+    desc_en: 'Trading journal and risk management for forex and CFDs. Onyx Guardian, copy trading and prop firm challenges on MT4, MT5 and cTrader. Start free.',
+  },
+  pricing: {
+    title_es: 'Planes Onyx Trading Live | Precios para Prop Firms',
+    title_en: 'Onyx Trading Live Plans | Pricing for Prop Firms',
+    desc_es: 'Compara los planes Free, Pro y Elite. Gestión de riesgo, copy trading y diario para forex y CFDs. Conecta MT4, MT5 o cTrader sin comisión.',
+    desc_en: 'Compare Free, Pro and Elite plans. Risk management, copy trading and journal for forex and CFDs. Connect MT4, MT5 or cTrader with no fees.',
+  },
+  guia: {
+    title_es: 'Guía Onyx: Instalar, Métricas y Reglas de Prop Firm',
+    title_en: 'Onyx Guide: Install, Metrics & Prop Firm Rules',
+    desc_es: 'Aprende a instalar Onyx en MT4, MT5 y cTrader, gestionar el riesgo en fondeos y dominar las reglas de prop firm y el drawdown diario.',
+    desc_en: 'Learn to install Onyx on MT4, MT5 and cTrader, manage risk in funded accounts, and master prop firm rules and daily drawdown.',
+  },
+  blog: {
+    title_es: 'Blog | Prop Firms, Gestión de Riesgo y Disciplina',
+    title_en: 'Blog | Prop Firms, Risk Management & Discipline',
+    desc_es: 'Retos de prop firm, drawdown diario, diario de trading, psicología y gestión de riesgo. Estrategias reales para traders fondeados.',
+    desc_en: 'Prop firm challenges, daily drawdown, trading journal, psychology and risk management. Real strategies for funded traders.',
+  },
+  embajadores: {
+    title_es: 'Programa de Embajadores Onyx | Gana Comisión',
+    title_en: 'Onyx Ambassador Program | Earn Recurring Commission',
+    desc_es: 'Gana comisión recurrente refiriendo traders. Acceso a diario de trading, gestión de riesgo y copy trading en MT4, MT5 y cTrader.',
+    desc_en: 'Earn recurring commissions by referring traders. Access to the trading journal, risk management and copy trading for MT4, MT5 and cTrader.',
+  },
+  contacto: {
+    title_es: 'Contacto y Soporte | Onyx Trading Live',
+    title_en: 'Contact & Support | Onyx Trading Live',
+    desc_es: '¿Dudas sobre tu diario de trading, prop firm o copy trading? Escríbenos: soporte por IA o correo. Gestión de riesgo en forex y CFDs.',
+    desc_en: 'Questions about your trading journal, funded account or copy trading? Reach Onyx support by AI or email. Risk help for forex and CFDs.',
+  },
+};
+
 export default function SeoPanel() {
   const { lang } = useLang();
   const L = mkL(lang);
@@ -63,6 +106,17 @@ export default function SeoPanel() {
       setMeta((o) => ({ ...o, [page]: { title_es: m.title_es || '', title_en: m.title_en || '', desc_es: m.desc_es || '', desc_en: m.desc_en || '' } }));
       toast(L('Meta generado con IA. Revísalo y pulsa Guardar.', 'Meta generated with AI. Review it and press Save.'), 'ok');
     } finally { setBusy(''); }
+  }
+
+  // Pinta en TODAS las casillas los textos por defecto optimizados (para verlos
+  // en vez de vacías). No guarda: el dueño revisa y pulsa Guardar meta.
+  function loadDefaults() {
+    setMeta((o) => {
+      const next = { ...o };
+      for (const [id] of PAGES) { const d = META_DEFAULTS[id]; if (d) next[id] = { ...d }; }
+      return next;
+    });
+    toast(L('Cargados los textos recomendados en todas las páginas. Revisa y pulsa Guardar meta.', 'Loaded the recommended text into every page. Review and hit Save meta.'), 'ok');
   }
   async function genKeywords() {
     if (!topic.trim()) { toast(L('Escribe un tema.', 'Write a topic.')); return; }
@@ -233,7 +287,11 @@ export default function SeoPanel() {
       {/* Editor de meta por página + snippet */}
       <div className="card">
         <h3 style={{ marginBottom: 4 }}>🏷️ {L('Meta por página (título + descripción)', 'Per-page meta (title + description)')}</h3>
-        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Lo que ve Google y la gente en los resultados. Vacío = usa el texto por defecto. Título ~60, descripción ~155 caracteres. El blog edita su meta desde Admin → Blog.', 'What Google and people see in results. Empty = uses the default. Title ~60, description ~155 chars. The blog edits its meta in Admin → Blog.')}</p>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 10 }}>{L('Lo que ve Google y la gente en los resultados. Vacío = usa el texto por defecto. Título ~60, descripción ~155 caracteres. El blog edita su meta desde Admin → Blog.', 'What Google and people see in results. Empty = uses the default. Title ~60, description ~155 chars. The blog edits its meta in Admin → Blog.')}</p>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+          <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={loadDefaults} title={L('Rellena todas las casillas con los textos recomendados (luego pulsa Guardar meta).', 'Fill every field with the recommended text (then hit Save meta).')}>✨ {L('Cargar textos por defecto', 'Load default text')}</button>
+          <span className="muted" style={{ fontSize: 11.5 }}>{L('Pinta los textos óptimos en todas las páginas; revisa y guarda.', 'Paints the optimal text into every page; review and save.')}</span>
+        </div>
         {PAGES.map(([id, esN, enN, path]) => {
           const o = meta[id] || {};
           const title = (es ? o.title_es : o.title_en) || '';

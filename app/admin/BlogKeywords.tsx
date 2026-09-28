@@ -21,6 +21,14 @@ function ToggleRow({ on, onToggle, label, accent = '#7c8cff' }: { on: boolean; o
   );
 }
 
+// Keywords recomendadas (7 ES + 7 EN), alineadas con la demanda real de Search
+// Console (prop firm, drawdown, day trading, breakeven) + producto (diario,
+// gestión de riesgo, copy trading). El botón "Restaurar recomendadas" las carga.
+const RECOMMENDED = {
+  es: ['diario de trading', 'gestión de riesgo trading', 'retos de prop firm', 'drawdown diario vs máximo', 'copy trading', 'breakeven trading', 'mejores prop firms para day trading'],
+  en: ['trading journal', 'risk management trading', 'prop firm challenge', 'daily drawdown vs max drawdown', 'copy trading', 'breakeven trading', 'best prop firms for day traders'],
+};
+
 // Semáforo de "aporte" por keyword (calculado en el backend con Search Console).
 const TIER_COLOR: Record<string, string> = { green: '#34e2a0', amber: '#f5b23e', gray: 'var(--mut)', na: 'var(--mut)' };
 const TIER_LABEL = (t: string, L: (a: string, b: string) => string) => (
@@ -55,6 +63,14 @@ export default function BlogKeywords() {
     upd(list, [...cur, v]);
   }
   const rmKw = (list: 'es' | 'en', v: string) => upd(list, (s[list] || []).filter((x: string) => x !== v));
+
+  // Carga de un clic las 7+7 recomendadas (demanda real de Search Console: prop
+  // firm, drawdown, day trading, breakeven + producto). Reemplaza las listas
+  // actuales en el formulario; el dueño revisa y pulsa "Guardar keywords".
+  function loadRecommended() {
+    setD((p: any) => ({ ...p, settings: { ...p.settings, es: [...RECOMMENDED.es], en: [...RECOMMENDED.en] } }));
+    toast(L('Cargadas 7 ES + 7 EN. Revisa y pulsa Guardar keywords.', 'Loaded 7 ES + 7 EN. Review and hit Save keywords.'), 'ok');
+  }
 
   async function save() {
     setBusy(true);
@@ -233,8 +249,10 @@ export default function BlogKeywords() {
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <button className="btn btn-primary" onClick={save} disabled={busy} style={{ boxShadow: '0 8px 20px -8px var(--brand)' }}>{busy ? '…' : L('Guardar keywords', 'Save keywords')}</button>
+            <button className="btn btn-ghost" onClick={loadRecommended} disabled={busy} title={L('Carga las 7 ES + 7 EN recomendadas (luego pulsa Guardar).', 'Load the 7 ES + 7 EN recommended (then hit Save).')} style={{ fontSize: 13 }}>✨ {L('Restaurar recomendadas', 'Restore recommended')}</button>
+            <span className="muted" style={{ fontSize: 11.5 }}>{L('Reemplaza las listas por las 7+7 óptimas; revisa y guarda.', 'Replaces the lists with the optimal 7+7; review and save.')}</span>
           </div>
         </div>
       )}
