@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
-import { runAudit, autoFixCfg, AUTOFIX_DEFAULT } from '@/lib/blogAudit';
+import { runAudit, autoFixCfg, AUTOFIX_DEFAULT, cannibalGroups, resolveCannibalization } from '@/lib/blogAudit';
 import { listAllPosts, savePost } from '@/lib/blog';
 import { enhanceArticle, suggestTitles, lastAiError, type RelatedPost } from '@/lib/blogAI';
 import { saveSetting } from '@/lib/settings';
@@ -35,6 +35,15 @@ export async function POST(req: Request) {
       const next = { enabled: b.enabled == null ? cur.enabled : !!b.enabled, threshold: Number.isFinite(Number(b.threshold)) ? Math.max(40, Math.min(90, Math.round(Number(b.threshold)))) : (cur.threshold || 70) };
       await saveSetting('blog_autofix', next);
       return NextResponse.json({ ok: true, autofix: next });
+    }
+    // Canibalización: plan (dry-run, solo lectura) y aplicar (301 + a borrador).
+    if (action === 'cannibal_plan') {
+      const groups = await cannibalGroups();
+      return NextResponse.json({ ok: true, groups });
+    }
+    if (action === 'cannibal_apply') {
+      const r = await resolveCannibalization(b.kw ? String(b.kw) : undefined);
+      return NextResponse.json(r);
     }
     const all = await listAllPosts();
     const p: any = all.find((x: any) => x.id === id);

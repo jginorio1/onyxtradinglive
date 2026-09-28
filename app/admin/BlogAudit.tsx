@@ -15,6 +15,28 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
   const [fix, setFix] = useState<string>('');
   const [angles, setAngles] = useState<Record<string, string[]>>({});
   const [batch, setBatch] = useState<{ running: boolean; done: number; total: number }>({ running: false, done: 0, total: 0 });
+  const [cann, setCann] = useState<{ open: boolean; loading: boolean; applying: boolean; groups: any[] | null }>({ open: false, loading: false, applying: false, groups: null });
+
+  // Canibalización: pide el PLAN (dry-run) y muestra qué se redirigiría, sin tocar nada.
+  async function cannPlan() {
+    setCann((c) => ({ ...c, open: true, loading: true, groups: null }));
+    try {
+      const r = await fetch('/api/admin/blog/audit', { method: 'POST', body: JSON.stringify({ action: 'cannibal_plan' }) });
+      const j = await r.json();
+      if (j.ok) setCann((c) => ({ ...c, loading: false, groups: j.groups || [] }));
+      else { setCann((c) => ({ ...c, open: false, loading: false })); toast(j.error || 'Error', 'error'); }
+    } catch { setCann((c) => ({ ...c, open: false, loading: false })); toast(L('No se pudo cargar.', 'Could not load.'), 'error'); }
+  }
+  // Aplica: pasa los perdedores a borrador y crea 301 al ganador. Reversible.
+  async function cannApply() {
+    setCann((c) => ({ ...c, applying: true }));
+    try {
+      const r = await fetch('/api/admin/blog/audit', { method: 'POST', body: JSON.stringify({ action: 'cannibal_apply' }) });
+      const j = await r.json();
+      if (j.ok) { toast(L(`✓ ${j.redirected} artículo(s) redirigido(s) en ${j.groups} grupo(s).`, `✓ ${j.redirected} article(s) redirected across ${j.groups} group(s).`), 'ok'); setCann({ open: false, loading: false, applying: false, groups: null }); await scan(); onChanged?.(); }
+      else { setCann((c) => ({ ...c, applying: false })); toast(j.error || 'Error', 'error'); }
+    } catch { setCann((c) => ({ ...c, applying: false })); toast(L('No se pudo aplicar.', 'Could not apply.'), 'error'); }
+  }
 
   // Arreglo en LOTE: mejora todos los artículos por debajo del umbral, uno a uno
   // en segundo plano, con barra de progreso y tolerancia a límites de la API.
@@ -137,8 +159,9 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
               </div>
 
               {data.keywordMap?.some((k: any) => k.count > 1 && k.count <= 8) && (
-                <div style={{ background: 'rgba(255,192,77,.08)', border: '1px solid var(--amber)', borderRadius: 10, padding: '8px 10px', marginBottom: 12, fontSize: 12 }}>
-                  <b style={{ color: 'var(--amber)' }}>{L('Canibalización de keywords', 'Keyword cannibalization')}:</b> {data.keywordMap.filter((k: any) => k.count > 1 && k.count <= 8).slice(0, 6).map((k: any) => `«${k.kw}» ×${k.count}`).join(' · ')}
+                <div style={{ background: 'rgba(255,192,77,.08)', border: '1px solid var(--amber)', borderRadius: 10, padding: '8px 10px', marginBottom: 12, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 180 }}><b style={{ color: 'var(--amber)' }}>{L('Canibalización de keywords', 'Keyword cannibalization')}:</b> {data.keywordMap.filter((k: any) => k.count > 1 && k.count <= 8).slice(0, 6).map((k: any) => `«${k.kw}» ×${k.count}`).join(' · ')}</div>
+                  <button className="btn btn-ghost" style={{ fontSize: 12, flex: '0 0 auto', borderColor: 'var(--amber)', color: 'var(--amber)' }} onClick={cannPlan} disabled={cann.loading}>{cann.loading ? '…' : <><OnyxIcon emoji="🧩" size={13} /> {L('Resolver canibalización', 'Resolve cannibalization')}</>}</button>
                 </div>
               )}
 
@@ -187,6 +210,37 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
               <div className="muted" style={{ fontSize: 11, marginTop: 10 }}>{L('Ordenado por peor puntuación. Los arreglos usan tu IA y se aplican a ese artículo (revísalo en el editor). Frescura usa datos reales de Search Console.', 'Sorted worst-first. Fixes use your AI and apply to that article (review it in the editor). Freshness uses real Search Console data.')}</div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Modal: plan de resolución de canibalización (dry-run) + confirmar. */}
+      {cann.open && (
+        <div onClick={() => !cann.applying && setCann({ open: false, loading: false, applying: false, groups: null })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, width: 620, maxWidth: '96vw', maxHeight: '88vh', overflow: 'auto', padding: 18 }}>
+            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="🧩" size={17} /> {L('Resolver canibalización', 'Resolve cannibalization')}</h3>
+            {cann.loading && <div className="muted" style={{ fontSize: 13, padding: 16 }}>{L('Calculando plan…', 'Computing plan…')}</div>}
+            {!cann.loading && cann.groups && cann.groups.length === 0 && <div className="muted" style={{ fontSize: 13, padding: 16 }}>{L('No hay grupos de canibalización que resolver. ¡Bien!', 'No cannibalization groups to resolve. Nice!')}</div>}
+            {!cann.loading && cann.groups && cann.groups.length > 0 && (
+              <>
+                <p className="muted" style={{ fontSize: 12.5, lineHeight: 1.5 }}>{L('Por cada keyword repetida se conserva UN ganador y los demás pasan a borrador con un redirect 301 hacia el ganador. No se borra nada: puedes republicar y quitar el redirect cuando quieras.', 'For each repeated keyword one winner is kept and the rest become drafts with a 301 redirect to the winner. Nothing is deleted: you can republish and remove the redirect anytime.')}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '12px 0' }}>
+                  {cann.groups.map((g: any) => (
+                    <div key={g.kw} style={{ background: 'var(--bg2)', borderRadius: 10, padding: 10 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>«{g.kw}» <span className="muted" style={{ fontWeight: 400 }}>· {g.losers.length + 1} {L('artículos', 'articles')}</span></div>
+                      <div style={{ fontSize: 12, color: 'var(--green)', display: 'flex', gap: 6 }}><span>✓ {L('Ganador', 'Winner')}:</span> <span style={{ flex: 1 }}>{g.winner.title} <span className="muted">({g.winner.why})</span></span></div>
+                      {g.losers.map((l: any) => (
+                        <div key={l.slug} style={{ fontSize: 12, color: 'var(--mut)', display: 'flex', gap: 6, marginTop: 3 }}><span>↪ 301:</span> <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.title}</span></div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button className="btn btn-ghost" onClick={() => setCann({ open: false, loading: false, applying: false, groups: null })} disabled={cann.applying}>{L('Cancelar', 'Cancel')}</button>
+                  <button className="btn btn-primary" onClick={cannApply} disabled={cann.applying} style={{ background: 'var(--amber)', color: '#0b0d17' }}>{cann.applying ? L('Aplicando…', 'Applying…') : L(`Aplicar (${cann.groups.reduce((s: number, g: any) => s + g.losers.length, 0)} redirects)`, `Apply (${cann.groups.reduce((s: number, g: any) => s + g.losers.length, 0)} redirects)`)}</button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
