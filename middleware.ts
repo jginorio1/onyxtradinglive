@@ -2,6 +2,29 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
+// ¿La sesión pasó el 2FA por CÓDIGO DE RESPALDO? (cookie firmada onyx_2fa que pone
+// lib/adminSecurity.set2faOk tras validar un código). Verificamos la firma HMAC con
+// Web Crypto para no aceptar una cookie falsificada. Debe coincidir con la firma del
+// servidor: HMAC-SHA256(secreto, `${userId}.${exp}`), en hex, y sin caducar.
+async function backupMfaOk(cookieVal: string | undefined, userId: string): Promise<boolean> {
+  try {
+    if (!cookieVal) return false;
+    const dot = cookieVal.indexOf('.');
+    if (dot < 0) return false;
+    const exp = parseInt(cookieVal.slice(0, dot), 10);
+    const sig = cookieVal.slice(dot + 1);
+    if (!exp || Number.isNaN(exp) || Date.now() > exp) return false;
+    const secret = process.env.CRON_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'onyx-2fa';
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${userId}.${exp}`));
+    const good = Array.from(new Uint8Array(mac)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    if (good.length !== sig.length) return false;
+    let diff = 0;
+    for (let i = 0; i < good.length; i++) diff |= good.charCodeAt(i) ^ sig.charCodeAt(i);   // comparación en tiempo constante
+    return diff === 0;
+  } catch { return false; }
+}
+
 export async function middleware(req: NextRequest) {
   const rawPath = req.nextUrl.pathname;
 
@@ -83,6 +106,32 @@ export async function middleware(req: NextRequest) {
     url.search = '';                       // limpiamos params heredados
     url.searchParams.set('next', dest);    // para volver aquí (con su query) tras entrar
     return NextResponse.redirect(url);
+  }
+
+  // PUERTA 2FA (servidor): con contraseña correcta Supabase ya crea sesión, pero
+  // en nivel aal1. Si la cuenta tiene un autenticador verificado, EXIGIMOS aal2
+  // (haber escrito el código) antes de servir cualquier ruta protegida. Sin esto,
+  // pulsar "atrás" desde la pantalla del código dejaba ver el panel sin escribirlo.
+  // El chequeo solo pega a Supabase cuando la sesión aún es aal1 (rápido en aal2).
+  if (needsAuth && user) {
+    try {
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      let pendingMfa = !!aal && aal.nextLevel === 'aal2' && aal.currentLevel !== 'aal2';
+      // Excepción: sesión que ya pasó el 2FA por código de respaldo (cookie firmada).
+      if (pendingMfa && await backupMfaOk(req.cookies.get('onyx_2fa')?.value, user.id)) pendingMfa = false;
+      if (pendingMfa) {
+        if (path === '/admin' || path.startsWith('/admin/')) {
+          return new NextResponse(null, { status: 404 });
+        }
+        const dest = path + (req.nextUrl.search || '');
+        const url = req.nextUrl.clone();
+        url.pathname = '/login';
+        url.search = '';
+        url.searchParams.set('next', dest);
+        url.searchParams.set('mfa', '1');   // la página de login abre directo el paso del código
+        return NextResponse.redirect(url);
+      }
+    } catch { /* si el chequeo falla de forma transitoria, no encerramos a todos */ }
   }
 
   // Panel bloqueado por inactividad: si la marca de actividad (onyx_seen) está
