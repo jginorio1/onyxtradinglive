@@ -72,6 +72,7 @@ export default function SiteFooter() {
     'cTrader is a trademark of Spotware Systems Ltd.',
     'TradingView is a trademark of TradingView, Inc.',
     'Match-Trader is a trademark of Match-Trade Technologies.',
+    'TradeLocker is a trademark of TradeLocker Ltd.',
   ];
   const rawTm = fx?.trademarks;
   const trademarks: string[] = rawTm === undefined

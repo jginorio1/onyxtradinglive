@@ -59,7 +59,7 @@ const K = {
     ctFileName: 'OnyxConnect.cs · cBot de cTrader',
     ctGuide: 'Ver guía completa de cTrader',
     soonT: 'Conexión por API', soonD: 'MatchTrader y TradeLocker se conectan por la API de tu bróker con email y contraseña, sin instalar nada.',
-    mtrT: 'Conecta MatchTrader (beta)', mtrD: 'MatchTrader se conecta con la API de tu bróker (no lleva EA que instalar). Pega la URL de la API y tu clave; en cuanto tu bróker confirme el acceso, Guardian y Copy funcionan igual que en MetaTrader.',
+    mtrT: 'Conecta MatchTrader', mtrD: 'MatchTrader se conecta con la API de tu bróker (no lleva EA que instalar). Pega la URL de la API y tu clave; en cuanto tu bróker confirme el acceso, Guardian y Copy funcionan igual que en MetaTrader.',
     mtrBase: 'URL de la API del bróker', mtrKey: 'API key / token', mtrUuid: 'systemUuid / accountId (si tu bróker lo pide)', mtrSave: 'Guardar conexión', mtrSaved: 'Guardado ✓',
     mtrBeta: 'Beta: se activa cuando tu bróker habilita la API. Si aún no la tienes, usa MT5/MT4/cTrader mientras tanto.',
     stepsCt: [
@@ -142,7 +142,7 @@ const K = {
     ctFileName: 'OnyxConnect.cs · cTrader cBot',
     ctGuide: 'See full cTrader guide',
     soonT: 'API connection', soonD: 'MatchTrader and TradeLocker connect via your broker API with email and password — nothing to install.',
-    mtrT: 'Connect MatchTrader (beta)', mtrD: 'MatchTrader connects via your broker API (no EA to install). Paste the API URL and your key; once your broker confirms access, Guardian and Copy work just like on MetaTrader.',
+    mtrT: 'Connect MatchTrader', mtrD: 'MatchTrader connects via your broker API (no EA to install). Paste the API URL and your key; once your broker confirms access, Guardian and Copy work just like on MetaTrader.',
     mtrBase: 'Broker API URL', mtrKey: 'API key / token', mtrUuid: 'systemUuid / accountId (if your broker needs it)', mtrSave: 'Save connection', mtrSaved: 'Saved ✓',
     mtrBeta: 'Beta: activates once your broker enables the API. If you do not have it yet, use MT5/MT4/cTrader meanwhile.',
     stepsCt: [
@@ -486,20 +486,21 @@ export default function KeysPage() {
         </div>
 
         {kind === 'matchtrader' ? (
-          <MatchtraderConnect t={t} />
+          <MatchtraderConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
         ) : kind === 'tradelocker' ? (
-          <TradeLockerConnect t={t} />
+          <TradeLockerConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
         ) : (
           <>
-            {/* Paso 3: descarga el conector de la plataforma elegida */}
+            {/* Paso 3: descarga el conector de la plataforma elegida.
+                La caja se enciende con el color de la plataforma seleccionada (borde + glow). */}
             <div className="card" style={{ marginBottom: 18 }}>
               <h3 style={{ marginBottom: 4 }}>{t.dlCardT}</h3>
               <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{activePlat.name}</p>
 
-              <div style={{ background: 'var(--bg2)', border: '2px solid var(--brand)', borderRadius: 12, padding: 14, maxWidth: 460 }}>
+              <div style={{ background: `color-mix(in srgb, ${platAccent[plat] || 'var(--brand)'} 7%, var(--bg2))`, border: `2px solid ${platAccent[plat] || 'var(--brand)'}`, borderRadius: 12, padding: 14, maxWidth: 460, boxShadow: `0 0 0 1px color-mix(in srgb, ${platAccent[plat] || 'var(--brand)'} 30%, transparent), 0 0 26px -6px ${platAccent[plat] || 'var(--brand)'}`, transition: 'border-color .25s, box-shadow .25s, background .25s' }}>
                 <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
                   <b style={{ fontSize: 15 }}>Onyx · {activePlat.name}</b>
-                  <span className="pill" style={{ background: 'rgba(124,140,255,.16)', color: '#aeb7ff' }}>{activePlat.badge}</span>
+                  <span className="pill" style={{ background: `color-mix(in srgb, ${platAccent[plat] || 'var(--brand)'} 18%, transparent)`, color: platAccent[plat] || 'var(--brand)' }}>{activePlat.badge}</span>
                 </div>
                 <div style={{ fontSize: 12, lineHeight: 1.9, color: 'var(--mut)', marginBottom: 14 }}>
                   {platData.does.map((x: string, i: number) => (
@@ -507,7 +508,7 @@ export default function KeysPage() {
                   ))}
                   {platData.note && <div style={{ color: 'var(--amber)' }}>! {platData.note}</div>}
                 </div>
-                <a className="btn btn-primary" style={{ width: '100%' }} href={platData.dl[0].href} download
+                <a className="btn btn-primary" style={{ width: '100%', background: platAccent[plat] || 'var(--brand)', borderColor: platAccent[plat] || 'var(--brand)', color: '#0b1020' }} href={platData.dl[0].href} download
                   onClick={() => markDone('dl')}><span className="ic">↓</span>{platData.dl[0].label}</a>
                 <div className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: 'center' }}>{platData.fileName}</div>
                 {kind === 'ctrader' && (
@@ -583,7 +584,7 @@ export default function KeysPage() {
 // TradeLocker (retail): el trader elige su bróker del catálogo (o escribe el server),
 // entorno demo/real, e inicia sesión con email + contraseña. Guardamos solo tokens
 // cifrados (nunca la contraseña). Si el bróker es prop, avisa antes de conectar.
-function TradeLockerConnect({ t }: any) {
+function TradeLockerConnect({ t, accent = 'var(--brand)' }: any) {
   const en = t.mtrBase === 'API URL';
   const [servers, setServers] = useState<any[]>([]);
   const [conns, setConns] = useState<any[]>([]);
@@ -616,7 +617,7 @@ function TradeLockerConnect({ t }: any) {
   const remove = async (c: any) => { await fetch('/api/tradelocker', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id }) }); load(); };
 
   return (
-    <div className="card" style={{ marginBottom: 18, border: '1px solid var(--brand)' }}>
+    <div className="card" style={{ marginBottom: 18, border: `2px solid ${accent}`, boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 30%, transparent), 0 0 26px -6px ${accent}`, background: `color-mix(in srgb, ${accent} 6%, var(--card))`, transition: 'border-color .25s, box-shadow .25s, background .25s' }}>
       <h3 style={{ marginBottom: 4 }}>TradeLocker</h3>
       <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7, marginBottom: 12 }}>
         {en ? 'Connect your TradeLocker account: pick your broker (or type its server), choose demo/live and sign in with your account email and password. We store only an encrypted token — never your password.' : 'Conecta tu cuenta de TradeLocker: elige tu bróker (o escribe su server), demo/real e inicia sesión con el email y contraseña de tu cuenta. Guardamos solo un token cifrado — nunca tu contraseña.'}
@@ -644,7 +645,7 @@ function TradeLockerConnect({ t }: any) {
         </div>
         <label className="muted" style={{ fontSize: 12 }}>Email<input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" style={{ marginTop: 4 }} /></label>
         <label className="muted" style={{ fontSize: 12 }}>{en ? 'Password' : 'Contraseña'}<input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••" style={{ marginTop: 4 }} /></label>
-        <button className="btn btn-primary" disabled={busy || !email || !pass || (code === '__manual__' ? !manualServer.trim() : !code)} onClick={onConnect}>{busy ? '…' : (en ? 'Connect' : 'Conectar')}</button>
+        <button className="btn btn-primary" style={{ background: accent, borderColor: accent, color: '#0b1020' }} disabled={busy || !email || !pass || (code === '__manual__' ? !manualServer.trim() : !code)} onClick={onConnect}>{busy ? '…' : (en ? 'Connect' : 'Conectar')}</button>
         {msg ? <div className="muted" style={{ fontSize: 12.5 }}>{msg}</div> : null}
       </div>
 
@@ -684,7 +685,7 @@ function TradeLockerConnect({ t }: any) {
   );
 }
 
-function MatchtraderConnect({ t }: any) {
+function MatchtraderConnect({ t, accent = 'var(--brand)' }: any) {
   const en = t.mtrBase === 'API URL';
   const [brokers, setBrokers] = useState<any[]>([]);
   const [conns, setConns] = useState<any[]>([]);
@@ -713,7 +714,7 @@ function MatchtraderConnect({ t }: any) {
   const remove = async (c: any) => { await fetch('/api/matchtrader/platform', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id }) }); load(); };
 
   return (
-    <div className="card" style={{ marginBottom: 18, border: '1px solid var(--brand)' }}>
+    <div className="card" style={{ marginBottom: 18, border: `2px solid ${accent}`, boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 30%, transparent), 0 0 26px -6px ${accent}`, background: `color-mix(in srgb, ${accent} 6%, var(--card))`, transition: 'border-color .25s, box-shadow .25s, background .25s' }}>
       <h3 style={{ marginBottom: 4 }}>{t.mtrT}</h3>
       <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7, marginBottom: 12 }}>
         {en ? 'Connect your MatchTrader account: pick your broker and sign in with your account email and password. We store only an encrypted token — never your password.' : 'Conecta tu cuenta de MatchTrader: elige tu bróker e inicia sesión con el email y contraseña de tu cuenta. Guardamos solo un token cifrado — nunca tu contraseña.'}
@@ -729,7 +730,7 @@ function MatchtraderConnect({ t }: any) {
           </label>
           <label className="muted" style={{ fontSize: 12 }}>Email<input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" style={{ marginTop: 4 }} /></label>
           <label className="muted" style={{ fontSize: 12 }}>{en ? 'Password' : 'Contraseña'}<input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••" style={{ marginTop: 4 }} /></label>
-          <button className="btn btn-primary" disabled={busy || !code || !email || !pass} onClick={onConnect}>{busy ? '…' : (en ? 'Connect' : 'Conectar')}</button>
+          <button className="btn btn-primary" style={{ background: accent, borderColor: accent, color: '#0b1020' }} disabled={busy || !code || !email || !pass} onClick={onConnect}>{busy ? '…' : (en ? 'Connect' : 'Conectar')}</button>
           {msg ? <div className="muted" style={{ fontSize: 12.5 }}>{msg}</div> : null}
         </div>
       )}

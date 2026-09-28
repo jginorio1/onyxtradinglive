@@ -43,7 +43,7 @@ function buildPriceFaqs(plans: any[], lang: 'es' | 'en'): [string, string][] {
 const STATS = [
   { to: 100, suffix: '%', es: 'Conexión solo lectura', en: 'Read-only connection' },
   { to: 15, prefix: '+', es: 'Métricas profesionales', en: 'Pro metrics' },
-  { to: 5, suffix: '', es: 'Plataformas y señales', en: 'Platforms & signals' },
+  { to: 6, suffix: '', es: 'Plataformas y señales', en: 'Platforms & signals' },
   { to: 4, prefix: '+', es: 'Prop firms compatibles', en: 'Compatible prop firms' },
 ];
 
@@ -681,7 +681,7 @@ export default function Home() {
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
             <Counter to={stats.platforms} />
-            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas y señales · MT4, MT5, cTrader, TradingView · MatchTrader (beta)' : 'Platforms & signals · MT4, MT5, cTrader, TradingView · MatchTrader (beta)'}</div>
+            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas y señales · MT4, MT5, cTrader, TradingView, MatchTrader y TradeLocker' : 'Platforms & signals · MT4, MT5, cTrader, TradingView, MatchTrader & TradeLocker'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
             <Counter to={stats.readonly} suffix="%" />
