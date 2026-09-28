@@ -8,7 +8,7 @@
 // Devuelve además un mapa de keywords (cobertura + canibalización) y la salud global.
 // La IA solo entra cuando el dueño pulsa un arreglo (híbrido = local marca, IA corrige).
 // ============================================================
-import { listAllPosts, savePost } from './blog';
+import { listAllPosts, savePost, addRedirect } from './blog';
 import { blogKeywordsSettings, getSetting } from './settings';
 import { gscConfigured, gscOverview } from './seoSearchConsole';
 import { enhanceArticle, type RelatedPost } from './blogAI';
@@ -202,6 +202,76 @@ export async function runAudit(): Promise<AuditResult> {
 }
 
 // ── Auto-mejora en segundo plano (cron, sin depender del navegador) ─────────
+// ============================================================
+// CANIBALIZACIÓN: varios artículos publicados apuntando a la MISMA keyword. Se
+// resuelve eligiendo UN ganador por grupo y redirigiendo (301) los demás hacia
+// él. NO borra: los perdedores pasan a borrador (reversible) y su URL 301 al
+// ganador, consolidando la autoridad en una sola página.
+// ============================================================
+export type CannibalLoser = { slug: string; title: string; impressions: number; inbound: number };
+export type CannibalGroup = { kw: string; winner: { slug: string; title: string; impressions: number; inbound: number; why: string }; losers: CannibalLoser[] };
+
+// Devuelve los grupos de canibalización real (2-8 publicados con la misma keyword),
+// con el ganador propuesto (más impresiones GSC → más enlaces entrantes → más
+// antiguo/establecido) y los perdedores a redirigir. Solo lectura (dry-run).
+export async function cannibalGroups(): Promise<CannibalGroup[]> {
+  const all = (await listAllPosts()).filter((p: any) => p.status === 'published');
+  const kwCfg = await blogKeywordsSettings().catch(() => ({ es: [], en: [] } as any));
+  const kws = [...(kwCfg.es || []), ...(kwCfg.en || [])].map(String);
+
+  // GSC por página (si está configurado): decide el ganador por impresiones reales.
+  const gscMap = new Map<string, number>();
+  if (gscConfigured()) {
+    try { const ov = await gscOverview(28); if (ov?.ok) (ov.pages || []).forEach((r: any) => { const m = String(r.keys?.[0] || '').match(/\/blog\/([^/?#]+)/); if (m) gscMap.set(m[1], r.impressions || 0); }); } catch {}
+  }
+  // Enlaces entrantes por slug (grafo interno).
+  const inbound = new Map<string, number>();
+  all.forEach((p: any) => { const outs = new Set(Array.from((String(p.body_es || '') + String(p.body_en || '')).matchAll(/\]\(\/blog\/([^)]+)\)/g)).map((m) => String(m[1]).split(/[#?]/)[0])); outs.forEach((s) => inbound.set(s, (inbound.get(s) || 0) + 1)); });
+
+  const groups = new Map<string, any[]>();
+  all.forEach((p: any) => { const k = targetKw(p, kws); (groups.get(k) || groups.set(k, []).get(k)!).push(p); });
+
+  const out: CannibalGroup[] = [];
+  for (const [kw, arr] of groups) {
+    if (arr.length < 2 || arr.length > 8) continue;   // <2 no canibaliza; >8 es tema pilar
+    const info = (p: any) => ({ imp: gscMap.get(p.slug) || 0, inb: inbound.get(p.slug) || 0, age: new Date(p.published_at || p.created_at || 0).getTime() });
+    const ranked = [...arr].sort((a, b) => { const A = info(a), B = info(b); return (B.imp - A.imp) || (B.inb - A.inb) || (A.age - B.age); });
+    const w = ranked[0]; const wi = info(w);
+    const why = wi.imp > 0 ? `${wi.imp} impresiones en Google` : wi.inb > 0 ? `${wi.inb} enlaces entrantes` : 'el más antiguo/establecido';
+    out.push({
+      kw,
+      winner: { slug: w.slug, title: w.title_es || w.title_en || w.slug, impressions: wi.imp, inbound: wi.inb, why },
+      losers: ranked.slice(1).map((p: any) => { const ii = info(p); return { slug: p.slug, title: p.title_es || p.title_en || p.slug, impressions: ii.imp, inbound: ii.inb }; }),
+    });
+  }
+  return out.sort((a, b) => b.losers.length - a.losers.length);
+}
+
+// Aplica la resolución: por cada grupo (o solo el de `onlyKw`), pasa los perdedores
+// a BORRADOR y crea un 301 de su slug → el del ganador. Reversible (republicar +
+// quitar el redirect). Devuelve cuántos se redirigieron.
+export async function resolveCannibalization(onlyKw?: string): Promise<{ ok: boolean; groups: number; redirected: number; details: { kw: string; winner: string; losers: string[] }[] }> {
+  const gs = await cannibalGroups();
+  const target = onlyKw ? gs.filter((g) => g.kw === onlyKw) : gs;
+  const all = await listAllPosts();
+  const bySlug = new Map(all.map((p: any) => [p.slug, p]));
+  let redirected = 0; const details: { kw: string; winner: string; losers: string[] }[] = [];
+  for (const g of target) {
+    const done: string[] = [];
+    for (const l of g.losers) {
+      const p: any = bySlug.get(l.slug); if (!p) continue;
+      try {
+        await savePost({ ...p, status: 'draft', updated_at: new Date().toISOString() });   // fuera del índice, NO se borra
+        await addRedirect(l.slug, g.winner.slug);                                           // 301 al ganador
+        if (p.slug_en && p.slug_en !== l.slug) { try { await addRedirect(p.slug_en, g.winner.slug); } catch {} }
+        redirected++; done.push(l.slug);
+      } catch {}
+    }
+    if (done.length) details.push({ kw: g.kw, winner: g.winner.slug, losers: done });
+  }
+  return { ok: true, groups: details.length, redirected, details };
+}
+
 export type AutoFixCfg = { enabled: boolean; threshold: number };
 export const AUTOFIX_DEFAULT: AutoFixCfg = { enabled: false, threshold: 70 };
 export const autoFixCfg = () => getSetting<AutoFixCfg>('blog_autofix', AUTOFIX_DEFAULT);
