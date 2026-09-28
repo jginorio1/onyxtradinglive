@@ -391,11 +391,13 @@ export type NewsPilot = {
   seo: boolean;                   // teje (ligero) una keyword de la lista/GSC si encaja, y marca NewsArticle
   maxPerEntity: number;           // tope de notas por MISMA entidad (dow jones, la Fed…) en la ventana. 0 = sin tope
   entityDays: number;             // ventana en días para el tope por entidad (anti-canibalización)
+  emailMode: 'instant' | 'digest'; // 'instant' = un email por noticia; 'digest' = un resumen al día
+  digestHourNY: number;           // hora local de Nueva York a la que sale el resumen (0-23). 8 = ~1.5 h antes de la apertura
 };
 const NEWS: NewsPilot = {
   enabled: false, mode: 'auto', maxPerDay: 3, minMinutesBetween: 20, emailSegment: 'all',
   topics: { macro: true, markets: true, earnings: true, crypto: true }, sources: {}, custom_sources: [], maxAgeMin: 2880, seo: true,
-  maxPerEntity: 2, entityDays: 7,
+  maxPerEntity: 2, entityDays: 7, emailMode: 'instant', digestHourNY: 8,
 };
 export const newsPilotSettings = () => getSetting<NewsPilot>('news_pilot', NEWS);
 

@@ -379,6 +379,9 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
   }
 
   const auto = cfg.mode !== 'draft';
+  // Modo de email: 'digest' = NO manda un correo por noticia; se acumula y sale un
+  // resumen a la hora elegida (cron news-digest). 'instant' = email inmediato (legacy).
+  const emailInstant = auto && (cfg as any).emailMode !== 'digest';
   // Publica (auto) o deja borrador. En auto, activa el email inmediato (inglés).
   // Si por lo que sea el guardado falla, LIBERAMOS la noticia (borramos el "visto")
   // para que el próximo ciclo la reintente, y no congelamos el piloto.
@@ -387,7 +390,7 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
     saved = await savePost({
       ...gen.article,
       status: auto ? 'published' : 'draft', is_news: true,
-      email_enabled: auto, email_when: 'now', email_segment: cfg.emailSegment || 'all',
+      email_enabled: emailInstant, email_when: 'now', email_segment: cfg.emailSegment || 'all',
     });
   } catch (e: any) {
     try { await supabaseAdmin.from('news_seen').delete().eq('hash', pickHash); } catch {}
@@ -399,8 +402,9 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
   // Marca el registro como publicado (para tope diario y separación).
   try { await supabaseAdmin.from('news_seen').update({ posted: auto, post_id: saved.id }).eq('hash', pickHash); } catch {}
 
-  // Envío por email inmediato solo en modo auto.
-  if (auto) {
+  // Envío por email inmediato solo en modo auto + email 'instant'. En 'digest' NO
+  // se envía aquí: el resumen sale una vez al día por el cron news-digest.
+  if (emailInstant) {
     try {
       const { data: post } = await supabaseAdmin.from('blog_posts').select('*').eq('id', saved.id).maybeSingle();
       if (post) await sendBlogEmailNow(post, cfg.emailSegment || 'all');

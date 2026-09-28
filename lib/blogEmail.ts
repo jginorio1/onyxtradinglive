@@ -3,7 +3,7 @@ import { sendManual } from '@/lib/campaigns';
 import { slugFor } from '@/lib/blog';
 import { articleUrl } from '@/lib/social';
 import { logError } from '@/lib/errlog';
-import { blogAutopilotSettings } from '@/lib/settings';
+import { blogAutopilotSettings, getSetting, saveSetting, newsPilotSettings } from '@/lib/settings';
 
 // Interruptor GLOBAL de correos del blog. Un solo lugar de control: si el dueño
 // apaga "autoEmail" en el autopiloto del blog, NO sale ningún correo de artículos
@@ -40,6 +40,58 @@ export function buildBlogEmail(post: any): { subject_es: string; body_es: string
   const subject_en = `📰 ${tEn}`.slice(0, 120);
   const body_en = `Hi {{nombre}},\n\n**${tEn}**\n\n${xEn}\n\nRead the full article here:\n${urlEn}\n\n— The Onyx Trading Live team`;
   return { subject_es, body_es, subject_en, body_en };
+}
+
+// ============================================================
+// RESUMEN DIARIO de noticias: en vez de un email por cada nota, junta las noticias
+// del día en UN solo correo y lo manda a la hora elegida (≈1-2 h antes de la
+// apertura de Nueva York). Así el dueño sigue presente sin saturar la bandeja.
+// ============================================================
+// Fecha "hoy" en Nueva York (YYYY-MM-DD) para agrupar el día y evitar duplicar.
+function nyDateStr(d = new Date()): string {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
+  const y = p.find((x) => x.type === 'year')!.value, m = p.find((x) => x.type === 'month')!.value, dd = p.find((x) => x.type === 'day')!.value;
+  return `${y}-${m}-${dd}`;
+}
+// Hora local de Nueva York (0-23), para que el cron dispare a la hora correcta
+// aunque cambie el horario de verano (el cron de Vercel corre en UTC).
+export function nyHour(d = new Date()): number {
+  return parseInt(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', hour12: false }).format(d), 10) % 24;
+}
+
+// Envía el RESUMEN del día. force ignora el candado de "ya enviado hoy" (para test).
+export async function sendNewsDigest(force = false): Promise<{ ok: boolean; reason?: string; count?: number }> {
+  if (!(await blogEmailGloballyOn())) return { ok: false, reason: 'blog_email_off' };
+  const cfg = await newsPilotSettings();
+  if ((cfg as any).emailMode !== 'digest' && !force) return { ok: false, reason: 'not_digest_mode' };
+  const today = nyDateStr();
+  const gate = await getSetting<{ date: string }>('news_digest_last', { date: '' });
+  if (gate.date === today && !force) return { ok: false, reason: 'already_sent' };
+
+  // Noticias PUBLICADAS hoy (ventana de Nueva York). Solo is_news.
+  const dayStartUtc = new Date(`${today}T00:00:00-04:00`);   // aprox borde de NY (DST-tolerante para el filtro)
+  const { data: posts } = await supabaseAdmin.from('blog_posts')
+    .select('title_es,title_en,excerpt_es,excerpt_en,slug,slug_en,cat,status,published_at,is_news')
+    .eq('status', 'published').eq('is_news', true)
+    .gte('published_at', new Date(dayStartUtc.getTime() - 3600000).toISOString())
+    .order('published_at', { ascending: true }).limit(20);
+  const items = (posts || []).filter((p: any) => nyDateStr(new Date(p.published_at)) === today);
+  if (!items.length) { try { await saveSetting('news_digest_last', { date: today }); } catch {} return { ok: true, reason: 'no_news', count: 0 }; }
+
+  const dateEs = new Date().toLocaleDateString('es', { timeZone: 'America/New_York', weekday: 'long', day: 'numeric', month: 'long' });
+  const dateEn = new Date().toLocaleDateString('en', { timeZone: 'America/New_York', weekday: 'long', day: 'numeric', month: 'long' });
+  const subject_es = `📊 Resumen del día · ${items.length} noticia${items.length > 1 ? 's' : ''} de mercado`.slice(0, 120);
+  const subject_en = `📊 Market brief · ${items.length} update${items.length > 1 ? 's' : ''} today`.slice(0, 120);
+  const lineEs = (p: any) => `**${String(p.title_es || p.title_en || '').trim()}**\n${String(p.excerpt_es || p.excerpt_en || '').trim()}\n${articleUrl(SITE, slugFor(p, 'es'), 'es')}`;
+  const lineEn = (p: any) => `**${String(p.title_en || p.title_es || '').trim()}**\n${String(p.excerpt_en || p.excerpt_es || '').trim()}\n${articleUrl(SITE, slugFor(p, 'en'), 'en')}`;
+  const body_es = `Hola {{nombre}},\n\nLo que movió el mercado hoy (${dateEs}):\n\n${items.map(lineEs).join('\n\n')}\n\nAbre tu panel: ${SITE}/dashboard\n\n— Equipo de Onyx Trading Live`;
+  const body_en = `Hi {{nombre}},\n\nWhat moved the market today (${dateEn}):\n\n${items.map(lineEn).join('\n\n')}\n\nOpen your dashboard: ${SITE}/dashboard\n\n— The Onyx Trading Live team`;
+
+  try {
+    await sendManual({ segment: cfg.emailSegment || 'all', respectCap: true, subject_es, body_es, subject_en, body_en });
+    await saveSetting('news_digest_last', { date: today });
+    return { ok: true, count: items.length };
+  } catch (e) { await logError('news_digest_send', e); return { ok: false, reason: 'send_failed' }; }
 }
 
 // Marca en el post que el correo ya salió (tolerante si la columna no existe).

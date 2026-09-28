@@ -124,6 +124,8 @@ export async function PATCH(req: Request) {
     seo: b.seo == null ? (prev.seo ?? true) : !!b.seo,
     maxPerEntity: b.maxPerEntity == null ? (prev.maxPerEntity ?? 2) : clampInt(b.maxPerEntity, 0, 10, prev.maxPerEntity ?? 2),
     entityDays: b.entityDays == null ? (prev.entityDays ?? 7) : clampInt(b.entityDays, 1, 30, prev.entityDays ?? 7),
+    emailMode: b.emailMode == null ? ((prev as any).emailMode || 'instant') : oneOf(b.emailMode, ['instant', 'digest'], (prev as any).emailMode || 'instant'),
+    digestHourNY: b.digestHourNY == null ? ((prev as any).digestHourNY ?? 8) : clampInt(b.digestHourNY, 0, 23, (prev as any).digestHourNY ?? 8),
   };
   await saveSetting('news_pilot', value);
   return NextResponse.json({ ok: true, ...value });
