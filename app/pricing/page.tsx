@@ -8,7 +8,7 @@ import PlansCompareTable from '@/app/PlansCompareTable';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import PlanCards from '@/app/PlanCards';
-import { useIsIOSApp, openOnyxWeb } from '@/app/account/ManageOnWeb';
+import ManageOnWeb, { useIsIOSApp, openOnyxWeb } from '@/app/account/ManageOnWeb';
 import { getPending } from '@/lib/pendingCheckout';
 import { planFacts, trialLine } from '@/lib/planFacts';
 
@@ -156,6 +156,25 @@ export default function Pricing() {
     if (iosApp) { openOnyxWeb('/pricing'); return; }   // iOS: la compra se hace en la web
     if (plan === 'free' || price === 0) { window.location.href = '/login?mode=signup'; return; }
     setCo({ plan });
+  }
+
+  // ── APP DE iOS (regla 3.1.1 de Apple) ────────────────────────────────────
+  // Dentro de la app de iPhone/iPad NO se muestran precios ni planes de compra.
+  // Onyx es un servicio multiplataforma: la suscripción se gestiona en la web
+  // (regla 3.1.3(b)). En Android y navegador esto no aplica: la página normal.
+  if (iosApp) {
+    const es = lang === 'es';
+    return (
+      <div className="wrap" style={{ padding: '48px 22px 60px', textAlign: 'center', maxWidth: 560, margin: '0 auto' }}>
+        <h1 style={{ fontSize: 26 }}>{es ? 'Tu plan Onyx' : 'Your Onyx plan'}</h1>
+        <p className="muted" style={{ margin: '10px 0 22px', lineHeight: 1.7 }}>
+          {es
+            ? 'Onyx funciona en la web, Android e iOS con la misma cuenta. La suscripción y los pagos se gestionan desde el sitio web de Onyx; aquí en la app usas todo lo que tu cuenta ya incluye.'
+            : 'Onyx works on the web, Android and iOS with the same account. Subscription and payments are managed on the Onyx website; here in the app you use everything your account already includes.'}
+        </p>
+        <ManageOnWeb lang={lang} />
+      </div>
+    );
   }
 
   return (

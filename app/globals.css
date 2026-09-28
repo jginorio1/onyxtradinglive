@@ -1046,6 +1046,9 @@ html.native-app a.logo{ pointer-events:none !important; cursor:default !importan
 html.ios-app a[href="/pricing"],
 html.ios-app a[href^="/pricing"],
 html.ios-app a[href^="/en/pricing"],
+html.ios-app a[href*="upgrade=1"],
+html.ios-app a[href*="cuenta?upgrade"],
+html.ios-app a[href*="?view=plan"],
 html.ios-app .ios-pay-hide{ display:none !important; }
 
 /* Espacios patrocinados: OCULTOS en la app nativa (Apple/Google) hasta aprobación. */
