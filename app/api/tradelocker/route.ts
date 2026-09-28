@@ -56,6 +56,17 @@ export async function POST(req: Request) {
   const res = await tlLogin(demo, server, email, password);
   if (!res.ok || !res.accounts?.length) return NextResponse.json({ error: res.error || 'login falló', code: 'login' }, { status: 400 });
 
+  // AUTO-APRENDIZAJE del catálogo: si el trader conectó con un server escrito a mano
+  // (no del catálogo) y ese server aún no existe, lo añadimos solo para que aparezca
+  // en el menú de futuros traders y en el panel admin. El dueño puede renombrarlo/ocultarlo.
+  if (!b.server_code && server) {
+    try {
+      const code = 'auto_' + server.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 36);
+      const { data: exists } = await supabaseAdmin.from('tl_servers').select('code').eq('server', server).maybeSingle();
+      if (!exists) await supabaseAdmin.from('tl_servers').insert({ code, name: server, server, demo_default: demo, is_prop: false, copy_allowed: true, enabled: true, sort: 100 });
+    } catch {}
+  }
+
   const created: any[] = [];
   for (const acc of res.accounts) {
     const login = loginOf(acc.id);
