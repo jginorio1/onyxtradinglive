@@ -15,6 +15,11 @@ const config: CapacitorConfig = {
   appId: 'com.onyxtradinglive.app',
   appName: 'Onyx Trading Live',
   webDir: 'public',
+  // SOLO iOS: añade una marca al user-agent para que la web sepa con certeza que
+  // corre dentro de la app de iPhone/iPad y oculte planes/precios (regla 3.1.1 de
+  // Apple), sin depender de que el bridge JS de Capacitor esté disponible en la
+  // página remota. Android NO lleva marca, así que allí no cambia nada.
+  ios: { appendUserAgent: 'OnyxiOSApp' },
   server: {
     url: 'https://www.onyxtradinglive.com',
     androidScheme: 'https',
