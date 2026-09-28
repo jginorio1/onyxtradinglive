@@ -61,8 +61,8 @@ export async function generateMetadata(): Promise<Metadata> {
   // Overrides de título/descripción que el owner edita en Admin → SEO (si vacío, usa el default).
   const seo = seoFor(await getSeoMeta(), 'home', es,
     es ? 'Onyx Trading Live · El sistema operativo del trader de fondeo' : 'Onyx Trading Live · The operating system for funded traders',
-    es ? 'Conecta MT4, MT5 y cTrader, sigue las reglas de tu prop firm en vivo, protege tu riesgo con el Onyx Guardian y copia entre cuentas. Journal, analítica y ganancia neta. Empieza gratis.'
-       : 'Connect MT4, MT5 and cTrader, track your prop-firm rules live, protect your risk with Onyx Guardian and copy across accounts. Journal, analytics and net profit. Start free.');
+    es ? 'Journal y gestión de riesgo para forex y CFDs. Conecta MT4, MT5, cTrader y MatchTrader, sigue las reglas de tu prop firm en vivo, protege tu riesgo con Onyx Guardian y copia entre cuentas. Analítica y ganancia neta. Empieza gratis.'
+       : 'Journal and risk management for forex and CFDs. Connect MT4, MT5, cTrader and MatchTrader, track your prop-firm rules live, protect your risk with Onyx Guardian and copy across accounts. Analytics and net profit. Start free.');
   const gVer = process.env.GOOGLE_SITE_VERIFICATION;
   const bVer = process.env.BING_SITE_VERIFICATION;
   const adsenseId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;   // ej. ca-pub-7228105221509555
@@ -72,7 +72,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description: seo.description,
     // Etiqueta meta de verificación de AdSense (método "Meta tag"). Siempre en el <head>.
     ...(adsenseId ? { other: { 'google-adsense-account': adsenseId } } : {}),
-    keywords: ['trading journal', 'diario de trading', 'MT4', 'MT5', 'MetaTrader', 'cTrader', 'MatchTrader', 'TradingView', 'TradingView signals', 'señales TradingView', 'estadísticas trading', 'trading stats', 'FTMO', 'prop firm', 'copy trading', 'trading academy', 'analytics'],
+    keywords: ['trading journal', 'diario de trading', 'forex', 'forex journal', 'diario de forex', 'trading de forex', 'CFDs', 'CFD trading', 'trading de CFDs', 'diario de CFDs', 'MT4', 'MT5', 'MetaTrader', 'cTrader', 'MatchTrader', 'TradingView', 'TradingView signals', 'señales TradingView', 'estadísticas trading', 'trading stats', 'FTMO', 'prop firm', 'copy trading', 'trading academy', 'analytics'],
     verification: gVer ? { google: gVer, ...(bVer ? { other: { 'msvalidate.01': bVer } } : {}) } : (bVer ? { other: { 'msvalidate.01': bVer } } : undefined),
     alternates: localeAlternates('/'),
     manifest: '/manifest.webmanifest',
