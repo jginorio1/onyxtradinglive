@@ -273,19 +273,19 @@ export const ARTICLES: Article[] = [
   {
     slug: 'conectar-api',
     cat: 'start', icon: '🔗', cover: '/guia/key.svg',
-    title: { es: 'Conectar por API (MatchTrader y TradeLocker)', en: 'Connecting by API (MatchTrader and TradeLocker)' },
+    title: { es: 'Conectar por API (MatchTrader, TradeLocker y DXtrade)', en: 'Connecting by API (MatchTrader, TradeLocker and DXtrade)' },
     summary: {
-      es: 'Sin instalar nada: conecta MatchTrader o TradeLocker con el email y la contraseña de tu cuenta.',
-      en: 'Nothing to install: connect MatchTrader or TradeLocker with your account email and password.',
+      es: 'Sin instalar nada: conecta MatchTrader, TradeLocker o DXtrade con el email y la contraseña de tu cuenta.',
+      en: 'Nothing to install: connect MatchTrader, TradeLocker or DXtrade with your account email and password.',
     },
     seo: {
-      title: { es: 'Conectar MatchTrader o TradeLocker por API · Guía', en: 'Connect MatchTrader or TradeLocker by API · Guide' },
-      desc: { es: 'Conecta tu cuenta de MatchTrader o TradeLocker en Onyx por la API de tu bróker, sin instalar ningún EA. Guardamos solo un token cifrado.', en: 'Connect your MatchTrader or TradeLocker account to Onyx via your broker API, with no EA to install. We store only an encrypted token.' },
+      title: { es: 'Conectar MatchTrader, TradeLocker o DXtrade por API · Guía', en: 'Connect MatchTrader, TradeLocker or DXtrade by API · Guide' },
+      desc: { es: 'Conecta tu cuenta de MatchTrader, TradeLocker o DXtrade en Onyx por la API de tu bróker, sin instalar ningún EA. Guardamos solo un token cifrado.', en: 'Connect your MatchTrader, TradeLocker or DXtrade account to Onyx via your broker API, with no EA to install. We store only an encrypted token.' },
     },
     cta: { href: '/dashboard/keys', label: { es: 'Ir a conectar mi cuenta', en: 'Go connect my account' } },
     body: {
       es: [
-        { p: 'MatchTrader y TradeLocker no llevan EA. En vez de instalar un programa en tu plataforma, Onyx se conecta a la API de tu bróker: eliges tu bróker, marcas si la cuenta es demo o real, y entras con el email y la contraseña de tu cuenta. Desde ese momento el Guardian y el Copy funcionan igual que en MetaTrader, pero todo pasa en la nube, sin nada corriendo en tu computadora.' },
+        { p: 'MatchTrader, TradeLocker y DXtrade no llevan EA. En vez de instalar un programa en tu plataforma, Onyx se conecta a la API de tu bróker: eliges tu bróker, marcas si la cuenta es demo o real, y entras con el email y la contraseña de tu cuenta. Desde ese momento el Guardian y el Copy funcionan igual que en MetaTrader, pero todo pasa en la nube, sin nada corriendo en tu computadora.' },
         { h: 'Qué guardamos' },
         { p: 'Solo un token cifrado que el bróker nos entrega al iniciar sesión. Nunca guardamos tu contraseña. Ese token se renueva solo; si el bróker lo caduca, verás "reconectar" y basta con volver a entrar.' },
         { note: 'Tu contraseña nunca se almacena. Se usa una sola vez para pedirle el token al bróker y se descarta.', title: 'Por qué es seguro' },
@@ -296,7 +296,7 @@ export const ARTICLES: Article[] = [
         { warn: 'Si tu cuenta es de una prop firm, revisa sus reglas antes de activar Copy o ejecución automática: muchas prohíben la automatización por API en cuentas de challenge o fondeadas. El monitoreo (solo lectura) es de menor riesgo.' },
       ],
       en: [
-        { p: 'MatchTrader and TradeLocker carry no EA. Instead of installing a program in your platform, Onyx connects to your broker API: you pick your broker, choose whether the account is demo or live, and sign in with your account email and password. From then on Guardian and Copy work just like on MetaTrader, but everything runs in the cloud, with nothing running on your computer.' },
+        { p: 'MatchTrader, TradeLocker and DXtrade carry no EA. Instead of installing a program in your platform, Onyx connects to your broker API: you pick your broker, choose whether the account is demo or live, and sign in with your account email and password. From then on Guardian and Copy work just like on MetaTrader, but everything runs in the cloud, with nothing running on your computer.' },
         { h: 'What we store' },
         { p: 'Only an encrypted token the broker hands us at sign-in. We never store your password. That token renews itself; if the broker expires it, you will see "reconnect" and you just sign in again.' },
         { note: 'Your password is never stored. It is used once to request the token from the broker, then discarded.', title: 'Why it is safe' },

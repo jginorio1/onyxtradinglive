@@ -22,7 +22,7 @@ const T: any = {
     lock: 'El copy trading está en el plan Elite.', lockCta: 'Ver planes →',
     warn: 'Copiar entre cuentas puede violar las reglas de tu prop firm. Eres responsable de cumplirlas.',
     howTitle: 'Cómo activar el copy trading', howHide: 'Ocultar', howShow: 'Ver guía',
-    how1: 'Conecta al menos 2 cuentas', how1b: 'Una será la Master (manda) y las otras Esclavas (reciben). Se conectan en Cuentas (MetaTrader, cTrader, MatchTrader o TradeLocker).',
+    how1: 'Conecta al menos 2 cuentas', how1b: 'Una será la Master (manda) y las otras Esclavas (reciben). Se conectan en Cuentas (MetaTrader, cTrader, MatchTrader, TradeLocker o DXtrade).',
     how1link: 'Ir a Cuentas →',
     how2: 'Prepara las cuentas', how2b: 'La Master ya va integrada en Onyx Connect (no instalas nada aparte). En cada Esclava pulsa «Instalar» en «Claves Copy»: te abre el asistente con la EA Esclava, la URL y tu clave, y confirma en vivo cuando conecta.',
     how3: 'Crea el enlace Master → Esclava', how3b: 'En «Nuevo enlace» eliges la master, la esclava y el modo. Al confirmar empieza a copiar operaciones reales, así que pruébalo primero en DEMO. Puedes pausar/reanudar arriba o por Telegram.',

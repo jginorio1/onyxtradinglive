@@ -25,7 +25,7 @@ export const DEFAULT_ECO = {
 export const DEFAULT_FEATURES = {
   t_es: 'Todo lo que necesitas para mejorar', t_en: 'Everything you need to improve',
   cards: [
-    { i: '🔗', t_es: 'Conexión multiplataforma', t_en: 'Multi-platform connection', d_es: 'MetaTrader 4 y 5, cTrader, MatchTrader y TradeLocker. Vincula tus cuentas y sincroniza el historial automáticamente, sin subir nada a mano.', d_en: 'MetaTrader 4 & 5, cTrader, MatchTrader and TradeLocker. Link your accounts and sync your history automatically — nothing to upload by hand.' },
+    { i: '🔗', t_es: 'Conexión multiplataforma', t_en: 'Multi-platform connection', d_es: 'MetaTrader 4 y 5, cTrader, MatchTrader, TradeLocker y DXtrade. Vincula tus cuentas y sincroniza el historial automáticamente, sin subir nada a mano.', d_en: 'MetaTrader 4 & 5, cTrader, MatchTrader, TradeLocker and DXtrade. Link your accounts and sync your history automatically — nothing to upload by hand.' },
     { i: '📈', t_es: 'Estadísticas avanzadas', t_en: 'Advanced stats', d_es: 'Win rate, profit factor, expectancy, payoff, drawdown, break even y mucho más.', d_en: 'Win rate, profit factor, expectancy, payoff, drawdown, break even and much more.' },
     { i: '🗓️', t_es: 'Calendario de resultados', t_en: 'Results calendar', d_es: 'Visualiza tu P&L por día, mes y año con un calendario tipo mapa de calor.', d_en: 'See your P&L by day, month and year with a heatmap-style calendar.' },
     { i: '🗂️', t_es: 'Multi-cuenta y portafolio', t_en: 'Multi-account & portfolio', d_es: 'Gestiona varias cuentas (real, demo, fondeo) y ve tu portafolio completo sumado.', d_en: 'Manage several accounts (live, demo, funded) and see your full portfolio combined.' },
@@ -38,14 +38,14 @@ export const DEFAULT_HOW = {
   t_es: 'Listo en 3 minutos', t_en: 'Ready in 3 minutes',
   steps: [
     { t_es: 'Crea tu cuenta', t_en: 'Create your account', d_es: 'Regístrate gratis con tu email. Sin tarjeta.', d_en: 'Sign up free with your email. No card.' },
-    { t_es: 'Conecta tu plataforma', t_en: 'Connect your platform', d_es: 'Elige tu plataforma (MetaTrader, cTrader, MatchTrader o TradeLocker) y conéctala. Solo lectura.', d_en: 'Pick your platform (MetaTrader, cTrader, MatchTrader or TradeLocker) and connect it. Read-only.' },
+    { t_es: 'Conecta tu plataforma', t_en: 'Connect your platform', d_es: 'Elige tu plataforma (MetaTrader, cTrader, MatchTrader, TradeLocker o DXtrade) y conéctala. Solo lectura.', d_en: 'Pick your platform (MetaTrader, cTrader, MatchTrader, TradeLocker or DXtrade) and connect it. Read-only.' },
     { t_es: 'Analiza y mejora', t_en: 'Analyze & improve', d_es: 'Tus operaciones aparecen al instante con todas las estadísticas.', d_en: 'Your trades show up instantly with all the stats.' },
   ] as CardRow[],
 };
 
 export const DEFAULT_TRUST = {
-  es: ['✅ MT4, MT5, cTrader, MatchTrader y TradeLocker', '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
-  en: ['✅ MT4, MT5, cTrader, MatchTrader & TradeLocker', '🔒 Read-only connection', '💳 Secure payments with Stripe'],
+  es: ['✅ MT4, MT5, cTrader, MatchTrader, TradeLocker y DXtrade', '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
+  en: ['✅ MT4, MT5, cTrader, MatchTrader, TradeLocker & DXtrade', '🔒 Read-only connection', '💳 Secure payments with Stripe'],
 };
 
 export const DEFAULT_CTA = {
@@ -57,7 +57,7 @@ export const DEFAULT_CTA = {
 // Filas [q_es, a_es, q_en, a_en]. Alineado con el texto de cada página.
 export const DEFAULT_FAQ: Record<string, [string, string, string, string][]> = {
   landing: [
-    ['¿Con qué brokers y prop firms funciona?', 'Con cualquier cuenta de MetaTrader (MT4/MT5), cTrader, MatchTrader o TradeLocker: FTMO, FundedNext, The5ers, FundingPips y tu bróker de siempre. Tu cuenta de fondeo usa una de esas plataformas, así que se conecta igual.', 'Which brokers and prop firms does it work with?', 'Any MetaTrader (MT4/MT5), cTrader, MatchTrader or TradeLocker account: FTMO, FundedNext, The5ers, FundingPips and your usual broker. Your funded account uses one of those platforms, so it connects the same way.'],
+    ['¿Con qué brokers y prop firms funciona?', 'Con cualquier cuenta de MetaTrader (MT4/MT5), cTrader, MatchTrader, TradeLocker o DXtrade: FTMO, FundedNext, The5ers, FundingPips y tu bróker de siempre. Tu cuenta de fondeo usa una de esas plataformas, así que se conecta igual.', 'Which brokers and prop firms does it work with?', 'Any MetaTrader (MT4/MT5), cTrader, MatchTrader, TradeLocker or DXtrade account: FTMO, FundedNext, The5ers, FundingPips and your usual broker. Your funded account uses one of those platforms, so it connects the same way.'],
     ['¿Es seguro conectar mi cuenta?', 'Sí. La conexión es de solo lectura: Onyx lee tu historial pero nunca puede operar, retirar ni mover tus fondos.', 'Is it safe to connect my account?', 'Yes. The connection is read-only: Onyx reads your history but can never trade, withdraw or move your funds.'],
     ['¿Necesito saber programar?', 'No. Instalas el connector, pegas tu API key y listo. Te guiamos paso a paso; no hay que tocar código.', 'Do I need to know how to code?', "No. Install the connector, paste your API key and you're done. We guide you step by step — no code required."],
     ['¿Onyx opera por mí o hace trades solo?', 'No. Onyx nunca ejecuta operaciones ni toca tu dinero. Analiza tu historial y, con Onyx Guardian, te avisa o bloquea el gráfico si te saltas tus reglas. Tú siempre tienes el control.', 'Does Onyx trade for me or place trades on its own?', "No. Onyx never places trades or touches your money. It analyzes your history and, with Onyx Guardian, warns you or locks the chart if you break your own rules. You're always in control."],
@@ -74,7 +74,7 @@ export const DEFAULT_FAQ: Record<string, [string, string, string, string][]> = {
     ['¿Tienen programa de afiliados o embajadores?', 'Sí. Si tienes comunidad, canal o seguidores, cobras una comisión recurrente por cada persona que se suscriba con tu enlace, mientras siga pagando. Además tu audiencia entra con descuento usando tu código. Míralo en la página de Embajadores.', 'Do you have an affiliate or ambassador program?', 'Yes. If you have a community, channel or followers, you earn a recurring commission for every person who subscribes through your link, for as long as they keep paying. Your audience also gets a discount with your code. Check the Ambassadors page.'],
     ['¿Funciona en el móvil?', 'Sí. El panel se adapta a móvil, tablet y monitores grandes, así que lo revisas desde cualquier dispositivo.', 'Does it work on mobile?', 'Yes. The dashboard adapts to phone, tablet and large monitors, so you can check it from any device.'],
     ['¿En qué se diferencia de un Excel?', 'Onyx sincroniza solo, calcula 15+ métricas, tiene calendario, sesiones y noticias en vivo, costes, fondeo y gráficas modernas. Un Excel no hace nada de eso.', 'How is it different from a spreadsheet?', 'Onyx syncs automatically, computes 15+ metrics, and has a calendar, live sessions and news, costs, prop-firm tracking and modern charts. A spreadsheet does none of that.'],
-    ['¿Con qué plataformas funciona?', 'Con MetaTrader 4 y 5, cTrader, MatchTrader y TradeLocker. Al conectar eliges tu plataforma: MetaTrader y cTrader instalan un conector (EA o cBot); MatchTrader y TradeLocker se conectan por la API del bróker, sin instalar nada. La misma cuenta te vale para todas.', 'Which platforms does it work with?', 'MetaTrader 4 and 5, cTrader, MatchTrader and TradeLocker. When you connect you pick your platform: MetaTrader and cTrader install a connector (EA or cBot); MatchTrader and TradeLocker connect via the broker API, nothing to install. The same account works across all of them.'],
+    ['¿Con qué plataformas funciona?', 'Con MetaTrader 4 y 5, cTrader, MatchTrader, TradeLocker y DXtrade. Al conectar eliges tu plataforma: MetaTrader y cTrader instalan un conector (EA o cBot); MatchTrader, TradeLocker y DXtrade se conectan por la API del bróker, sin instalar nada. La misma cuenta te vale para todas.', 'Which platforms does it work with?', 'MetaTrader 4 and 5, cTrader, MatchTrader, TradeLocker and DXtrade. When you connect you pick your platform: MetaTrader and cTrader install a connector (EA or cBot); MatchTrader, TradeLocker and DXtrade connect via the broker API, nothing to install. The same account works across all of them.'],
     ['¿Puedo cancelar cuando quiera?', 'Claro. Gestionas tu suscripción desde tu panel y cancelas o cambias de plan en cualquier momento.', 'Can I cancel anytime?', 'Of course. Manage your subscription from your panel and cancel or change plan anytime.'],
     ['¿Qué formas de pago aceptan?', 'Pago seguro con tarjeta a través de Stripe. Tus datos de pago nunca pasan por nuestros servidores.', 'What payment methods do you accept?', 'Secure card payments through Stripe. Your payment data never touches our servers.'],
   ],

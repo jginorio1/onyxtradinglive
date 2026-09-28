@@ -43,7 +43,7 @@ function buildPriceFaqs(plans: any[], lang: 'es' | 'en'): [string, string][] {
 const STATS = [
   { to: 100, suffix: '%', es: 'Conexión solo lectura', en: 'Read-only connection' },
   { to: 15, prefix: '+', es: 'Métricas profesionales', en: 'Pro metrics' },
-  { to: 6, suffix: '', es: 'Plataformas y señales', en: 'Platforms & signals' },
+  { to: 7, suffix: '', es: 'Plataformas y señales', en: 'Platforms & signals' },
   { to: 4, prefix: '+', es: 'Prop firms compatibles', en: 'Compatible prop firms' },
 ];
 
@@ -52,7 +52,7 @@ const LOGOS = [
   { n: 'FTMO', c: '#2f6bff' }, { n: 'FundedNext', c: '#16c98d' },
   { n: 'FundingPips', c: '#9b82ff' }, { n: 'The5%ers', c: '#ffce00' },
   { n: 'MetaTrader 4', c: '#f0a020' }, { n: 'MetaTrader 5', c: '#2f6bff' },
-  { n: 'cTrader', c: '#e0533d' }, { n: 'MatchTrader', c: '#16c98d' }, { n: 'TradeLocker', c: '#34d399' },
+  { n: 'cTrader', c: '#e0533d' }, { n: 'MatchTrader', c: '#16c98d' }, { n: 'TradeLocker', c: '#34d399' }, { n: 'DXtrade', c: '#f472b6' },
   { n: 'TradingView', c: '#111' },
   { n: 'Axi', c: '#ff4757' }, { n: 'IC Markets', c: 'var(--red2)' },
   { n: 'Pepperstone', c: '#e2531f' }, { n: 'Exness', c: '#ffcf5c' },
@@ -154,10 +154,10 @@ const dict = {
     hero: {
       badge: '🧩 Journal · Guardian · Copy · Prop firms',
       h1a: 'El sistema operativo', h1b: 'del trader de fondeo',
-      sub: 'Para forex y CFDs (índices, oro, acciones y cripto). Conecta MT4, MT5, cTrader, MatchTrader y TradeLocker, sigue las reglas de tu prop firm en vivo, protege tu riesgo con el Onyx Guardian y copia entre cuentas. Analítica real y ganancia neta. Mucho más que un diario.',
+      sub: 'Para forex y CFDs (índices, oro, acciones y cripto). Conecta MT4, MT5, cTrader, MatchTrader, TradeLocker y DXtrade, sigue las reglas de tu prop firm en vivo, protege tu riesgo con el Onyx Guardian y copia entre cuentas. Analítica real y ganancia neta. Mucho más que un diario.',
       cta1: 'Empieza gratis →', cta2: 'Ver precios', note: 'Sin tarjeta para empezar · Cancela cuando quieras',
     },
-    trust: ['✅ MT4, MT5, cTrader, MatchTrader y TradeLocker', '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
+    trust: ['✅ MT4, MT5, cTrader, MatchTrader, TradeLocker y DXtrade', '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
     osCompat: 'Funciona en:',
     logosT: 'Forex y CFDs en tu bróker y tu prop firm',
     videoBadge: '▶ En acción',
@@ -168,7 +168,7 @@ const dict = {
     probS: 'La mayoría de traders no sabe qué le hace ganar y qué le hace perder. Onyx convierte tu historial en información clara para que mejores de verdad.',
     featT: 'Todo lo que necesitas para mejorar',
     features: [
-      { i: '🔗', t: 'Conexión multiplataforma', d: 'MetaTrader 4 y 5, cTrader, MatchTrader y TradeLocker. Vincula tus cuentas y sincroniza el historial automáticamente, sin subir nada a mano.' },
+      { i: '🔗', t: 'Conexión multiplataforma', d: 'MetaTrader 4 y 5, cTrader, MatchTrader, TradeLocker y DXtrade. Vincula tus cuentas y sincroniza el historial automáticamente, sin subir nada a mano.' },
       { i: '📈', t: 'Estadísticas avanzadas', d: 'Win rate, profit factor, expectancy, payoff, drawdown, break even y mucho más.' },
       { i: '🗓️', t: 'Calendario de resultados', d: 'Visualiza tu P&L por día, mes y año con un calendario tipo mapa de calor.' },
       { i: '🗂️', t: 'Multi-cuenta y portafolio', d: 'Gestiona varias cuentas (real, demo, fondeo) y ve tu portafolio completo sumado.' },
@@ -182,7 +182,7 @@ const dict = {
     howT: 'Listo en 3 minutos',
     steps: [
       { t: 'Crea tu cuenta', d: 'Regístrate gratis con tu email. Sin tarjeta.' },
-      { t: 'Conecta tu plataforma', d: 'Elige tu plataforma (MetaTrader, cTrader, MatchTrader o TradeLocker) y conéctala. Solo lectura.' },
+      { t: 'Conecta tu plataforma', d: 'Elige tu plataforma (MetaTrader, cTrader, MatchTrader, TradeLocker o DXtrade) y conéctala. Solo lectura.' },
       { t: 'Analiza y mejora', d: 'Tus operaciones aparecen al instante con todas las estadísticas.' },
     ],
     whoT: '¿Para quién es Onyx?',
@@ -251,7 +251,7 @@ const dict = {
       ['¿Tienen programa de afiliados o embajadores?', 'Sí. Si tienes comunidad, canal o seguidores, cobras una comisión recurrente por cada persona que se suscriba con tu enlace, mientras siga pagando. Además tu audiencia entra con descuento usando tu código. Míralo en la página de Embajadores.'],
       ['¿Funciona en el móvil?', 'Sí. El panel se adapta a móvil, tablet y monitores grandes, así que lo revisas desde cualquier dispositivo.'],
       ['¿En qué se diferencia de un Excel?', 'Onyx sincroniza solo, calcula 15+ métricas, tiene calendario, sesiones y noticias en vivo, costes, fondeo y gráficas modernas. Un Excel no hace nada de eso.'],
-      ['¿Con qué plataformas funciona?', 'Con MetaTrader 4 y 5, cTrader, MatchTrader y TradeLocker. Al conectar eliges tu plataforma: MetaTrader y cTrader instalan un conector (EA o cBot); MatchTrader y TradeLocker se conectan por la API del bróker, sin instalar nada. La misma cuenta te vale para todas.'],
+      ['¿Con qué plataformas funciona?', 'Con MetaTrader 4 y 5, cTrader, MatchTrader, TradeLocker y DXtrade. Al conectar eliges tu plataforma: MetaTrader y cTrader instalan un conector (EA o cBot); MatchTrader, TradeLocker y DXtrade se conectan por la API del bróker, sin instalar nada. La misma cuenta te vale para todas.'],
       ['¿Puedo cancelar cuando quiera?', 'Claro. Gestionas tu suscripción desde tu panel y cancelas o cambias de plan en cualquier momento.'],
       ['¿Qué formas de pago aceptan?', 'Pago seguro con tarjeta a través de Stripe. Tus datos de pago nunca pasan por nuestros servidores.'],
     ],
@@ -294,10 +294,10 @@ const dict = {
     hero: {
       badge: '🧩 Journal · Guardian · Copy · Prop firms',
       h1a: 'The operating system', h1b: 'for funded traders',
-      sub: 'For forex and CFDs (indices, gold, stocks and crypto). Connect MT4, MT5, cTrader, MatchTrader and TradeLocker, track your prop-firm rules live, protect your risk with Onyx Guardian and copy across accounts. Real analytics and net profit. Much more than a journal.',
+      sub: 'For forex and CFDs (indices, gold, stocks and crypto). Connect MT4, MT5, cTrader, MatchTrader, TradeLocker and DXtrade, track your prop-firm rules live, protect your risk with Onyx Guardian and copy across accounts. Real analytics and net profit. Much more than a journal.',
       cta1: 'Start free →', cta2: 'See pricing', note: 'No card to start · Cancel anytime',
     },
-    trust: ['✅ MT4, MT5, cTrader, MatchTrader & TradeLocker', '🔒 Read-only connection', '💳 Secure payments with Stripe'],
+    trust: ['✅ MT4, MT5, cTrader, MatchTrader, TradeLocker & DXtrade', '🔒 Read-only connection', '💳 Secure payments with Stripe'],
     osCompat: 'Runs on Windows and Mac',
     logosT: 'Forex and CFDs on your broker and prop firm',
     videoBadge: '▶ In action',
@@ -308,7 +308,7 @@ const dict = {
     probS: 'Most traders don\'t know what makes them win or lose. Onyx turns your history into clear insights so you actually improve.',
     featT: 'Everything you need to improve',
     features: [
-      { i: '🔗', t: 'Multi-platform connection', d: 'MetaTrader 4 & 5, cTrader, MatchTrader and TradeLocker. Link your accounts and sync your history automatically — nothing to upload by hand.' },
+      { i: '🔗', t: 'Multi-platform connection', d: 'MetaTrader 4 & 5, cTrader, MatchTrader, TradeLocker and DXtrade. Link your accounts and sync your history automatically — nothing to upload by hand.' },
       { i: '📈', t: 'Advanced stats', d: 'Win rate, profit factor, expectancy, payoff, drawdown, break even and much more.' },
       { i: '🗓️', t: 'Results calendar', d: 'See your P&L by day, month and year with a heatmap-style calendar.' },
       { i: '🗂️', t: 'Multi-account & portfolio', d: 'Manage several accounts (live, demo, funded) and see your full portfolio combined.' },
@@ -322,7 +322,7 @@ const dict = {
     howT: 'Ready in 3 minutes',
     steps: [
       { t: 'Create your account', d: 'Sign up free with your email. No card.' },
-      { t: 'Connect your platform', d: 'Pick your platform (MetaTrader, cTrader, MatchTrader or TradeLocker) and connect it. Read-only.' },
+      { t: 'Connect your platform', d: 'Pick your platform (MetaTrader, cTrader, MatchTrader, TradeLocker or DXtrade) and connect it. Read-only.' },
       { t: 'Analyze & improve', d: 'Your trades show up instantly with all the stats.' },
     ],
     whoT: 'Who is Onyx for?',
@@ -391,7 +391,7 @@ const dict = {
       ['Do you have an affiliate or ambassador program?', 'Yes. If you have a community, channel or followers, you earn a recurring commission for every person who subscribes through your link, for as long as they keep paying. Your audience also gets a discount with your code. Check the Ambassadors page.'],
       ['Does it work on mobile?', 'Yes. The dashboard adapts to phone, tablet and large monitors, so you can check it from any device.'],
       ['How is it different from a spreadsheet?', 'Onyx syncs automatically, computes 15+ metrics, and has a calendar, live sessions and news, costs, prop-firm tracking and modern charts. A spreadsheet does none of that.'],
-      ['Which platforms does it work with?', 'MetaTrader 4 and 5, cTrader, MatchTrader and TradeLocker. When you connect you pick your platform: MetaTrader and cTrader install a connector (EA or cBot); MatchTrader and TradeLocker connect via the broker API, nothing to install. The same account works across all of them.'],
+      ['Which platforms does it work with?', 'MetaTrader 4 and 5, cTrader, MatchTrader, TradeLocker and DXtrade. When you connect you pick your platform: MetaTrader and cTrader install a connector (EA or cBot); MatchTrader, TradeLocker and DXtrade connect via the broker API, nothing to install. The same account works across all of them.'],
       ['Can I cancel anytime?', 'Of course. Manage your subscription from your panel and cancel or change plan anytime.'],
       ['What payment methods do you accept?', 'Secure card payments through Stripe. Your payment data never touches our servers.'],
     ],
@@ -681,7 +681,7 @@ export default function Home() {
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
             <Counter to={stats.platforms} />
-            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas y señales · MT4, MT5, cTrader, TradingView, MatchTrader y TradeLocker' : 'Platforms & signals · MT4, MT5, cTrader, TradingView, MatchTrader & TradeLocker'}</div>
+            <div className="muted" style={{ fontSize: 14, marginTop: 6 }}>{lang === 'es' ? 'Plataformas y señales · MT4, MT5, cTrader, TradingView, MatchTrader, TradeLocker y DXtrade' : 'Platforms & signals · MT4, MT5, cTrader, TradingView, MatchTrader, TradeLocker & DXtrade'}</div>
           </div>
           <div className="card" style={{ padding: '26px 16px' }}>
             <Counter to={stats.readonly} suffix="%" />

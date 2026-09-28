@@ -22,7 +22,7 @@ const T: any = {
     unitsBigT: '¿En qué mido mis niveles?', unitsApplies: 'Se aplica a break even, trailing y parciales. Cámbialo aquí y todas las casillas se ajustan.',
     unitsChosen: 'Elegiste', unitsChosen2: ': las casillas de esta pestaña usan esa unidad.',
     uPipsD: 'Distancia del par', uRD: 'Múltiplos del stop', uMoneyD: 'En tu divisa',
-    noAcc: 'Conecta una cuenta (MetaTrader, cTrader, MatchTrader o TradeLocker) para usar Onyx Guardian.', connect: 'Conectar cuenta →',
+    noAcc: 'Conecta una cuenta (MetaTrader, cTrader, MatchTrader, TradeLocker o DXtrade) para usar Onyx Guardian.', connect: 'Conectar cuenta →',
     lockT: 'Onyx Guardian está en los planes de pago', lockD: 'Deja que Onyx mueva tus stops, aplique trailing y cierre por partes mientras tú te concentras en operar.', lockCta: 'Ver planes →',
     account: 'Cuenta', live: 'EA conectado', offline: 'EA sin señal', never: 'Nunca ha sincronizado', working: 'Trabajando con esta cuenta', changeAcc: 'Cambiar cuenta',
     onoff: 'Gestor activo en esta cuenta', onoffD: 'Si lo apagas, Onyx no toca ninguna operación.',
@@ -50,7 +50,7 @@ const T: any = {
     rnCloseHere: 'Cerrar el resto al llegar a', rnRest: 'El resto',
     rnFull: 'Con esto no queda runner: los TP suman 100%.',
 
-    qaT: 'Acciones rápidas', qaD: 'Se ejecutan en tu plataforma (MetaTrader, cTrader, MatchTrader o TradeLocker) en unos segundos.',
+    qaT: 'Acciones rápidas', qaD: 'Se ejecutan en tu plataforma (MetaTrader, cTrader, MatchTrader, TradeLocker o DXtrade) en unos segundos.',
     qaBe: 'Poner SL en break even', qaHalf: 'Cerrar la mitad', qaProfit: 'Cerrar solo las ganadoras', qaAll: 'Cerrar todo',
     qaConfirm: '¿Seguro? Esto afecta a tus operaciones reales.', qaSent: 'Orden enviada. El EA la ejecutará en segundos.',
 
@@ -68,7 +68,7 @@ const T: any = {
     unitsBigT: 'How do I measure my levels?', unitsApplies: 'Applies to break even, trailing and partials. Change it here and every box adjusts.',
     unitsChosen: 'You chose', unitsChosen2: ': the boxes on this tab use that unit.',
     uPipsD: 'Pair distance', uRD: 'Stop multiples', uMoneyD: 'In your currency',
-    noAcc: 'Connect an account (MetaTrader, cTrader, MatchTrader or TradeLocker) to use Onyx Guardian.', connect: 'Connect account →',
+    noAcc: 'Connect an account (MetaTrader, cTrader, MatchTrader, TradeLocker or DXtrade) to use Onyx Guardian.', connect: 'Connect account →',
     lockT: 'Onyx Guardian is on the paid plans', lockD: 'Let Onyx move your stops, run trailing and close in parts while you focus on trading.', lockCta: 'See plans →',
     account: 'Account', live: 'EA connected', offline: 'EA not reporting', never: 'Never synced', working: 'Working with this account', changeAcc: 'Change account',
     onoff: 'Manager active on this account', onoffD: 'If you turn it off, Onyx touches nothing.',
@@ -96,7 +96,7 @@ const T: any = {
     rnCloseHere: 'Close the rest when it reaches', rnRest: 'The rest',
     rnFull: 'No runner left here: your TPs add up to 100%.',
 
-    qaT: 'Quick actions', qaD: 'They run in your platform (MetaTrader, cTrader, MatchTrader or TradeLocker) within seconds.',
+    qaT: 'Quick actions', qaD: 'They run in your platform (MetaTrader, cTrader, MatchTrader, TradeLocker or DXtrade) within seconds.',
     qaBe: 'Move SL to break even', qaHalf: 'Close half', qaProfit: 'Close winners only', qaAll: 'Close everything',
     qaConfirm: 'Are you sure? This affects your real trades.', qaSent: 'Order sent. The EA will run it in seconds.',
 

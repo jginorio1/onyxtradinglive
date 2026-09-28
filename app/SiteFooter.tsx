@@ -73,6 +73,7 @@ export default function SiteFooter() {
     'TradingView is a trademark of TradingView, Inc.',
     'Match-Trader is a trademark of Match-Trade Technologies.',
     'TradeLocker is a trademark of TradeLocker Ltd.',
+    'DXtrade is a trademark of Devexperts LLC.',
   ];
   const rawTm = fx?.trademarks;
   const trademarks: string[] = rawTm === undefined

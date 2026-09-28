@@ -52,13 +52,14 @@ const K = {
       { key: 'ctrader', name: 'cTrader', badge: 'cBot', kind: 'ctrader' },
       { key: 'matchtrader', name: 'MatchTrader', badge: 'API', kind: 'matchtrader' },
       { key: 'tradelocker', name: 'TradeLocker', badge: 'API', kind: 'tradelocker' },
+      { key: 'dxtrade', name: 'DXtrade', badge: 'API', kind: 'dxtrade' },
     ],
     dlCardT: 'Descarga el conector',
     ctDoes: ['Sincroniza tus operaciones al diario', 'Break even, trailing y cierres parciales', 'Tu plan, límites y bloqueo fuera de plan'],
     mtNoteMt4: 'En MT4, al cerrar parte de una operación el resto cambia de número. Está resuelto, pero avísanos si ves algo raro.',
     ctFileName: 'OnyxConnect.cs · cBot de cTrader',
     ctGuide: 'Ver guía completa de cTrader',
-    soonT: 'Conexión por API', soonD: 'MatchTrader y TradeLocker se conectan por la API de tu bróker con email y contraseña, sin instalar nada.',
+    soonT: 'Conexión por API', soonD: 'MatchTrader, TradeLocker y DXtrade se conectan por la API de tu bróker con tu login, sin instalar nada.',
     mtrT: 'Conecta MatchTrader', mtrD: 'MatchTrader se conecta con la API de tu bróker (no lleva EA que instalar). Pega la URL de la API y tu clave; en cuanto tu bróker confirme el acceso, Guardian y Copy funcionan igual que en MetaTrader.',
     mtrBase: 'URL de la API del bróker', mtrKey: 'API key / token', mtrUuid: 'systemUuid / accountId (si tu bróker lo pide)', mtrSave: 'Guardar conexión', mtrSaved: 'Guardado ✓',
     mtrBeta: 'Beta: se activa cuando tu bróker habilita la API. Si aún no la tienes, usa MT5/MT4/cTrader mientras tanto.',
@@ -135,13 +136,14 @@ const K = {
       { key: 'ctrader', name: 'cTrader', badge: 'cBot', kind: 'ctrader' },
       { key: 'matchtrader', name: 'MatchTrader', badge: 'API', kind: 'matchtrader' },
       { key: 'tradelocker', name: 'TradeLocker', badge: 'API', kind: 'tradelocker' },
+      { key: 'dxtrade', name: 'DXtrade', badge: 'API', kind: 'dxtrade' },
     ],
     dlCardT: 'Download the connector',
     ctDoes: ['Syncs your trades to the journal', 'Break even, trailing and partial closes', 'Your plan, limits and out-of-plan block'],
     mtNoteMt4: 'On MT4, closing part of a trade changes the ticket of the rest. It is handled, but tell us if you see anything odd.',
     ctFileName: 'OnyxConnect.cs · cTrader cBot',
     ctGuide: 'See full cTrader guide',
-    soonT: 'API connection', soonD: 'MatchTrader and TradeLocker connect via your broker API with email and password — nothing to install.',
+    soonT: 'API connection', soonD: 'MatchTrader, TradeLocker and DXtrade connect via your broker API with your login — nothing to install.',
     mtrT: 'Connect MatchTrader', mtrD: 'MatchTrader connects via your broker API (no EA to install). Paste the API URL and your key; once your broker confirms access, Guardian and Copy work just like on MetaTrader.',
     mtrBase: 'Broker API URL', mtrKey: 'API key / token', mtrUuid: 'systemUuid / accountId (if your broker needs it)', mtrSave: 'Save connection', mtrSaved: 'Saved ✓',
     mtrBeta: 'Beta: activates once your broker enables the API. If you do not have it yet, use MT5/MT4/cTrader meanwhile.',
@@ -245,7 +247,7 @@ export default function KeysPage() {
   const [plat, setPlat] = useState('mt5');
   const [hoverPlat, setHoverPlat] = useState('');
   // Color de acento por plataforma (colores de marca; el glow neón usa este color).
-  const platAccent: Record<string, string> = { mt5: '#3b82f6', mt4: '#2dd4bf', ctrader: '#a78bfa', matchtrader: '#f59e0b', tradelocker: '#34d399' };
+  const platAccent: Record<string, string> = { mt5: '#3b82f6', mt4: '#2dd4bf', ctrader: '#a78bfa', matchtrader: '#f59e0b', tradelocker: '#34d399', dxtrade: '#f472b6' };
   useEffect(() => { try {
     const q = new URLSearchParams(window.location.search).get('platform');
     if (q) { setPlat(q); localStorage.setItem('onyx_plat', q); return; }
@@ -489,6 +491,8 @@ export default function KeysPage() {
           <MatchtraderConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
         ) : kind === 'tradelocker' ? (
           <TradeLockerConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
+        ) : kind === 'dxtrade' ? (
+          <DxtradeConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
         ) : (
           <>
             {/* Paso 3: descarga el conector de la plataforma elegida.
@@ -655,6 +659,116 @@ function TradeLockerConnect({ t, accent = 'var(--brand)' }: any) {
           {conns.map((c) => (
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 10px' }}>
               <b style={{ fontSize: 13 }}>{c.label || c.tl_account_id}</b>
+              <span className="muted" style={{ fontSize: 11 }}>{c.server}{c.demo ? ' · demo' : ''}{c.status === 'reauth' ? (en ? ' · reconnect needed' : ' · reconectar') : ''}</span>
+              <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                <input type="checkbox" checked={!!c.copy_enabled} onChange={() => toggleCopy(c)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} /> Copy
+              </label>
+              <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => remove(c)}>{en ? 'Remove' : 'Quitar'}</button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {warn && srv ? (
+        <div className="sk-modal" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setWarn(false)}>
+          <div className="sk-card" style={{ background: 'var(--card)', maxWidth: 460, padding: 20, borderRadius: 14 }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>⚠️ {en ? 'Prop firm rules' : 'Reglas de la prop firm'}</h3>
+            <p style={{ fontSize: 13.5, lineHeight: 1.7 }}>
+              {en
+                ? `${srv.name} is a prop firm. Many prop firms prohibit copy trading and API automation on challenge/funded accounts. Using Copy or auto-execution could get your account failed or banned. Monitoring (read-only) is lower risk. You decide — proceed at your own responsibility and check your firm's terms.`
+                : `${srv.name} es una prop firm. Muchas props prohíben el copy trading y la automatización por API en cuentas de challenge/fondeadas. Usar Copy o ejecución automática podría hacer que te anulen o baneen la cuenta. El monitoreo (solo lectura) es de menor riesgo. Tú decides — continúa bajo tu responsabilidad y revisa los términos de tu firma.`}
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button className="btn btn-ghost" onClick={() => setWarn(false)}>{en ? 'Cancel' : 'Cancelar'}</button>
+              <button className="btn btn-primary" onClick={doConnect}>{en ? 'I understand, connect' : 'Entiendo, conectar'}</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// Conexión DXtrade por API (sin EA). El trader elige su bróker del catálogo o escribe
+// el host de su bróker, pone dominio (normalmente "default"), demo/real, usuario y
+// contraseña. Guardamos solo el token de sesión cifrado. Mismo diseño que TradeLocker.
+function DxtradeConnect({ t, accent = 'var(--brand)' }: any) {
+  const en = t.mtrBase === 'API URL';
+  const [servers, setServers] = useState<any[]>([]);
+  const [conns, setConns] = useState<any[]>([]);
+  const [code, setCode] = useState('');
+  const [manualHost, setManualHost] = useState('');
+  const [domain, setDomain] = useState('default');
+  const [demo, setDemo] = useState(false);
+  const [username, setUsername] = useState('');
+  const [pass, setPass] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [warn, setWarn] = useState(false);
+  const load = async () => {
+    try { const r = await fetch('/api/dxtrade'); const j = await r.json(); setServers(j.servers || []); setConns(j.connections || []); if (!code) { if (j.servers?.[0]) { setCode(j.servers[0].code); setDemo(!!j.servers[0].demo_default); setDomain(j.servers[0].domain_default || 'default'); } else setCode('__manual__'); } } catch {}
+  };
+  useEffect(() => { load(); }, []);
+  const srv = servers.find((s) => s.code === code);
+  const doConnect = async () => {
+    setBusy(true); setMsg('');
+    try {
+      const body: any = { demo, domain, username, password: pass };
+      if (code === '__manual__') body.host = manualHost.trim(); else body.server_code = code;
+      const r = await fetch('/api/dxtrade', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (r.ok) { setMsg(en ? `Connected ${j.connected?.length || 0} account(s).` : `Conectadas ${j.connected?.length || 0} cuenta(s).`); setUsername(''); setPass(''); load(); }
+      else setMsg('Error: ' + (j.error || ''));
+    } catch { setMsg('Error'); } finally { setBusy(false); setWarn(false); }
+  };
+  const onConnect = () => { if (srv?.is_prop) setWarn(true); else doConnect(); };
+  const toggleCopy = async (c: any) => { await fetch('/api/dxtrade', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id, copy_enabled: !c.copy_enabled }) }); load(); };
+  const remove = async (c: any) => { await fetch('/api/dxtrade', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: c.id }) }); load(); };
+
+  return (
+    <div className="card" style={{ marginBottom: 18, border: `2px solid ${accent}`, boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 30%, transparent), 0 0 26px -6px ${accent}`, background: `color-mix(in srgb, ${accent} 6%, var(--card))`, transition: 'border-color .25s, box-shadow .25s, background .25s' }}>
+      <h3 style={{ marginBottom: 4 }}>DXtrade</h3>
+      <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7, marginBottom: 12 }}>
+        {en ? 'Connect your DXtrade account: pick your broker (or type its host), choose demo/live and sign in with your account username and password. We store only an encrypted session token — never your password.' : 'Conecta tu cuenta de DXtrade: elige tu bróker (o escribe su host), demo/real e inicia sesión con el usuario y contraseña de tu cuenta. Guardamos solo un token de sesión cifrado — nunca tu contraseña.'}
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 460 }}>
+        <label className="muted" style={{ fontSize: 12 }}>{en ? 'Broker' : 'Bróker'}
+          <select value={code} onChange={(e) => { setCode(e.target.value); const s = servers.find((x) => x.code === e.target.value); if (s) { setDemo(!!s.demo_default); setDomain(s.domain_default || 'default'); } }} style={{ marginTop: 4, width: '100%' }}>
+            {servers.map((s) => <option key={s.code} value={s.code}>{s.name}{s.is_prop ? ' (prop firm)' : ''}</option>)}
+            <option value="__manual__">{en ? 'Other (type your host)' : 'Otro (escribir tu host)'}</option>
+          </select>
+        </label>
+        {code === '__manual__' ? (
+          <>
+            <label className="muted" style={{ fontSize: 12 }}>{en ? 'Host (where you log in to DXtrade)' : 'Host (donde entras a DXtrade)'}
+              <input value={manualHost} onChange={(e) => setManualHost(e.target.value)} placeholder="dxtrade.tubroker.com" style={{ marginTop: 4 }} />
+            </label>
+            <label className="muted" style={{ fontSize: 12 }}>{en ? 'Domain (usually "default")' : 'Dominio (normalmente "default")'}
+              <input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="default" style={{ marginTop: 4 }} />
+            </label>
+          </>
+        ) : null}
+        <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '9px 11px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, cursor: 'pointer' }}>
+            <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} />
+            <span style={{ fontWeight: 600 }}>{en ? 'Demo account' : 'Cuenta demo'}</span>
+          </label>
+          <div className="muted" style={{ fontSize: 11, marginTop: 4, lineHeight: 1.5 }}>
+            {en ? 'Turn this on only if your DXtrade account is a practice/demo one. Recommended for your first test.' : 'Actívalo solo si tu cuenta de DXtrade es de práctica/demo. Recomendado para tu primera prueba.'}
+          </div>
+        </div>
+        <label className="muted" style={{ fontSize: 12 }}>{en ? 'Username' : 'Usuario'}<input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={en ? 'your login' : 'tu usuario'} style={{ marginTop: 4 }} /></label>
+        <label className="muted" style={{ fontSize: 12 }}>{en ? 'Password' : 'Contraseña'}<input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••" style={{ marginTop: 4 }} /></label>
+        <button className="btn btn-primary" style={{ background: accent, borderColor: accent, color: '#0b1020' }} disabled={busy || !username || !pass || (code === '__manual__' ? !manualHost.trim() : !code)} onClick={onConnect}>{busy ? '…' : (en ? 'Connect' : 'Conectar')}</button>
+        {msg ? <div className="muted" style={{ fontSize: 12.5 }}>{msg}</div> : null}
+      </div>
+
+      {conns.length ? (
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="muted" style={{ fontSize: 12, fontWeight: 700 }}>{en ? 'Connected accounts' : 'Cuentas conectadas'}</div>
+          {conns.map((c) => (
+            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 10px' }}>
+              <b style={{ fontSize: 13 }}>{c.label || c.dx_account}</b>
               <span className="muted" style={{ fontSize: 11 }}>{c.server}{c.demo ? ' · demo' : ''}{c.status === 'reauth' ? (en ? ' · reconnect needed' : ' · reconectar') : ''}</span>
               <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
                 <input type="checkbox" checked={!!c.copy_enabled} onChange={() => toggleCopy(c)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} /> Copy

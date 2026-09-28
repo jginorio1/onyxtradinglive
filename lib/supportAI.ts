@@ -51,9 +51,9 @@ function articleText(a: Article, lang: Lang): string {
 // de que la Guía tenga un artículo para cada tema. Incluye todo lo que hemos
 // añadido (copy, Mi reto, app, push, Telegram, planes, embajadores…).
 export const ONYX_BRIEF: Record<Lang, string> = {
-  es: `Onyx Trading Live es un diario de trading MULTIPLATAFORMA: funciona con MetaTrader (MT4 y MT5), cTrader, MatchTrader y TradeLocker. El conector se llama Onyx (Guardian es el gestor de riesgo): en MetaTrader es un Expert Advisor (EA) y en cTrader es un cBot; MatchTrader y TradeLocker se conectan por la API del bróker (sin instalar nada).
+  es: `Onyx Trading Live es un diario de trading MULTIPLATAFORMA: funciona con MetaTrader (MT4 y MT5), cTrader, MatchTrader, TradeLocker y DXtrade. El conector se llama Onyx (Guardian es el gestor de riesgo): en MetaTrader es un Expert Advisor (EA) y en cTrader es un cBot; MatchTrader, TradeLocker y DXtrade se conectan por la API del bróker (sin instalar nada).
 
-PLATAFORMAS: MetaTrader 4 y 5 (se instala un EA), cTrader (se instala un cBot), MatchTrader y TradeLocker (se conectan por la API del bróker con email y contraseña, sin instalar nada). Cualquier bróker o prop firm que te dé una cuenta MT4/MT5, cTrader, MatchTrader o TradeLocker funciona igual: eliges tu plataforma al conectar.
+PLATAFORMAS: MetaTrader 4 y 5 (se instala un EA), cTrader (se instala un cBot), MatchTrader, TradeLocker y DXtrade (se conectan por la API del bróker con email y contraseña, sin instalar nada). Cualquier bróker o prop firm que te dé una cuenta MT4/MT5, cTrader, MatchTrader, TradeLocker o DXtrade funciona igual: eliges tu plataforma al conectar.
 
 SEÑALES DE TRADINGVIEW (en planes de pago): tus alertas de TradingView pueden ABRIR la operación en tu cuenta real a través de tu conector de Onyx, con tope de lote y símbolos permitidos; el Guardian te sigue protegiendo. Importante: Onyx NO da señales ni predice el mercado; solo ejecuta las alertas que TÚ configuras en TradingView.
 
@@ -74,9 +74,9 @@ PLANES: Free, Pro, Elite y Black Onyx. Se empieza gratis. Pago mensual o anual (
 EMBAJADORES: comisión recurrente por cada suscriptor que traigas y descuento para tu comunidad; se solicita desde la página de Embajadores.
 
 SOPORTE: Onyx AI responde al instante; si hace falta, una persona contesta por correo o en el Centro de soporte.`,
-  en: `Onyx Trading Live is a MULTI-PLATFORM trading journal: it works with MetaTrader (MT4 and MT5), cTrader, MatchTrader and TradeLocker. The connector is called Onyx (Guardian is the risk manager): on MetaTrader it is an Expert Advisor (EA) and on cTrader it is a cBot; MatchTrader and TradeLocker connect via the broker API (nothing to install).
+  en: `Onyx Trading Live is a MULTI-PLATFORM trading journal: it works with MetaTrader (MT4 and MT5), cTrader, MatchTrader, TradeLocker and DXtrade. The connector is called Onyx (Guardian is the risk manager): on MetaTrader it is an Expert Advisor (EA) and on cTrader it is a cBot; MatchTrader, TradeLocker and DXtrade connect via the broker API (nothing to install).
 
-PLATFORMS: MetaTrader 4 and 5 (install an EA), cTrader (install a cBot), MatchTrader and TradeLocker (connect via the broker API with email and password, nothing to install). Any broker or prop firm that gives you an MT4/MT5, cTrader, MatchTrader or TradeLocker account works the same: you pick your platform when connecting.
+PLATFORMS: MetaTrader 4 and 5 (install an EA), cTrader (install a cBot), MatchTrader, TradeLocker and DXtrade (connect via the broker API with email and password, nothing to install). Any broker or prop firm that gives you an MT4/MT5, cTrader, MatchTrader, TradeLocker or DXtrade account works the same: you pick your platform when connecting.
 
 TRADINGVIEW SIGNALS (on paid plans): your TradingView alerts can OPEN the trade in your real account through your Onyx connector, with a lot cap and allowed symbols; Guardian keeps protecting you. Important: Onyx does NOT give signals or predict the market; it only executes the alerts YOU set up in TradingView.
 

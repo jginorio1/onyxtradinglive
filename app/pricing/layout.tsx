@@ -7,8 +7,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
   const seo = seoFor(await getSeoMeta(), 'pricing', es,
     es ? 'Planes Onyx Trading Live | Precios para Prop Firms' : 'Onyx Trading Live Plans | Pricing for Prop Firms',
-    es ? 'Compara los planes Free, Pro y Elite. Gestión de riesgo, copy trading y diario para forex y CFDs. Conecta MT4, MT5 o cTrader sin comisión.'
-       : 'Compare Free, Pro and Elite plans. Risk management, copy trading and journal for forex and CFDs. Connect MT4, MT5 or cTrader with no fees.');
+    es ? 'Compara los planes Free, Pro y Elite. Gestión de riesgo, copy trading y diario para forex y CFDs. Conecta MT4, MT5, cTrader, MatchTrader, TradeLocker o DXtrade sin comisión.'
+       : 'Compare Free, Pro and Elite plans. Risk management, copy trading and journal for forex and CFDs. Connect MT4, MT5, cTrader, MatchTrader, TradeLocker or DXtrade with no fees.');
   return {
     title: seo.title,
     description: seo.description,
