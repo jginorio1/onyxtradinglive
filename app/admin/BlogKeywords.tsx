@@ -71,33 +71,69 @@ export default function BlogKeywords() {
   const glow = (c: string): CSSProperties => ({ background: 'var(--bg2)', border: `1px solid ${c}40`, borderRadius: 14, padding: 14, boxShadow: `0 0 0 1px ${c}14, 0 10px 26px -14px ${c}` });
   const fieldL: CSSProperties = { fontSize: 11.5, color: 'var(--mut)', display: 'block', marginBottom: 5, fontWeight: 600 };
 
+  // Tabla de estadísticas por keyword: una fila por palabra con su aporte,
+  // impresiones, posición y nº de artículos. Así se ven TODAS con sus datos y
+  // se decide cuál dejar o quitar (objetivo 5-7 por idioma).
   const KwCard = ({ l, accent }: { l: 'es' | 'en'; accent: string }) => {
     const input = l === 'es' ? esInput : enInput;
     const setInput = l === 'es' ? setEsInput : setEnInput;
     const add = () => { addKw(l, input); setInput(''); };
+    const list = (s[l] || []) as string[];
+    // Orden: primero las de menos aporte (candidatas a quitar), para decidir fácil.
+    const rank: Record<string, number> = { na: 0, gray: 1, amber: 2, green: 3 };
+    const rows = [...list].map((k) => ({
+      k,
+      st: d.kwStats?.[k] || { coverage: cov(k), impressions: 0, position: 0, tier: 'na' },
+    })).sort((a, b) => (rank[a.st.tier] ?? 0) - (rank[b.st.tier] ?? 0) || (a.st.impressions - b.st.impressions));
+    const over = list.length > 7;
+    const cellHead: CSSProperties = { fontSize: 10.5, color: 'var(--mut)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: .3, padding: '4px 8px', textAlign: 'left', whiteSpace: 'nowrap' };
+    const cell: CSSProperties = { fontSize: 12.5, padding: '7px 8px', borderTop: '1px solid var(--line)', verticalAlign: 'middle' };
     return (
       <div style={glow(accent)}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span>{l === 'es' ? '🇪🇸' : '🇬🇧'}</span>{l === 'es' ? L('Keywords en español', 'Spanish keywords') : L('Keywords en inglés', 'English keywords')}
-          <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>· {(s[l] || []).length}/7</span>
+          <span className="pill" style={{ fontSize: 11, fontWeight: 700, color: over ? '#ffb84d' : 'var(--soft-green)', background: over ? 'rgba(255,184,77,.14)' : 'rgba(52,226,160,.14)' }}>{list.length}/7{over ? L(' · pasada', ' · over') : ''}</span>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 10 }}>
-          {(s[l] || []).map((k: string) => {
-            const st = d.kwStats?.[k] || { coverage: cov(k), impressions: 0, position: 0, tier: 'na' };
-            const dot = TIER_COLOR[st.tier] || 'var(--mut)';
-            const tip = st.tier === 'na'
-              ? L('Conecta Search Console para ver el aporte', 'Connect Search Console to see contribution')
-              : `${TIER_LABEL(st.tier, L)} · ${st.impressions} impr · ${st.position ? 'pos ' + st.position : L('sin posición', 'no position')} · ${st.coverage} ${L('art.', 'art.')}`;
-            return (
-              <span key={k} title={tip} style={{ fontSize: 12.5, background: `${accent}22`, color: 'var(--tx)', border: `1px solid ${accent}55`, padding: '5px 10px', borderRadius: 999, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: dot, flex: 'none', boxShadow: st.tier === 'green' ? `0 0 6px ${dot}` : 'none' }} />
-                {k} <span className="muted" style={{ fontSize: 10 }}>({st.coverage})</span>
-                <span style={{ cursor: 'pointer', opacity: .7 }} onClick={() => rmKw(l, k)}>✕</span>
-              </span>
-            );
-          })}
-          {!(s[l] || []).length && <span className="muted" style={{ fontSize: 12 }}>{L('Aún ninguna.', 'None yet.')}</span>}
-        </div>
+        {list.length > 0 ? (
+          <div style={{ overflowX: 'auto', marginBottom: 10 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={cellHead}>{L('Palabra clave', 'Keyword')}</th>
+                  <th style={{ ...cellHead, textAlign: 'center' }} title={L('Aporte según Search Console', 'Contribution per Search Console')}>{L('Aporte', 'Contribution')}</th>
+                  <th style={{ ...cellHead, textAlign: 'right' }} title={L('Impresiones en Google', 'Google impressions')}>Impr.</th>
+                  <th style={{ ...cellHead, textAlign: 'right' }} title={L('Posición media en Google', 'Average Google position')}>{L('Pos.', 'Pos.')}</th>
+                  <th style={{ ...cellHead, textAlign: 'right' }} title={L('Artículos publicados que la usan', 'Published articles using it')}>{L('Art.', 'Art.')}</th>
+                  <th style={cellHead}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ k, st }) => {
+                  const dot = TIER_COLOR[st.tier] || 'var(--mut)';
+                  return (
+                    <tr key={k}>
+                      <td style={{ ...cell, fontWeight: 600 }}>{k}</td>
+                      <td style={{ ...cell, textAlign: 'center', whiteSpace: 'nowrap' }} title={TIER_LABEL(st.tier, L)}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ width: 9, height: 9, borderRadius: '50%', background: dot, flex: 'none', boxShadow: st.tier === 'green' ? `0 0 6px ${dot}` : 'none' }} />
+                          <span className="muted" style={{ fontSize: 11 }}>{TIER_LABEL(st.tier, L)}</span>
+                        </span>
+                      </td>
+                      <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{st.impressions || '—'}</td>
+                      <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{st.position || '—'}</td>
+                      <td style={{ ...cell, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{st.coverage || 0}</td>
+                      <td style={{ ...cell, textAlign: 'right' }}>
+                        <span title={L('Quitar', 'Remove')} style={{ cursor: 'pointer', opacity: .7, fontSize: 13, padding: '0 4px' }} onClick={() => rmKw(l, k)}>✕</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{L('Aún ninguna.', 'None yet.')}</div>
+        )}
         <div style={{ display: 'flex', gap: 6 }}>
           <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') add(); }}
             placeholder={l === 'es' ? 'ej: gestión de riesgo' : 'e.g. risk management'} style={{ margin: 0, flex: 1, fontSize: 13 }} />
@@ -154,8 +190,8 @@ export default function BlogKeywords() {
             )}
           </div>
 
-          {/* Keywords ES / EN en dos tarjetas */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 12 }}>
+          {/* Keywords ES / EN — tablas a lo ancho para ver todas sus estadísticas */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
             <KwCard l="es" accent="#7c8cff" />
             <KwCard l="en" accent="#34e2a0" />
           </div>
