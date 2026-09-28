@@ -73,27 +73,54 @@ export default function NativeInit() {
         await SplashScreen.hide();
       } catch {}
 
-      // Teclado: 'native' → el webview SÍ se encoge al abrir el teclado, así el campo
-      // enfocado nunca queda tapado (antes estaba en 'none' y el teclado se
-      // superponía sobre el input, ocultando lo que escribías). Además, al enfocar
-      // un campo lo desplazamos a la vista por si quedó justo detrás del teclado.
+      // Teclado (iOS): el problema era que el campo enfocado quedaba TAPADO por el
+      // teclado y no subía solo. Modo 'body' → el webview encoge el <body> al alto
+      // visible (sin teclado), lo que reacomoda mejor el contenido web que 'native'.
+      // Además, en cuanto el teclado va a abrir sabemos su ALTURA real; con eso
+      // calculamos si el campo queda detrás y lo subimos justo lo necesario.
+      let kbH = 0;
+      // Sube el campo activo por encima del teclado. Recorre hacia arriba buscando el
+      // primer contenedor con scroll y lo desplaza; si no hay, usa scrollIntoView.
+      const revealActive = () => {
+        const el = document.activeElement as HTMLElement | null;
+        if (!el || !/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
+        try {
+          const margin = 24;                                   // aire entre el campo y el teclado
+          const visibleBottom = window.innerHeight - kbH - margin;
+          const r = el.getBoundingClientRect();
+          if (r.bottom <= visibleBottom && r.top >= 8) return; // ya se ve bien
+          const delta = r.bottom - visibleBottom;
+          // Busca el ancestro scrolleable más cercano.
+          let sc: HTMLElement | null = el.parentElement;
+          while (sc && sc !== document.body) {
+            const st = getComputedStyle(sc);
+            if (/(auto|scroll)/.test(st.overflowY) && sc.scrollHeight > sc.clientHeight) break;
+            sc = sc.parentElement;
+          }
+          if (sc && sc !== document.body) { sc.scrollBy({ top: delta, behavior: 'smooth' }); }
+          else { window.scrollBy({ top: delta, behavior: 'smooth' }); }
+          // Red de seguridad: centra el campo por si el scrollBy no alcanzó.
+          setTimeout(() => { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} }, 120);
+        } catch { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} }
+      };
       try {
         const { Keyboard, KeyboardResize } = await import('@capacitor/keyboard');
-        await Keyboard.setResizeMode({ mode: KeyboardResize.Native });
+        try { await Keyboard.setResizeMode({ mode: KeyboardResize.Body }); } catch {}
+        try { await Keyboard.setScroll?.({ isDisabled: true }); } catch {}   // controlamos el scroll nosotros
         try { await Keyboard.setAccessoryBarVisible({ isVisible: true }); } catch {}
-        // Cuando el teclado termina de abrir, aseguramos que el campo activo se vea.
-        try { Keyboard.addListener('keyboardDidShow', () => {
-          const el = document.activeElement as HTMLElement | null;
-          if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) {
-            try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {}
-          }
-        }); } catch {}
+        // willShow trae la altura del teclado ANTES de que termine la animación.
+        try { Keyboard.addListener('keyboardWillShow', (info: any) => { kbH = (info && info.keyboardHeight) || 0; setTimeout(revealActive, 60); }); } catch {}
+        // didShow: reintento cuando el layout ya se encogió.
+        try { Keyboard.addListener('keyboardDidShow', (info: any) => { kbH = (info && info.keyboardHeight) || kbH; revealActive(); }); } catch {}
+        try { Keyboard.addListener('keyboardDidHide', () => { kbH = 0; }); } catch {}
       } catch {}
-      // Respaldo web/webview: al enfocar cualquier campo, lo llevamos a la vista.
+      // Respaldo web/webview (sin plugin nativo): al enfocar un campo, lo llevamos a
+      // la vista. Aquí kbH puede ser 0, así que centramos.
       const onFocusIn = (e: Event) => {
         const el = e.target as HTMLElement | null;
         if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) {
-          setTimeout(() => { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} }, 250);
+          setTimeout(revealActive, 300);
+          setTimeout(() => { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} }, 350);
         }
       };
       document.addEventListener('focusin', onFocusIn);
