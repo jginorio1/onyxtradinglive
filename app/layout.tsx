@@ -61,8 +61,8 @@ export async function generateMetadata(): Promise<Metadata> {
   // Overrides de título/descripción que el owner edita en Admin → SEO (si vacío, usa el default).
   const seo = seoFor(await getSeoMeta(), 'home', es,
     es ? 'Diario de Trading y Gestión de Riesgo | Onyx Trading Live' : 'Trading Journal & Risk Management | Onyx Trading Live',
-    es ? 'Diario de trading y gestión de riesgo para forex y CFDs. Onyx Guardian, copy trading y retos de prop firm en MT4, MT5 y cTrader. Empieza gratis.'
-       : 'Trading journal and risk management for forex and CFDs. Onyx Guardian, copy trading and prop firm challenges on MT4, MT5 and cTrader. Start free.');
+    es ? 'Diario de trading y gestión de riesgo para forex y CFDs. Onyx Guardian, copy trading y retos de prop firm en MT4, MT5, cTrader, MatchTrader y TradeLocker. Empieza gratis.'
+       : 'Trading journal and risk management for forex and CFDs. Onyx Guardian, copy trading and prop firm challenges on MT4, MT5, cTrader, MatchTrader and TradeLocker. Start free.');
   const gVer = process.env.GOOGLE_SITE_VERIFICATION;
   const bVer = process.env.BING_SITE_VERIFICATION;
   const adsenseId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;   // ej. ca-pub-7228105221509555
@@ -81,8 +81,8 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       title: es ? 'Onyx Trading Live · El sistema operativo del trader de fondeo' : 'Onyx Trading Live · The operating system for funded traders',
       description: es
-        ? 'MT4, MT5 y cTrader: sigue las reglas de tu prop firm, protégete con el Guardian y copia entre cuentas. Mucho más que un diario.'
-        : 'MT4, MT5 and cTrader: track your prop-firm rules, protect yourself with Guardian and copy across accounts. Much more than a journal.',
+        ? 'MT4, MT5, cTrader, MatchTrader y TradeLocker: sigue las reglas de tu prop firm, protégete con el Guardian y copia entre cuentas. Mucho más que un diario.'
+        : 'MT4, MT5, cTrader, MatchTrader and TradeLocker: track your prop-firm rules, protect yourself with Guardian and copy across accounts. Much more than a journal.',
       url, siteName: 'Onyx Trading Live', type: 'website',
       images: [{ url: '/og.png', width: 1200, height: 630, alt: 'Onyx Trading Live' }],
     },
@@ -149,7 +149,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       {
         '@type': 'SoftwareApplication', '@id': `${url}/#app`, name: 'Onyx Trading Live',
         applicationCategory: 'FinanceApplication', operatingSystem: 'Windows, macOS (MetaTrader 4/5, cTrader)',
-        description: 'Diario de trading y gestor de riesgo (Onyx Guardian) para cuentas de MetaTrader (MT4/MT5) y cTrader: estadísticas automáticas, calendario, control de fondeo, copy trading, academia y protección del plan de trading.',
+        description: 'Diario de trading y gestor de riesgo (Onyx Guardian) para cuentas de MetaTrader (MT4/MT5), cTrader, MatchTrader y TradeLocker: estadísticas automáticas, calendario, control de fondeo, copy trading, academia y protección del plan de trading.',
         url, image: `${url}/og.png`, publisher: { '@id': `${url}/#org` },
         // Catálogo de precios: habilita resultados enriquecidos con rango de precio.
         offers: [

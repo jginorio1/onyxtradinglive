@@ -9,8 +9,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const es = serverLang() === 'es';
   const seo = seoFor(await getSeoMeta(), 'guia', es,
     es ? 'Guía Onyx: Instalar, Métricas y Reglas de Prop Firm' : 'Onyx Guide: Install, Metrics & Prop Firm Rules',
-    es ? 'Aprende a instalar Onyx en MT4, MT5 y cTrader, gestionar el riesgo en fondeos y dominar las reglas de prop firm y el drawdown diario.'
-       : 'Learn to install Onyx on MT4, MT5 and cTrader, manage risk in funded accounts, and master prop firm rules and daily drawdown.');
+    es ? 'Aprende a conectar Onyx en MT4, MT5, cTrader, MatchTrader y TradeLocker, gestionar el riesgo en fondeos y dominar las reglas de prop firm y el drawdown diario.'
+       : 'Learn to connect Onyx on MT4, MT5, cTrader, MatchTrader and TradeLocker, manage risk in funded accounts, and master prop firm rules and daily drawdown.');
   return { title: seo.title, description: seo.description, alternates: localeAlternates('/guia') };
 }
 

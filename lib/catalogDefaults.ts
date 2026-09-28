@@ -20,6 +20,7 @@ const PLATFORMS: CatalogItem[] = [
   { code: 'ctrader', es: 'cTrader', en: 'cTrader' },
   { code: 'matchtrader', es: 'MatchTrader', en: 'MatchTrader' },
   { code: 'tradelocker', es: 'TradeLocker', en: 'TradeLocker' },
+  { code: 'tradelocker', es: 'TradeLocker', en: 'TradeLocker' },
 ];
 
 const TRADER_TYPES: CatalogItem[] = [

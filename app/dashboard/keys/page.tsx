@@ -50,15 +50,15 @@ const K = {
       { key: 'mt5', name: 'MetaTrader 5', badge: 'Más usado', kind: 'mt' },
       { key: 'mt4', name: 'MetaTrader 4', badge: 'Nuevo', kind: 'mt' },
       { key: 'ctrader', name: 'cTrader', badge: 'cBot', kind: 'ctrader' },
-      { key: 'matchtrader', name: 'MatchTrader', badge: 'Beta', kind: 'matchtrader' },
-      { key: 'tradelocker', name: 'TradeLocker', badge: 'Beta', kind: 'tradelocker' },
+      { key: 'matchtrader', name: 'MatchTrader', badge: 'API', kind: 'matchtrader' },
+      { key: 'tradelocker', name: 'TradeLocker', badge: 'API', kind: 'tradelocker' },
     ],
     dlCardT: 'Descarga el conector',
     ctDoes: ['Sincroniza tus operaciones al diario', 'Break even, trailing y cierres parciales', 'Tu plan, límites y bloqueo fuera de plan'],
     mtNoteMt4: 'En MT4, al cerrar parte de una operación el resto cambia de número. Está resuelto, pero avísanos si ves algo raro.',
     ctFileName: 'OnyxConnect.cs · cBot de cTrader',
     ctGuide: 'Ver guía completa de cTrader',
-    soonT: 'MatchTrader llega pronto', soonD: 'La conexión de MatchTrader depende de la API de tu bróker. Estamos habilitándola. Mientras tanto, si tu bróker también ofrece MT5, MT4 o cTrader, usa esa.',
+    soonT: 'Conexión por API', soonD: 'MatchTrader y TradeLocker se conectan por la API de tu bróker con email y contraseña, sin instalar nada.',
     mtrT: 'Conecta MatchTrader (beta)', mtrD: 'MatchTrader se conecta con la API de tu bróker (no lleva EA que instalar). Pega la URL de la API y tu clave; en cuanto tu bróker confirme el acceso, Guardian y Copy funcionan igual que en MetaTrader.',
     mtrBase: 'URL de la API del bróker', mtrKey: 'API key / token', mtrUuid: 'systemUuid / accountId (si tu bróker lo pide)', mtrSave: 'Guardar conexión', mtrSaved: 'Guardado ✓',
     mtrBeta: 'Beta: se activa cuando tu bróker habilita la API. Si aún no la tienes, usa MT5/MT4/cTrader mientras tanto.',
@@ -133,15 +133,15 @@ const K = {
       { key: 'mt5', name: 'MetaTrader 5', badge: 'Most used', kind: 'mt' },
       { key: 'mt4', name: 'MetaTrader 4', badge: 'New', kind: 'mt' },
       { key: 'ctrader', name: 'cTrader', badge: 'cBot', kind: 'ctrader' },
-      { key: 'matchtrader', name: 'MatchTrader', badge: 'Beta', kind: 'matchtrader' },
-      { key: 'tradelocker', name: 'TradeLocker', badge: 'Beta', kind: 'tradelocker' },
+      { key: 'matchtrader', name: 'MatchTrader', badge: 'API', kind: 'matchtrader' },
+      { key: 'tradelocker', name: 'TradeLocker', badge: 'API', kind: 'tradelocker' },
     ],
     dlCardT: 'Download the connector',
     ctDoes: ['Syncs your trades to the journal', 'Break even, trailing and partial closes', 'Your plan, limits and out-of-plan block'],
     mtNoteMt4: 'On MT4, closing part of a trade changes the ticket of the rest. It is handled, but tell us if you see anything odd.',
     ctFileName: 'OnyxConnect.cs · cTrader cBot',
     ctGuide: 'See full cTrader guide',
-    soonT: 'MatchTrader is coming soon', soonD: 'MatchTrader connection depends on your broker API. We are enabling it. Meanwhile, if your broker also offers MT5, MT4 or cTrader, use that.',
+    soonT: 'API connection', soonD: 'MatchTrader and TradeLocker connect via your broker API with email and password — nothing to install.',
     mtrT: 'Connect MatchTrader (beta)', mtrD: 'MatchTrader connects via your broker API (no EA to install). Paste the API URL and your key; once your broker confirms access, Guardian and Copy work just like on MetaTrader.',
     mtrBase: 'Broker API URL', mtrKey: 'API key / token', mtrUuid: 'systemUuid / accountId (if your broker needs it)', mtrSave: 'Save connection', mtrSaved: 'Saved ✓',
     mtrBeta: 'Beta: activates once your broker enables the API. If you do not have it yet, use MT5/MT4/cTrader meanwhile.',
@@ -243,6 +243,9 @@ export default function KeysPage() {
 
   // ---- Plataforma elegida (persistida) ----
   const [plat, setPlat] = useState('mt5');
+  const [hoverPlat, setHoverPlat] = useState('');
+  // Color de acento por plataforma (colores de marca; el glow neón usa este color).
+  const platAccent: Record<string, string> = { mt5: '#3b82f6', mt4: '#2dd4bf', ctrader: '#a78bfa', matchtrader: '#f59e0b', tradelocker: '#34d399' };
   useEffect(() => { try {
     const q = new URLSearchParams(window.location.search).get('platform');
     if (q) { setPlat(q); localStorage.setItem('onyx_plat', q); return; }
@@ -449,23 +452,33 @@ export default function KeysPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
             {t.platforms.map((p: any) => {
               const on = p.key === plat;
+              const hov = hoverPlat === p.key;
+              const ac = platAccent[p.key] || 'var(--brand)';
+              const lit = on || hov;   // borde/glow encendido al seleccionar o pasar el cursor
               return (
                 <button key={p.key} onClick={() => pickPlat(p.key)}
+                  onMouseEnter={() => setHoverPlat(p.key)} onMouseLeave={() => setHoverPlat('')}
                   style={{
                     textAlign: 'left', cursor: 'pointer', borderRadius: 12, padding: '12px 13px',
-                    background: on ? 'rgba(124,140,255,.10)' : 'var(--bg2)',
-                    border: on ? '2px solid var(--brand)' : '1px solid var(--line)', transition: '.15s',
+                    background: on ? `color-mix(in srgb, ${ac} 12%, var(--bg2))` : 'var(--bg2)',
+                    border: `${on ? 2 : 1}px solid ${lit ? ac : 'var(--line)'}`,
+                    boxShadow: lit ? `0 0 0 1px ${ac}55, 0 0 16px ${ac}${on ? '66' : '44'}` : 'none',
+                    transform: on ? 'translateY(-1px)' : 'none',
+                    transition: 'box-shadow .18s, border-color .18s, transform .18s, background .18s',
                   }}>
                   <div className="row between" style={{ gap: 6, alignItems: 'center' }}>
-                    <b style={{ fontSize: 14.5, color: 'var(--tx)' }}>{p.name}</b>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 3, flex: 'none', background: ac, boxShadow: lit ? `0 0 8px ${ac}` : 'none', transition: 'box-shadow .18s' }} />
+                      <b style={{ fontSize: 14.5, color: 'var(--tx)', whiteSpace: 'nowrap' }}>{p.name}</b>
+                    </span>
                     <span style={{
                       width: 16, height: 16, borderRadius: '50%', flex: 'none',
                       border: on ? 'none' : '1.5px solid var(--line)',
-                      background: on ? 'var(--brand)' : 'transparent', color: '#fff',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
+                      background: on ? ac : 'transparent', color: '#0a0d14',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800,
                     }}>{on ? '✓' : ''}</span>
                   </div>
-                  <span className="pill" style={{ marginTop: 8, fontSize: 11, background: 'var(--card2)', color: 'var(--mut)' }}>{p.badge}</span>
+                  <span className="pill" style={{ marginTop: 8, fontSize: 11, background: on ? `color-mix(in srgb, ${ac} 18%, transparent)` : 'var(--card2)', color: on ? ac : 'var(--mut)' }}>{p.badge}</span>
                 </button>
               );
             })}
@@ -620,9 +633,15 @@ function TradeLockerConnect({ t }: any) {
             <input value={manualServer} onChange={(e) => setManualServer(e.target.value)} placeholder={en ? 'e.g. YourBroker-Live' : 'ej. TuBroker-Live'} style={{ marginTop: 4 }} />
           </label>
         ) : null}
-        <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} /> {en ? 'Demo account' : 'Cuenta demo'}
-        </label>
+        <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '9px 11px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, cursor: 'pointer' }}>
+            <input type="checkbox" checked={demo} onChange={(e) => setDemo(e.target.checked)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} />
+            <span style={{ fontWeight: 600 }}>{en ? 'Demo account' : 'Cuenta demo'}</span>
+          </label>
+          <div className="muted" style={{ fontSize: 11, marginTop: 4, lineHeight: 1.5 }}>
+            {en ? 'Turn this on only if your TradeLocker account is a practice/demo one. Recommended for your first test.' : 'Actívalo solo si tu cuenta de TradeLocker es de práctica/demo. Recomendado para tu primera prueba.'}
+          </div>
+        </div>
         <label className="muted" style={{ fontSize: 12 }}>Email<input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" style={{ marginTop: 4 }} /></label>
         <label className="muted" style={{ fontSize: 12 }}>{en ? 'Password' : 'Contraseña'}<input type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="••••••••" style={{ marginTop: 4 }} /></label>
         <button className="btn btn-primary" disabled={busy || !email || !pass || (code === '__manual__' ? !manualServer.trim() : !code)} onClick={onConnect}>{busy ? '…' : (en ? 'Connect' : 'Conectar')}</button>
@@ -637,7 +656,7 @@ function TradeLockerConnect({ t }: any) {
               <b style={{ fontSize: 13 }}>{c.label || c.tl_account_id}</b>
               <span className="muted" style={{ fontSize: 11 }}>{c.server}{c.demo ? ' · demo' : ''}{c.status === 'reauth' ? (en ? ' · reconnect needed' : ' · reconectar') : ''}</span>
               <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-                <input type="checkbox" checked={!!c.copy_enabled} onChange={() => toggleCopy(c)} /> Copy
+                <input type="checkbox" checked={!!c.copy_enabled} onChange={() => toggleCopy(c)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} /> Copy
               </label>
               <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => remove(c)}>{en ? 'Remove' : 'Quitar'}</button>
             </div>
@@ -723,7 +742,7 @@ function MatchtraderConnect({ t }: any) {
               <b style={{ fontSize: 13 }}>{c.label || c.account_uuid}</b>
               <span className="muted" style={{ fontSize: 11 }}>{c.broker_code}{c.status === 'reauth' ? (en ? ' · reconnect needed' : ' · reconectar') : ''}</span>
               <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-                <input type="checkbox" checked={!!c.copy_enabled} onChange={() => toggleCopy(c)} /> Copy
+                <input type="checkbox" checked={!!c.copy_enabled} onChange={() => toggleCopy(c)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} /> Copy
               </label>
               <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => remove(c)}>{en ? 'Remove' : 'Quitar'}</button>
             </div>

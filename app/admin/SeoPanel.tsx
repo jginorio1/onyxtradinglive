@@ -32,20 +32,20 @@ const META_DEFAULTS: Record<string, { title_es: string; title_en: string; desc_e
   home: {
     title_es: 'Diario de Trading y Gestión de Riesgo | Onyx Trading Live',
     title_en: 'Trading Journal & Risk Management | Onyx Trading Live',
-    desc_es: 'Diario de trading y gestión de riesgo para forex y CFDs. Onyx Guardian, copy trading y retos de prop firm en MT4, MT5 y cTrader. Empieza gratis.',
-    desc_en: 'Trading journal and risk management for forex and CFDs. Onyx Guardian, copy trading and prop firm challenges on MT4, MT5 and cTrader. Start free.',
+    desc_es: 'Diario de trading y gestión de riesgo para forex y CFDs. Onyx Guardian, copy trading y retos de prop firm en MT4, MT5, cTrader, MatchTrader y TradeLocker. Empieza gratis.',
+    desc_en: 'Trading journal and risk management for forex and CFDs. Onyx Guardian, copy trading and prop firm challenges on MT4, MT5, cTrader, MatchTrader and TradeLocker. Start free.',
   },
   pricing: {
     title_es: 'Planes Onyx Trading Live | Precios para Prop Firms',
     title_en: 'Onyx Trading Live Plans | Pricing for Prop Firms',
-    desc_es: 'Compara los planes Free, Pro y Elite. Gestión de riesgo, copy trading y diario para forex y CFDs. Conecta MT4, MT5 o cTrader sin comisión.',
-    desc_en: 'Compare Free, Pro and Elite plans. Risk management, copy trading and journal for forex and CFDs. Connect MT4, MT5 or cTrader with no fees.',
+    desc_es: 'Compara los planes Free, Pro y Elite. Gestión de riesgo, copy trading y diario para forex y CFDs. Conecta MT4, MT5, cTrader, MatchTrader o TradeLocker sin comisión.',
+    desc_en: 'Compare Free, Pro and Elite plans. Risk management, copy trading and journal for forex and CFDs. Connect MT4, MT5, cTrader, MatchTrader or TradeLocker with no fees.',
   },
   guia: {
     title_es: 'Guía Onyx: Instalar, Métricas y Reglas de Prop Firm',
     title_en: 'Onyx Guide: Install, Metrics & Prop Firm Rules',
-    desc_es: 'Aprende a instalar Onyx en MT4, MT5 y cTrader, gestionar el riesgo en fondeos y dominar las reglas de prop firm y el drawdown diario.',
-    desc_en: 'Learn to install Onyx on MT4, MT5 and cTrader, manage risk in funded accounts, and master prop firm rules and daily drawdown.',
+    desc_es: 'Aprende a conectar Onyx en MT4, MT5, cTrader, MatchTrader y TradeLocker, gestionar el riesgo en fondeos y dominar las reglas de prop firm y el drawdown diario.',
+    desc_en: 'Learn to connect Onyx on MT4, MT5, cTrader, MatchTrader and TradeLocker, manage risk in funded accounts, and master prop firm rules and daily drawdown.',
   },
   blog: {
     title_es: 'Blog | Prop Firms, Gestión de Riesgo y Disciplina',
@@ -56,8 +56,8 @@ const META_DEFAULTS: Record<string, { title_es: string; title_en: string; desc_e
   embajadores: {
     title_es: 'Programa de Embajadores Onyx | Gana Comisión',
     title_en: 'Onyx Ambassador Program | Earn Recurring Commission',
-    desc_es: 'Gana comisión recurrente refiriendo traders. Acceso a diario de trading, gestión de riesgo y copy trading en MT4, MT5 y cTrader.',
-    desc_en: 'Earn recurring commissions by referring traders. Access to the trading journal, risk management and copy trading for MT4, MT5 and cTrader.',
+    desc_es: 'Gana comisión recurrente refiriendo traders. Acceso a diario de trading, gestión de riesgo y copy trading en MT4, MT5, cTrader, MatchTrader y TradeLocker.',
+    desc_en: 'Earn recurring commissions by referring traders. Access to the trading journal, risk management and copy trading for MT4, MT5, cTrader, MatchTrader and TradeLocker.',
   },
   contacto: {
     title_es: 'Contacto y Soporte | Onyx Trading Live',
