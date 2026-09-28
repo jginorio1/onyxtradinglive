@@ -91,6 +91,23 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
       else { setData((d: any) => ({ ...d, autofix: { ...(d?.autofix || {}), enabled: !enabled } })); toast(j.error || 'Error', 'error'); }
     } catch { setData((d: any) => ({ ...d, autofix: { ...(d?.autofix || {}), enabled: !enabled } })); toast(L('No se pudo guardar.', 'Could not save.')); }
   }
+  // Auto-resolución semanal de canibalización: on/off (al encender corre una vez).
+  async function toggleCannAuto(enabled: boolean) {
+    setData((d: any) => ({ ...d, cannibalAuto: { ...(d?.cannibalAuto || {}), enabled } }));
+    try {
+      const r = await fetch('/api/admin/blog/audit', { method: 'POST', body: JSON.stringify({ action: 'set_cannibal_auto', enabled }) });
+      const j = await r.json();
+      if (j.ok) { setData((d: any) => ({ ...d, cannibalAuto: j.cannibalAuto })); toast(enabled ? L('✓ Limpieza semanal activada.', '✓ Weekly cleanup on.') : L('Limpieza semanal desactivada.', 'Weekly cleanup off.'), 'ok'); if (enabled) await scan(); }
+      else { setData((d: any) => ({ ...d, cannibalAuto: { ...(d?.cannibalAuto || {}), enabled: !enabled } })); toast(j.error || 'Error', 'error'); }
+    } catch { setData((d: any) => ({ ...d, cannibalAuto: { ...(d?.cannibalAuto || {}), enabled: !enabled } })); toast(L('No se pudo guardar.', 'Could not save.')); }
+  }
+  // Próximo domingo 04:00 UTC (cuando corre el cron). Solo para mostrar en la tarjeta.
+  function nextSunday(): string {
+    const d = new Date(); const day = d.getUTCDay(); const add = ((7 - day) % 7) || 7;
+    const n = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + add, 4, 0, 0));
+    return n.toLocaleDateString(es ? 'es' : 'en', { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+  const ago = (ms: number) => { if (!ms) return L('nunca', 'never'); const d = Math.floor((Date.now() - ms) / 86400000); return d <= 0 ? L('hoy', 'today') : d === 1 ? L('ayer', 'yesterday') : L(`hace ${d} días`, `${d} days ago`); };
   const clr = (n: number) => (n >= 75 ? 'var(--green)' : n >= 55 ? 'var(--amber)' : 'var(--red)');
   const posts = data?.posts || [];
   const shown = showAll ? posts : posts.slice(0, 25);
@@ -156,6 +173,28 @@ export default function BlogAudit({ es, onChanged }: { es: boolean; onChanged?: 
                   <span style={{ position: 'absolute', inset: 0, borderRadius: 999, background: data.autofix?.enabled ? 'var(--green)' : 'var(--line)', transition: '.2s' }} />
                   <span style={{ position: 'absolute', top: 3, left: data.autofix?.enabled ? 21 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: '.2s' }} />
                 </label>
+              </div>
+
+              {/* Auto-resolución SEMANAL de canibalización: interruptor + estado de la última corrida. */}
+              <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '10px 12px', marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🧩" size={14} /> {L('Resolver canibalización cada semana', 'Resolve cannibalization weekly')}</div>
+                    <div className="muted" style={{ fontSize: 11.5 }}>{L('Cada domingo consolida los duplicados con ganador claro (por Google) y redirige el resto. Reversible.', 'Every Sunday it consolidates duplicates with a clear winner (by Google) and redirects the rest. Reversible.')}</div>
+                  </div>
+                  <label style={{ position: 'relative', display: 'inline-block', width: 42, height: 24, flex: '0 0 auto' }}>
+                    <input type="checkbox" checked={!!data.cannibalAuto?.enabled} onChange={(e) => toggleCannAuto(e.target.checked)} style={{ opacity: 0, width: 0, height: 0 }} />
+                    <span style={{ position: 'absolute', inset: 0, borderRadius: 999, background: data.cannibalAuto?.enabled ? 'var(--green)' : 'var(--line)', transition: '.2s' }} />
+                    <span style={{ position: 'absolute', top: 3, left: data.cannibalAuto?.enabled ? 21 : 3, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: '.2s' }} />
+                  </label>
+                </div>
+                {data.cannibalAuto?.enabled && (
+                  <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 8, marginTop: 10 }}>
+                    <div style={{ background: 'var(--card2, var(--bg))', borderRadius: 8, padding: 8 }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Última corrida', 'Last run')}</div><div style={{ fontSize: 13, fontWeight: 700 }}>{ago(data.cannibalAuto.lastRunMs || 0)}</div></div>
+                    <div style={{ background: 'var(--card2, var(--bg))', borderRadius: 8, padding: 8 }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Resolvió', 'Resolved')}</div><div style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)' }}>{data.cannibalAuto.lastGroups || 0} {L('grupos', 'groups')} · {data.cannibalAuto.lastRedirected || 0}</div>{(data.cannibalAuto.lastSkipped || 0) > 0 && <div className="muted" style={{ fontSize: 10 }}>{data.cannibalAuto.lastSkipped} {L('omitidos (sin datos)', 'skipped (no data)')}</div>}</div>
+                    <div style={{ background: 'var(--card2, var(--bg))', borderRadius: 8, padding: 8 }}><div className="muted" style={{ fontSize: 10.5 }}>{L('Próxima', 'Next')}</div><div style={{ fontSize: 13, fontWeight: 700 }}>{nextSunday()} · 04:00</div></div>
+                  </div>
+                )}
               </div>
 
               {data.keywordMap?.some((k: any) => k.count > 1 && k.count <= 8) && (

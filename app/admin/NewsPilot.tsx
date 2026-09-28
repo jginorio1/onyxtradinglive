@@ -15,7 +15,7 @@ function Switch({ on, accent = '#34e2a0' }: { on: boolean; accent?: string }) {
 
 type Topics = { macro: boolean; markets: boolean; earnings: boolean; crypto: boolean };
 type Custom = { id: string; name: string; url: string; cat: string };
-type Cfg = { enabled: boolean; mode: 'auto' | 'draft'; maxPerDay: number; minMinutesBetween: number; emailSegment: string; topics: Topics; sources: Record<string, boolean>; custom_sources: Custom[]; maxAgeMin: number; seo: boolean };
+type Cfg = { enabled: boolean; mode: 'auto' | 'draft'; maxPerDay: number; minMinutesBetween: number; emailSegment: string; topics: Topics; sources: Record<string, boolean>; custom_sources: Custom[]; maxAgeMin: number; seo: boolean; maxPerEntity?: number; entityDays?: number };
 type Src = { id: string; name: string; url: string; tier: 'primary' | 'wire'; cat: string };
 
 const SEGMENTS = [
@@ -392,6 +392,8 @@ export default function NewsPilot({ es, onChanged }: { es: boolean; onChanged?: 
             <div style={box}><div style={lbl}>{L('Máx por día', 'Max per day')}</div><input type="number" min={1} max={50} value={cfg.maxPerDay} onChange={(e) => upd('maxPerDay', Math.min(50, Math.max(0, parseInt(e.target.value, 10) || 0)))} onBlur={() => upd('maxPerDay', Math.max(1, cfg.maxPerDay || 1))} style={{ margin: 0, width: '100%' }} /></div>
             <div style={box}><div style={lbl}>{L('Separación mínima (min)', 'Min gap (min)')}</div><input type="number" min={0} max={720} value={cfg.minMinutesBetween} onChange={(e) => upd('minMinutesBetween', Math.min(720, Math.max(0, parseInt(e.target.value, 10) || 0)))} style={{ margin: 0, width: '100%' }} /></div>
             <div style={box}><div style={lbl}>{L('Frescura máx (min)', 'Max age (min)')}</div><input type="number" min={120} max={10080} value={cfg.maxAgeMin} onChange={(e) => upd('maxAgeMin', Math.min(10080, Math.max(0, parseInt(e.target.value, 10) || 0)))} onBlur={() => upd('maxAgeMin', Math.max(2880, cfg.maxAgeMin || 2880))} style={{ margin: 0, width: '100%' }} /></div>
+            <div style={box}><div style={lbl}>{L('Máx por tema', 'Max per topic')}</div><input type="number" min={0} max={10} value={cfg.maxPerEntity ?? 2} onChange={(e) => upd('maxPerEntity', Math.min(10, Math.max(0, parseInt(e.target.value, 10) || 0)))} style={{ margin: 0, width: '100%' }} /><div className="muted" style={{ fontSize: 10.5, marginTop: 3 }}>{L('notas de la misma entidad (0 = sin tope)', 'articles per entity (0 = no cap)')}</div></div>
+            <div style={box}><div style={lbl}>{L('Ventana del tope (días)', 'Cap window (days)')}</div><input type="number" min={1} max={30} value={cfg.entityDays ?? 7} onChange={(e) => upd('entityDays', Math.min(30, Math.max(1, parseInt(e.target.value, 10) || 1)))} style={{ margin: 0, width: '100%' }} /><div className="muted" style={{ fontSize: 10.5, marginTop: 3 }}>{L('anti-canibalización de noticias', 'news anti-cannibalization')}</div></div>
             <div style={box}><div style={lbl}>{L('Email a', 'Email to')}</div><select value={cfg.emailSegment} onChange={(e) => upd('emailSegment', e.target.value)} style={{ margin: 0, width: '100%' }}>{SEGMENTS.map((s) => <option key={s.id} value={s.id}>{es ? s.es : s.en}</option>)}</select></div>
           </div>
 

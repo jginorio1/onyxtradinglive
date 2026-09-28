@@ -122,6 +122,8 @@ export async function PATCH(req: Request) {
     custom_sources: sanitizeCustom(b.custom_sources, prev.custom_sources),
     maxAgeMin: b.maxAgeMin == null ? prev.maxAgeMin : clampInt(b.maxAgeMin, 5, 720, prev.maxAgeMin),
     seo: b.seo == null ? (prev.seo ?? true) : !!b.seo,
+    maxPerEntity: b.maxPerEntity == null ? (prev.maxPerEntity ?? 2) : clampInt(b.maxPerEntity, 0, 10, prev.maxPerEntity ?? 2),
+    entityDays: b.entityDays == null ? (prev.entityDays ?? 7) : clampInt(b.entityDays, 1, 30, prev.entityDays ?? 7),
   };
   await saveSetting('news_pilot', value);
   return NextResponse.json({ ok: true, ...value });

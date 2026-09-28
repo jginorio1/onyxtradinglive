@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
-import { runAudit, autoFixCfg, AUTOFIX_DEFAULT, cannibalGroups, resolveCannibalization } from '@/lib/blogAudit';
+import { runAudit, autoFixCfg, AUTOFIX_DEFAULT, cannibalGroups, resolveCannibalization, cannibalAutoCfg, CANNIBAL_AUTO_DEFAULT, runCannibalCron } from '@/lib/blogAudit';
 import { listAllPosts, savePost } from '@/lib/blog';
 import { enhanceArticle, suggestTitles, lastAiError, type RelatedPost } from '@/lib/blogAI';
 import { saveSetting } from '@/lib/settings';
@@ -14,7 +14,7 @@ export const maxDuration = 60;
 export async function GET() {
   const { ok } = await requirePerm('modulos', 'view');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-  try { const r = await runAudit(); const autofix = await autoFixCfg().catch(() => AUTOFIX_DEFAULT); return NextResponse.json({ ...r, autofix }); }
+  try { const r = await runAudit(); const autofix = await autoFixCfg().catch(() => AUTOFIX_DEFAULT); const cannibalAuto = await cannibalAutoCfg().catch(() => CANNIBAL_AUTO_DEFAULT); return NextResponse.json({ ...r, autofix, cannibalAuto }); }
   catch (e: any) { await logError('blog_audit', e); return NextResponse.json({ ok: false, error: e?.message || 'error' }, { status: 500 }); }
 }
 
@@ -44,6 +44,15 @@ export async function POST(req: Request) {
     if (action === 'cannibal_apply') {
       const r = await resolveCannibalization(b.kw ? String(b.kw) : undefined);
       return NextResponse.json(r);
+    }
+    // Auto-resolución semanal: on/off. Al encender, además corre una vez (modo seguro).
+    if (action === 'set_cannibal_auto') {
+      const cur = await cannibalAutoCfg().catch(() => CANNIBAL_AUTO_DEFAULT);
+      const enabled = b.enabled == null ? cur.enabled : !!b.enabled;
+      await saveSetting('blog_cannibal_auto', { ...cur, enabled });
+      if (enabled && b.runNow !== false) { try { await runCannibalCron(true); } catch {} }
+      const cannibalAuto = await cannibalAutoCfg().catch(() => CANNIBAL_AUTO_DEFAULT);
+      return NextResponse.json({ ok: true, cannibalAuto });
     }
     const all = await listAllPosts();
     const p: any = all.find((x: any) => x.id === id);

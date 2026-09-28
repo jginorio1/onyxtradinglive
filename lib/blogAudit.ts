@@ -9,7 +9,7 @@
 // La IA solo entra cuando el dueño pulsa un arreglo (híbrido = local marca, IA corrige).
 // ============================================================
 import { listAllPosts, savePost, addRedirect } from './blog';
-import { blogKeywordsSettings, getSetting } from './settings';
+import { blogKeywordsSettings, getSetting, saveSetting } from './settings';
 import { gscConfigured, gscOverview } from './seoSearchConsole';
 import { enhanceArticle, type RelatedPost } from './blogAI';
 
@@ -250,9 +250,14 @@ export async function cannibalGroups(): Promise<CannibalGroup[]> {
 // Aplica la resolución: por cada grupo (o solo el de `onlyKw`), pasa los perdedores
 // a BORRADOR y crea un 301 de su slug → el del ganador. Reversible (republicar +
 // quitar el redirect). Devuelve cuántos se redirigieron.
-export async function resolveCannibalization(onlyKw?: string): Promise<{ ok: boolean; groups: number; redirected: number; details: { kw: string; winner: string; losers: string[] }[] }> {
+export async function resolveCannibalization(onlyKw?: string, opts?: { safeOnly?: boolean }): Promise<{ ok: boolean; groups: number; redirected: number; skipped: number; details: { kw: string; winner: string; losers: string[] }[] }> {
   const gs = await cannibalGroups();
-  const target = onlyKw ? gs.filter((g) => g.kw === onlyKw) : gs;
+  let target = onlyKw ? gs.filter((g) => g.kw === onlyKw) : gs;
+  let skipped = 0;
+  // Modo seguro (para el cron automático): SOLO consolida grupos con un ganador
+  // claro por datos de Google (impresiones GSC). Los ambiguos se dejan para revisión
+  // manual, para no despublicar nada a ciegas.
+  if (opts?.safeOnly) { const before = target.length; target = target.filter((g) => (g.winner.impressions || 0) > 0); skipped = before - target.length; }
   const all = await listAllPosts();
   const bySlug = new Map(all.map((p: any) => [p.slug, p]));
   let redirected = 0; const details: { kw: string; winner: string; losers: string[] }[] = [];
@@ -269,7 +274,27 @@ export async function resolveCannibalization(onlyKw?: string): Promise<{ ok: boo
     }
     if (done.length) details.push({ kw: g.kw, winner: g.winner.slug, losers: done });
   }
-  return { ok: true, groups: details.length, redirected, details };
+  return { ok: true, groups: details.length, redirected, skipped, details };
+}
+
+// Auto-resolución semanal (cron). Config + registro de la última corrida para el panel.
+export type CannibalAutoCfg = { enabled: boolean; lastRunMs: number; lastGroups: number; lastRedirected: number; lastSkipped: number; lastDetails: { kw: string; losers: number }[] };
+export const CANNIBAL_AUTO_DEFAULT: CannibalAutoCfg = { enabled: false, lastRunMs: 0, lastGroups: 0, lastRedirected: 0, lastSkipped: 0, lastDetails: [] };
+export const cannibalAutoCfg = () => getSetting<CannibalAutoCfg>('blog_cannibal_auto', CANNIBAL_AUTO_DEFAULT);
+
+// Ejecuta la limpieza semanal en MODO SEGURO (solo grupos con ganador claro por
+// Google) y guarda el resumen para la tarjeta del panel. No corre si está apagado.
+export async function runCannibalCron(force = false): Promise<{ ran: boolean; reason?: string; groups?: number; redirected?: number; skipped?: number }> {
+  const cfg = await cannibalAutoCfg().catch(() => CANNIBAL_AUTO_DEFAULT);
+  if (!cfg.enabled && !force) return { ran: false, reason: 'disabled' };
+  const r = await resolveCannibalization(undefined, { safeOnly: true });
+  const next: CannibalAutoCfg = {
+    enabled: cfg.enabled, lastRunMs: Date.now(),
+    lastGroups: r.groups, lastRedirected: r.redirected, lastSkipped: r.skipped,
+    lastDetails: r.details.map((d) => ({ kw: d.kw, losers: d.losers.length })).slice(0, 12),
+  };
+  try { await saveSetting('blog_cannibal_auto', next); } catch {}
+  return { ran: true, groups: r.groups, redirected: r.redirected, skipped: r.skipped };
 }
 
 export type AutoFixCfg = { enabled: boolean; threshold: number };

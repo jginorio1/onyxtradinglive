@@ -389,10 +389,13 @@ export type NewsPilot = {
   custom_sources: { id: string; name: string; url: string; cat: string }[]; // fuentes RSS añadidas a mano
   maxAgeMin: number;              // solo considera noticias publicadas hace ≤ N minutos (frescura)
   seo: boolean;                   // teje (ligero) una keyword de la lista/GSC si encaja, y marca NewsArticle
+  maxPerEntity: number;           // tope de notas por MISMA entidad (dow jones, la Fed…) en la ventana. 0 = sin tope
+  entityDays: number;             // ventana en días para el tope por entidad (anti-canibalización)
 };
 const NEWS: NewsPilot = {
   enabled: false, mode: 'auto', maxPerDay: 3, minMinutesBetween: 20, emailSegment: 'all',
   topics: { macro: true, markets: true, earnings: true, crypto: true }, sources: {}, custom_sources: [], maxAgeMin: 2880, seo: true,
+  maxPerEntity: 2, entityDays: 7,
 };
 export const newsPilotSettings = () => getSetting<NewsPilot>('news_pilot', NEWS);
 

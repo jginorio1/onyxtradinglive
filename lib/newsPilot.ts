@@ -66,6 +66,35 @@ async function titlePostedRecently(title: string, hours = 72): Promise<boolean> 
   } catch { return false; }
 }
 
+// Entidades frecuentes que causan canibalización si se repiten (nombres propios de
+// mercado + las keywords de KW). Se usa para el TOPE POR ENTIDAD: no más de N notas
+// del mismo tema en la ventana. Orden importa: se prueba la primera que engancha.
+const ENTITIES: string[] = [
+  'dow jones', 's&p 500', 's&p', 'nasdaq', 'russell', 'wall street',
+  'goldman sachs', 'morgan stanley', 'jpmorgan', 'jp morgan', 'blackrock', 'nvidia', 'apple', 'tesla', 'microsoft', 'amazon', 'meta', 'google', 'ericsson',
+  'federal reserve', 'fed', 'fomc', 'powell', 'ecb', 'boe', 'boj', 'treasury',
+  'cpi', 'pce', 'inflation', 'payroll', 'nonfarm', 'gdp', 'unemployment', 'jobless',
+  'bitcoin', 'ethereum', 'binance', 'coinbase', 'crypto',
+  'oil', 'crude', 'gold', 'dollar', 'yields', 'vix', 'tariff',
+];
+// Entidad dominante de un titular (primera coincidencia). '' si no engancha ninguna
+// conocida → a esas noticias NO se les aplica tope (temas nuevos pasan libres).
+function dominantEntity(title: string): string {
+  const t = norm(title);
+  for (const e of ENTITIES) if (t.includes(e)) return e;
+  return '';
+}
+// ¿Cuántos artículos con esta entidad se publicaron en los últimos `days` días?
+// Cuenta el blog real (title_es/title_en). Falla seguro a 0.
+async function entityPostedCount(entity: string, days: number): Promise<number> {
+  if (!entity) return 0;
+  try {
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    const { data } = await supabaseAdmin.from('blog_posts').select('title_es,title_en').gte('created_at', since).limit(300);
+    return (data || []).filter((p: any) => norm(p.title_es).includes(entity) || norm(p.title_en).includes(entity)).length;
+  } catch { return 0; }
+}
+
 // Familia de tema activa según los toggles del dueño.
 function topicOn(cat: NewsSource['cat'], t: NewsPilot['topics']): boolean {
   return (cat === 'macro' && t.macro) || (cat === 'markets' && t.markets) || (cat === 'earnings' && t.earnings) || (cat === 'crypto' && t.crypto);
@@ -268,6 +297,11 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
   // historia que llega por varias fuentes con enlaces distintos NO se publica varias
   // veces. Además, respaldo: si ya hay un artículo con ese título en el blog (últimas
   // 72 h), se salta aunque news_seen no lo tenga (carreras entre crons).
+  // Tope por ENTIDAD (anti-canibalización): no más de N notas del mismo tema (dow
+  // jones, la Fed…) en la ventana. 0 = desactivado. Evita generar 6 de dow jones.
+  const maxPerEntity = Math.max(0, cfg.maxPerEntity ?? 2);
+  const entityDays = Math.max(1, cfg.entityDays || 7);
+
   let pick: NewsItem | null = null; let pickHash = '';
   for (const it of fresh.slice(0, 25)) {
     const sig = titleSig(it.title);
@@ -278,6 +312,15 @@ async function runCycle(force = false, dryRun = false): Promise<PilotResult> {
       // Ya publicada por otra vía: márcala vista para no reevaluarla y sigue.
       try { await supabaseAdmin.from('news_seen').insert({ hash: h, source: it.sourceId, title: it.title.slice(0, 300), url: it.link, posted: true }); } catch {}
       continue;
+    }
+    // ¿Esta entidad ya llegó a su tope en la ventana? Si sí, la saltamos (y la marcamos
+    // vista para no reevaluarla) y buscamos una noticia de OTRO tema. Así se reparte.
+    if (maxPerEntity > 0) {
+      const ent = dominantEntity(it.title);
+      if (ent && (await entityPostedCount(ent, entityDays)) >= maxPerEntity) {
+        try { await supabaseAdmin.from('news_seen').insert({ hash: h, source: it.sourceId, title: it.title.slice(0, 300), url: it.link, posted: false }); } catch {}
+        continue;
+      }
     }
     // Registra como visto de inmediato (aunque no lo publiquemos) para no reevaluarlo.
     try { await supabaseAdmin.from('news_seen').insert({ hash: h, source: it.sourceId, title: it.title.slice(0, 300), url: it.link, posted: false }); } catch {}
