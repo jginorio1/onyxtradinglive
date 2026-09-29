@@ -188,6 +188,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               "try{var C=window.Capacitor;if(C&&C.isNativePlatform&&C.isNativePlatform()){document.documentElement.classList.add('native-app');var p=(location.pathname||'/').replace(/\\/+$/,'')||'/';if(p===''||p==='/'||p==='/en'){document.documentElement.style.background='#0b1020';location.replace('/dashboard');}}}catch(e){}",
           }}
         />
+        <div className="onyx-boot" id="onyxBoot"><img src="/onyx-symbol.png" alt="Onyx" /></div>
+        <script dangerouslySetInnerHTML={{ __html: "try{var h=function(){var b=document.getElementById('onyxBoot');if(b){b.classList.add('onyx-boot--hide');setTimeout(function(){if(b&&b.parentNode){b.parentNode.removeChild(b);}},600);}};if(document.readyState==='complete'){setTimeout(h,300);}else{window.addEventListener('load',function(){setTimeout(h,300);});}setTimeout(h,8000);}catch(e){}" }} />
         {/* Arranque nativo (Capacitor): no hace nada en el navegador. */}
         <NativeInit />
         <ScrollTopOnNav />
