@@ -12,7 +12,8 @@ export async function GET() {
     let q = supabaseAdmin.from('plans').select('*').order('sort', { ascending: true });
     if (!isAdmin) q = q.eq('active', true) as any;
     const { data } = await q;
-    return NextResponse.json({ plans: data || [] });
+    const headers = isAdmin ? { 'Cache-Control': 'no-store' } : { 'Cache-Control': 'public, max-age=30, s-maxage=300, stale-while-revalidate=600' };
+    return NextResponse.json({ plans: data || [] }, { headers });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', code: 'generic' }, { status: 500 });
   }
