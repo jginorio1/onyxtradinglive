@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { configureIAP, getIapPlans, buyPlan, restoreIap, type IapPlan } from '@/lib/iap';
+import { configureIAP, getIapPlans, buyPlan, restoreIap, getActiveIapPlan, type IapPlan } from '@/lib/iap';
 
 // ============================================================
 // Planes DENTRO de la app de iOS con COMPRA NATIVA de Apple (In-App Purchase).
@@ -16,6 +16,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
   const [prices, setPrices] = useState<Record<string, IapPlan>>({});
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
+  const [activePlan, setActivePlan] = useState('');   // plan que Apple/RevenueCat reporta como activo
 
   useEffect(() => {
     let done = false;
@@ -32,6 +33,9 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
           const list = await getIapPlans(paid);
           const map: Record<string, IapPlan> = {}; list.forEach((x) => { map[x.planId] = x; });
           setPrices(map);
+          // Plan activo según Apple (no la BD): así marcamos "Tu plan actual" aunque
+          // la base esté desincronizada (p. ej. pruebas sandbox).
+          try { const ap = await getActiveIapPlan(paid); if (ap) setActivePlan(ap); } catch {}
         }
       } catch {} finally { finish(); clearTimeout(hard); }
     })();
@@ -77,7 +81,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
           const ip = prices[p.id];
           const nm = es ? p.name : (p.name_en || p.name);
           const feats = (es ? p.features : p.features_en) || [];
-          const active = currentPlan === p.id;
+          const active = (activePlan || currentPlan) === p.id;
           return (
             <div key={p.id} className="card" style={{ padding: 16 }}>
               <div className="row between" style={{ alignItems: 'baseline', gap: 8 }}>

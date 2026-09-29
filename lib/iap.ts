@@ -59,6 +59,30 @@ export async function buyPlan(pkg: any): Promise<{ ok: boolean; error?: string; 
   }
 }
 
+// Devuelve el id del plan ACTIVO según Apple/RevenueCat (lo que el usuario realmente
+// posee), sin depender de la base de datos. Sirve para marcar "Tu plan actual" en la
+// pantalla de planes de iOS aunque la BD esté desincronizada. Mapea por convención:
+// el product identifier contiene el id del plan (onyx_pro_month → 'pro', etc.).
+export async function getActiveIapPlan(planIds: string[]): Promise<string> {
+  if (!iosOnly()) return '';
+  try {
+    const info: any = await Purchases.getCustomerInfo();
+    const ci: any = info?.customerInfo || info || {};
+    const active: string[] = ci?.activeSubscriptions || [];
+    const ent: any = ci?.entitlements?.active || {};
+    const fromEnt = Object.values(ent).map((e: any) => e?.productIdentifier).filter(Boolean);
+    const owned = [...active, ...fromEnt].map((x: any) => String(x).toLowerCase());
+    if (!owned.length) return '';
+    // Recorremos los planes de mayor a menor rango (los que llegan ordenados) y
+    // devolvemos el primero cuyo id aparezca en algún product identifier poseído.
+    for (const id of planIds) {
+      const low = String(id).toLowerCase();
+      if (owned.some((p) => p.includes(low))) return id;
+    }
+    return '';
+  } catch { return ''; }
+}
+
 // Restaura compras previas (requisito de Apple).
 export async function restoreIap(): Promise<boolean> {
   if (!iosOnly()) return false;
