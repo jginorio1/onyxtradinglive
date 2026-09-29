@@ -329,6 +329,7 @@ export async function POST(req: NextRequest) {
     if (Array.isArray(body.doneCommands) && body.doneCommands.length) {
       await supabaseAdmin.from('manager_commands')
         .update({ status: 'done', done_at: new Date().toISOString() })
+        .eq('account_id', accountId)                       // solo comandos de ESTA cuenta (no de otras)
         .in('id', body.doneCommands.slice(0, 20));
     }
 
