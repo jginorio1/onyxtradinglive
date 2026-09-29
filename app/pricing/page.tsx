@@ -10,6 +10,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 import PlanCards from '@/app/PlanCards';
 import { useIsIOSApp, openOnyxWeb } from '@/app/account/ManageOnWeb';
 import IosPlans from '@/app/pricing/IosPlans';
+import { nativePlatform } from '@/lib/native';
 import { getPending } from '@/lib/pendingCheckout';
 import { planFacts, trialLine } from '@/lib/planFacts';
 
@@ -97,12 +98,16 @@ export default function Pricing() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [annual, setAnnual] = useState(false);
   const [loading, setLoading] = useState('');
+  const [mounted, setMounted] = useState(false);
+  const [myPlan, setMyPlan] = useState<string>('');
   const { lang, setLang } = useLang();
   const t = dictFor(T, lang);
 
   useEffect(() => {
     fetch('/api/admin/plans', { cache: 'no-store' }).then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => setPlans([]));
   }, []);
+
+  useEffect(() => { setMounted(true); fetch('/api/account', { cache: 'no-store' }).then((r) => r.json()).then((j: any) => setMyPlan(String(j?.plan || j?.profile?.plan || j?.subscription?.plan || ''))).catch(() => {}); }, []);
 
   // Si la BD no devolvió planes, usamos los de por defecto para no dejar la página vacía.
   // Además garantizamos que Black Onyx siempre aparezca como 4º plan (para el 2×2).
@@ -163,11 +168,9 @@ export default function Pricing() {
   // Dentro de la app de iPhone/iPad NO se muestran precios ni planes de compra.
   // Onyx es un servicio multiplataforma: la suscripción se gestiona en la web
   // (regla 3.1.3(b)). En Android y navegador esto no aplica: la página normal.
-  if (iosApp) {
-    // En iOS los planes se compran con Apple In-App Purchase (RevenueCat). Si el IAP
-    // no está configurado todavía, IosPlans muestra solo un estado neutro (sin planes
-    // ni precios), así nunca queda una superficie de compra sin la compra nativa.
-    return <IosPlans plans={shown as any} lang={lang} currentPlan={undefined} />;
+  if (!mounted) return <div className="wrap" style={{ padding: '40px 22px', textAlign: 'center' }}><p className="muted">{lang === 'es' ? 'Cargando…' : 'Loading…'}</p></div>;
+  if (nativePlatform() === 'ios') {
+    return <IosPlans plans={shown as any} lang={lang} currentPlan={myPlan || undefined} />;
   }
 
   return (

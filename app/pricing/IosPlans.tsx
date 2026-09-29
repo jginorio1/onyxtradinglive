@@ -99,8 +99,9 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
 
       {msg ? <p className="muted" style={{ textAlign: 'center', marginTop: 14, fontSize: 13 }}>{msg}</p> : null}
 
-      <div style={{ textAlign: 'center', marginTop: 18 }}>
+      <div style={{ textAlign: 'center', marginTop: 18, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
         <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={!!busy} onClick={restore}>{es ? 'Restaurar compras' : 'Restore purchases'}</button>
+        <a className="btn btn-ghost" style={{ fontSize: 12.5 }} href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noreferrer">{es ? 'Gestionar suscripción' : 'Manage subscription'}</a>
       </div>
       <p className="muted" style={{ textAlign: 'center', marginTop: 14, fontSize: 11, lineHeight: 1.6 }}>
         {es ? 'El pago se hace con tu Apple ID. La suscripción se renueva sola hasta que la canceles en Ajustes de tu iPhone.' : 'Payment is charged to your Apple ID. The subscription auto-renews until you cancel it in your iPhone Settings.'}
