@@ -239,10 +239,10 @@ export default function OnyxCopyHub() {
                 </div>
                 <div style={{ textAlign: 'center' }}><div style={{ fontSize: 22, fontWeight: 800, color: TIERC[p.tier] }}>{p.score}</div><div className="muted" style={{ fontSize: 10 }}>{T.score}</div></div>
                 <div style={{ textAlign: 'right', minWidth: 96 }}>
-                  {p.fee_month ? <div style={{ fontSize: 12 }}>{T.from} ${p.fee_month}/{T.mo}</div> : <div className="muted" style={{ fontSize: 11 }}>{T.notPayable}</div>}
-                  {p.perf_fee_pct > 0 && <div className="muted" style={{ fontSize: 10.5 }}>+{p.perf_fee_pct}% {T.perfNote}</div>}
+                  {!ios && (p.fee_month ? <div style={{ fontSize: 12 }}>{T.from} ${p.fee_month}/{T.mo}</div> : <div className="muted" style={{ fontSize: 11 }}>{T.notPayable}</div>)}
+                  {!ios && p.perf_fee_pct > 0 && <div className="muted" style={{ fontSize: 10.5 }}>+{p.perf_fee_pct}% {T.perfNote}</div>}
                   {ios
-                    ? <div className="muted" style={{ fontSize: 10.5, marginTop: 6, maxWidth: 120 }}>{es ? 'Sigue traders desde onyxtradinglive.com' : 'Follow traders at onyxtradinglive.com'}</div>
+                    ? <div className="muted" style={{ fontSize: 10.5, marginTop: 6, maxWidth: 120 }}>{es ? 'No disponible en la app' : 'Not available in the app'}</div>
                     : <button className="btn btn-primary" style={{ fontSize: 12, marginTop: 6 }} onClick={() => openConfig(p)}>{T.copy}</button>}
                 </div>
               </div>
