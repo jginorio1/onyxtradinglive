@@ -1,63 +1,39 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { configureIAP, getIapPlans, buyPlan, restoreIap, type IapPlan } from '@/lib/iap';
-import { nativePlatform } from '@/lib/native';
 
 // ============================================================
 // Planes DENTRO de la app de iOS con COMPRA NATIVA de Apple (In-App Purchase).
-// Cumple la regla 3.1.1: los planes se compran con Apple (Face ID / Apple Pay), no
-// con Stripe ni enlaces externos. El plan se activa en el servidor por el webhook
-// de RevenueCat; aquí solo lanzamos la compra y refrescamos.
+// Cumple la regla 3.1.1: los planes se compran con Apple (Face ID / Apple Pay). El
+// plan se activa en el servidor por el webhook de RevenueCat.
 // ============================================================
 type Plan = { id: string; name: string; name_en: string; price_month: number; features?: string[]; features_en?: string[] };
 
 export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; lang: 'es' | 'en'; currentPlan?: string }) {
   const es = lang === 'es';
-  // Diagnóstico base (síncrono): se calcula en cada render, así se muestra SIEMPRE
-  // aunque configureIAP se cuelgue. plat = plataforma detectada; key = si hay clave.
-  let platNow = 'web'; try { platNow = nativePlatform(); } catch {}
-  const keyNow = !!(process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY);
-  const baseDiag = `v2 · plat=${platNow} · key=${keyNow ? 'si' : 'no'}`;
   const [ready, setReady] = useState(false);
   const [avail, setAvail] = useState(false);
   const [prices, setPrices] = useState<Record<string, IapPlan>>({});
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
-  const [diag, setDiag] = useState('');   // diagnóstico temporal en pantalla
 
   useEffect(() => {
     let done = false;
     const finish = () => { if (!done) { done = true; setReady(true); } };
     const hard = setTimeout(finish, 8000);
     (async () => {
-      // Diagnóstico POR ETAPAS: el diag muestra la última etapa completada, así vemos
-      // exactamente dónde se cuelga (importar plugin / fetch cuenta / configurar RevenueCat).
-      let plat = 'web'; try { plat = nativePlatform(); } catch {}
-      const keyOk = !!(process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY);
-      const base = `v3 · plat=${plat} · key=${keyOk ? 'si' : 'no'}`;
-      setDiag(base + ' · importando plugin…');
-      let plugin = 'no';
-      try { const m: any = await import('@revenuecat/purchases-capacitor'); plugin = (m?.Purchases || m?.default) ? 'si' : 'sin-export'; }
-      catch (e: any) { plugin = 'err:' + String(e?.message || e).slice(0, 30); }
-      setDiag(base + ` · plugin=${plugin} · leyendo cuenta…`);
-      let uid = '';
-      try { uid = await fetch('/api/account', { cache: 'no-store' }).then((r) => r.json()).then((j: any) => j?.id || j?.user?.id || j?.profile?.id || '').catch(() => ''); } catch {}
-      setDiag(base + ` · plugin=${plugin} · uid=${uid ? 'si' : 'no'} · configurando…`);
-      let ok = false;
-      try { ok = await configureIAP(String(uid || '')); }
-      catch (e: any) { setDiag(base + ` · plugin=${plugin} · uid=${uid ? 'si' : 'no'} · configERR=${String(e?.message || e).slice(0, 30)}`); }
-      setAvail(ok);
-      setDiag(base + ` · plugin=${plugin} · uid=${uid ? 'si' : 'no'} · config=${ok ? 'si' : 'no'}`);
-      finish();
-      if (ok) {
-        try {
+      try {
+        const uid = await fetch('/api/account', { cache: 'no-store' }).then((r) => r.json()).then((j: any) => j?.id || j?.user?.id || j?.profile?.id || '').catch(() => '');
+        const ok = await configureIAP(String(uid || ''));
+        setAvail(ok);
+        finish();
+        if (ok) {
           const paid = plans.filter((p) => p.id !== 'free' && Number(p.price_month) > 0).map((p) => p.id);
           const list = await getIapPlans(paid);
           const map: Record<string, IapPlan> = {}; list.forEach((x) => { map[x.planId] = x; });
           setPrices(map);
-        } catch {}
-      }
-      clearTimeout(hard);
+        }
+      } catch {} finally { finish(); clearTimeout(hard); }
     })();
     return () => clearTimeout(hard);
   }, [plans]);
@@ -76,7 +52,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
 
   const restore = async () => { setBusy('restore'); await restoreIap(); setBusy(''); setMsg(es ? 'Compras restauradas. Si tenías un plan, se reactivará.' : 'Purchases restored. If you had a plan, it will reactivate.'); };
 
-  if (!ready) return <div className="wrap" style={{ padding: '40px 22px', textAlign: 'center' }}><p className="muted">{es ? 'Cargando…' : 'Loading…'}</p><p className="muted" style={{ marginTop: 20, fontSize: 11, opacity: .7 }}>diag: {diag || baseDiag}</p></div>;
+  if (!ready) return <div className="wrap" style={{ padding: '40px 22px', textAlign: 'center' }}><p className="muted">{es ? 'Cargando…' : 'Loading…'}</p></div>;
 
   if (!avail) {
     return (
@@ -85,7 +61,6 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
         <p className="muted" style={{ margin: '10px 0 0', lineHeight: 1.7 }}>
           {es ? 'Tu cuenta está activa y puedes usar todo lo que tu plan incluye.' : 'Your account is active and you can use everything your plan includes.'}
         </p>
-        <p className="muted" style={{ marginTop: 26, fontSize: 11, opacity: .7 }}>diag: {diag || baseDiag}</p>
       </div>
     );
   }
