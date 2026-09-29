@@ -22,6 +22,12 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
+    let done = false;
+    // Nunca dejamos la pantalla pegada en "cargando": en cuanto sabemos si el IAP
+    // está disponible mostramos los planes, y hay un tope duro de 8s por si alguna
+    // llamada nativa (getOfferings) no responde.
+    const finish = () => { if (!done) { done = true; setReady(true); } };
+    const hard = setTimeout(finish, 8000);
     (async () => {
       try {
         // El appUserID de RevenueCat debe ser el id del perfil (para que el webhook
@@ -29,14 +35,16 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
         const uid = await fetch('/api/account', { cache: 'no-store' }).then((r) => r.json()).then((j: any) => j?.id || j?.user?.id || j?.profile?.id || '').catch(() => '');
         const ok = await configureIAP(String(uid || ''));
         setAvail(ok);
+        finish();                              // ← ya podemos pintar (los precios llegan después)
         if (ok) {
           const paid = plans.filter((p) => p.id !== 'free' && Number(p.price_month) > 0).map((p) => p.id);
           const list = await getIapPlans(paid);
           const map: Record<string, IapPlan> = {}; list.forEach((x) => { map[x.planId] = x; });
           setPrices(map);
         }
-      } catch {} finally { setReady(true); }
+      } catch {} finally { finish(); clearTimeout(hard); }
     })();
+    return () => clearTimeout(hard);
   }, [plans]);
 
   const purchase = async (p: Plan) => {
