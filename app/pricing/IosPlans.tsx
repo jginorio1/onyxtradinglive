@@ -13,6 +13,11 @@ type Plan = { id: string; name: string; name_en: string; price_month: number; fe
 
 export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; lang: 'es' | 'en'; currentPlan?: string }) {
   const es = lang === 'es';
+  // Diagnóstico base (síncrono): se calcula en cada render, así se muestra SIEMPRE
+  // aunque configureIAP se cuelgue. plat = plataforma detectada; key = si hay clave.
+  let platNow = 'web'; try { platNow = nativePlatform(); } catch {}
+  const keyNow = !!(process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY);
+  const baseDiag = `v2 · plat=${platNow} · key=${keyNow ? 'si' : 'no'}`;
   const [ready, setReady] = useState(false);
   const [avail, setAvail] = useState(false);
   const [prices, setPrices] = useState<Record<string, IapPlan>>({});
@@ -64,7 +69,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
 
   const restore = async () => { setBusy('restore'); await restoreIap(); setBusy(''); setMsg(es ? 'Compras restauradas. Si tenías un plan, se reactivará.' : 'Purchases restored. If you had a plan, it will reactivate.'); };
 
-  if (!ready) return <div className="wrap" style={{ padding: '40px 22px', textAlign: 'center' }}><p className="muted">{es ? 'Cargando…' : 'Loading…'}</p></div>;
+  if (!ready) return <div className="wrap" style={{ padding: '40px 22px', textAlign: 'center' }}><p className="muted">{es ? 'Cargando…' : 'Loading…'}</p><p className="muted" style={{ marginTop: 20, fontSize: 11, opacity: .7 }}>diag: {diag || baseDiag}</p></div>;
 
   if (!avail) {
     return (
@@ -73,7 +78,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
         <p className="muted" style={{ margin: '10px 0 0', lineHeight: 1.7 }}>
           {es ? 'Tu cuenta está activa y puedes usar todo lo que tu plan incluye.' : 'Your account is active and you can use everything your plan includes.'}
         </p>
-        {diag ? <p className="muted" style={{ marginTop: 26, fontSize: 11, opacity: .7 }}>diag: {diag}</p> : null}
+        <p className="muted" style={{ marginTop: 26, fontSize: 11, opacity: .7 }}>diag: {diag || baseDiag}</p>
       </div>
     );
   }
