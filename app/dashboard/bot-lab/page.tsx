@@ -4,6 +4,7 @@ import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 import { checkWallet, lastChars } from '@/lib/walletChecksum';
 import { payRedirect } from '@/lib/nativePay';
+import { nativePlatform } from '@/lib/native';
 import VpsCallout from '@/app/components/VpsCallout';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -26,6 +27,7 @@ export default function BotLabDashboard() {
   const [focusId, setFocusId] = useState<string>(''); // producto a resaltar (deep-link desde la landing)
   const [mq, setMq] = useState(''); const [mplat, setMplat] = useState('all'); const [msort, setMsort] = useState('score'); const [mshow, setMshow] = useState(12); // buscador/filtro/orden/paginación del marketplace
   const [me, setMe] = useState(''); // id del usuario (para armar su enlace de referido)
+  const [iosApp, setIosApp] = useState(false); useEffect(() => { try { setIosApp(nativePlatform() === 'ios'); } catch {} }, []);
 
   async function loadMarket() { try { const r = await fetch('/api/botlab/products?limit=60', { cache: 'no-store' }); const j = await r.json(); setProducts(j.products || []); if (j.pay) setPay(j.pay); } catch {} }
   async function loadLicenses() { try { const r = await fetch('/api/botlab/licenses', { cache: 'no-store' }); const j = await r.json(); setLicenses(j.licenses || []); } catch {} }
@@ -135,6 +137,13 @@ export default function BotLabDashboard() {
       if (msort === 'new') return String(b.created_at || '').localeCompare(String(a.created_at || ''));
       return (b.perf?.score || 0) - (a.perf?.score || 0);
     });
+
+  if (iosApp) return (
+    <div className="bl-ios-hidden" style={{ maxWidth: 560, margin: '0 auto', padding: '48px 22px 60px', textAlign: 'center' }}>
+      <h1 style={{ fontSize: 24 }}>Onyx Bot Lab</h1>
+      <p className="muted" style={{ margin: '10px 0 0', lineHeight: 1.7 }}>{es ? 'Esta seccion no esta disponible en la app. Puedes usarla desde el sitio web en tu computadora.' : 'This section is not available in the app. You can use it from the website on your computer.'}</p>
+    </div>
+  );
 
   return (
     <div className="bl-shell" style={{ maxWidth: 1120, margin: '0 auto', padding: '10px 4px 60px', display: 'flex', gap: 20, alignItems: 'flex-start' }}>
