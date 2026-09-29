@@ -19,6 +19,12 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { evaluate } from '@/lib/managerGuard';
 import { relayMasterSnapshot } from '@/lib/copyRelay';
 
+const _rawFetch: typeof fetch = globalThis.fetch.bind(globalThis);
+function fetch(input: any, init: any = {}): Promise<Response> {
+  const signal = init.signal ?? ((AbortSignal as any).timeout ? (AbortSignal as any).timeout(12000) : undefined);
+  return _rawFetch(input, { ...init, signal });
+}
+
 export type MtrPosition = { ticket: string; symbol: string; side: 'buy' | 'sell'; volume: number; openTime?: number; openPrice?: number; sl?: number; tp?: number };
 export type MtrAccount = { balance: number; equity: number; openCount: number };
 

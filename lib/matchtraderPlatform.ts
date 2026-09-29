@@ -18,6 +18,12 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { evaluate } from '@/lib/managerGuard';
 import { relayMasterSnapshot } from '@/lib/copyRelay';
 
+const _rawFetch: typeof fetch = globalThis.fetch.bind(globalThis);
+function fetch(input: any, init: any = {}): Promise<Response> {
+  const signal = init.signal ?? ((AbortSignal as any).timeout ? (AbortSignal as any).timeout(12000) : undefined);
+  return _rawFetch(input, { ...init, signal });
+}
+
 // ---- cifrado en reposo (AES-256-GCM) si hay MATCHTRADER_ENC_KEY ----
 function enc(plain: string): string {
   try {
