@@ -41,6 +41,10 @@ export default function ManageOnWeb({ lang, planName }: { lang: 'es' | 'en'; pla
   // Aviso NEUTRO en iOS: solo el estado del plan. Sin mención de web, compra,
   // "actualizar" ni "gestionar suscripción" (Apple prohíbe el steering a pagos
   // externos). Con la cuenta activa el trader usa la app con normalidad.
+  // Navegación DENTRO de la app a la pantalla de Planes (/pricing), donde en iOS se
+  // compra con Apple In-App Purchase. No es steering a pago externo: es la propia
+  // pantalla de compra de Apple, así que cumple la regla 3.1.1.
+  const goPlans = () => { try { window.location.href = '/pricing'; } catch {} };
   return (
     <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}>
       <div style={{ background: 'rgba(124,140,255,.08)', border: '1px solid var(--line)', borderRadius: 12, padding: 14 }}>
@@ -53,6 +57,9 @@ export default function ManageOnWeb({ lang, planName }: { lang: 'es' | 'en'; pla
             {es ? 'Tu cuenta está activa y puedes usar la app con normalidad.' : 'Your account is active and you can use the app normally.'}
           </div>
         </div>
+        <button className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} onClick={goPlans}>
+          {es ? 'Ver planes' : 'See plans'}
+        </button>
       </div>
     </div>
   );
