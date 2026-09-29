@@ -1,48 +1,51 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { configureIAP, getIapPlans, buyPlan, restoreIap, type IapPlan } from '@/lib/iap';
+import { nativePlatform } from '@/lib/native';
 
 // ============================================================
 // Planes DENTRO de la app de iOS con COMPRA NATIVA de Apple (In-App Purchase).
 // Cumple la regla 3.1.1: los planes se compran con Apple (Face ID / Apple Pay), no
 // con Stripe ni enlaces externos. El plan se activa en el servidor por el webhook
 // de RevenueCat; aquí solo lanzamos la compra y refrescamos.
-//
-// Los precios que se muestran son los REALES de App Store (vienen de RevenueCat),
-// no números fijos. El plan Free no lleva compra.
 // ============================================================
 type Plan = { id: string; name: string; name_en: string; price_month: number; features?: string[]; features_en?: string[] };
 
 export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; lang: 'es' | 'en'; currentPlan?: string }) {
   const es = lang === 'es';
   const [ready, setReady] = useState(false);
-  const [avail, setAvail] = useState(false);         // ¿IAP disponible/configurado?
+  const [avail, setAvail] = useState(false);
   const [prices, setPrices] = useState<Record<string, IapPlan>>({});
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
+  const [diag, setDiag] = useState('');   // diagnóstico temporal en pantalla
 
   useEffect(() => {
     let done = false;
-    // Nunca dejamos la pantalla pegada en "cargando": en cuanto sabemos si el IAP
-    // está disponible mostramos los planes, y hay un tope duro de 8s por si alguna
-    // llamada nativa (getOfferings) no responde.
     const finish = () => { if (!done) { done = true; setReady(true); } };
     const hard = setTimeout(finish, 8000);
     (async () => {
+      // Diagnóstico: plataforma detectada + si hay clave pública + si el plugin carga.
+      let plat = 'web'; try { plat = nativePlatform(); } catch {}
+      const keyOk = !!(process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY);
+      let plugin = 'no';
+      try { const m: any = await import('@revenuecat/purchases-capacitor'); plugin = (m?.Purchases || m?.default) ? 'si' : 'sin-export'; }
+      catch (e: any) { plugin = 'err:' + String(e?.message || e).slice(0, 30); }
       try {
-        // El appUserID de RevenueCat debe ser el id del perfil (para que el webhook
-        // active el plan al usuario correcto).
         const uid = await fetch('/api/account', { cache: 'no-store' }).then((r) => r.json()).then((j: any) => j?.id || j?.user?.id || j?.profile?.id || '').catch(() => '');
         const ok = await configureIAP(String(uid || ''));
         setAvail(ok);
-        finish();                              // ← ya podemos pintar (los precios llegan después)
+        setDiag(`plat=${plat} · key=${keyOk ? 'si' : 'no'} · plugin=${plugin} · uid=${uid ? 'si' : 'no'} · config=${ok ? 'si' : 'no'}`);
+        finish();
         if (ok) {
           const paid = plans.filter((p) => p.id !== 'free' && Number(p.price_month) > 0).map((p) => p.id);
           const list = await getIapPlans(paid);
           const map: Record<string, IapPlan> = {}; list.forEach((x) => { map[x.planId] = x; });
           setPrices(map);
         }
-      } catch {} finally { finish(); clearTimeout(hard); }
+      } catch (e: any) {
+        setDiag(`plat=${plat} · key=${keyOk ? 'si' : 'no'} · plugin=${plugin} · error=${String(e?.message || e).slice(0, 40)}`);
+      } finally { finish(); clearTimeout(hard); }
     })();
     return () => clearTimeout(hard);
   }, [plans]);
@@ -55,7 +58,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
     if (r.ok) {
       setMsg(es ? '¡Listo! Activando tu plan…' : 'Done! Activating your plan…');
       setTimeout(() => { try { window.location.href = '/dashboard'; } catch {} }, 1800);
-    } else if (r.cancelled) { /* el usuario canceló: sin mensaje */ }
+    } else if (r.cancelled) { /* cancelado */ }
     else setMsg('Error: ' + (r.error || ''));
   };
 
@@ -63,8 +66,6 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
 
   if (!ready) return <div className="wrap" style={{ padding: '40px 22px', textAlign: 'center' }}><p className="muted">{es ? 'Cargando…' : 'Loading…'}</p></div>;
 
-  // Si el IAP no está disponible (no configurado aún), no mostramos planes ni precios
-  // (evita cualquier "acceso a contenido de pago" sin compra nativa).
   if (!avail) {
     return (
       <div className="wrap" style={{ padding: '48px 22px 60px', textAlign: 'center', maxWidth: 560, margin: '0 auto' }}>
@@ -72,6 +73,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
         <p className="muted" style={{ margin: '10px 0 0', lineHeight: 1.7 }}>
           {es ? 'Tu cuenta está activa y puedes usar todo lo que tu plan incluye.' : 'Your account is active and you can use everything your plan includes.'}
         </p>
+        {diag ? <p className="muted" style={{ marginTop: 26, fontSize: 11, opacity: .7 }}>diag: {diag}</p> : null}
       </div>
     );
   }
