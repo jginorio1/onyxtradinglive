@@ -30,27 +30,34 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
     const finish = () => { if (!done) { done = true; setReady(true); } };
     const hard = setTimeout(finish, 8000);
     (async () => {
-      // Diagnóstico: plataforma detectada + si hay clave pública + si el plugin carga.
+      // Diagnóstico POR ETAPAS: el diag muestra la última etapa completada, así vemos
+      // exactamente dónde se cuelga (importar plugin / fetch cuenta / configurar RevenueCat).
       let plat = 'web'; try { plat = nativePlatform(); } catch {}
       const keyOk = !!(process.env.NEXT_PUBLIC_REVENUECAT_IOS_KEY);
+      const base = `v3 · plat=${plat} · key=${keyOk ? 'si' : 'no'}`;
+      setDiag(base + ' · importando plugin…');
       let plugin = 'no';
       try { const m: any = await import('@revenuecat/purchases-capacitor'); plugin = (m?.Purchases || m?.default) ? 'si' : 'sin-export'; }
       catch (e: any) { plugin = 'err:' + String(e?.message || e).slice(0, 30); }
-      try {
-        const uid = await fetch('/api/account', { cache: 'no-store' }).then((r) => r.json()).then((j: any) => j?.id || j?.user?.id || j?.profile?.id || '').catch(() => '');
-        const ok = await configureIAP(String(uid || ''));
-        setAvail(ok);
-        setDiag(`plat=${plat} · key=${keyOk ? 'si' : 'no'} · plugin=${plugin} · uid=${uid ? 'si' : 'no'} · config=${ok ? 'si' : 'no'}`);
-        finish();
-        if (ok) {
+      setDiag(base + ` · plugin=${plugin} · leyendo cuenta…`);
+      let uid = '';
+      try { uid = await fetch('/api/account', { cache: 'no-store' }).then((r) => r.json()).then((j: any) => j?.id || j?.user?.id || j?.profile?.id || '').catch(() => ''); } catch {}
+      setDiag(base + ` · plugin=${plugin} · uid=${uid ? 'si' : 'no'} · configurando…`);
+      let ok = false;
+      try { ok = await configureIAP(String(uid || '')); }
+      catch (e: any) { setDiag(base + ` · plugin=${plugin} · uid=${uid ? 'si' : 'no'} · configERR=${String(e?.message || e).slice(0, 30)}`); }
+      setAvail(ok);
+      setDiag(base + ` · plugin=${plugin} · uid=${uid ? 'si' : 'no'} · config=${ok ? 'si' : 'no'}`);
+      finish();
+      if (ok) {
+        try {
           const paid = plans.filter((p) => p.id !== 'free' && Number(p.price_month) > 0).map((p) => p.id);
           const list = await getIapPlans(paid);
           const map: Record<string, IapPlan> = {}; list.forEach((x) => { map[x.planId] = x; });
           setPrices(map);
-        }
-      } catch (e: any) {
-        setDiag(`plat=${plat} · key=${keyOk ? 'si' : 'no'} · plugin=${plugin} · error=${String(e?.message || e).slice(0, 40)}`);
-      } finally { finish(); clearTimeout(hard); }
+        } catch {}
+      }
+      clearTimeout(hard);
     })();
     return () => clearTimeout(hard);
   }, [plans]);
