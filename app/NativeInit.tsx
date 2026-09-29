@@ -30,6 +30,9 @@ export default function NativeInit() {
       const isIOS = (() => { try { return ((window as any).Capacitor?.getPlatform?.() || '') === 'ios'; } catch { return false; } })();
       try { if (isIOS) document.documentElement.classList.add('ios-app'); } catch {}
 
+      const syncIap = () => { try { if (isIOS) fetch('/api/iap/refresh', { method: 'POST', credentials: 'include' }).catch(() => {}); } catch {} };
+      syncIap();
+
       // iOS: bloquea el pinch-zoom del WebView (gestos de pellizco) para que la
       // pantalla NO se quede ampliada y descuadrada al entrar/salir de tabs. Junto
       // con el CSS (16px en campos + touch-action) evita el zoom que se "pegaba".
@@ -190,6 +193,7 @@ export default function NativeInit() {
           window.history.back();
         });
         removeBack = () => { try { h.remove(); } catch {} };
+        try { App.addListener('resume', () => syncIap()); } catch {}
       } catch {}
     })();
 
