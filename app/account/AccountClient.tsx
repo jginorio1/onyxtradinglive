@@ -537,7 +537,7 @@ export default function AccountClient({ email }: { email: string }) {
 
                   {/* Usuario Free (sin suscripción): opciones para SUBIR a un plan de pago */}
                   {/* Plan de cortesía: plan asignado a mano sin suscripción de Stripe */}
-                  {!sub && p.plan && p.plan !== 'free' && (
+                  {!iosApp && !sub && p.plan && p.plan !== 'free' && (
                     <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14, display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: 'var(--mut)', lineHeight: 1.6 }}>
                       <span style={{ flexShrink: 0 }}><OnyxIcon emoji="🎁" size={15} /></span><span>{L.compNote}</span>
                     </div>
