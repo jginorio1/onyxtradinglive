@@ -605,10 +605,7 @@ function Paywall({ pw, lang, onBack }: any) {
         {!ios && <div style={{ fontSize: 30, fontWeight: 800, color: 'var(--gold)', margin: '16px 0 6px' }}>{price}</div>}
         <p className="muted" style={{ fontSize: 13.5, marginBottom: 16 }}>{L('Suscríbete para entrar a la comunidad, las aulas y las clases en vivo.', 'Subscribe to access the community, classrooms and live classes.')}</p>
         {ios ? (
-          <>
-            <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{L('Únete desde onyxtradinglive.com y luego entra aquí con tu cuenta.', 'Join at onyxtradinglive.com and then sign in here with your account.')}</p>
-            <button className="btn btn-primary" style={{ width: '100%', fontSize: 15, padding: '12px' }} onClick={() => openOnyxWeb('/academia/' + pw.code)}>{L('Abrir en el navegador', 'Open in browser')}</button>
-          </>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 4 }}>{L('Esta comunidad no esta disponible en la app.', 'This community is not available in the app.')}</p>
         ) : (<>
         <button className="btn btn-primary" style={{ width: '100%', fontSize: 16, padding: '12px' }} disabled={busy} onClick={() => join()}>{busy ? '…' : L('Unirme mensual', 'Join monthly')}</button>
         {hasYear && (
@@ -618,7 +615,7 @@ function Paywall({ pw, lang, onBack }: any) {
           </button>
         )}
         </>)}
-        <a href={`/academia/${pw.code}`} target="_blank" rel="noreferrer" className="muted" style={{ display: 'inline-block', marginTop: 12, fontSize: 12.5 }}>{L('Ver la página completa', 'See the full page')} →</a>
+        {!ios && <a href={`/academia/${pw.code}`} target="_blank" rel="noreferrer" className="muted" style={{ display: 'inline-block', marginTop: 12, fontSize: 12.5 }}>{L('Ver la página completa', 'See the full page')} →</a>}
       </div>
     </div>
   );

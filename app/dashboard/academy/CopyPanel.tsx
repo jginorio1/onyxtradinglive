@@ -210,7 +210,7 @@ function StudentCopy({ mentorId, L }: { mentorId: string; L: (es: string, en: st
         <p className="muted" style={{ fontSize: 13, margin: '0 0 10px', lineHeight: 1.5 }}>
           {L('Sus operaciones se replican solas en tu cuenta, escaladas a tu capital y con Guardian de red de seguridad.', 'Their trades auto-replicate on your account, scaled to your capital and with Guardian as a safety net.')}
         </p>
-        <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+        <div className="row between ios-pay-hide" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ fontSize: 22, fontWeight: 800 }}>{money(info.priceCents)}<span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>/{L('mes', 'mo')}</span></div>
           <button className="btn btn-primary ios-pay-hide" disabled={busy === 'sub'} onClick={() => { setSTyped(''); setRiskOpen(true); }}>{L('Copiar al mentor', 'Copy the mentor')}</button>
         </div>
