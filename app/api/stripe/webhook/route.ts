@@ -98,6 +98,12 @@ async function creditCommission(invoice: any) {
   const { rate } = await rateFor(amb, settings);
   if (!rate) return;
 
+  if (invoice.id) {
+    const { data: dup } = await supabaseAdmin.from('commissions')
+      .select('id').eq('invoice_id', invoice.id).maybeSingle();
+    if (dup) return;
+  }
+
   // Tope de meses de comisión por suscriptor (0 = ilimitado). Cada factura pagada
   // genera una fila; si este suscriptor ya alcanzó el tope, dejamos de pagar.
   const capMonths = Number(settings.commission_months) || 0;
