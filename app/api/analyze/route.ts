@@ -2,6 +2,7 @@ import { pickLang, langFromCookie } from '@/lib/i18n';
 import { NextResponse } from 'next/server';
 import { analyzeStatement } from '@/lib/coachAI';
 import { logError } from '@/lib/errlog';
+import { rateLimit, clientIp, tooMany } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -12,6 +13,9 @@ export async function POST(req: Request) {
   try {
     const b = await req.json().catch(() => ({} as any));
     const lang = pickLang(b.lang);
+    // Rate-limit: es público y llama a la IA (cuesta dinero). 6 por minuto por IP.
+    const rl = await rateLimit('analyze', clientIp(req), 6, 60);
+    if (!rl.ok) return tooMany(rl.retryAfter, lang === 'en' ? 'en' : 'es');
     const text = String(b.text || '').slice(0, 8000);
     if (text.trim().length < 30) {
       return NextResponse.json({ error: lang === 'en' ? 'Paste a bit more of your statement or trades.' : 'Pega un poco más de tu reporte u operaciones.' }, { status: 400 });

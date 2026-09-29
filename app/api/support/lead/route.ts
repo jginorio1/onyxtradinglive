@@ -5,6 +5,7 @@ import { sendEmail } from '@/lib/mail';
 import { logError } from '@/lib/errlog';
 import { notifyNewTicket } from '@/lib/supportNotify';
 import { autoHandleTicket } from '@/lib/supportAI';
+import { rateLimit, clientIp, tooMany } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -40,6 +41,9 @@ export async function POST(req: Request) {
     const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
     const message = String(b.message || '').trim().slice(0, 4000);
     const lang = pickLang(b.lang);
+    // Rate-limit: público, llama a la IA y crea un ticket (spam). 5 por minuto por IP.
+    const rl = await rateLimit('support_lead', clientIp(req), 5, 60);
+    if (!rl.ok) return tooMany(rl.retryAfter, lang === 'en' ? 'en' : 'es');
     // Conversación completa con la IA (para dar contexto al equipo)
     const history: any[] = Array.isArray(b.history) ? b.history.slice(-20) : [];
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {

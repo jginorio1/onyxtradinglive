@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { rateLimit, clientIp, tooMany } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -11,6 +12,8 @@ const isEmail = (s: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s);
 // oculta. Guarda la solicitud (pendiente) y avisa al admin. Anti-spam básico.
 export async function POST(req: Request) {
   try {
+    const rl = await rateLimit('sales_apply', clientIp(req), 4, 300);   // 4 cada 5 min por IP
+    if (!rl.ok) return tooMany(rl.retryAfter);
     const b = await req.json().catch(() => ({} as any));
     const name = clean(b.name, 120);
     const email = clean(b.email, 160).toLowerCase();

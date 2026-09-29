@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { careersSettings, openPositions, submitApplication, pushSalesApplication } from '@/lib/careers';
+import { rateLimit, clientIp, tooMany } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,6 +15,8 @@ export async function GET() {
 
 // POST público · postularse a una plaza.
 export async function POST(req: Request) {
+  const rl = await rateLimit('careers_apply', clientIp(req), 4, 300);   // 4 cada 5 min por IP
+  if (!rl.ok) return tooMany(rl.retryAfter);
   const b = await req.json().catch(() => ({} as any));
   const r = await submitApplication(b);
   if (!r.ok) return NextResponse.json(r, { status: 400 });
