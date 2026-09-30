@@ -12,7 +12,12 @@ export async function GET() {
     let q = supabaseAdmin.from('plans').select('*').order('sort', { ascending: true });
     if (!isAdmin) q = q.eq('active', true) as any;
     const { data } = await q;
-    const headers = isAdmin ? { 'Cache-Control': 'no-store' } : { 'Cache-Control': 'public, max-age=30, s-maxage=300, stale-while-revalidate=600' };
+    // Los planes casi nunca cambian: para NO-admin (la lista pública de /pricing) permitimos
+    // caché corta en navegador/CDN, así las aperturas repetidas no vuelven a pegarle a la BD.
+    // Para admin siempre datos frescos.
+    const headers = isAdmin
+      ? { 'Cache-Control': 'no-store' }
+      : { 'Cache-Control': 'public, max-age=30, s-maxage=300, stale-while-revalidate=600' };
     return NextResponse.json({ plans: data || [] }, { headers });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', code: 'generic' }, { status: 500 });
@@ -60,7 +65,13 @@ export async function PATCH(req: Request) {
   try {
     const { isAdmin, user } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-    const _p = await requirePerm('planes', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    const _p = await requirePerm('planes', 'view');
+    if (!_p.ok) {
+      const msg = _p.reason === '2fa' ? 'Verifica tu 2FA para editar planes'
+        : _p.reason === 'locked' ? 'Sesión bloqueada por inactividad: vuelve a entrar'
+        : 'Sin permiso sobre Planes';
+      return NextResponse.json({ error: msg, code: _p.reason || 'perm' }, { status: 403 });
+    }
     const b = await req.json();
     if (!b.id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
     const fields: any = { updated_at: new Date().toISOString() };
