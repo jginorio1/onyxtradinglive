@@ -22,6 +22,7 @@ export default function NativeInit() {
     if (!isNativeApp()) return;
 
     let removeBack: (() => void) | undefined;
+    let removeHomeGuard: (() => void) | undefined;
 
     (async () => {
       document.documentElement.classList.add('native-app');
@@ -32,6 +33,25 @@ export default function NativeInit() {
 
       const syncIap = () => { try { if (isIOS) fetch('/api/iap/refresh', { method: 'POST', credentials: 'include' }).catch(() => {}); } catch {} };
       syncIap();
+
+      // En la app nativa NUNCA se muestra el landing de ventas: cualquier enlace al
+      // inicio ('/' o '/en') —logo, "Inicio", "volver", footer— lleva al panel. Se
+      // intercepta en fase de CAPTURA para adelantarse al <Link> de Next (que hace
+      // navegación interna sin recargar y se saltaría el redirect del layout).
+      const homeGuard = (e: any) => {
+        try {
+          const a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+          if (!a) return;
+          let path = a.getAttribute('href') || '';
+          try { path = new URL(a.href, window.location.origin).pathname; } catch {}
+          if (path === '/' || path === '/en') {
+            e.preventDefault(); e.stopImmediatePropagation();
+            window.location.href = '/dashboard';
+          }
+        } catch {}
+      };
+      document.addEventListener('click', homeGuard, true);
+      removeHomeGuard = () => { try { document.removeEventListener('click', homeGuard, true); } catch {} };
 
       // iOS: bloquea el pinch-zoom del WebView (gestos de pellizco) para que la
       // pantalla NO se quede ampliada y descuadrada al entrar/salir de tabs. Junto
@@ -197,7 +217,7 @@ export default function NativeInit() {
       } catch {}
     })();
 
-    return () => { if (removeBack) removeBack(); };
+    return () => { if (removeBack) removeBack(); if (removeHomeGuard) removeHomeGuard(); };
   }, []);
 
   return null;
