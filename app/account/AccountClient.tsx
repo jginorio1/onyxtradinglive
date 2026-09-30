@@ -670,6 +670,13 @@ export default function AccountClient({ email }: { email: string }) {
 
                 {/* Checkout embebido para crear la suscripción (usuario Free → de pago) */}
                 {!iosApp && coPlan && <EmbeddedCheckoutModal plan={coPlan} annual={false} lang={lang} onClose={() => setCoPlan(null)} />}
+
+                {/* Enlaces legales en la propia pantalla de suscripción/facturación
+                    (Apple regla 3.1.2: Términos (EULA) y Privacidad accesibles aquí). */}
+                <div style={{ textAlign: 'center', padding: '18px 0 2px', display: 'flex', gap: 18, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Terms of Use (EULA)' : 'Términos de uso (EULA)'}</a>
+                  <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Privacy Policy' : 'Privacidad'}</a>
+                </div>
               </Section>
             )}
 
