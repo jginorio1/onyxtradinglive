@@ -20,7 +20,7 @@ export default function Privacy() {
       <h3>3. Dónde se guardan y con quién los compartimos</h3>
       <p>Los datos se almacenan de forma segura en nuestra base de datos (Supabase). Solo los compartimos con proveedores que los procesan en nuestro nombre: Supabase (base de datos y almacenamiento), Vercel (hosting), Stripe (pagos en la web), Apple y RevenueCat (procesan las compras dentro de la app en iOS), Google Analytics (analítica), Google Firebase Cloud Messaging (notificaciones push), Anthropic (el asistente de IA procesa el texto que le escribes para responderte) y Resend (correos). Cada uno tiene su propia política de privacidad. No compartimos tus datos con terceros para su propio marketing.</p>
       <h3>4. Cifrado y seguridad</h3>
-      <p>Todos los datos viajan cifrados (HTTPS). La conexión con tu plataforma (MetaTrader, cTrader…) es de solo lectura: nunca tenemos tu contraseña del bróker ni podemos operar ni mover tu dinero. Aplicamos medidas para proteger tu información, aunque ningún sistema es 100% infalible.</p>
+      <p>Todos los datos viajan cifrados (HTTPS). La conexión con tu plataforma (MetaTrader, cTrader, MatchTrader, TradeLocker, DXtrade…) es de solo lectura: nunca tenemos tu contraseña del bróker ni podemos operar ni mover tu dinero. Aplicamos medidas para proteger tu información, aunque ningún sistema es 100% infalible.</p>
       <h3>5. Cuánto tiempo guardamos tus datos</h3>
       <p>Conservamos tus datos mientras tengas una cuenta activa. Si eliminas tu cuenta, borramos tus datos personales en un plazo máximo de 30 días, salvo lo que la ley nos obligue a conservar (por ejemplo, registros de facturación).</p>
       <h3>6. Tus derechos y cómo borrar tus datos</h3>
