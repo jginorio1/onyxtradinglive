@@ -74,7 +74,10 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
     );
   }
 
-  const paid = plans.filter((p) => p.id !== 'free' && Number(p.price_month) > 0 && prices[p.id]);
+  // Mostramos TODOS los planes de pago; el precio de Apple llega de forma asíncrona,
+  // así que si aún no está usamos el precio de la BD como respaldo y el botón queda
+  // en "Cargando…". Así ninguna tarjeta (p. ej. Builder) desaparece por timing.
+  const paid = plans.filter((p) => p.id !== 'free' && Number(p.price_month) > 0);
 
   return (
     <div className="wrap" style={{ padding: '44px 18px 60px', maxWidth: 560, margin: '0 auto' }}>
@@ -84,6 +87,8 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {paid.map((p) => {
           const ip = prices[p.id];
+          const loaded = !!ip?.pkg;                                   // Apple ya devolvió el paquete
+          const priceStr = ip?.priceString || `$${Number(p.price_month).toFixed(2)}`; // respaldo: precio BD
           const nm = es ? p.name : (p.name_en || p.name);
           const feats = (es ? p.features : p.features_en) || [];
           const active = (activePlan || currentPlan) === p.id;
@@ -104,22 +109,24 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
               }}
             >
               {active && (
-                <span
-                  style={{
-                    position: 'absolute', top: 12, right: 14, display: 'inline-flex', alignItems: 'center', gap: 5,
-                    background: '#1d9e75', color: '#fff', fontSize: 11, fontWeight: 700,
-                    padding: '3px 9px', borderRadius: 20,
-                  }}
-                >
-                  ✓ {es ? 'Activo' : 'Active'}
-                </span>
+                <div style={{ marginBottom: 10 }}>
+                  <span
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      background: '#1d9e75', color: '#fff', fontSize: 11, fontWeight: 700,
+                      padding: '3px 9px', borderRadius: 20,
+                    }}
+                  >
+                    ✓ {es ? 'Activo' : 'Active'}
+                  </span>
+                </div>
               )}
               <div className="row between" style={{ alignItems: 'baseline', gap: 8 }}>
                 <b style={{ fontSize: 17, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   {active && <span style={{ color: '#1d9e75', fontSize: 18 }}>✓</span>}
                   {nm}
                 </b>
-                <span style={{ fontSize: 15, fontWeight: 700 }}>{ip.priceString}</span>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>{priceStr}</span>
               </div>
               {feats.length > 0 && (
                 <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--mut)', lineHeight: 1.7 }}>
@@ -134,10 +141,14 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
                     ? { border: '1px solid #1d9e75', background: 'transparent', color: '#1d9e75', fontWeight: 700, cursor: 'default' }
                     : {}),
                 }}
-                disabled={!!busy || active}
+                disabled={!!busy || active || !loaded}
                 onClick={() => purchase(p)}
               >
-                {active ? (es ? '✓ Tu plan actual' : '✓ Your current plan') : busy === p.id ? '…' : (es ? `Comprar ${nm}` : `Buy ${nm}`)}
+                {active
+                  ? (es ? '✓ Tu plan actual' : '✓ Your current plan')
+                  : busy === p.id ? '…'
+                  : !loaded ? (es ? 'Cargando…' : 'Loading…')
+                  : (es ? `Comprar ${nm}` : `Buy ${nm}`)}
               </button>
             </div>
           );
