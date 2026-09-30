@@ -30,21 +30,40 @@ export async function configureIAP(userId: string): Promise<boolean> {
 
 export type IapPlan = { planId: string; priceString: string; productId: string; pkg: any };
 
-// Busca en la oferta actual de RevenueCat el paquete de cada plan (por convención,
-// el product identifier contiene el id del plan: onyx_pro_month → 'pro').
-export async function getIapPlans(planIds: string[]): Promise<IapPlan[]> {
+// Empareja un plan con su paquete de RevenueCat. Convención: el product identifier
+// contiene el id del plan (onyx_builder_month → 'builder'). Preferimos la coincidencia
+// más "ajustada" (identifier más corto que contiene el id) para evitar que un id que es
+// subcadena de otro robe el paquete equivocado.
+function matchPkg(pkgs: any[], id: string): any {
+  const low = id.toLowerCase();
+  const hits = pkgs.filter((k: any) => String(k?.product?.identifier || '').toLowerCase().includes(low));
+  if (!hits.length) return null;
+  hits.sort((a: any, b: any) => String(a?.product?.identifier || '').length - String(b?.product?.identifier || '').length);
+  return hits[0];
+}
+
+// Busca en la oferta actual de RevenueCat el paquete de cada plan. StoreKit a veces
+// devuelve la oferta incompleta (o vacía) en los primeros milisegundos tras arrancar,
+// así que reintentamos hasta tener TODOS los planes pedidos o agotar los intentos.
+// Esto evita que una tarjeta (p. ej. Builder) desaparezca de forma intermitente.
+export async function getIapPlans(planIds: string[], tries = 6, delayMs = 700): Promise<IapPlan[]> {
   if (!iosOnly()) return [];
-  try {
-    const off: any = await Purchases.getOfferings();
-    const pkgs: any[] = off?.current?.availablePackages || off?.all?.default?.availablePackages || [];
-    const out: IapPlan[] = [];
-    for (const id of planIds) {
-      const low = id.toLowerCase();
-      const pkg = pkgs.find((k: any) => String(k?.product?.identifier || '').toLowerCase().includes(low));
-      if (pkg) out.push({ planId: id, priceString: pkg.product?.priceString || '', productId: pkg.product?.identifier || '', pkg });
-    }
-    return out;
-  } catch { return []; }
+  let best: IapPlan[] = [];
+  for (let attempt = 0; attempt < tries; attempt++) {
+    try {
+      const off: any = await Purchases.getOfferings();
+      const pkgs: any[] = off?.current?.availablePackages || off?.all?.default?.availablePackages || [];
+      const out: IapPlan[] = [];
+      for (const id of planIds) {
+        const pkg = matchPkg(pkgs, id);
+        if (pkg) out.push({ planId: id, priceString: pkg.product?.priceString || '', productId: pkg.product?.identifier || '', pkg });
+      }
+      if (out.length > best.length) best = out;          // nos quedamos con la corrida más completa
+      if (best.length >= planIds.length) return best;    // ya están todos → listo
+    } catch {}
+    if (attempt < tries - 1) await new Promise((r) => setTimeout(r, delayMs));
+  }
+  return best;
 }
 
 // Lanza la compra nativa de Apple del paquete indicado.
