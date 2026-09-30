@@ -110,6 +110,12 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
       <p className="muted" style={{ textAlign: 'center', marginTop: 14, fontSize: 11, lineHeight: 1.6 }}>
         {es ? 'El pago se hace con tu Apple ID. La suscripción se renueva sola hasta que la canceles en Ajustes de tu iPhone.' : 'Payment is charged to your Apple ID. The subscription auto-renews until you cancel it in your iPhone Settings.'}
       </p>
+      {/* Enlaces legales requeridos por Apple (regla 3.1.2) en la pantalla de compra. */}
+      <p className="muted" style={{ textAlign: 'center', marginTop: 8, fontSize: 11 }}>
+        <a href="/terms" style={{ color: 'var(--mut)', textDecoration: 'underline' }}>{es ? 'Términos de uso (EULA)' : 'Terms of Use (EULA)'}</a>
+        {'  ·  '}
+        <a href="/privacy" style={{ color: 'var(--mut)', textDecoration: 'underline' }}>{es ? 'Privacidad' : 'Privacy Policy'}</a>
+      </p>
     </div>
   );
 }
