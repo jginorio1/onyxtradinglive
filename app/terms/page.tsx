@@ -56,7 +56,7 @@ export default function Terms() {
     <>
       <div className="wrap" style={{ maxWidth: 760, padding: '40px 22px' }}>
         <div className="card" style={{ lineHeight: 1.8 }}>{ov ? renderLegal(ov) : (lang === 'es' ? es : en)}</div>
-        <p style={{ marginTop: 20 }}><Link href="/" className="muted">← {lang === 'es' ? 'Volver al inicio' : 'Back home'}</Link></p>
+        <p style={{ marginTop: 20 }}><a className="muted" style={{ cursor: 'pointer' }} onClick={(e) => { e.preventDefault(); if (typeof window !== 'undefined' && window.history.length > 1) window.history.back(); else window.location.href = '/'; }}>← {lang === 'es' ? 'Volver' : 'Back'}</a></p>
       </div>
     </>
   );
