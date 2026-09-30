@@ -29,7 +29,11 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
         setAvail(ok);
         finish();
         if (ok) {
-          const paid = plans.filter((p) => p.id !== 'free' && Number(p.price_month) > 0).map((p) => p.id);
+          // Cada plan se empareja por su id interno Y por palabras de su nombre, por si
+          // el producto de App Store no lleva el id (ej. id 'trader' → "Onyx Builder").
+          const paid = plans
+            .filter((p) => p.id !== 'free' && Number(p.price_month) > 0)
+            .map((p) => ({ id: p.id, aliases: [String(p.name || ''), String(p.name_en || '')].join(' ').split(/[^a-z0-9]+/i).filter(Boolean) }));
           const list = await getIapPlans(paid);
           const map: Record<string, IapPlan> = {}; list.forEach((x) => { map[x.planId] = x; });
           setPrices(map);
