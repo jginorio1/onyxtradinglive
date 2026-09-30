@@ -686,8 +686,8 @@ export default function AccountClient({ email }: { email: string }) {
                 {/* Enlaces legales en la propia pantalla de suscripción/facturación
                     (Apple regla 3.1.2: Términos (EULA) y Privacidad accesibles aquí). */}
                 <div style={{ textAlign: 'center', padding: '18px 0 2px', display: 'flex', gap: 18, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Terms of Use (EULA)' : 'Términos de uso (EULA)'}</a>
-                  <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Privacy Policy' : 'Privacidad'}</a>
+                  <a href="/terms" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Terms of Use (EULA)' : 'Términos de uso (EULA)'}</a>
+                  <a href="/privacy" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Privacy Policy' : 'Privacidad'}</a>
                 </div>
               </Section>
             )}
@@ -1128,8 +1128,8 @@ function Security({ L, lang, only }: { L: any; lang: Lang; only?: 'password' | '
           el footer que normalmente los muestra está oculto en la app, así que los
           dejamos aquí en Mi cuenta para que nunca falten. */}
       <div style={{ textAlign: 'center', padding: '26px 0 14px', display: 'flex', gap: 18, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <a href="/terms" target="_blank" rel="noopener" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Terms' : 'Términos'}</a>
-        <a href="/privacy" target="_blank" rel="noopener" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Privacy Policy' : 'Política de privacidad'}</a>
+        <a href="/terms" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Terms' : 'Términos'}</a>
+        <a href="/privacy" style={{ color: 'var(--mut)', fontSize: 12.5, textDecoration: 'underline' }}>{lang === 'en' ? 'Privacy Policy' : 'Política de privacidad'}</a>
       </div>
 
       {/* Popup de confirmación iluminado (mismo estilo que la academia) */}
