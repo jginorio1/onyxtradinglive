@@ -30,36 +30,51 @@ export async function configureIAP(userId: string): Promise<boolean> {
 
 export type IapPlan = { planId: string; priceString: string; productId: string; pkg: any };
 
-// Empareja un plan con su paquete de RevenueCat. Convención: el product identifier
-// contiene el id del plan (onyx_builder_month → 'builder'). Preferimos la coincidencia
-// más "ajustada" (identifier más corto que contiene el id) para evitar que un id que es
-// subcadena de otro robe el paquete equivocado.
-function matchPkg(pkgs: any[], id: string): any {
-  const low = id.toLowerCase();
-  const hits = pkgs.filter((k: any) => String(k?.product?.identifier || '').toLowerCase().includes(low));
-  if (!hits.length) return null;
-  hits.sort((a: any, b: any) => String(a?.product?.identifier || '').length - String(b?.product?.identifier || '').length);
-  return hits[0];
+// Un plan a emparejar: su id, y palabras clave alternativas (p. ej. del nombre) por si
+// el product identifier no contiene el id interno. Ej: plan id 'trader' con nombre
+// "Onyx Builder" → el producto se llama onyx_builder_month (contiene 'builder', no 'trader').
+export type PlanMatch = { id: string; aliases?: string[] };
+
+// Palabras demasiado genéricas que NO sirven para distinguir un plan de otro.
+const GENERIC = new Set(['onyx', 'plan', 'guardian', 'the', 'de', 'el', 'la', 'monthly', 'mensual', 'month', 'mes']);
+
+// Empareja un plan con su paquete de RevenueCat. Prueba el id y sus alias; toma la
+// coincidencia más "ajustada" (identifier más corto que contiene el token) para evitar
+// que un token que es subcadena de otro robe el paquete equivocado.
+function matchPkg(pkgs: any[], m: PlanMatch): any {
+  const tokens = [m.id, ...(m.aliases || [])]
+    .map((s) => String(s || '').toLowerCase().trim())
+    .filter((s) => s && !GENERIC.has(s));
+  let best: any = null; let bestLen = Infinity;
+  for (const k of pkgs) {
+    const idf = String(k?.product?.identifier || '').toLowerCase();
+    if (!idf) continue;
+    if (tokens.some((tok) => idf.includes(tok)) && idf.length < bestLen) { best = k; bestLen = idf.length; }
+  }
+  return best;
 }
 
 // Busca en la oferta actual de RevenueCat el paquete de cada plan. StoreKit a veces
 // devuelve la oferta incompleta (o vacía) en los primeros milisegundos tras arrancar,
 // así que reintentamos hasta tener TODOS los planes pedidos o agotar los intentos.
 // Esto evita que una tarjeta (p. ej. Builder) desaparezca de forma intermitente.
-export async function getIapPlans(planIds: string[], tries = 6, delayMs = 700): Promise<IapPlan[]> {
+// Acepta ids sueltos o {id, aliases} para casos donde el producto no lleva el id interno.
+export async function getIapPlans(plans: Array<string | PlanMatch>, tries = 6, delayMs = 700): Promise<IapPlan[]> {
   if (!iosOnly()) return [];
+  const list: PlanMatch[] = plans.map((p) => (typeof p === 'string' ? { id: p } : p));
   let best: IapPlan[] = [];
   for (let attempt = 0; attempt < tries; attempt++) {
     try {
       const off: any = await Purchases.getOfferings();
       const pkgs: any[] = off?.current?.availablePackages || off?.all?.default?.availablePackages || [];
       const out: IapPlan[] = [];
-      for (const id of planIds) {
-        const pkg = matchPkg(pkgs, id);
-        if (pkg) out.push({ planId: id, priceString: pkg.product?.priceString || '', productId: pkg.product?.identifier || '', pkg });
+      const used = new Set<string>();
+      for (const m of list) {
+        const pkg = matchPkg(pkgs.filter((k: any) => !used.has(String(k?.product?.identifier || ''))), m);
+        if (pkg) { used.add(String(pkg.product?.identifier || '')); out.push({ planId: m.id, priceString: pkg.product?.priceString || '', productId: pkg.product?.identifier || '', pkg }); }
       }
       if (out.length > best.length) best = out;          // nos quedamos con la corrida más completa
-      if (best.length >= planIds.length) return best;    // ya están todos → listo
+      if (best.length >= list.length) return best;       // ya están todos → listo
     } catch {}
     if (attempt < tries - 1) await new Promise((r) => setTimeout(r, delayMs));
   }
@@ -82,7 +97,7 @@ export async function buyPlan(pkg: any): Promise<{ ok: boolean; error?: string; 
 // posee), sin depender de la base de datos. Sirve para marcar "Tu plan actual" en la
 // pantalla de planes de iOS aunque la BD esté desincronizada. Mapea por convención:
 // el product identifier contiene el id del plan (onyx_pro_month → 'pro', etc.).
-export async function getActiveIapPlan(planIds: string[]): Promise<string> {
+export async function getActiveIapPlan(plans: Array<string | PlanMatch>): Promise<string> {
   if (!iosOnly()) return '';
   try {
     const info: any = await Purchases.getCustomerInfo();
@@ -92,11 +107,12 @@ export async function getActiveIapPlan(planIds: string[]): Promise<string> {
     const fromEnt = Object.values(ent).map((e: any) => e?.productIdentifier).filter(Boolean);
     const owned = [...active, ...fromEnt].map((x: any) => String(x).toLowerCase());
     if (!owned.length) return '';
+    const list: PlanMatch[] = plans.map((p) => (typeof p === 'string' ? { id: p } : p));
     // Recorremos los planes de mayor a menor rango (los que llegan ordenados) y
-    // devolvemos el primero cuyo id aparezca en algún product identifier poseído.
-    for (const id of planIds) {
-      const low = String(id).toLowerCase();
-      if (owned.some((p) => p.includes(low))) return id;
+    // devolvemos el primero cuyo id o alias aparezca en algún product identifier poseído.
+    for (const m of list) {
+      const tokens = [m.id, ...(m.aliases || [])].map((s) => String(s || '').toLowerCase().trim()).filter((s) => s && !GENERIC.has(s));
+      if (owned.some((p) => tokens.some((tok) => p.includes(tok)))) return m.id;
     }
     return '';
   } catch { return ''; }
