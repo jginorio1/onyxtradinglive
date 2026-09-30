@@ -274,6 +274,10 @@ export default function AccountClient({ email }: { email: string }) {
   const accounts: any[] = data?.accounts || [];
   const sub = data?.subscription;
   const myPlan = plans.find((x) => x.id === (p.plan || 'free'));
+  // Plan de pago ACTIVO sin suscripción de Stripe (compra por Apple IAP en iOS, o
+  // plan de cortesía). Para que la tarjeta no muestre "Free plan · $0" cuando en
+  // realidad el plan efectivo es de pago.
+  const paidPlan = Number(myPlan?.price_month || 0) > 0 && (p.plan || 'free') !== 'free';
   const limit = data?.limit;
   const maxAcc = limit ? Number(limit.max) : Number(myPlan?.max_accounts || 1);
   const used = accounts.length;
@@ -452,10 +456,16 @@ export default function AccountClient({ email }: { email: string }) {
                         <span style={{ fontSize: 20, fontWeight: 800 }}>{planName(myPlan, lang) || 'Free'}</span>
                         {sub ? (
                           <span className="pill" style={{ color: sub.cancelAtPeriodEnd ? 'var(--amber)' : 'var(--green)', background: sub.cancelAtPeriodEnd ? 'rgba(255,192,77,.15)' : 'rgba(52,226,160,.15)' }}>{sub.cancelAtPeriodEnd ? L.canceling : L.active}</span>
+                        ) : paidPlan ? (
+                          <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>{L.active}</span>
                         ) : <span className="pill">{L.noSub}</span>}
                       </div>
                       <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-                        {sub ? `${sub.cancelAtPeriodEnd ? L.ends : L.renews} ${sub.currentPeriodEnd ? fmtDate(sub.currentPeriodEnd, lang) : '—'} · ${sub.amount} ${sub.currency}/${sub.interval === 'year' ? L.perYr : L.perMo}` : '$0'}
+                        {sub
+                          ? `${sub.cancelAtPeriodEnd ? L.ends : L.renews} ${sub.currentPeriodEnd ? fmtDate(sub.currentPeriodEnd, lang) : '—'} · ${sub.amount} ${sub.currency}/${sub.interval === 'year' ? L.perYr : L.perMo}`
+                          : paidPlan
+                            ? `$${myPlan.price_month}/${L.perMo}${iosApp ? (lang === 'en' ? ' · via App Store' : ' · vía App Store') : ''}`
+                            : '$0'}
                       </div>
                     </div>
                   </div>
@@ -536,7 +546,9 @@ export default function AccountClient({ email }: { email: string }) {
                   })()}
 
                   {/* Usuario Free (sin suscripción): opciones para SUBIR a un plan de pago */}
-                  {/* Plan de cortesía: plan asignado a mano sin suscripción de Stripe */}
+                  {/* Plan de cortesía: plan asignado a mano sin suscripción de Stripe.
+                      En iOS NO se muestra: menciona "Stripe" (pago externo) y el panel
+                      admin, cosa que Apple no quiere ver y que confunde al usuario. */}
                   {!iosApp && !sub && p.plan && p.plan !== 'free' && (
                     <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14, display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: 'var(--mut)', lineHeight: 1.6 }}>
                       <span style={{ flexShrink: 0 }}><OnyxIcon emoji="🎁" size={15} /></span><span>{L.compNote}</span>
