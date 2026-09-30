@@ -2104,8 +2104,10 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
   const { lang } = useLang();
   const [p, setP] = useState<Plan>({ ...plan, features: plan.features || [], features_en: plan.features_en || [], capabilities: plan.capabilities || {} });
   const [saving, setSaving] = useState(false);
-  const set = (k: keyof Plan, v: any) => setP({ ...p, [k]: v });
-  const setCap = (k: string, v: any) => setP({ ...p, capabilities: { ...p.capabilities, [k]: v } });
+  const [touched, setTouched] = useState(false);  // hay cambios sin guardar
+  const [okMsg, setOkMsg] = useState(false);       // guardado hace un momento
+  const set = (k: keyof Plan, v: any) => { setP({ ...p, [k]: v }); setTouched(true); setOkMsg(false); };
+  const setCap = (k: string, v: any) => { setP({ ...p, capabilities: { ...p.capabilities, [k]: v } }); setTouched(true); setOkMsg(false); };
   const norm = (f: any) => (Array.isArray(f) ? f : String(f || '').split('\n')).map((s: any) => String(s).trim()).filter(Boolean);
 
   async function save() {
@@ -2114,7 +2116,9 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
     const body = { ...p, features: norm(p.features), features_en: norm(p.features_en), capabilities: caps };
     const r = await fetch('/api/admin/plans', { method: isNew ? 'POST' : 'PATCH', body: JSON.stringify(body) });
     const j = await r.json(); setSaving(false);
-    if (!r.ok) { toastErr(j); return; } reload();
+    if (!r.ok) { toastErr(j); return; }
+    setTouched(false); setOkMsg(true); setTimeout(() => setOkMsg(false), 2500);
+    reload();
   }
   const [cf, setCf] = useState<any>(null);
   function del() {
@@ -2133,6 +2137,15 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
   return (
     <div className="card" style={{ ...(p.active ? {} : { opacity: .6 }), ...(popular ? { border: '2px solid var(--brand)' } : {}), position: 'relative' }}>
       {popular && <span className="pill brand" style={{ position: 'absolute', top: -11, left: 16 }}>★ {p.badge}</span>}
+      {/* Barra Guardar SIEMPRE visible arriba: la tarjeta es larga y el botón de abajo
+          quedaba fuera de vista. Se resalta cuando hay cambios sin guardar. */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0 10px', marginBottom: 6, background: 'var(--bg)', borderBottom: '1px solid var(--line)' }}>
+        <button className="btn btn-primary" onClick={save} disabled={saving || (!isNew && !touched)} style={{ padding: '6px 14px' }}>
+          {saving ? '...' : (isNew ? t.pl_create : t.pl_save)}
+        </button>
+        {touched && !saving && <span style={{ fontSize: 12, color: 'var(--warn, #d98a00)', fontWeight: 700 }}>● {lang === 'en' ? 'Unsaved changes' : 'Cambios sin guardar'}</span>}
+        {okMsg && <span style={{ fontSize: 12, color: 'var(--green)', fontWeight: 700 }}>✓ {lang === 'en' ? 'Saved' : 'Guardado'}</span>}
+      </div>
       <div className="row" style={{ gap: 8 }}>
         <input placeholder={t.pl_id} value={p.id} disabled={!isNew} onChange={(e) => set('id', e.target.value)} style={{ margin: 0, width: 90 }} />
         <div style={{ flex: 1 }}><span style={lbl}>{t.pl_month}</span><input type="number" value={p.price_month} onChange={(e) => set('price_month', e.target.value)} style={{ margin: '4px 0 0' }} /></div>
