@@ -18,8 +18,29 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
   const [msg, setMsg] = useState('');
   const [activePlan, setActivePlan] = useState('');   // plan que Apple/RevenueCat reporta como activo
 
+  // Lista de planes de pago a emparejar (id interno + palabras del nombre + precio).
+  const paidMatch = plans
+    .filter((p) => p.id !== 'free' && Number(p.price_month) > 0)
+    .map((p) => ({ id: p.id, price: Number(p.price_month) || 0, aliases: [String(p.name || ''), String(p.name_en || '')].join(' ').split(/[^a-z0-9]+/i).filter(Boolean) }));
+
+  // Trae precios de Apple y FUSIONA con lo que ya había (nunca borra un precio ya cargado).
+  // Devuelve true si ya están TODOS los planes de pago.
+  const loadPrices = async (): Promise<boolean> => {
+    const list = await getIapPlans(paidMatch);
+    let complete = false;
+    setPrices((prev) => {
+      const map = { ...prev };
+      list.forEach((x) => { map[x.planId] = x; });
+      complete = paidMatch.every((m) => map[m.id]?.pkg);
+      return map;
+    });
+    try { const ap = await getActiveIapPlan(paidMatch); if (ap) setActivePlan(ap); } catch {}
+    return complete;
+  };
+
   useEffect(() => {
     let done = false;
+    let stop = false;
     const finish = () => { if (!done) { done = true; setReady(true); } };
     const hard = setTimeout(finish, 8000);
     (async () => {
@@ -29,21 +50,18 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
         setAvail(ok);
         finish();
         if (ok) {
-          // Cada plan se empareja por su id interno Y por palabras de su nombre, por si
-          // el producto de App Store no lleva el id (ej. id 'trader' → "Onyx Builder").
-          const paid = plans
-            .filter((p) => p.id !== 'free' && Number(p.price_month) > 0)
-            .map((p) => ({ id: p.id, aliases: [String(p.name || ''), String(p.name_en || '')].join(' ').split(/[^a-z0-9]+/i).filter(Boolean) }));
-          const list = await getIapPlans(paid);
-          const map: Record<string, IapPlan> = {}; list.forEach((x) => { map[x.planId] = x; });
-          setPrices(map);
-          // Plan activo según Apple (no la BD): así marcamos "Tu plan actual" aunque
-          // la base esté desincronizada (p. ej. pruebas sandbox).
-          try { const ap = await getActiveIapPlan(paid); if (ap) setActivePlan(ap); } catch {}
+          // Auto-sanador: reintenta en segundo plano hasta que TODOS los planes tengan
+          // precio (StoreKit a veces devuelve la oferta incompleta y un producto —p. ej.
+          // Builder— llega tarde). Hasta ~20 intentos espaciados; nunca deja tarjetas colgadas.
+          for (let i = 0; i < 20 && !stop; i++) {
+            const complete = await loadPrices();
+            if (complete) break;
+            await new Promise((r) => setTimeout(r, 1500));
+          }
         }
       } catch {} finally { finish(); clearTimeout(hard); }
     })();
-    return () => clearTimeout(hard);
+    return () => { stop = true; clearTimeout(hard); };
   }, [plans]);
 
   const purchase = async (p: Plan) => {
@@ -145,13 +163,13 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
                     ? { border: '1px solid #1d9e75', background: 'transparent', color: '#1d9e75', fontWeight: 700, cursor: 'default' }
                     : {}),
                 }}
-                disabled={!!busy || active || !loaded}
-                onClick={() => purchase(p)}
+                disabled={!!busy || active}
+                onClick={() => (loaded ? purchase(p) : loadPrices())}
               >
                 {active
                   ? (es ? '✓ Tu plan actual' : '✓ Your current plan')
                   : busy === p.id ? '…'
-                  : !loaded ? (es ? 'Cargando…' : 'Loading…')
+                  : !loaded ? (es ? 'Cargando… (toca para reintentar)' : 'Loading… (tap to retry)')
                   : (es ? `Comprar ${nm}` : `Buy ${nm}`)}
               </button>
             </div>
