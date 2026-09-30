@@ -65,6 +65,11 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
         <p className="muted" style={{ margin: '10px 0 0', lineHeight: 1.7 }}>
           {es ? 'Tu cuenta está activa y puedes usar todo lo que tu plan incluye.' : 'Your account is active and you can use everything your plan includes.'}
         </p>
+        <p className="muted" style={{ marginTop: 16, fontSize: 11 }}>
+          <a href="/terms" style={{ color: 'var(--mut)', textDecoration: 'underline' }}>{es ? 'Términos de uso (EULA)' : 'Terms of Use (EULA)'}</a>
+          {'  ·  '}
+          <a href="/privacy" style={{ color: 'var(--mut)', textDecoration: 'underline' }}>{es ? 'Privacidad' : 'Privacy Policy'}</a>
+        </p>
       </div>
     );
   }
