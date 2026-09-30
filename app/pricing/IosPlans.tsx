@@ -88,9 +88,37 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
           const feats = (es ? p.features : p.features_en) || [];
           const active = (activePlan || currentPlan) === p.id;
           return (
-            <div key={p.id} className="card" style={{ padding: 16 }}>
+            <div
+              key={p.id}
+              className="card"
+              style={{
+                padding: 16,
+                position: 'relative',
+                ...(active
+                  ? {
+                      border: '2px solid #1d9e75',
+                      background: 'rgba(29,158,117,0.08)',
+                      boxShadow: '0 0 0 3px rgba(29,158,117,0.15)',
+                    }
+                  : {}),
+              }}
+            >
+              {active && (
+                <span
+                  style={{
+                    position: 'absolute', top: 12, right: 14, display: 'inline-flex', alignItems: 'center', gap: 5,
+                    background: '#1d9e75', color: '#fff', fontSize: 11, fontWeight: 700,
+                    padding: '3px 9px', borderRadius: 20,
+                  }}
+                >
+                  ✓ {es ? 'Activo' : 'Active'}
+                </span>
+              )}
               <div className="row between" style={{ alignItems: 'baseline', gap: 8 }}>
-                <b style={{ fontSize: 17 }}>{nm}</b>
+                <b style={{ fontSize: 17, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  {active && <span style={{ color: '#1d9e75', fontSize: 18 }}>✓</span>}
+                  {nm}
+                </b>
                 <span style={{ fontSize: 15, fontWeight: 700 }}>{ip.priceString}</span>
               </div>
               {feats.length > 0 && (
@@ -98,8 +126,18 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
                   {feats.slice(0, 5).map((f, i) => <li key={i}>{f}</li>)}
                 </ul>
               )}
-              <button className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} disabled={!!busy || active} onClick={() => purchase(p)}>
-                {active ? (es ? 'Tu plan actual' : 'Your current plan') : busy === p.id ? '…' : (es ? `Comprar ${nm}` : `Buy ${nm}`)}
+              <button
+                className={active ? 'btn' : 'btn btn-primary'}
+                style={{
+                  width: '100%', marginTop: 12,
+                  ...(active
+                    ? { border: '1px solid #1d9e75', background: 'transparent', color: '#1d9e75', fontWeight: 700, cursor: 'default' }
+                    : {}),
+                }}
+                disabled={!!busy || active}
+                onClick={() => purchase(p)}
+              >
+                {active ? (es ? '✓ Tu plan actual' : '✓ Your current plan') : busy === p.id ? '…' : (es ? `Comprar ${nm}` : `Buy ${nm}`)}
               </button>
             </div>
           );
