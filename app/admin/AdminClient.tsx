@@ -591,6 +591,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
     return 'resumen';
   });
   useEffect(() => { try { window.history.replaceState(null, '', '#' + tab); } catch {} }, [tab]);
+  // Saltar de pestaña desde cualquier sitio cambiando el hash (p. ej. el Centro de correos → Campañas).
+  useEffect(() => { const onHash = () => { const h = window.location.hash.replace('#', ''); if (h) setTab(h as Tab); }; window.addEventListener('hashchange', onHash); return () => window.removeEventListener('hashchange', onHash); }, []);
   const [users, setUsers] = useState<User[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [team, setTeam] = useState<Team[]>([]);

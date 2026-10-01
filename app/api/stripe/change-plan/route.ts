@@ -9,13 +9,14 @@ import { getSetting } from '@/lib/settings';
 
 // Construye el aviso de cambio de plan (asunto + cuerpo ES/EN) desde la plantilla
 // editable en Admin. notifyPlanChange elige el idioma según el perfil del usuario.
-async function planEmailBiText(tplId: string, userId: string, planEs: string, planEn: string) {
+async function planEmailBiText(tplId: string, userId: string, planEs: string, planEn: string, extra?: { esVars?: any; enVars?: any; path?: string }) {
   const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.onyxtradinglive.com';
   let nombre = '';
   try { const { data } = await supabaseAdmin.from('profiles').select('full_name').eq('id', userId).maybeSingle(); nombre = String((data as any)?.full_name || '').trim().split(/\s+/)[0] || ''; } catch {}
   const ov = await getSetting<any>('email_tpl_overrides', {});
-  const es = emailTplWith(ov, tplId, 'es', { plan: planEs, nombre, enlace: site + '/dashboard' });
-  const en = emailTplWith(ov, tplId, 'en', { plan: planEn, nombre, enlace: site + '/dashboard' });
+  const enlace = site + (extra?.path || '/dashboard');
+  const es = emailTplWith(ov, tplId, 'es', { plan: planEs, nombre, enlace, ...(extra?.esVars || {}) });
+  const en = emailTplWith(ov, tplId, 'en', { plan: planEn, nombre, enlace, ...(extra?.enVars || {}) });
   return { subject: { es: es.subject, en: en.subject }, body: { es: es.text, en: en.text } };
 }
 
@@ -150,10 +151,10 @@ export async function POST(req: Request) {
     const fecha = new Date(periodEnd * 1000);
     const fEs = fecha.toLocaleDateString('es-ES');
     const fEn = fecha.toLocaleDateString('en-US');
-    await notifyPlanChange(user.id,
-      { es: `Tu plan bajará a ${planLabel.es}`, en: `Your plan will change to ${planLabel.en}` },
-      { es: `El cambio a ${planLabel.es} se aplicará el ${fEs}. Hasta entonces conservas tu plan actual y todas sus funciones. Puedes cancelar este cambio cuando quieras desde Mi cuenta → Suscripción.`,
-        en: `The change to ${planLabel.en} will apply on ${fEn}. Until then you keep your current plan and all its features. You can cancel this change anytime from My account → Subscription.` });
+    {
+      const em = await planEmailBiText('plan_downgrade', user.id, planLabel.es, planLabel.en, { path: '/account', esVars: { fecha: fEs }, enVars: { fecha: fEn } });
+      await notifyPlanChange(user.id, em.subject, em.body);
+    }
 
     return NextResponse.json({ ok: true, upgrade: false, scheduledAt: new Date(periodEnd * 1000).toISOString() });
   } catch (e: any) {

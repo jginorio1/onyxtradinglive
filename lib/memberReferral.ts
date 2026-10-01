@@ -15,13 +15,15 @@ async function notifyBridge(userId: string, count: number) {
   await notify(userId, { kind: 'info', title: '🚀 Puedes hacerte Embajador', body: `Ya trajiste ${count} amigos. Sube a comisión en efectivo recurrente.`, url: '/embajadores' });
   try {
     const { data: p } = await supabaseAdmin.from('profiles')
-      .select('email,lang,telegram_chat_id,tg_alerts').eq('id', userId).maybeSingle() as any;
+      .select('email,lang,full_name,telegram_chat_id,tg_alerts').eq('id', userId).maybeSingle() as any;
     if (!p) return;
-    const es = p.lang !== 'en';
-    const subject = es ? '🚀 Ya puedes hacerte Embajador de Onyx' : '🚀 You can now become an Onyx Ambassador';
-    const body = es
-      ? `¡Felicidades! Ya has traído ${count} amigos que se suscribieron.\n\nAhora puedes pasar al programa de Embajador y cobrar una comisión en efectivo recurrente por cada suscriptor, en vez de solo crédito.\n\nActívalo aquí: ${APP_URL}/embajadores`
-      : `Congrats! You've brought ${count} friends who subscribed.\n\nYou can now move up to the Ambassador program and earn a recurring cash commission for every subscriber, instead of just credit.\n\nGet started here: ${APP_URL}/embajadores`;
+    const lang: 'es' | 'en' = p.lang === 'en' ? 'en' : 'es';
+    const nombre = String(p.full_name || '').trim().split(/\s+/)[0] || '';
+    const { emailTplWith } = await import('@/lib/emailTemplates');
+    const { getSetting } = await import('@/lib/settings');
+    const ov = await getSetting<any>('email_tpl_overrides', {});
+    const r = emailTplWith(ov, 'referral_bridge', lang, { nombre, count, enlace: `${APP_URL}/embajadores` });
+    const subject = r.subject, body = r.text;
     if (p.email) { try { await sendEmail(p.email, subject, body); } catch { /* mailer opcional */ } }
     if (p.telegram_chat_id && p.tg_alerts !== false) {
       try { await sendMessage(p.telegram_chat_id, `${subject}\n\n${body}`, { kind: 'referral_bridge', userId }); } catch { /* opcional */ }

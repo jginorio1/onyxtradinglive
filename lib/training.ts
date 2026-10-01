@@ -282,11 +282,12 @@ export async function submitExam(userId: string, trackId: string, answers: Recor
           const url = `${app}/api/training/cert?track=${trackId}&lang=${eu}`;
           const title = T(t, 'title', eu);
           const { sendEmail } = await import('@/lib/mail');
-          const subject = enE ? `Certificate: ${title}` : `Certificado: ${title}`;
-          const body = enE
-            ? `Congratulations ${(p as any)?.name || ''}! You passed "${title}" with ${score}/100.\n\nDownload your certificate (sign in first):\n${url}`
-            : `¡Felicidades ${(p as any)?.name || ''}! Aprobaste "${title}" con ${score}/100.\n\nDescarga tu certificado (inicia sesión primero):\n${url}`;
-          await sendEmail(em, subject, body, { kind: 'training_cert', userId });
+          const { emailTplWith } = await import('@/lib/emailTemplates');
+          const { getSetting } = await import('@/lib/settings');
+          const ov = await getSetting<any>('email_tpl_overrides', {});
+          const nombre = String((p as any)?.name || '').trim().split(/\s+/)[0] || '';
+          const r = emailTplWith(ov, 'training_cert', eu, { nombre, titulo: title, nota: score, enlace: url });
+          await sendEmail(em, r.subject, r.text, { kind: 'training_cert', userId });
         }
       } catch {}
     }

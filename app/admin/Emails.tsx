@@ -119,22 +119,43 @@ function Plantillas({ es, L }: { es: boolean; L: (a: string, b: string) => strin
     </div>
   );
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 12 }}>
-      {cats.map((c) => {
-        const n = countByCat[c.id] || { total: 0, edited: 0 };
-        return (
-          <button key={c.id} onClick={() => setCat(c.id)}
-            style={{ textAlign: 'left', cursor: 'pointer', background: 'var(--card)', border: '1px solid var(--line)', borderLeft: `3px solid ${c.color}`, borderRadius: 14, padding: 15, display: 'flex', flexDirection: 'column', gap: 6, color: 'var(--tx)' }}>
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 12 }}>
+        {cats.map((c) => {
+          const n = countByCat[c.id] || { total: 0, edited: 0 };
+          return (
+            <button key={c.id} onClick={() => setCat(c.id)}
+              style={{ textAlign: 'left', cursor: 'pointer', background: 'var(--card)', border: '1px solid var(--line)', borderLeft: `3px solid ${c.color}`, borderRadius: 14, padding: 15, display: 'flex', flexDirection: 'column', gap: 6, color: 'var(--tx)' }}>
+              <div className="row between" style={{ alignItems: 'center' }}>
+                <span style={{ width: 34, height: 34, borderRadius: 9, display: 'grid', placeItems: 'center', background: c.color + '22', fontSize: 17 }}>{c.icon}</span>
+                {n.edited > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', padding: '2px 8px', borderRadius: 20 }}>{n.edited} {L('editados', 'edited')}</span>}
+              </div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, marginTop: 4 }}>{es ? c.es : c.en}</div>
+              <div className="muted" style={{ fontSize: 12 }}>{n.total} {L('correos', 'emails')}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Correos con editor propio (segmentos/programación/marca por mentor) — con acceso directo. */}
+      <div className="muted" style={{ fontSize: 11.5, margin: '18px 0 8px', textTransform: 'uppercase', letterSpacing: '.5px' }}>{L('Con su propio editor', 'With their own editor')}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 12 }}>
+        {([
+          ['campanas', '📣', '#993556', L('Campañas de marketing', 'Marketing campaigns'), L('Bienvenida, winback, newsletter…', 'Welcome, winback, newsletter…')],
+          ['academy', '🎓', '#378add', L('Academia (por mentor)', 'Academy (per mentor)'), L('Bienvenida y recordatorios del mentor', 'Mentor welcome & reminders')],
+        ] as const).map(([hash, icon, color, title, sub]) => (
+          <button key={hash} onClick={() => { window.location.hash = hash; }}
+            style={{ textAlign: 'left', cursor: 'pointer', background: 'var(--bg2)', border: '1px dashed var(--line)', borderLeft: `3px solid ${color}`, borderRadius: 14, padding: 15, display: 'flex', flexDirection: 'column', gap: 6, color: 'var(--tx)' }}>
             <div className="row between" style={{ alignItems: 'center' }}>
-              <span style={{ width: 34, height: 34, borderRadius: 9, display: 'grid', placeItems: 'center', background: c.color + '22', fontSize: 17 }}>{c.icon}</span>
-              {n.edited > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', padding: '2px 8px', borderRadius: 20 }}>{n.edited} {L('editados', 'edited')}</span>}
+              <span style={{ width: 34, height: 34, borderRadius: 9, display: 'grid', placeItems: 'center', background: color + '22', fontSize: 17 }}>{icon}</span>
+              <span className="muted" style={{ fontSize: 15 }}>↗</span>
             </div>
-            <div style={{ fontSize: 14.5, fontWeight: 700, marginTop: 4 }}>{es ? c.es : c.en}</div>
-            <div className="muted" style={{ fontSize: 12 }}>{n.total} {L('correos', 'emails')}</div>
+            <div style={{ fontSize: 14.5, fontWeight: 700, marginTop: 4 }}>{title}</div>
+            <div className="muted" style={{ fontSize: 12 }}>{sub}</div>
           </button>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+    </>
   );
 }
 

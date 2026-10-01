@@ -35,6 +35,16 @@ const TEMPLATES: Record<string, Entry> = {
     es: { subject: 'Tu prueba del plan {plan} vence en {dias} día(s)', body: 'Hola,\n\nTu prueba del plan **{plan}** en Onyx Trading Live vence en **{dias} día(s)**. Cuando termine, tu cuenta volverá al plan gratis.\n\nSi quieres seguir sin interrupción, elige tu plan y suscríbete aquí:\n{enlace}\n\nGracias por probar Onyx.' },
     en: { subject: 'Your {plan} trial ends in {dias} day(s)', body: 'Hi,\n\nYour **{plan}** trial at Onyx Trading Live ends in **{dias} day(s)**. When it ends, your account will go back to the free plan.\n\nTo keep going without interruption, pick your plan and subscribe here:\n{enlace}\n\nThanks for trying Onyx.' },
   },
+  plan_downgrade: {
+    es: { subject: 'Tu plan bajará a {plan}', body: 'Hola {nombre},\n\nEl cambio a **{plan}** se aplicará el **{fecha}**. Hasta entonces conservas tu plan actual y todas sus funciones.\n\nPuedes cancelar este cambio cuando quieras desde Mi cuenta → Suscripción:\n{enlace}' },
+    en: { subject: 'Your plan will change to {plan}', body: 'Hi {nombre},\n\nThe change to **{plan}** will apply on **{fecha}**. Until then you keep your current plan and all its features.\n\nYou can cancel this change anytime from My account → Subscription:\n{enlace}' },
+  },
+
+  // === Crecimiento =====================================================
+  referral_bridge: {
+    es: { subject: '🚀 Ya puedes hacerte Embajador de Onyx', body: '¡Felicidades {nombre}! Ya has traído **{count}** amigos que se suscribieron.\n\nAhora puedes pasar al programa de Embajador y cobrar una comisión en efectivo recurrente por cada suscriptor, en vez de solo crédito.\n\nActívalo aquí:\n{enlace}' },
+    en: { subject: '🚀 You can now become an Onyx Ambassador', body: 'Congrats {nombre}! You\'ve brought **{count}** friends who subscribed.\n\nYou can now move up to the Ambassador program and earn a recurring cash commission for every subscriber, instead of just credit.\n\nGet started here:\n{enlace}' },
+  },
 
   // === Academia y becas ===============================================
   sch_apply_mentor: {
@@ -56,6 +66,10 @@ const TEMPLATES: Record<string, Entry> = {
   sch_expired: {
     es: { subject: 'Tu beca en {academia} ha finalizado', body: 'Tu beca en **{academia}** ha llegado a su fin y el acceso se ha cerrado.\n\nSi quieres seguir aprendiendo, continúa con una suscripción:\n{enlace}' },
     en: { subject: 'Your scholarship in {academia} has ended', body: 'Your scholarship in **{academia}** has ended and access is now closed.\n\nIf you want to keep learning, continue with a subscription:\n{enlace}' },
+  },
+  training_cert: {
+    es: { subject: 'Certificado: {titulo}', body: '¡Felicidades {nombre}! Aprobaste "**{titulo}**" con **{nota}/100**.\n\nDescarga tu certificado (inicia sesión primero):\n{enlace}' },
+    en: { subject: 'Certificate: {titulo}', body: 'Congratulations {nombre}! You passed "**{titulo}**" with **{nota}/100**.\n\nDownload your certificate (sign in first):\n{enlace}' },
   },
 
   // === Seguridad y sistema ============================================
@@ -90,6 +104,7 @@ export const EMAIL_CATEGORIES: { id: string; es: string; en: string; color: stri
   { id: 'account', es: 'Cuenta y bienvenida', en: 'Account & welcome', color: '#7a5cff', icon: '🙋' },
   { id: 'billing', es: 'Pagos y suscripción', en: 'Payments & billing', color: '#1d9e75', icon: '💳' },
   { id: 'academy', es: 'Academia y becas', en: 'Academy & scholarships', color: '#378add', icon: '🎓' },
+  { id: 'growth', es: 'Crecimiento y referidos', en: 'Growth & referrals', color: '#d85a30', icon: '🚀' },
   { id: 'security', es: 'Seguridad y sistema', en: 'Security & system', color: '#888780', icon: '🛡️' },
 ];
 
@@ -103,12 +118,16 @@ export const TEMPLATE_META: { id: string; cat: string; es: string; en: string; v
   { id: 'plan_welcome', cat: 'billing', es: 'Plan activo · bienvenida', en: 'Plan active · welcome', vars: ['plan', 'nombre', 'enlace'], to: 'usuario' },
   { id: 'payment_failed', cat: 'billing', es: 'Pago fallido', en: 'Payment failed', vars: ['plan', 'nombre', 'enlace'], to: 'usuario' },
   { id: 'comp_reminder', cat: 'billing', es: 'Prueba de pago · vence pronto', en: 'Trial · ending soon', vars: ['plan', 'dias', 'enlace'], to: 'usuario' },
+  { id: 'plan_downgrade', cat: 'billing', es: 'Bajada de plan programada', en: 'Scheduled downgrade', vars: ['plan', 'nombre', 'fecha', 'enlace'], to: 'usuario' },
   // Academia
   { id: 'sch_apply_mentor', cat: 'academy', es: 'Beca · nueva solicitud (al mentor)', en: 'Scholarship · new request (to mentor)', vars: ['academia', 'enlace'], to: 'mentor' },
   { id: 'sch_approved', cat: 'academy', es: 'Beca · aprobada (al alumno)', en: 'Scholarship · approved (to student)', vars: ['academia', 'enlace'], to: 'alumno' },
   { id: 'sch_denied', cat: 'academy', es: 'Beca · rechazada (al alumno)', en: 'Scholarship · declined (to student)', vars: ['academia', 'enlace'], to: 'alumno' },
   { id: 'sch_reminder', cat: 'academy', es: 'Beca · vence pronto (al alumno)', en: 'Scholarship · ending soon (to student)', vars: ['academia', 'enlace', 'dias'], to: 'alumno' },
   { id: 'sch_expired', cat: 'academy', es: 'Beca · finalizó (al alumno)', en: 'Scholarship · ended (to student)', vars: ['academia', 'enlace'], to: 'alumno' },
+  { id: 'training_cert', cat: 'academy', es: 'Certificado de formación', en: 'Training certificate', vars: ['nombre', 'titulo', 'nota', 'enlace'], to: 'usuario' },
+  // Crecimiento
+  { id: 'referral_bridge', cat: 'growth', es: 'Puedes ser Embajador (al referidor)', en: 'You can become an Ambassador', vars: ['nombre', 'count', 'enlace'], to: 'usuario' },
   // Seguridad
   { id: 'security_locked', cat: 'security', es: 'Cuenta bloqueada por PIN (al admin)', en: 'Account locked by PIN (to admin)', vars: [], to: 'admin' },
   { id: 'dispute_alert', cat: 'security', es: 'Disputa de tarjeta (al admin)', en: 'Card dispute (to admin)', vars: ['id'], to: 'admin' },
