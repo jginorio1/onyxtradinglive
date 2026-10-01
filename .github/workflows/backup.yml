@@ -40,15 +40,23 @@ jobs:
           pip install --quiet b2
 
       - name: Volcado de la base de datos
+        # Conexión por PARTES (sin URL), para no pelear con el formato de la cadena.
+        # Host, usuario (con el sufijo del pooler), puerto y base van FIJOS aquí.
+        # Lo ÚNICO que viene del secreto es la contraseña: crea en GitHub el secreto
+        # DB_PASSWORD con SOLO tu contraseña de la base (nada más, sin postgresql:// ni @).
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          PGSSLMODE: require   # fuerza SSL aunque la URL no lo lleve (el pooler lo exige)
+          PGHOST: aws-0-us-east-1.pooler.supabase.com
+          PGPORT: "5432"
+          PGUSER: postgres.auhdzrivnlezwsjubrdw
+          PGDATABASE: postgres
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+          PGSSLMODE: require   # el pooler exige SSL
         run: |
           set -euo pipefail   # si pg_dump falla, el paso falla (no crea copias vacías)
           PGDUMP=$(ls -1 /usr/lib/postgresql/*/bin/pg_dump | sort -V | tail -1)  # el 17
           STAMP=$(date +%Y%m%d-%H%M)
           FILE="onyx-backup-$STAMP.sql.gz"
-          "$PGDUMP" "$DATABASE_URL" --no-owner --no-privileges | gzip > "$FILE"
+          "$PGDUMP" --no-owner --no-privileges | gzip > "$FILE"
           SIZE=$(stat -c%s "$FILE")
           if [ "$SIZE" -lt 1000 ]; then echo "Volcado vacío o fallido ($SIZE bytes)"; exit 1; fi
           echo "FILE=$FILE" >> "$GITHUB_ENV"
