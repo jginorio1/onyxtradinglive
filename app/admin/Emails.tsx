@@ -54,13 +54,16 @@ function Plantillas({ es, L }: { es: boolean; L: (a: string, b: string) => strin
   const [cat, setCat] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [err, setErr] = useState('');
 
   async function load() {
+    setErr('');
     try {
       const r = await fetch('/api/admin/email-templates');
-      const j = await r.json();
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) setErr(j?.error || (r.status === 403 ? 'Sin permiso para ver los correos.' : 'No se pudieron cargar los correos.'));
       setItems(j.items || []); setCats(j.categories || []);
-    } catch {} finally { setLoaded(true); }
+    } catch { setErr('No se pudieron cargar los correos (sin conexión).'); } finally { setLoaded(true); }
   }
   useEffect(() => { load(); }, []);
 
@@ -109,6 +112,12 @@ function Plantillas({ es, L }: { es: boolean; L: (a: string, b: string) => strin
   }
 
   // Tarjetas de categorías
+  if (!cats.length) return (
+    <div className="card muted" style={{ fontSize: 13, textAlign: 'center', padding: 24 }}>
+      {err || L('No hay plantillas para mostrar. Recarga la página.', 'No templates to show. Reload the page.')}
+      <div><button className="btn btn-ghost" style={{ marginTop: 10, fontSize: 12.5 }} onClick={load}>{L('Reintentar', 'Retry')}</button></div>
+    </div>
+  );
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(230px,1fr))', gap: 12 }}>
       {cats.map((c) => {
