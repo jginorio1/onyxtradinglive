@@ -101,7 +101,6 @@ export const TEMPLATE_META: { id: string; cat: string; es: string; en: string; v
   { id: 'onboard_guardian', cat: 'account', es: 'Tip: saca más de Guardian', en: 'Tip: get more from Guardian', vars: ['nombre', 'enlace'], to: 'usuario' },
   // Pagos
   { id: 'plan_welcome', cat: 'billing', es: 'Plan activo · bienvenida', en: 'Plan active · welcome', vars: ['plan', 'nombre', 'enlace'], to: 'usuario' },
-  { id: 'plan_changed', cat: 'billing', es: 'Cambio de plan', en: 'Plan changed', vars: ['plan', 'nombre', 'enlace'], to: 'usuario' },
   { id: 'payment_failed', cat: 'billing', es: 'Pago fallido', en: 'Payment failed', vars: ['plan', 'nombre', 'enlace'], to: 'usuario' },
   { id: 'comp_reminder', cat: 'billing', es: 'Prueba de pago · vence pronto', en: 'Trial · ending soon', vars: ['plan', 'dias', 'enlace'], to: 'usuario' },
   // Academia

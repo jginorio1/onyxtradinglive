@@ -15,7 +15,8 @@ export async function GET() {
     const defs = defaultTemplates();
     const ov = await getSetting<any>('email_tpl_overrides', {});
     const items = TEMPLATE_META.map((m) => {
-      const d: any = defs[m.id]; const o: any = ov?.[m.id] || {};
+      const d: any = defs[m.id]; if (!d || !d.es || !d.en) return null;   // salta una plantilla desajustada sin romper el resto
+      const o: any = ov?.[m.id] || {};
       const edited = !!(o?.es?.subject || o?.es?.body || o?.en?.subject || o?.en?.body);
       const one = (l: 'es' | 'en') => ({
         subject: (o[l]?.subject ?? d[l].subject) as string,
@@ -23,7 +24,7 @@ export async function GET() {
         defSubject: d[l].subject as string, defBody: d[l].body as string,
       });
       return { id: m.id, cat: m.cat, es_label: m.es, en_label: m.en, to: m.to, vars: m.vars, edited, es: one('es'), en: one('en') };
-    });
+    }).filter(Boolean);
     return NextResponse.json({ items, categories: EMAIL_CATEGORIES });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', items: [], categories: EMAIL_CATEGORIES }, { status: 500 });
