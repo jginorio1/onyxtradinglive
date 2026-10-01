@@ -517,7 +517,7 @@ export default function KeysPage() {
                 <div className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: 'center' }}>{platData.fileName}</div>
                 {kind === 'ctrader' && (
                   <div style={{ textAlign: 'center', marginTop: 8 }}>
-                    <a className="muted" style={{ fontSize: 12, textDecoration: 'underline' }} href="/ctrader/GUIA_CTRADER.md" target="_blank" rel="noreferrer">{t.ctGuide}</a>
+                    <a className="muted" style={{ fontSize: 12, textDecoration: 'underline' }} href="/ctrader/guia" target="_blank" rel="noreferrer">{t.ctGuide}</a>
                   </div>
                 )}
                 {/* Nota automática solo para usuarios de Mac (no aparece en Windows). */}
