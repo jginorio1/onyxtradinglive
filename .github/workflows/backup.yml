@@ -1,7 +1,7 @@
 name: Backup
 
-# Copia de seguridad semanal de la base de datos.
-#   - Corre cada domingo a las 06:00 UTC (o a mano desde la pestaña Actions).
+# Copia de seguridad DIARIA de la base de datos.
+#   - Corre todos los días a las 06:00 UTC (o a mano desde la pestaña Actions).
 #   - Hace un pg_dump comprimido, lo sube a tu almacén externo y avisa a la app.
 #
 # Secretos que hay que crear en:  GitHub → Settings → Secrets and variables → Actions
@@ -42,6 +42,7 @@ jobs:
       - name: Volcado de la base de datos
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PGSSLMODE: require   # fuerza SSL aunque la URL no lo lleve (el pooler lo exige)
         run: |
           set -euo pipefail   # si pg_dump falla, el paso falla (no crea copias vacías)
           PGDUMP=$(ls -1 /usr/lib/postgresql/*/bin/pg_dump | sort -V | tail -1)  # el 17
