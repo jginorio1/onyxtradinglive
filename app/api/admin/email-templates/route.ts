@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { getSetting, saveSetting } from '@/lib/settings';
-import { defaultTemplates, TEMPLATE_META } from '@/lib/emailTemplates';
+import { defaultTemplates, TEMPLATE_META, EMAIL_CATEGORIES } from '@/lib/emailTemplates';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,14 +14,15 @@ export async function GET() {
   const ov = await getSetting<any>('email_tpl_overrides', {});
   const items = TEMPLATE_META.map((m) => {
     const d: any = defs[m.id]; const o: any = ov?.[m.id] || {};
+    const edited = !!(o?.es?.subject || o?.es?.body || o?.en?.subject || o?.en?.body);
     const one = (l: 'es' | 'en') => ({
       subject: (o[l]?.subject ?? d[l].subject) as string,
       body: (o[l]?.body ?? d[l].body) as string,
       defSubject: d[l].subject as string, defBody: d[l].body as string,
     });
-    return { id: m.id, label: m.label, vars: m.vars, es: one('es'), en: one('en') };
+    return { id: m.id, cat: m.cat, es_label: m.es, en_label: m.en, to: m.to, vars: m.vars, edited, es: one('es'), en: one('en') };
   });
-  return NextResponse.json({ items });
+  return NextResponse.json({ items, categories: EMAIL_CATEGORIES });
 }
 
 // PATCH · guardar overrides (owner). { overrides: { [id]: { es:{subject,body}, en:{...} } } }

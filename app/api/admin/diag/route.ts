@@ -167,7 +167,9 @@ export async function POST(req: Request) {
       const to = user?.email;
       if (!to) return NextResponse.json({ ok: false, message: 'No tengo tu correo.' });
       if (!process.env.RESEND_API_KEY) return NextResponse.json({ ok: false, message: 'Sin RESEND_API_KEY: no se envían correos todavía.' });
-      const ok = await sendEmail(to, 'Prueba de correo · Onyx', 'Si ves este correo, el envío con Resend funciona. — Onyx Trading Live');
+      const { emailTplLive } = await import('@/lib/emailTemplates');
+      const em = await emailTplLive('mail_test', 'es');
+      const ok = await sendEmail(to, em.subject, em.text);
       return NextResponse.json({ ok, message: ok ? `Correo de prueba enviado a ${to}. Revisa tu bandeja (y spam).` : 'Resend rechazó el envío. ¿Está verificado el dominio?' });
     }
 

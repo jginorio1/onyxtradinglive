@@ -19,7 +19,6 @@ import ChatWidgetEditor from './ChatWidgetEditor';
 import BotLab from './BotLab';
 import Factory from './Factory';
 import ReportsEditor from './ReportsEditor';
-import EmailTemplatesControl from './EmailTemplatesControl';
 import OnlineNowControl from './OnlineNowControl';
 import AdminLeadAlert from './AdminLeadAlert';
 import BackupCodes from './BackupCodes';
@@ -1179,7 +1178,14 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     <EmailRoutesControl lang={lang} />
                     <PromoControl />
                     <OnlineNowControl />
-                    <EmailTemplatesControl />
+                    <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 20 }}>✉️</span>
+                      <div style={{ flex: 1, minWidth: 180 }}>
+                        <b style={{ fontSize: 14 }}>{lang === 'en' ? 'Email center' : 'Centro de correos'}</b>
+                        <div className="muted" style={{ fontSize: 12.5 }}>{lang === 'en' ? 'All email templates and sending moved here — edit copy, use AI, send or schedule.' : 'Todas las plantillas de correo y los envíos viven aquí — edita el texto, usa IA, envía o programa.'}</div>
+                      </div>
+                      <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => setTab('correos')}>{lang === 'en' ? 'Open' : 'Abrir'}</button>
+                    </div>
                     <AlertsControl />
                     <BetaControl />
                   </>

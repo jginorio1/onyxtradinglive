@@ -168,6 +168,7 @@ export default function Pricing() {
   // Dentro de la app de iPhone/iPad NO se muestran precios ni planes de compra.
   // Onyx es un servicio multiplataforma: la suscripción se gestiona en la web
   // (regla 3.1.3(b)). En Android y navegador esto no aplica: la página normal.
+  // Hasta saber la plataforma no pintamos los planes, para no 'parpadear' la vista web en iOS.
   if (!mounted) return <div className="wrap" style={{ padding: '40px 22px', textAlign: 'center' }}><p className="muted">{lang === 'es' ? 'Cargando…' : 'Loading…'}</p></div>;
   if (nativePlatform() === 'ios') {
     return <IosPlans plans={shown as any} lang={lang} currentPlan={myPlan || undefined} />;

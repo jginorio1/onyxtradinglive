@@ -9,7 +9,8 @@ import { clawbackCommission } from '@/lib/ambassadorPayout';
 import { setGuardianTier, revokeGuardianBySub, type GuardianTier } from '@/lib/guardianAccess';
 import { markPaid, handleDispute } from '@/lib/evidence';
 import { sendEmail } from '@/lib/mail';
-import { mailRoutes } from '@/lib/settings';
+import { mailRoutes, getSetting } from '@/lib/settings';
+import { emailTplWith } from '@/lib/emailTemplates';
 
 // ¿Es una suscripción de Onyx Guardian comprada dentro de la academia?
 // Esas NO cambian el plan de Onyx: solo activan/revocan el gestor de riesgo.
@@ -98,6 +99,8 @@ async function creditCommission(invoice: any) {
   const { rate } = await rateFor(amb, settings);
   if (!rate) return;
 
+  // Idempotencia: si Stripe reintenta el webhook de esta MISMA factura, no pagamos
+  // la comisión dos veces. Una factura = una comisión (a lo sumo).
   if (invoice.id) {
     const { data: dup } = await supabaseAdmin.from('commissions')
       .select('id').eq('invoice_id', invoice.id).maybeSingle();
@@ -202,7 +205,9 @@ export async function POST(req: Request) {
       try {
         const routes = await mailRoutes();
         const to = (process.env.DISPUTE_ALERT_EMAIL || routes.billing || 'support@onyxtradinglive.com').trim();
-        await sendEmail(to, `⚠️ Disputa de tarjeta (chargeback) · ${d.id}`, `${r.note}\n\nRevisa y envía la evidencia en tu panel de Stripe → Disputes → ${d.id}.`);
+        const { emailTplLive } = await import('@/lib/emailTemplates');
+        const em = await emailTplLive('dispute_alert', 'es', { id: d.id });
+        await sendEmail(to, em.subject, `${r.note}\n\n${em.text}`);
       } catch {}
     } else if (event.type === 'invoice.payment_failed') {
       // El cobro falló (tarjeta vencida, sin fondos…). Avisamos "plan en riesgo"
@@ -210,10 +215,12 @@ export async function POST(req: Request) {
       const inv: any = event.data.object;
       const { data: prof } = await supabaseAdmin.from('profiles').select('id').eq('stripe_customer_id', inv.customer).maybeSingle() as any;
       if (prof?.id) {
-        await notifyPlanChange(prof.id,
-          { es: 'Tu plan está en riesgo: no pudimos cobrar', en: 'Your plan is at risk: payment failed' },
-          { es: 'No pudimos procesar tu pago. Actualiza tu tarjeta en Mi cuenta → Suscripción para no perder tu plan. Volveremos a intentarlo automáticamente.',
-            en: 'We could not process your payment. Update your card in My account → Subscription to keep your plan. We will retry automatically.' });
+        const site = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
+        const ov = await getSetting<any>('email_tpl_overrides', {});
+        let nombre = ''; try { const { data } = await supabaseAdmin.from('profiles').select('full_name').eq('id', prof.id).maybeSingle(); nombre = String((data as any)?.full_name || '').trim().split(/\s+/)[0] || ''; } catch {}
+        const esT = emailTplWith(ov, 'payment_failed', 'es', { plan: 'actual', nombre, enlace: site + '/account' });
+        const enT = emailTplWith(ov, 'payment_failed', 'en', { plan: 'current', nombre, enlace: site + '/account' });
+        await notifyPlanChange(prof.id, { es: esT.subject, en: enT.subject }, { es: esT.text, en: enT.text });
       }
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const sub: any = event.data.object;

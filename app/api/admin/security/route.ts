@@ -78,9 +78,11 @@ export async function POST(req: Request) {
       try {
         const owners = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean);
         const to = Array.from(new Set([user.email, ...owners].filter(Boolean))) as string[];
+        const { emailTplLive } = await import('@/lib/emailTemplates');
+        const em = await emailTplLive('security_locked', 'es');
+        const detalle = `\n\n(${user.email} · ${new Date().toLocaleString()})`;
         for (const addr of to) {
-          await sendEmail(addr, '⚠️ Onyx · Cuenta bloqueada por PIN',
-            `Se bloqueó el acceso al panel de ${user.email} tras varios intentos fallidos de PIN (${new Date().toLocaleString()}). Si no fuiste tú, cambia tu contraseña y revisa tu 2FA.`);
+          await sendEmail(addr, em.subject, em.text + detalle);
         }
       } catch {}
       return NextResponse.json({ error: 'Demasiados intentos.', forceLogout: true }, { status: 423 });

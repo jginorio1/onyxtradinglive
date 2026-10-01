@@ -1,5 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
+import { emailTplWith } from '@/lib/emailTemplates';
+import { getSetting } from '@/lib/settings';
 
 // ============================================================
 // Secuencia de correos de onboarding, 100% automática. Un cron la corre a
@@ -11,22 +13,17 @@ const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.co
 
 type Step = 'welcome' | 'connect' | 'tips';
 
-function content(step: Step, lang: 'es' | 'en', name: string): { subject: string; body: string } {
-  const hi = name ? (lang === 'en' ? `Hi ${name},` : `Hola ${name},`) : (lang === 'en' ? 'Hi,' : 'Hola,');
-  const sign = lang === 'en' ? '\n\n— Onyx Trading Live team' : '\n\n— Equipo de Onyx Trading Live';
-  if (step === 'welcome') {
-    return lang === 'en'
-      ? { subject: 'Welcome to Onyx Trading Live 🖤', body: `${hi}\n\nWelcome aboard! Onyx turns your MetaTrader account into a clear trading journal with Onyx Guardian watching your risk.\n\nStart here — connect your account in 2 minutes:\n${SITE}/dashboard\n\nNeed help? Just reply to this email or open the chat on our site.${sign}` }
-      : { subject: 'Bienvenido a Onyx Trading Live 🖤', body: `${hi}\n\n¡Bienvenido! Onyx convierte tu cuenta de MetaTrader en un diario de trading claro, con Onyx Guardian cuidando tu riesgo.\n\nEmpieza aquí — conecta tu cuenta en 2 minutos:\n${SITE}/dashboard\n\n¿Dudas? Responde a este correo o abre el chat en la web.${sign}` };
-  }
-  if (step === 'connect') {
-    return lang === 'en'
-      ? { subject: 'Connect your account to see your numbers', body: `${hi}\n\nWe noticed you haven't connected a MetaTrader account yet. It takes about 2 minutes and unlocks your live stats and Onyx Guardian.\n\nStep‑by‑step guide:\n${SITE}/guia/conectar-cuenta\n\nStuck? Reply here and a person will help.${sign}` }
-      : { subject: 'Conecta tu cuenta para ver tus números', body: `${hi}\n\nVimos que aún no has conectado una cuenta de MetaTrader. Toma unos 2 minutos y desbloquea tus estadísticas en vivo y Onyx Guardian.\n\nGuía paso a paso:\n${SITE}/guia/conectar-cuenta\n\n¿Atascado? Responde aquí y te ayuda una persona.${sign}` };
-  }
-  return lang === 'en'
-    ? { subject: 'Get more out of Onyx Guardian', body: `${hi}\n\nQuick tip: Onyx Guardian can enforce your daily loss limit, protect your profits and warn you before high‑impact news — automatically.\n\nSee how it works:\n${SITE}/guia/que-hace-onyx\n\nReply anytime if you have questions.${sign}` }
-    : { subject: 'Saca más partido a Onyx Guardian', body: `${hi}\n\nTip rápido: Onyx Guardian puede hacer respetar tu límite de pérdida diaria, proteger tus ganancias y avisarte antes de noticias de alto impacto — automáticamente.\n\nMira cómo funciona:\n${SITE}/guia/que-hace-onyx\n\nResponde cuando quieras si tienes dudas.${sign}` };
+// Cada paso → plantilla editable en el Centro de correos + su enlace.
+const STEP_TPL: Record<Step, { id: string; path: string }> = {
+  welcome: { id: 'onboard_welcome', path: '/dashboard' },
+  connect: { id: 'onboard_connect', path: '/guia/conectar-cuenta' },
+  tips: { id: 'onboard_guardian', path: '/guia/que-hace-onyx' },
+};
+
+function content(overrides: any, step: Step, lang: 'es' | 'en', name: string): { subject: string; body: string } {
+  const m = STEP_TPL[step];
+  const r = emailTplWith(overrides, m.id, lang, { nombre: name, enlace: SITE + m.path });
+  return { subject: r.subject, body: r.text };
 }
 
 export async function runOnboardingEmails(dryRun = false) {
@@ -42,6 +39,9 @@ export async function runOnboardingEmails(dryRun = false) {
   // Quién ya tiene al menos una cuenta MT conectada
   const { data: accs } = await supabaseAdmin.from('trading_accounts').select('user_id');
   const hasAcc = new Set((accs || []).map((a: any) => a.user_id));
+
+  // Overrides del Centro de correos (editados por el dueño), una sola vez por corrida.
+  const overrides = await getSetting<any>('email_tpl_overrides', {});
 
   let sent = 0;
   const today = new Date().toISOString().slice(0, 10);
@@ -61,7 +61,7 @@ export async function runOnboardingEmails(dryRun = false) {
     if (!step) continue;
 
     if (!dryRun) {
-      const { subject, body } = content(step, lang, name);
+      const { subject, body } = content(overrides, step, lang, name);
       const ok = await sendEmail(email, subject, body, { kind: 'onboarding', userId: (u as any).id });
       if (ok) {
         done[step] = today;

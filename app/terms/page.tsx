@@ -11,7 +11,7 @@ export default function Terms() {
   const es = (
     <>
       <h1>Términos y Condiciones</h1>
-      <p className="muted">Última actualización: septiembre de 2026</p>
+      <p className="muted">Última actualización: 2026</p>
       <h3>1. El servicio</h3>
       <p>Onyx Trading Live ("Onyx") es una herramienta de diario y análisis de trading que se conecta a tus cuentas de MetaTrader (MT4/MT5), cTrader, MatchTrader, TradeLocker, DXtrade y otras plataformas compatibles en modo <b>solo lectura</b> para mostrar tu historial y estadísticas. Onyx no ejecuta operaciones ni mueve fondos.</p>
       <h3>2. Cuentas</h3>
@@ -33,7 +33,7 @@ export default function Terms() {
   const en = (
     <>
       <h1>Terms & Conditions</h1>
-      <p className="muted">Last updated: September 2026</p>
+      <p className="muted">Last updated: 2026</p>
       <h3>1. The service</h3>
       <p>Onyx Trading Live ("Onyx") is a trading journal and analytics tool that connects to your MetaTrader (MT4/MT5), cTrader, MatchTrader, TradeLocker, DXtrade and other supported platform accounts in <b>read-only</b> mode to display your history and statistics. Onyx does not place trades or move funds.</p>
       <h3>2. Accounts</h3>

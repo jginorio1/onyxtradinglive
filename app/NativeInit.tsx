@@ -31,6 +31,9 @@ export default function NativeInit() {
       const isIOS = (() => { try { return ((window as any).Capacitor?.getPlatform?.() || '') === 'ios'; } catch { return false; } })();
       try { if (isIOS) document.documentElement.classList.add('ios-app'); } catch {}
 
+      // Auto-reconciliación del plan de Apple: al abrir (y al volver del segundo plano)
+      // el servidor le pregunta a RevenueCat el plan real y sincroniza la base. Así el
+      // plan nunca queda desincronizado aunque se pierda un webhook. Solo en iOS.
       const syncIap = () => { try { if (isIOS) fetch('/api/iap/refresh', { method: 'POST', credentials: 'include' }).catch(() => {}); } catch {} };
       syncIap();
 
@@ -213,6 +216,7 @@ export default function NativeInit() {
           window.history.back();
         });
         removeBack = () => { try { h.remove(); } catch {} };
+        // Al volver del segundo plano, re-sincroniza el plan de Apple (por si cambió).
         try { App.addListener('resume', () => syncIap()); } catch {}
       } catch {}
     })();

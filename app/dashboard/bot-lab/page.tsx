@@ -27,7 +27,7 @@ export default function BotLabDashboard() {
   const [focusId, setFocusId] = useState<string>(''); // producto a resaltar (deep-link desde la landing)
   const [mq, setMq] = useState(''); const [mplat, setMplat] = useState('all'); const [msort, setMsort] = useState('score'); const [mshow, setMshow] = useState(12); // buscador/filtro/orden/paginación del marketplace
   const [me, setMe] = useState(''); // id del usuario (para armar su enlace de referido)
-  const [iosApp, setIosApp] = useState(false); useEffect(() => { try { setIosApp(nativePlatform() === 'ios'); } catch {} }, []);
+  const [iosApp, setIosApp] = useState(false); useEffect(() => { try { setIosApp(nativePlatform() === 'ios'); } catch {} }, []); // En iOS ocultamos Bot Lab (marketplace con pago externo) por regla 3.1.1 de Apple
 
   async function loadMarket() { try { const r = await fetch('/api/botlab/products?limit=60', { cache: 'no-store' }); const j = await r.json(); setProducts(j.products || []); if (j.pay) setPay(j.pay); } catch {} }
   async function loadLicenses() { try { const r = await fetch('/api/botlab/licenses', { cache: 'no-store' }); const j = await r.json(); setLicenses(j.licenses || []); } catch {} }
@@ -140,7 +140,7 @@ export default function BotLabDashboard() {
 
   if (iosApp) return (
     <div className="bl-ios-hidden" style={{ maxWidth: 560, margin: '0 auto', padding: '48px 22px 60px', textAlign: 'center' }}>
-      <h1 style={{ fontSize: 24 }}>Onyx Bot Lab</h1>
+      <h1 style={{ fontSize: 24 }}>{es ? 'Onyx Bot Lab' : 'Onyx Bot Lab'}</h1>
       <p className="muted" style={{ margin: '10px 0 0', lineHeight: 1.7 }}>{es ? 'Esta seccion no esta disponible en la app. Puedes usarla desde el sitio web en tu computadora.' : 'This section is not available in the app. You can use it from the website on your computer.'}</p>
     </div>
   );

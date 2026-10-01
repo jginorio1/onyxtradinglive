@@ -4,6 +4,20 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe, priceIdForPlan } from '@/lib/stripe';
 import { addonSettings } from '@/lib/settings';
 import { notifyPlanChange } from '@/lib/planNotify';
+import { emailTplWith } from '@/lib/emailTemplates';
+import { getSetting } from '@/lib/settings';
+
+// Construye el aviso de cambio de plan (asunto + cuerpo ES/EN) desde la plantilla
+// editable en Admin. notifyPlanChange elige el idioma según el perfil del usuario.
+async function planEmailBiText(tplId: string, userId: string, planEs: string, planEn: string) {
+  const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.onyxtradinglive.com';
+  let nombre = '';
+  try { const { data } = await supabaseAdmin.from('profiles').select('full_name').eq('id', userId).maybeSingle(); nombre = String((data as any)?.full_name || '').trim().split(/\s+/)[0] || ''; } catch {}
+  const ov = await getSetting<any>('email_tpl_overrides', {});
+  const es = emailTplWith(ov, tplId, 'es', { plan: planEs, nombre, enlace: site + '/dashboard' });
+  const en = emailTplWith(ov, tplId, 'en', { plan: planEn, nombre, enlace: site + '/dashboard' });
+  return { subject: { es: es.subject, en: en.subject }, body: { es: es.text, en: en.text } };
+}
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -99,9 +113,10 @@ export async function POST(req: Request) {
         plan, pending_plan: null, pending_plan_at: null, pending_schedule_id: null, pending_notified_3d: false, pending_keep: null,
       }).eq('id', user.id);
 
-      await notifyPlanChange(user.id,
-        { es: `Bienvenido a ${planLabel.es}`, en: `Welcome to ${planLabel.en}` },
-        { es: `Tu plan ${planLabel.es} ya está activo. ¡Gracias por confiar en Onyx Trading Live!`, en: `Your ${planLabel.en} plan is now active. Thanks for choosing Onyx Trading Live!` });
+      {
+        const em = await planEmailBiText('plan_welcome', user.id, planLabel.es, planLabel.en);
+        await notifyPlanChange(user.id, em.subject, em.body);
+      }
 
       return NextResponse.json({ ok: true, upgrade: true });
     }

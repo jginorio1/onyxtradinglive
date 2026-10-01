@@ -33,14 +33,29 @@ export type IapPlan = { planId: string; priceString: string; productId: string; 
 // Un plan a emparejar: su id, y palabras clave alternativas (p. ej. del nombre) por si
 // el product identifier no contiene el id interno. Ej: plan id 'trader' con nombre
 // "Onyx Builder" → el producto se llama onyx_builder_month (contiene 'builder', no 'trader').
-export type PlanMatch = { id: string; aliases?: string[] };
+export type PlanMatch = { id: string; aliases?: string[]; price?: number };
 
 // Palabras demasiado genéricas que NO sirven para distinguir un plan de otro.
 const GENERIC = new Set(['onyx', 'plan', 'guardian', 'the', 'de', 'el', 'la', 'monthly', 'mensual', 'month', 'mes']);
 
-// Empareja un plan con su paquete de RevenueCat. Prueba el id y sus alias; toma la
-// coincidencia más "ajustada" (identifier más corto que contiene el token) para evitar
-// que un token que es subcadena de otro robe el paquete equivocado.
+// Junta TODOS los paquetes de TODAS las offerings de RevenueCat (no solo la "current"),
+// por si un producto (p. ej. Builder) quedó adjunto a otra offering. Deduplica por id.
+function allPackages(off: any): any[] {
+  const buckets: any[] = [];
+  if (off?.current?.availablePackages) buckets.push(off.current.availablePackages);
+  const all = off?.all || {};
+  for (const key of Object.keys(all)) if (all[key]?.availablePackages) buckets.push(all[key].availablePackages);
+  const seen = new Set<string>(); const out: any[] = [];
+  for (const b of buckets) for (const k of b) {
+    const id = String(k?.product?.identifier || '');
+    if (id && !seen.has(id)) { seen.add(id); out.push(k); }
+  }
+  return out;
+}
+
+// Empareja un plan con su paquete de RevenueCat. 1º por id/alias en el identifier;
+// 2º (último recurso) por precio ≈ price_month, por si el identifier es un SKU raro
+// (ej. 'sku_49') que no contiene ninguna palabra del plan.
 function matchPkg(pkgs: any[], m: PlanMatch): any {
   const tokens = [m.id, ...(m.aliases || [])]
     .map((s) => String(s || '').toLowerCase().trim())
@@ -51,14 +66,25 @@ function matchPkg(pkgs: any[], m: PlanMatch): any {
     if (!idf) continue;
     if (tokens.some((tok) => idf.includes(tok)) && idf.length < bestLen) { best = k; bestLen = idf.length; }
   }
-  return best;
+  if (best) return best;
+  // Fallback por precio: el más cercano dentro de ±1.5 USD del precio del plan.
+  if (m.price && m.price > 0) {
+    let pick: any = null; let bestDiff = 1.5;
+    for (const k of pkgs) {
+      const price = Number(k?.product?.price);
+      if (!price) continue;
+      const diff = Math.abs(price - m.price);
+      if (diff <= bestDiff) { pick = k; bestDiff = diff; }
+    }
+    if (pick) return pick;
+  }
+  return null;
 }
 
-// Busca en la oferta actual de RevenueCat el paquete de cada plan. StoreKit a veces
-// devuelve la oferta incompleta (o vacía) en los primeros milisegundos tras arrancar,
-// así que reintentamos hasta tener TODOS los planes pedidos o agotar los intentos.
-// Esto evita que una tarjeta (p. ej. Builder) desaparezca de forma intermitente.
-// Acepta ids sueltos o {id, aliases} para casos donde el producto no lleva el id interno.
+// Busca en la oferta de RevenueCat el paquete de cada plan. StoreKit a veces devuelve
+// la oferta incompleta (o vacía) en los primeros milisegundos tras arrancar, así que
+// reintentamos hasta tener TODOS los planes pedidos o agotar los intentos. Acepta ids
+// sueltos o {id, aliases, price} para casos donde el producto no lleva el id interno.
 export async function getIapPlans(plans: Array<string | PlanMatch>, tries = 6, delayMs = 700): Promise<IapPlan[]> {
   if (!iosOnly()) return [];
   const list: PlanMatch[] = plans.map((p) => (typeof p === 'string' ? { id: p } : p));
@@ -66,7 +92,7 @@ export async function getIapPlans(plans: Array<string | PlanMatch>, tries = 6, d
   for (let attempt = 0; attempt < tries; attempt++) {
     try {
       const off: any = await Purchases.getOfferings();
-      const pkgs: any[] = off?.current?.availablePackages || off?.all?.default?.availablePackages || [];
+      const pkgs: any[] = allPackages(off);
       const out: IapPlan[] = [];
       const used = new Set<string>();
       for (const m of list) {
