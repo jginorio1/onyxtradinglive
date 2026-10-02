@@ -307,6 +307,7 @@ function TplEditor({ tpl, es, L, sigs, onBack, onSaved }: { tpl: Tpl; es: boolea
                 style={{ width: '100%', minHeight: 230, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
               <PreviewFrame L={L} inner={fillSample(cur.html.replace(/\{\{?\s*firma\s*\}?\}/gi, sig ? (sigs.find((s) => s.id === sig)?.html || '') : ''))} />
             </div>
+            <CtaEditor html={cur.html} onChange={(h) => setCur({ html: h })} L={L} />
             {(() => { const warns = lintEmail(cur.html, cur.subject, cur.body); return warns.length ? (
               <div style={{ marginTop: 8, background: 'color-mix(in srgb,#f5a623 12%,transparent)', border: '1px solid color-mix(in srgb,#f5a623 35%,transparent)', borderRadius: 8, padding: '8px 11px' }}>
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--tx)', marginBottom: 3 }}>⚠ {L('Revisa antes de enviar', 'Check before sending')}</div>
@@ -392,6 +393,38 @@ function htmlToText(html: string): string {
   s = s.replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"').replace(/&#39;/gi, "'");
   s = s.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ');
   return s.trim();
+}
+
+// Lee el enlace (href) del PRIMER botón del HTML (ancla con display:inline-block).
+function firstButtonHref(html: string): string {
+  const s = String(html || '');
+  const tag = s.match(/<a\b[^>]*style=["'][^"']*display:inline-block[^"']*["'][^>]*>/i);
+  const src = tag ? tag[0] : '';
+  const h = src.match(/href=["']([^"']*)["']/i);
+  if (h) return h[1];
+  // Respaldo: cualquier ancla con fondo morado de marca (botón "clásico").
+  const m2 = s.match(/<a\b[^>]*(?:background:#7a5cff|#7a5cff)[^>]*href=["']([^"']*)["']/i) || s.match(/<a\b[^>]*href=["']([^"']*)["'][^>]*(?:background:#7a5cff)/i);
+  return m2 ? m2[1] : '';
+}
+// Reemplaza el href de TODOS los botones del HTML por una URL nueva.
+function setButtonHref(html: string, url: string): string {
+  return String(html || '').replace(/<a\b[^>]*style=["'][^"']*display:inline-block[^"']*["'][^>]*>/gi, (tag) =>
+    /href=["'][^"']*["']/i.test(tag) ? tag.replace(/href=["'][^"']*["']/i, `href="${url}"`) : tag.replace(/<a\b/i, `<a href="${url}"`));
+}
+// Editor del enlace del botón: ver / editar / aplicar. Al guardar la plantilla o
+// enviar, el cambio ya va dentro del HTML.
+function CtaEditor({ html, onChange, L }: { html: string; onChange: (h: string) => void; L: (a: string, b: string) => string }) {
+  const href = firstButtonHref(html);
+  const [v, setV] = useState(href);
+  useEffect(() => { setV(href); }, [href]);
+  if (!href && !/display:inline-block/i.test(html || '')) return null;
+  return (
+    <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap', background: 'var(--bg2)', borderRadius: 8, padding: '7px 10px' }}>
+      <span className="muted" style={{ fontSize: 11.5 }}>🔗 {L('Enlace del botón', 'Button link')}:</span>
+      <input value={v} onChange={(e) => setV(e.target.value)} placeholder="https://www.onyxtradinglive.com/…" style={{ margin: 0, flex: 1, minWidth: 200, fontSize: 12.5 }} />
+      <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={v.trim() === href} onClick={() => onChange(setButtonHref(html, v.trim()))}>{L('Aplicar', 'Apply')}</button>
+    </div>
+  );
 }
 
 // Preheader: línea oculta que los clientes (Gmail/Outlook) muestran junto al asunto
@@ -699,6 +732,7 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
                 style={{ width: '100%', minHeight: 230, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
               <PreviewFrame L={L} inner={fillSample((fh as any)[curHtml]) + (sigId ? (sigs.find((s) => s.id === sigId)?.html ? '<br><br>' + sigs.find((s) => s.id === sigId)!.html : '') : '')} />
             </div>
+            <CtaEditor html={(fh as any)[curHtml]} onChange={(h) => setFh({ ...fh, [curHtml]: h })} L={L} />
             {(() => { const warns = lintEmail((fh as any)[curHtml], (f as any)[curSub], (f as any)[curBody]); return warns.length ? (
               <div style={{ marginTop: 8, background: 'color-mix(in srgb,#f5a623 12%,transparent)', border: '1px solid color-mix(in srgb,#f5a623 35%,transparent)', borderRadius: 8, padding: '8px 11px' }}>
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--tx)', marginBottom: 3 }}>⚠ {L('Revisa antes de enviar', 'Check before sending')}</div>

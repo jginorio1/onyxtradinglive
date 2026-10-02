@@ -188,20 +188,24 @@ export async function ensureDefaultCampaigns() {
   if (toAdd.length) await supabaseAdmin.from('campaigns').insert(toAdd as any);
 }
 
-// Sustituye variables de plantilla: {{nombre}} {{plan}} {{sitio}}.
+// Sustituye variables de plantilla. Acepta llaves DOBLES {{var}} y SIMPLES {var}
+// (así nunca queda un placeholder literal como "{{enlace}}" en un botón).
+// Variables: nombre/name, plan, sitio/site, enlace/link (enlace → la web por defecto).
 export function renderTemplate(text: string, r: Recipient): string {
   const name = (r.name || '').trim();
   let t = String(text || '');
   // Si NO hay nombre, quita el saludo con nombre para que no quede ", conecta..."
   // ni "Hola  ,". Ej: "{{nombre}}, conecta" -> "conecta"; "Hola {{nombre}}," -> "Hola,".
   if (!name) {
-    t = t.replace(/\{\{\s*(nombre|name)\s*\}\}\s*,\s*/gi, '')
-         .replace(/\b(hola|hi)\s+\{\{\s*(nombre|name)\s*\}\}/gi, '$1');
+    t = t.replace(/\{\{?\s*(nombre|name)\s*\}?\}\s*,\s*/gi, '')
+         .replace(/\b(hola|hi)\s+\{\{?\s*(nombre|name)\s*\}?\}/gi, '$1');
   }
+  // \{\{?  … \}?\}  cubre {var} y {{var}} en una sola pasada.
   t = t
-    .replace(/\{\{\s*(nombre|name)\s*\}\}/gi, name || (r.lang === 'en' ? 'there' : ''))
-    .replace(/\{\{\s*plan\s*\}\}/gi, r.plan || 'free')
-    .replace(/\{\{\s*(sitio|site)\s*\}\}/gi, SITE);
+    .replace(/\{\{?\s*(nombre|name)\s*\}?\}/gi, name || (r.lang === 'en' ? 'there' : ''))
+    .replace(/\{\{?\s*plan\s*\}?\}/gi, r.plan || 'free')
+    .replace(/\{\{?\s*(sitio|site)\s*\}?\}/gi, SITE)
+    .replace(/\{\{?\s*(enlace|link|url)\s*\}?\}/gi, SITE);  // sin destino propio → la web
   // Capitaliza la primera letra por si quedó en minúscula tras quitar el nombre.
   return t.replace(/^(\s*)([a-záéíóúñ])/, (_m, s, c) => s + c.toUpperCase());
 }
