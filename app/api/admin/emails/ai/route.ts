@@ -20,6 +20,7 @@ export async function POST(req: Request) {
       instruction,
       tone: b.tone,
       vars: Array.isArray(b.vars) ? b.vars.map(String).slice(0, 12) : [],
+      format: b.format === 'html' ? 'html' : 'text',
       currentEs: b.currentEs, currentEn: b.currentEn,
     });
     if (!r.ok) {

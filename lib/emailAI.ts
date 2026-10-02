@@ -9,7 +9,7 @@ import { brandBrief } from '@/lib/supportAI';
 // Nada se envía aquí: el resultado es texto editable.
 // ============================================================
 
-export type EmailDraft = { subject_es: string; body_es: string; subject_en: string; body_en: string };
+export type EmailDraft = { subject_es: string; body_es: string; subject_en: string; body_en: string; html_es?: string; html_en?: string };
 
 function stripFences(s: string) { return s.replace(/```json/gi, '').replace(/```/g, '').trim(); }
 
@@ -45,6 +45,7 @@ export async function draftEmail(opts: {
   instruction: string;
   tone?: string;
   vars?: string[];
+  format?: 'text' | 'html';
   currentEs?: { subject?: string; body?: string };
   currentEn?: { subject?: string; body?: string };
 }): Promise<{ ok: boolean; draft?: EmailDraft; reason?: string }> {
@@ -59,20 +60,39 @@ export async function draftEmail(opts: {
     ? `\n\nTEXTO ACTUAL a mejorar —\nES asunto: "${opts.currentEs?.subject || ''}"\nES cuerpo: "${(opts.currentEs?.body || '').slice(0, 1500)}"\nEN asunto: "${opts.currentEn?.subject || ''}"\nEN cuerpo: "${(opts.currentEn?.body || '').slice(0, 1500)}"`
     : '';
 
+  const html = opts.format === 'html';
+
+  // Reglas estrictas de HTML "a prueba de clientes": inline-only, tabla, colores
+  // explícitos para que se vea bien en claro Y oscuro de Gmail, Hotmail/Outlook, etc.
+  const htmlRule = html ? `
+
+ADEMÁS del texto plano, genera el CUERPO en HTML (claves html_es y html_en). REGLAS OBLIGATORIAS de compatibilidad (correos reales en Gmail, Outlook/Hotmail, Apple Mail, claro y oscuro):
+- Devuelve SOLO el contenido interno del cuerpo (párrafos, listas, botón). NO incluyas <!doctype>, <html>, <head>, <body> ni etiquetas <style>: el sistema ya envuelve tu HTML en la plantilla de marca Onyx (tarjeta blanca con cabecera y pie).
+- SOLO estilos en línea con style="...". NADA de clases CSS ni bloques <style> (Gmail y Outlook los eliminan).
+- Cada párrafo: <p style="margin:0 0 14px;color:#1a1d24;font-size:15px;line-height:1.6;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">…</p>. SIEMPRE define color explícito (texto principal #1a1d24, secundario #596070) y tamaño, para que el modo oscuro de Gmail/Outlook no lo vuelva ilegible.
+- Resaltados en negrita con <strong style="color:#1a1d24;">…</strong>.
+- Botón/CTA (patrón a prueba de balas, usa la variable {enlace} si existe): <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr><td bgcolor="#7a5cff" style="border-radius:9px;"><a href="{enlace}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Texto del botón</a></td></tr></table>
+- Si hay {firma}, colócala al final en su propia línea.
+- NO uses imágenes de fondo, position, flexbox, grid, ni colores que dependan del tema del cliente. Mismo contenido y mismas variables que el cuerpo de texto.` : '';
+
+  const keys = html
+    ? '{"subject_es":"...","body_es":"...","subject_en":"...","body_en":"...","html_es":"...","html_en":"..."}'
+    : '{"subject_es":"...","body_es":"...","subject_en":"...","body_en":"..."}';
+
   const system = `Eres el redactor de correos de Onyx Trading Live. Escribes correos transaccionales claros, cálidos y honestos, con la voz de la marca. NUNCA inventes funciones ni prometas rentabilidad ni des consejo financiero. Usa el CONOCIMIENTO DE ONYX de abajo como única fuente de verdad del producto. ${TONE[opts.tone || 'friendly'] || TONE.friendly}
 PLATAFORMAS: si mencionas las plataformas compatibles, Onyx es MULTIPLATAFORMA y soporta MetaTrader (MT4 y MT5), cTrader, MatchTrader, TradeLocker y DXtrade. NUNCA listes solo MT4/MT5/cTrader dejando fuera MatchTrader, TradeLocker o DXtrade; o las nombras todas o dices "tu plataforma" en general.
 ${varsRule}
-Sé breve (máx ~120 palabras por idioma). Como mucho 1-2 emojis, con criterio.
+Sé breve (máx ~120 palabras por idioma). Como mucho 1-2 emojis, con criterio.${htmlRule}
 
 Devuelve SOLO un objeto JSON válido, sin texto extra, con EXACTAMENTE estas claves:
-{"subject_es":"...","body_es":"...","subject_en":"...","body_en":"..."}
+${keys}
 
 === CONOCIMIENTO DE ONYX ===
 ${await brandBrief('es')}`;
 
-  const user = `${opts.mode === 'rewrite' ? 'Reescribe/mejora este correo' : 'Escribe un correo nuevo'} según esta instrucción del dueño: "${opts.instruction}".${cur}\nDevuelve asunto y cuerpo en español y en inglés (traducción natural, no literal).`;
+  const user = `${opts.mode === 'rewrite' ? 'Reescribe/mejora este correo' : 'Escribe un correo nuevo'} según esta instrucción del dueño: "${opts.instruction}".${cur}\nDevuelve asunto y cuerpo en español y en inglés (traducción natural, no literal).${html ? ' Incluye también el cuerpo en HTML (html_es, html_en) siguiendo las reglas de compatibilidad.' : ''}`;
 
-  const parsed = await callAI(system, user, 1400);
+  const parsed = await callAI(system, user, html ? 3000 : 1400);
   if (!parsed) return { ok: false, reason: 'parse' };
   const draft: EmailDraft = {
     subject_es: String(parsed.subject_es || '').slice(0, 200),
@@ -80,6 +100,10 @@ ${await brandBrief('es')}`;
     subject_en: String(parsed.subject_en || '').slice(0, 200),
     body_en: String(parsed.body_en || '').slice(0, 4000),
   };
-  if (!draft.body_es && !draft.body_en) return { ok: false, reason: 'empty' };
+  if (html) {
+    draft.html_es = String(parsed.html_es || '').slice(0, 20000);
+    draft.html_en = String(parsed.html_en || '').slice(0, 20000);
+  }
+  if (!draft.body_es && !draft.body_en && !draft.html_es && !draft.html_en) return { ok: false, reason: 'empty' };
   return { ok: true, draft };
 }

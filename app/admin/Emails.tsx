@@ -220,12 +220,13 @@ function TplEditor({ tpl, es, L, sigs, onBack, onSaved }: { tpl: Tpl; es: boolea
     if (!aiInstr.trim()) { toast(L('Escribe qué quieres que haga la IA.', 'Tell the AI what to do.')); return; }
     setBusy('ai');
     try {
-      const r = await fetch('/api/admin/emails/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode, instruction: aiInstr, vars: tpl.vars, currentEs: eEs, currentEn: eEn }) });
+      const r = await fetch('/api/admin/emails/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode, instruction: aiInstr, vars: tpl.vars, format: htmlMode ? 'html' : 'text', currentEs: eEs, currentEn: eEn }) });
       const j = await r.json(); if (!r.ok) { toastErr(j); return; }
       const d = j.draft || {};
-      if (d.subject_es || d.body_es) setEs({ ...eEs, subject: d.subject_es || eEs.subject, body: d.body_es || eEs.body });
-      if (d.subject_en || d.body_en) setEn({ ...eEn, subject: d.subject_en || eEn.subject, body: d.body_en || eEn.body });
-      toast(L('Texto generado por la IA (revísalo y guarda).', 'AI draft ready (review & save).'), 'ok');
+      // Texto siempre (es el fallback si el HTML queda vacío).
+      if (d.subject_es || d.body_es) setEs((p) => ({ ...p, subject: d.subject_es || p.subject, body: d.body_es || p.body, ...(htmlMode && d.html_es ? { html: d.html_es } : {}) }));
+      if (d.subject_en || d.body_en) setEn((p) => ({ ...p, subject: d.subject_en || p.subject, body: d.body_en || p.body, ...(htmlMode && d.html_en ? { html: d.html_en } : {}) }));
+      toast(htmlMode ? L('HTML generado por la IA (revísalo y guarda).', 'AI HTML ready (review & save).') : L('Texto generado por la IA (revísalo y guarda).', 'AI draft ready (review & save).'), 'ok');
     } finally { setBusy(''); }
   }
   async function uploadImage(file: File) {
@@ -315,7 +316,7 @@ function TplEditor({ tpl, es, L, sigs, onBack, onSaved }: { tpl: Tpl; es: boolea
                 <button className="btn btn-primary" style={{ fontSize: 12.5 }} disabled={busy === 'ai'} onClick={() => ai('rewrite')}>{busy === 'ai' ? '…' : <>✨ {L('Mejorar este texto', 'Improve this text')}</>}</button>
                 <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={busy === 'ai'} onClick={() => ai('draft')}>{L('Escribir desde cero', 'Write from scratch')}</button>
               </div>
-              <p className="muted" style={{ fontSize: 11, marginTop: 7 }}>{L('La IA redacta el TEXTO (ES/EN). El HTML lo diseñas tú con el editor de arriba.', 'The AI writes the TEXT (ES/EN). You design the HTML with the editor above.')}</p>
+              <p className="muted" style={{ fontSize: 11, marginTop: 7 }}>{htmlMode ? L('Estás en modo HTML: la IA genera HTML profesional (compatible con Gmail, Outlook/Hotmail, claro y oscuro) en ES/EN.', 'HTML mode: the AI generates professional HTML (works in Gmail, Outlook/Hotmail, light & dark) in ES/EN.') : L('Estás en modo Texto: la IA redacta el texto (ES/EN). Cambia a HTML arriba para que genere el diseño HTML.', 'Text mode: the AI writes the text (ES/EN). Switch to HTML above to have it generate the HTML design.')}</p>
             </div>
           )}
         </div>
@@ -419,11 +420,12 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
     if (!aiInstr.trim()) { toast(L('Escribe el tema o la instrucción.', 'Write the topic or instruction.')); return; }
     setBusy('ai');
     try {
-      const r = await fetch('/api/admin/emails/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'draft', instruction: aiInstr, vars: ['nombre', 'enlace'] }) });
+      const r = await fetch('/api/admin/emails/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'draft', instruction: aiInstr, vars: ['nombre', 'enlace'], format: htmlMode ? 'html' : 'text' }) });
       const j = await r.json(); if (!r.ok) { toastErr(j); return; }
       const d = j.draft || {};
       setF({ subject_es: d.subject_es || '', body_es: d.body_es || '', subject_en: d.subject_en || '', body_en: d.body_en || '' });
-      toast(L('Borrador listo (revísalo).', 'Draft ready (review it).'), 'ok');
+      if (htmlMode) setFh({ html_es: d.html_es || '', html_en: d.html_en || '' });
+      toast(htmlMode ? L('HTML generado por la IA (revísalo).', 'AI HTML ready (review it).') : L('Borrador listo (revísalo).', 'Draft ready (review it).'), 'ok');
     } finally { setBusy(''); }
   }
 
