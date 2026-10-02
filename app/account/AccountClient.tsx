@@ -1053,6 +1053,7 @@ function Security({ L, lang, only }: { L: any; lang: Lang; only?: 'password' | '
   const showSignin = !only || only === 'signin';
   const showDel = !only || only === 'delete';
   const [pw0, setPw0] = useState(''); const [pw1, setPw1] = useState(''); const [pw2, setPw2] = useState('');
+  const [pwVis, setPwVis] = useState(false);   // ojito: ver/ocultar las 3 contraseñas
   const [conf, setConf] = useState(''); const [busy, setBusy] = useState(''); const [ok, setOk] = useState(''); const [delModal, setDelModal] = useState(false);
 
   async function changePw() {
@@ -1077,6 +1078,22 @@ function Security({ L, lang, only }: { L: any; lang: Lang; only?: 'password' | '
     window.location.href = '/login';
   }
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;
+  // Campo de contraseña con ojito para ver/ocultar lo escrito. El ojito es único
+  // (pwVis) y revela las tres contraseñas a la vez, así el usuario verifica que
+  // está escribiendo bien.
+  const pwField = (val: string, set: (v: string) => void, ac?: string) => (
+    <div style={{ position: 'relative' }}>
+      <input type={pwVis ? 'text' : 'password'} autoComplete={ac} value={val} onChange={(e) => set(e.target.value)} style={{ margin: '4px 0 0', paddingRight: 44, width: '100%' }} />
+      <button type="button" onClick={() => setPwVis((s) => !s)} aria-label={pwVis ? (lang === 'en' ? 'Hide password' : 'Ocultar contraseña') : (lang === 'en' ? 'Show password' : 'Mostrar contraseña')}
+        style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 6, cursor: 'pointer', color: 'var(--mut)', display: 'inline-flex', alignItems: 'center', lineHeight: 0 }}>
+        {pwVis ? (
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><path d="M6.61 6.61A18.5 18.5 0 0 0 2 12s3 8 10 8a9.12 9.12 0 0 0 5.39-1.61" /><line x1="2" y1="2" x2="22" y2="22" /></svg>
+        ) : (
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8Z" /><circle cx="12" cy="12" r="3" /></svg>
+        )}
+      </button>
+    </div>
+  );
 
   return (
     <>
@@ -1084,11 +1101,11 @@ function Security({ L, lang, only }: { L: any; lang: Lang; only?: 'password' | '
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginBottom: 4 }}>{L.pwT}</h3>
         <span style={lbl}>{(L as any).pwCur}</span>
-        <input type="password" autoComplete="current-password" value={pw0} onChange={(e) => setPw0(e.target.value)} style={{ margin: '4px 0 0' }} />
+        {pwField(pw0, setPw0, 'current-password')}
         <span style={lbl}>{L.pwNew}</span>
-        <input type="password" autoComplete="new-password" value={pw1} onChange={(e) => setPw1(e.target.value)} style={{ margin: '4px 0 0' }} />
+        {pwField(pw1, setPw1, 'new-password')}
         <span style={lbl}>{L.pwRep}</span>
-        <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} style={{ margin: '4px 0 0' }} />
+        {pwField(pw2, setPw2, 'new-password')}
         <div className="row" style={{ gap: 10, marginTop: 14 }}>
           <button className="btn btn-primary" onClick={changePw} disabled={busy === 'pw'}>{busy === 'pw' ? '...' : L.pwBtn}</button>
           {ok && <span style={{ color: 'var(--green)', fontSize: 13 }}>{ok}</span>}

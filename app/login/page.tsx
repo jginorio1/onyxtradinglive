@@ -386,9 +386,9 @@ function LoginInner() {
         <LangToggle compact />
       </div>
       <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit', marginBottom: 18 }}>
-        <span style={{ width: 52, height: 52, borderRadius: 15, background: 'linear-gradient(140deg,#7a5cff,#5b63d3)', display: 'grid', placeItems: 'center', boxShadow: '0 8px 22px rgba(124,92,255,.4)' }}>
-          <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 28, height: 28, objectFit: 'contain' }} />
-        </span>
+        {/* El ícono de Onyx ya es completo (fondo + esquinas redondeadas): se
+            muestra tal cual, sin pastilla extra que lo hacía ver "tipo Instagram". */}
+        <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 64, height: 64, borderRadius: 18, boxShadow: '0 10px 28px rgba(124,92,255,.35)' }} />
         <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: '.01em' }}>Onyx Trading Live</span>
       </Link>
       <div className="card" style={{ width: '100%', maxWidth: 440 }}>
