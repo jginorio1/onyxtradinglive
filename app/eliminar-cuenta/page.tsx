@@ -10,7 +10,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 export default function EliminarCuenta() {
   const { lang } = useLang();
   const L = mkL(lang);
-  const soporte = 'soporte@onyxtradinglive.com';
+  const soporte = 'support@onyxtradinglive.com';
 
   return (
     <div className="wrap" style={{ padding: '48px 22px 70px', maxWidth: 760, margin: '0 auto' }}>

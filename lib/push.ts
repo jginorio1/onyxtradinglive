@@ -11,7 +11,7 @@ import { sendFcmToUser } from '@/lib/fcm';
 // ============================================================
 const PUB = process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 const PRIV = process.env.VAPID_PRIVATE_KEY || '';
-const SUBJECT = process.env.VAPID_SUBJECT || 'mailto:soporte@onyxtradinglive.com';
+const SUBJECT = process.env.VAPID_SUBJECT || 'mailto:support@onyxtradinglive.com';
 
 export function pushEnabled() { return !!(PUB && PRIV); }
 export function pushPublicKey() { return PUB; }
