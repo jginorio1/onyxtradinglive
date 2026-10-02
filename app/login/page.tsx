@@ -385,11 +385,17 @@ function LoginInner() {
       <div style={{ width: '100%', maxWidth: 440, display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
         <LangToggle compact />
       </div>
-      <Link className="logo" href="/" style={{ justifyContent: 'center', marginBottom: 24 }}>
-        <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 30, height: 30, objectFit: 'contain' }} /> Onyx Trading Live
+      <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit', marginBottom: 18 }}>
+        <span style={{ width: 52, height: 52, borderRadius: 15, background: 'linear-gradient(140deg,#7a5cff,#5b63d3)', display: 'grid', placeItems: 'center', boxShadow: '0 8px 22px rgba(124,92,255,.4)' }}>
+          <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+        </span>
+        <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: '.01em' }}>Onyx Trading Live</span>
       </Link>
-      <div className="card">
-        <h2 style={{ marginBottom: 16 }}>{signup ? t.signupT : t.loginT}</h2>
+      <div className="card" style={{ width: '100%', maxWidth: 440 }}>
+        <div style={{ textAlign: 'center', marginBottom: 18 }}>
+          <h2 style={{ margin: 0 }}>{signup ? t.signupT : t.loginT}</h2>
+          <p className="muted" style={{ fontSize: 13, marginTop: 5 }}>{signup ? (lang === 'en' ? 'Join Onyx in a minute' : 'Crea tu cuenta en un minuto') : (lang === 'en' ? 'Access your trading panel' : 'Entra a tu panel de trading')}</p>
+        </div>
         <form onSubmit={submit}>
           {/* Honeypot: invisible para humanos, los bots lo rellenan. */}
           <input type="text" name="company" tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)}
@@ -407,7 +413,10 @@ function LoginInner() {
           <label>{t.email}</label>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" inputMode="email" />
           <div style={{ height: 12 }} />
-          <label>{t.pass}</label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <label>{t.pass}</label>
+            {!signup && <a style={{ color: 'var(--brand)', cursor: 'pointer', fontSize: 12.5 }} onClick={() => { setForgot(true); setMsg(''); }}>{t.forgot}</a>}
+          </div>
           <div style={{ position: 'relative' }}>
             <input type={showPass ? 'text' : 'password'} value={pass} onChange={(e) => setPass(e.target.value)} required minLength={8} style={{ paddingRight: 44, width: '100%' }} autoComplete={signup ? 'new-password' : 'current-password'} />
             <button type="button" onClick={() => setShowPass((s) => !s)} aria-label={showPass ? (lang === 'en' ? 'Hide password' : 'Ocultar contraseña') : (lang === 'en' ? 'Show password' : 'Mostrar contraseña')}
@@ -419,12 +428,6 @@ function LoginInner() {
               )}
             </button>
           </div>
-
-          {!signup && (
-            <div style={{ textAlign: 'right', marginTop: 8 }}>
-              <a style={{ color: 'var(--brand)', cursor: 'pointer', fontSize: 13 }} onClick={() => { setForgot(true); setMsg(''); }}>{t.forgot}</a>
-            </div>
-          )}
 
           {signup && pass.length > 0 && (
             <div style={{ marginTop: 8 }}>

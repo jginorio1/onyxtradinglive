@@ -33,6 +33,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const pathname = usePathname() || '';
   const inAdmin = pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/en/admin' || pathname.startsWith('/en/admin/');
   const inAcademy = pathname.startsWith('/dashboard/academy') || pathname.startsWith('/en/dashboard/academy') || pathname.startsWith('/academia/') || pathname.startsWith('/en/academia/');
+  // En las pantallas de acceso (entrar/crear cuenta, recuperar y restablecer) la
+  // burbuja no tiene sentido y tapaba contenido del formulario: la ocultamos.
+  const inAuth = /^(\/en)?\/(login|reset-password|confirmado)(\/|$)/.test(pathname);
 
   const [open, setOpen] = useState(false);
   const [human, setHuman] = useState(false);
@@ -237,7 +240,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     ? { alignSelf: 'flex-end', background: 'var(--grad)', color: '#fff', borderRadius: '12px 12px 2px 12px' }
     : { alignSelf: 'flex-start', background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: '12px 12px 12px 2px' };
 
-  if (inAdmin || inAcademy) return null;
+  if (inAdmin || inAcademy || inAuth) return null;
   if (!cfg || cfg.enabled === false) return null;
   // Ocultar en el dispositivo elegido desde Admin.
   if ((device === 'mobile' && cfg.hideMobile) || (device === 'tablet' && cfg.hideTablet) || (device === 'desktop' && cfg.hideDesktop)) return null;

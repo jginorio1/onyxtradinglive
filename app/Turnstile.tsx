@@ -59,6 +59,8 @@ const Turnstile = forwardRef<TurnstileHandle, { onToken: (t: string) => void }>(
       if (!tw || !box.current || widget.current != null) return;   // no re-renderizar (evita tokens duplicados)
       widget.current = tw.render(box.current, {
         sitekey: TURNSTILE_KEY,
+        theme: 'dark',          // combina con el fondo oscuro del login
+        size: 'flexible',       // se adapta al ancho de la tarjeta, más discreto
         callback: (tok: string) => deliver(tok),
         'error-callback': () => deliver(''),
         // Al caducar, pedimos otro automáticamente para no dejar un token vencido.
@@ -81,7 +83,7 @@ const Turnstile = forwardRef<TurnstileHandle, { onToken: (t: string) => void }>(
   }, []);
 
   if (!TURNSTILE_KEY) return null;
-  return <div ref={box} className="cf-wrap" style={{ marginTop: 12 }} />;
+  return <div ref={box} className="cf-wrap" style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }} />;
 });
 
 export default Turnstile;
