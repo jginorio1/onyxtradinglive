@@ -60,6 +60,7 @@ export async function draftEmail(opts: {
     : '';
 
   const system = `Eres el redactor de correos de Onyx Trading Live. Escribes correos transaccionales claros, cálidos y honestos, con la voz de la marca. NUNCA inventes funciones ni prometas rentabilidad ni des consejo financiero. Usa el CONOCIMIENTO DE ONYX de abajo como única fuente de verdad del producto. ${TONE[opts.tone || 'friendly'] || TONE.friendly}
+PLATAFORMAS: si mencionas las plataformas compatibles, Onyx es MULTIPLATAFORMA y soporta MetaTrader (MT4 y MT5), cTrader, MatchTrader, TradeLocker y DXtrade. NUNCA listes solo MT4/MT5/cTrader dejando fuera MatchTrader, TradeLocker o DXtrade; o las nombras todas o dices "tu plataforma" en general.
 ${varsRule}
 Sé breve (máx ~120 palabras por idioma). Como mucho 1-2 emojis, con criterio.
 

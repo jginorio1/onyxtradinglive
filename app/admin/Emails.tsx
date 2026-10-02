@@ -155,6 +155,25 @@ function Plantillas({ es, L }: { es: boolean; L: (a: string, b: string) => strin
           </button>
         ))}
       </div>
+
+      {/* Leyenda: qué correos se controlan en otra parte y por qué. */}
+      <div style={{ marginTop: 20, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 7 }}>
+          <OnyxIcon emoji="ℹ️" size={13} glow={false} /> {L('¿Dónde está cada correo?', 'Where is each email?')}
+        </div>
+        <p className="muted" style={{ fontSize: 12.5, lineHeight: 1.6, margin: '0 0 8px' }}>
+          {L('Las tarjetas de arriba son los correos automáticos del sistema (bienvenida, pagos, becas, seguridad…). Cada uno se edita aquí en ES/EN, con IA, y sale en el idioma del perfil de quien lo recibe.',
+             'The cards above are the system\'s automatic emails (welcome, billing, scholarships, security…). Each is edited here in ES/EN, with AI, and goes out in the recipient\'s profile language.')}
+        </p>
+        <p className="muted" style={{ fontSize: 12.5, lineHeight: 1.6, margin: 0 }}>
+          {L('Algunos correos NO aparecen como plantilla porque no tienen un texto fijo: se escriben en el momento. Son las ', 'A few emails don\'t appear as a template because they have no fixed text: they\'re written on the fly. These are ')}
+          <b>{L('invitaciones a embajadores', 'ambassador invites')}</b>{L(' y las ', ' and the ')}
+          <b>{L('respuestas de soporte y a leads', 'support & lead replies')}</b>{L(' (las redacta la IA o tú al responder), y las ', ' (written by the AI or by you when replying), and ')}
+          <b>{L('propuestas de ventas y de anuncios', 'sales & ad proposals')}</b>{L(' (son PDFs con los datos de cada cliente). Las ', ' (PDFs with each client\'s data). ')}
+          <b>{L('campañas de marketing', 'Marketing campaigns')}</b>{L(' y los correos de la ', ' and the ')}
+          <b>{L('academia por mentor', 'per-mentor academy')}</b>{L(' tienen su propio editor (los dos botones de arriba), porque usan segmentos, programación y la marca de cada mentor.', ' emails have their own editor (the two buttons above), because they use segments, scheduling and each mentor\'s branding.')}
+        </p>
+      </div>
     </>
   );
 }
@@ -184,10 +203,13 @@ function TplEditor({ tpl, es, L, onBack, onSaved }: { tpl: Tpl; es: boolean; L: 
     toast(L('Texto original restaurado (aún sin guardar).', 'Original restored (not saved yet).'), 'ok');
   }
   async function test() {
+    const to = window.prompt(L('¿A qué correo envío la prueba?', 'Which email should I send the test to?'), '');
+    if (to === null) return;                 // canceló
+    const dest = (to || '').trim();
     setBusy('test');
     try {
-      const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test', lang: l, subject_es: eEs.subject, body_es: eEs.body, subject_en: eEn.subject, body_en: eEn.body }) });
-      const j = await r.json(); if (!r.ok) toastErr(j); else toast(L('Correo de prueba enviado a tu dirección.', 'Test email sent to your address.'), 'ok');
+      const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test', to: dest || undefined, lang: l, subject_es: eEs.subject, body_es: eEs.body, subject_en: eEn.subject, body_en: eEn.body }) });
+      const j = await r.json(); if (!r.ok) toastErr(j); else toast(L(`Prueba enviada a ${dest || L('tu dirección', 'your address')}.`, `Test sent to ${dest || 'your address'}.`), 'ok');
     } finally { setBusy(''); }
   }
   async function ai(mode: 'draft' | 'rewrite') {
@@ -281,8 +303,11 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
     try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'count', ...body() }) }); const j = await r.json(); setCount(j.count ?? 0); } finally { setBusy(''); }
   }
   async function test() {
+    const to = window.prompt(L('¿A qué correo envío la prueba?', 'Which email should I send the test to?'), '');
+    if (to === null) return;
+    const dest = (to || '').trim();
     setBusy('test');
-    try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test', lang: l, ...f }) }); const j = await r.json(); if (!r.ok) toastErr(j); else toast(L('Prueba enviada a tu dirección.', 'Test sent to your address.'), 'ok'); } finally { setBusy(''); }
+    try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test', to: dest || undefined, lang: l, ...f }) }); const j = await r.json(); if (!r.ok) toastErr(j); else toast(L(`Prueba enviada a ${dest || L('tu dirección', 'your address')}.`, `Test sent to ${dest || 'your address'}.`), 'ok'); } finally { setBusy(''); }
   }
   async function send() {
     if (!f.subject_es && !f.subject_en) { toast(L('Falta el asunto.', 'Subject is missing.')); return; }
