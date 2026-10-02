@@ -14,8 +14,8 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 //   3) Bandeja     — registro de todo lo que ha salido.
 // ============================================================
 
-type TplLang = { subject: string; body: string; defSubject: string; defBody: string };
-type Tpl = { id: string; cat: string; es_label: string; en_label: string; to: string; vars: string[]; edited: boolean; es: TplLang; en: TplLang };
+type TplLang = { subject: string; body: string; html: string; defSubject: string; defBody: string };
+type Tpl = { id: string; cat: string; es_label: string; en_label: string; to: string; vars: string[]; edited: boolean; sig: string; es: TplLang; en: TplLang };
 type Cat = { id: string; es: string; en: string; color: string; icon: string };
 
 export default function Emails() {
@@ -51,6 +51,7 @@ export default function Emails() {
 function Plantillas({ es, L }: { es: boolean; L: (a: string, b: string) => string }) {
   const [items, setItems] = useState<Tpl[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
+  const [sigs, setSigs] = useState<Sig[]>([]);
   const [cat, setCat] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -62,7 +63,7 @@ function Plantillas({ es, L }: { es: boolean; L: (a: string, b: string) => strin
       const r = await fetch('/api/admin/email-templates');
       const j = await r.json().catch(() => ({}));
       if (!r.ok) setErr(j?.error || (r.status === 403 ? 'Sin permiso para ver los correos.' : 'No se pudieron cargar los correos.'));
-      setItems(j.items || []); setCats(j.categories || []);
+      setItems(j.items || []); setCats(j.categories || []); setSigs(j.signatures || []);
     } catch { setErr('No se pudieron cargar los correos (sin conexión).'); } finally { setLoaded(true); }
   }
   useEffect(() => { load(); }, []);
@@ -78,7 +79,7 @@ function Plantillas({ es, L }: { es: boolean; L: (a: string, b: string) => strin
   if (!loaded) return <div className="card muted">…</div>;
 
   // Editor de una plantilla
-  if (open) return <TplEditor tpl={open} es={es} L={L} onBack={() => setOpenId(null)} onSaved={load} />;
+  if (open) return <TplEditor tpl={open} es={es} L={L} sigs={sigs} onBack={() => setOpenId(null)} onSaved={load} />;
 
   // Lista de una categoría
   if (cat) {
@@ -178,10 +179,13 @@ function Plantillas({ es, L }: { es: boolean; L: (a: string, b: string) => strin
   );
 }
 
-function TplEditor({ tpl, es, L, onBack, onSaved }: { tpl: Tpl; es: boolean; L: (a: string, b: string) => string; onBack: () => void; onSaved: () => void }) {
+function TplEditor({ tpl, es, L, sigs, onBack, onSaved }: { tpl: Tpl; es: boolean; L: (a: string, b: string) => string; sigs: Sig[]; onBack: () => void; onSaved: () => void }) {
   const [l, setL] = useState<'es' | 'en'>(es ? 'es' : 'en');
-  const [eEs, setEs] = useState({ subject: tpl.es.subject, body: tpl.es.body });
-  const [eEn, setEn] = useState({ subject: tpl.en.subject, body: tpl.en.body });
+  const [eEs, setEs] = useState({ subject: tpl.es.subject, body: tpl.es.body, html: tpl.es.html });
+  const [eEn, setEn] = useState({ subject: tpl.en.subject, body: tpl.en.body, html: tpl.en.html });
+  // Si la plantilla YA tiene HTML en algún idioma, abre en modo HTML.
+  const [htmlMode, setHtmlMode] = useState(!!(tpl.es.html || tpl.en.html));
+  const [sig, setSig] = useState(tpl.sig || '');
   const [busy, setBusy] = useState('');
   const [aiOpen, setAiOpen] = useState(false);
   const [aiInstr, setAiInstr] = useState('');
@@ -191,15 +195,15 @@ function TplEditor({ tpl, es, L, onBack, onSaved }: { tpl: Tpl; es: boolean; L: 
   async function save() {
     setBusy('save');
     try {
-      const overrides = { [tpl.id]: { es: eEs, en: eEn } };
+      const overrides = { [tpl.id]: { sig, es: eEs, en: eEn } };
       const r = await fetch('/api/admin/email-templates', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ overrides }) });
       const j = await r.json(); if (!r.ok) { toastErr(j); return; }
       toast(L('Correo guardado.', 'Email saved.'), 'ok'); onSaved();
     } finally { setBusy(''); }
   }
   function restore() {
-    if (l === 'es') setEs({ subject: tpl.es.defSubject, body: tpl.es.defBody });
-    else setEn({ subject: tpl.en.defSubject, body: tpl.en.defBody });
+    if (l === 'es') setEs({ subject: tpl.es.defSubject, body: tpl.es.defBody, html: '' });
+    else setEn({ subject: tpl.en.defSubject, body: tpl.en.defBody, html: '' });
     toast(L('Texto original restaurado (aún sin guardar).', 'Original restored (not saved yet).'), 'ok');
   }
   async function test() {
@@ -208,7 +212,7 @@ function TplEditor({ tpl, es, L, onBack, onSaved }: { tpl: Tpl; es: boolean; L: 
     const dest = (to || '').trim();
     setBusy('test');
     try {
-      const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test', to: dest || undefined, lang: l, subject_es: eEs.subject, body_es: eEs.body, subject_en: eEn.subject, body_en: eEn.body }) });
+      const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test', to: dest || undefined, lang: l, subject_es: eEs.subject, body_es: eEs.body, subject_en: eEn.subject, body_en: eEn.body, ...(htmlMode ? { html_es: eEs.html, html_en: eEn.html } : {}), signature_id: sig || undefined }) });
       const j = await r.json(); if (!r.ok) toastErr(j); else toast(L(`Prueba enviada a ${dest || L('tu dirección', 'your address')}.`, `Test sent to ${dest || 'your address'}.`), 'ok');
     } finally { setBusy(''); }
   }
@@ -219,9 +223,20 @@ function TplEditor({ tpl, es, L, onBack, onSaved }: { tpl: Tpl; es: boolean; L: 
       const r = await fetch('/api/admin/emails/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode, instruction: aiInstr, vars: tpl.vars, currentEs: eEs, currentEn: eEn }) });
       const j = await r.json(); if (!r.ok) { toastErr(j); return; }
       const d = j.draft || {};
-      if (d.subject_es || d.body_es) setEs({ subject: d.subject_es || eEs.subject, body: d.body_es || eEs.body });
-      if (d.subject_en || d.body_en) setEn({ subject: d.subject_en || eEn.subject, body: d.body_en || eEn.body });
+      if (d.subject_es || d.body_es) setEs({ ...eEs, subject: d.subject_es || eEs.subject, body: d.body_es || eEs.body });
+      if (d.subject_en || d.body_en) setEn({ ...eEn, subject: d.subject_en || eEn.subject, body: d.body_en || eEn.body });
       toast(L('Texto generado por la IA (revísalo y guarda).', 'AI draft ready (review & save).'), 'ok');
+    } finally { setBusy(''); }
+  }
+  async function uploadImage(file: File) {
+    if (file.size > 6 * 1024 * 1024) { toast(L('Imagen demasiado grande (máx 6 MB).', 'Image too large (6 MB max).')); return; }
+    setBusy('img');
+    try {
+      const data: string = await new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(String(rd.result)); rd.onerror = rej; rd.readAsDataURL(file); });
+      const r = await fetch('/api/admin/emails/assets', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'upload_image', name: file.name, data }) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); return; }
+      setCur({ html: cur.html + `\n<img src="${j.url}" alt="" style="max-width:100%;border-radius:8px;" />` });
+      toast(L('Imagen subida e insertada.', 'Image uploaded and inserted.'), 'ok');
     } finally { setBusy(''); }
   }
 
@@ -231,10 +246,17 @@ function TplEditor({ tpl, es, L, onBack, onSaved }: { tpl: Tpl; es: boolean; L: 
       <div className="card">
         <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 6 }}>
           <b style={{ fontSize: 15 }}>{es ? tpl.es_label : tpl.en_label}</b>
-          <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
-            {(['es', 'en'] as const).map((x) => (
-              <button key={x} onClick={() => setL(x)} style={{ border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: l === x ? 700 : 500, padding: '5px 12px', color: l === x ? 'var(--tx)' : 'var(--mut)', background: l === x ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'transparent' }}>{x.toUpperCase()}</button>
-            ))}
+          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+              {([['text', L('Texto', 'Text')], ['html', 'HTML']] as const).map(([k, lab]) => (
+                <button key={k} onClick={() => setHtmlMode(k === 'html')} style={{ border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: (htmlMode === (k === 'html')) ? 700 : 500, padding: '5px 11px', color: (htmlMode === (k === 'html')) ? 'var(--tx)' : 'var(--mut)', background: (htmlMode === (k === 'html')) ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'transparent' }}>{lab}</button>
+              ))}
+            </div>
+            <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+              {(['es', 'en'] as const).map((x) => (
+                <button key={x} onClick={() => setL(x)} style={{ border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: l === x ? 700 : 500, padding: '5px 12px', color: l === x ? 'var(--tx)' : 'var(--mut)', background: l === x ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'transparent' }}>{x.toUpperCase()}</button>
+              ))}
+            </div>
           </div>
         </div>
         <p className="muted" style={{ fontSize: 11.5, marginBottom: 12 }}><OnyxIcon emoji="🌐" size={11} glow={false} /> {L('Se envía automáticamente en el idioma del perfil de quien lo recibe. Edita ambos idiomas.', 'Sent automatically in the recipient\'s profile language. Edit both languages.')} · {L('Va a', 'Goes to')}: <b>{tpl.to}</b></p>
@@ -242,18 +264,47 @@ function TplEditor({ tpl, es, L, onBack, onSaved }: { tpl: Tpl; es: boolean; L: 
         <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{L('Asunto', 'Subject')}</div>
         <input value={cur.subject} onChange={(e) => setCur({ subject: e.target.value })} style={{ margin: '0 0 12px' }} />
 
-        <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{L('Cuerpo', 'Body')}</div>
-        <textarea value={cur.body} onChange={(e) => setCur({ body: e.target.value })} style={{ width: '100%', minHeight: 150, fontSize: 13.5, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
-
-        {tpl.vars.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
-            <span className="muted" style={{ fontSize: 11, alignSelf: 'center' }}>{L('Variables', 'Variables')}:</span>
-            {tpl.vars.map((v) => (
-              <button key={v} onClick={() => setCur({ body: cur.body + ' {' + v + '}' })} title={L('Insertar', 'Insert')}
-                style={{ cursor: 'pointer', fontSize: 11, fontFamily: 'monospace', padding: '3px 8px', borderRadius: 6, border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', background: 'color-mix(in srgb,var(--brand) 10%,transparent)', color: 'var(--brand)' }}>{'{' + v + '}'}</button>
-            ))}
-          </div>
+        {!htmlMode ? (
+          <>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{L('Cuerpo', 'Body')}</div>
+            <textarea value={cur.body} onChange={(e) => setCur({ body: e.target.value })} style={{ width: '100%', minHeight: 150, fontSize: 13.5, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
+            {tpl.vars.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0' }}>
+                <span className="muted" style={{ fontSize: 11, alignSelf: 'center' }}>{L('Variables', 'Variables')}:</span>
+                {tpl.vars.map((v) => <button key={v} onClick={() => setCur({ body: cur.body + ' {' + v + '}' })} style={chip}>{'{' + v + '}'}</button>)}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+              {tpl.vars.map((v) => <button key={v} onClick={() => setCur({ html: cur.html + ' {' + v + '}' })} style={chip}>{'{' + v + '}'}</button>)}
+              <button onClick={() => setCur({ html: cur.html + '\n<a href="{enlace}" style="display:inline-block;background:#7a5cff;color:#fff;text-decoration:none;padding:11px 20px;border-radius:9px;font-weight:600;">Botón</a>' })} style={chip}>+ {L('Botón', 'Button')}</button>
+              <button onClick={() => setCur({ html: cur.html + '\n{firma}' })} style={chip} title={L('Inserta la firma elegida abajo', 'Inserts the chosen signature below')}>+ {L('Firma', 'Signature')}</button>
+              <label style={{ ...chip, cursor: 'pointer' }}>+ {L('Imagen', 'Image')}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const fl = e.target.files?.[0]; if (fl) uploadImage(fl); e.currentTarget.value = ''; }} />
+              </label>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10 }}>
+              <textarea value={cur.html} onChange={(e) => setCur({ html: e.target.value })} spellCheck={false} placeholder={L('Pega aquí tu HTML profesional…', 'Paste your professional HTML here…')}
+                style={{ width: '100%', minHeight: 230, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
+              <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', minHeight: 230, background: '#eef0f4' }}>
+                <iframe title="preview" style={{ width: '100%', height: '100%', minHeight: 230, border: 'none' }}
+                  srcDoc={previewDoc(fillSample(cur.html.replace(/\{\{?\s*firma\s*\}?\}/gi, sig ? (sigs.find((s) => s.id === sig)?.html || '') : '')))} />
+              </div>
+            </div>
+            <p className="muted" style={{ fontSize: 11, marginTop: 6 }}><OnyxIcon emoji="👁" size={11} glow={false} /> {L('Vista previa con datos de ejemplo. Si dejas el HTML vacío, se envía la versión de texto.', 'Preview with sample data. If you leave HTML empty, the text version is sent.')}</p>
+          </>
         )}
+
+        <div style={{ borderTop: '1px solid var(--line)', margin: '12px 0', paddingTop: 12 }} className="row">
+          <span className="muted" style={{ fontSize: 12, alignSelf: 'center' }}><OnyxIcon emoji="✒️" size={12} glow={false} /> {L('Firma', 'Signature')}:</span>
+          <select value={sig} onChange={(e) => setSig(e.target.value)} style={{ margin: 0, maxWidth: 240 }}>
+            <option value="">{L('Sin firma', 'No signature')}</option>
+            {sigs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          {!sigs.length && <span className="muted" style={{ fontSize: 11, alignSelf: 'center' }}>{L('(crea firmas en Redactar → Gestionar firmas)', '(create signatures in Compose → Manage signatures)')}</span>}
+        </div>
 
         <div style={{ borderTop: '1px solid var(--line)', margin: '12px 0', paddingTop: 12 }}>
           <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setAiOpen((v) => !v)}><OnyxIcon emoji="✨" size={13} glow={false} /> {L('Redactar/mejorar con IA', 'Draft/improve with AI')} {aiOpen ? '▴' : '▾'}</button>
@@ -264,7 +315,7 @@ function TplEditor({ tpl, es, L, onBack, onSaved }: { tpl: Tpl; es: boolean; L: 
                 <button className="btn btn-primary" style={{ fontSize: 12.5 }} disabled={busy === 'ai'} onClick={() => ai('rewrite')}>{busy === 'ai' ? '…' : <>✨ {L('Mejorar este texto', 'Improve this text')}</>}</button>
                 <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={busy === 'ai'} onClick={() => ai('draft')}>{L('Escribir desde cero', 'Write from scratch')}</button>
               </div>
-              <p className="muted" style={{ fontSize: 11, marginTop: 7 }}>{L('La IA respeta las variables y genera ES e EN a la vez.', 'The AI keeps the variables and writes ES & EN at once.')}</p>
+              <p className="muted" style={{ fontSize: 11, marginTop: 7 }}>{L('La IA redacta el TEXTO (ES/EN). El HTML lo diseñas tú con el editor de arriba.', 'The AI writes the TEXT (ES/EN). You design the HTML with the editor above.')}</p>
             </div>
           )}
         </div>

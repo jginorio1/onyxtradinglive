@@ -44,8 +44,8 @@ export async function GET(req: Request) {
       const daysLeft = Math.max(1, Math.ceil((new Date(r.comp_until).getTime() - now) / 864e5));
       if (r.email) {
         const planName = PLAN_LABEL[r.comp_plan] || r.comp_plan || 'Pro';
-        const { subject, text } = await emailTplLive('comp_reminder', r.lang, { plan: planName, dias: daysLeft, enlace: `${base}/pricing` });
-        if (subject) { try { await sendEmail(r.email, subject, text); } catch {} }
+        const { subject, text, html } = await emailTplLive('comp_reminder', r.lang, { plan: planName, dias: daysLeft, enlace: `${base}/pricing` });
+        if (subject) { try { await sendEmail(r.email, subject, text, { htmlBody: html || undefined }); } catch {} }
       }
       await supabaseAdmin.from('profiles').update({ comp_warned: true }).eq('id', r.id);
       warned++;

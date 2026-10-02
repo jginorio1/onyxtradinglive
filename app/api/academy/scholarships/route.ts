@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       const academia = mm?.academy_name || 'la academia';
       const enlace = `${APP}/academia/${mm?.slug || ''}`;
       const t = await emailTplLive(tplId, lang, { academia, enlace });
-      await sendEmail((sp as any).email, t.subject, t.text, { from: fromWithName(academia), brandName: academia });
+      await sendEmail((sp as any).email, t.subject, t.text, { from: fromWithName(academia), brandName: academia, htmlBody: t.html || undefined });
     } catch {}
   }
   try {

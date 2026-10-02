@@ -20,10 +20,10 @@ const STEP_TPL: Record<Step, { id: string; path: string }> = {
   tips: { id: 'onboard_guardian', path: '/guia/que-hace-onyx' },
 };
 
-function content(overrides: any, step: Step, lang: 'es' | 'en', name: string): { subject: string; body: string } {
+function content(overrides: any, step: Step, lang: 'es' | 'en', name: string, sigs?: any[]): { subject: string; body: string; html: string } {
   const m = STEP_TPL[step];
-  const r = emailTplWith(overrides, m.id, lang, { nombre: name, enlace: SITE + m.path });
-  return { subject: r.subject, body: r.text };
+  const r = emailTplWith(overrides, m.id, lang, { nombre: name, enlace: SITE + m.path }, sigs);
+  return { subject: r.subject, body: r.text, html: r.html };
 }
 
 export async function runOnboardingEmails(dryRun = false) {
@@ -42,6 +42,7 @@ export async function runOnboardingEmails(dryRun = false) {
 
   // Overrides del Centro de correos (editados por el dueño), una sola vez por corrida.
   const overrides = await getSetting<any>('email_tpl_overrides', {});
+  const sigs = await getSetting<any>('email_signatures', []);
 
   let sent = 0;
   const today = new Date().toISOString().slice(0, 10);
@@ -61,8 +62,8 @@ export async function runOnboardingEmails(dryRun = false) {
     if (!step) continue;
 
     if (!dryRun) {
-      const { subject, body } = content(overrides, step, lang, name);
-      const ok = await sendEmail(email, subject, body, { kind: 'onboarding', userId: (u as any).id });
+      const { subject, body, html } = content(overrides, step, lang, name, Array.isArray(sigs) ? sigs : []);
+      const ok = await sendEmail(email, subject, body, { kind: 'onboarding', userId: (u as any).id, htmlBody: html || undefined });
       if (ok) {
         done[step] = today;
         await supabaseAdmin.from('profiles').update({ onboarding_emails: done }).eq('id', (u as any).id);

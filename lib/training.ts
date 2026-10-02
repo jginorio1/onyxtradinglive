@@ -285,9 +285,10 @@ export async function submitExam(userId: string, trackId: string, answers: Recor
           const { emailTplWith } = await import('@/lib/emailTemplates');
           const { getSetting } = await import('@/lib/settings');
           const ov = await getSetting<any>('email_tpl_overrides', {});
+          const sg = await getSetting<any>('email_signatures', []);
           const nombre = String((p as any)?.name || '').trim().split(/\s+/)[0] || '';
-          const r = emailTplWith(ov, 'training_cert', eu, { nombre, titulo: title, nota: score, enlace: url });
-          await sendEmail(em, r.subject, r.text, { kind: 'training_cert', userId });
+          const r = emailTplWith(ov, 'training_cert', eu, { nombre, titulo: title, nota: score, enlace: url }, Array.isArray(sg) ? sg : []);
+          await sendEmail(em, r.subject, r.text, { kind: 'training_cert', userId, htmlBody: r.html || undefined });
         }
       } catch {}
     }

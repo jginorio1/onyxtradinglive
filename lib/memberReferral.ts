@@ -22,9 +22,10 @@ async function notifyBridge(userId: string, count: number) {
     const { emailTplWith } = await import('@/lib/emailTemplates');
     const { getSetting } = await import('@/lib/settings');
     const ov = await getSetting<any>('email_tpl_overrides', {});
-    const r = emailTplWith(ov, 'referral_bridge', lang, { nombre, count, enlace: `${APP_URL}/embajadores` });
+    const sg = await getSetting<any>('email_signatures', []);
+    const r = emailTplWith(ov, 'referral_bridge', lang, { nombre, count, enlace: `${APP_URL}/embajadores` }, Array.isArray(sg) ? sg : []);
     const subject = r.subject, body = r.text;
-    if (p.email) { try { await sendEmail(p.email, subject, body); } catch { /* mailer opcional */ } }
+    if (p.email) { try { await sendEmail(p.email, subject, body, { htmlBody: r.html || undefined }); } catch { /* mailer opcional */ } }
     if (p.telegram_chat_id && p.tg_alerts !== false) {
       try { await sendMessage(p.telegram_chat_id, `${subject}\n\n${body}`, { kind: 'referral_bridge', userId }); } catch { /* opcional */ }
     }

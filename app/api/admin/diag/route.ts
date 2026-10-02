@@ -169,7 +169,7 @@ export async function POST(req: Request) {
       if (!process.env.RESEND_API_KEY) return NextResponse.json({ ok: false, message: 'Sin RESEND_API_KEY: no se envían correos todavía.' });
       const { emailTplLive } = await import('@/lib/emailTemplates');
       const em = await emailTplLive('mail_test', 'es');
-      const ok = await sendEmail(to, em.subject, em.text);
+      const ok = await sendEmail(to, em.subject, em.text, { htmlBody: em.html || undefined });
       return NextResponse.json({ ok, message: ok ? `Correo de prueba enviado a ${to}. Revisa tu bandeja (y spam).` : 'Resend rechazó el envío. ¿Está verificado el dominio?' });
     }
 

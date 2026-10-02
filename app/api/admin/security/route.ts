@@ -81,8 +81,9 @@ export async function POST(req: Request) {
         const { emailTplLive } = await import('@/lib/emailTemplates');
         const em = await emailTplLive('security_locked', 'es');
         const detalle = `\n\n(${user.email} · ${new Date().toLocaleString()})`;
+        const htmlBody = em.html ? em.html + `<p style="color:#8a90a0;font-size:12px;">${user.email} · ${new Date().toLocaleString()}</p>` : undefined;
         for (const addr of to) {
-          await sendEmail(addr, em.subject, em.text + detalle);
+          await sendEmail(addr, em.subject, em.text + detalle, { htmlBody });
         }
       } catch {}
       return NextResponse.json({ error: 'Demasiados intentos.', forceLogout: true }, { status: 423 });

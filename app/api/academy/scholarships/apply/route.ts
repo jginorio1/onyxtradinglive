@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     const academia = (m as any)?.academy_name || 'tu academia';
     if ((mp as any)?.email) {
       const t = await emailTplLive('sch_apply_mentor', 'es', { academia, enlace: `${APP}/dashboard/academy` });
-      await sendEmail((mp as any).email, t.subject, t.text);
+      await sendEmail((mp as any).email, t.subject, t.text, { htmlBody: t.html || undefined });
     }
   } catch {}
   return NextResponse.json({ ok: true });

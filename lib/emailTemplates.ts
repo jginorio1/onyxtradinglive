@@ -141,22 +141,38 @@ export const TEMPLATE_META: { id: string; cat: string; es: string; en: string; v
 
 export function defaultTemplates(): Record<string, Entry> { return TEMPLATES; }
 
+// Resuelve el marcador {firma}/{{firma}} con la firma elegida para la plantilla.
+// En HTML inserta la firma tal cual; en texto, una versión sin etiquetas.
+function applySig(s: string, sigHtml: string, asHtml: boolean): string {
+  const rep = asHtml ? sigHtml : String(sigHtml || '').replace(/<br\s*\/?>(\s*)/gi, '\n').replace(/<[^>]+>/g, '').trim();
+  return String(s || '').replace(/\{\{?\s*firma\s*\}?\}/gi, rep);
+}
+
 // Igual que emailTpl pero aplica los overrides que el dueño guardó en Admin.
-// overrides: { [id]: { es?:{subject?,body?}, en?:{subject?,body?} } }
-export function emailTplWith(overrides: any, id: string, lang: string | undefined, vars: Record<string, string | number> = {}): { subject: string; text: string } {
+// overrides: { [id]: { sig?:string, es?:{subject?,body?,html?}, en?:{subject?,body?,html?} } }
+// Devuelve subject, text y (si el dueño lo editó) html — el HTML profesional.
+// `sigs` opcional: lista de firmas guardadas, para resolver {firma}.
+export function emailTplWith(overrides: any, id: string, lang: string | undefined, vars: Record<string, string | number> = {}, sigs?: { id: string; html: string }[]): { subject: string; text: string; html: string } {
   const e = TEMPLATES[id];
-  if (!e) return { subject: '', text: '' };
+  if (!e) return { subject: '', text: '', html: '' };
   const l = lang === 'en' ? 'en' : 'es';
   const base = (e as any)[l] as Tpl;
   const o = overrides?.[id]?.[l] || {};
-  return { subject: fill(o.subject || base.subject, vars), text: fill(o.body || base.body, vars) };
+  const sigId = overrides?.[id]?.sig || '';
+  const sigHtml = sigId && Array.isArray(sigs) ? (sigs.find((x) => x.id === sigId)?.html || '') : '';
+  const subject = fill(o.subject || base.subject, vars);
+  let text = fill(o.body || base.body, vars);
+  let html = o.html ? fill(o.html, vars) : '';
+  text = applySig(text, sigHtml, false);
+  html = html ? applySig(html, sigHtml, true) : '';
+  return { subject, text, html };
 }
 
-// Carga los overrides desde ajustes y renderiza (para usar en las rutas/cron).
-export async function emailTplLive(id: string, lang: string | undefined, vars: Record<string, string | number> = {}): Promise<{ subject: string; text: string }> {
-  let ov: any = {};
-  try { const { getSetting } = await import('@/lib/settings'); ov = await getSetting('email_tpl_overrides', {} as any); } catch {}
-  return emailTplWith(ov, id, lang, vars);
+// Carga los overrides + firmas desde ajustes y renderiza (para rutas/cron).
+export async function emailTplLive(id: string, lang: string | undefined, vars: Record<string, string | number> = {}): Promise<{ subject: string; text: string; html: string }> {
+  let ov: any = {}; let sigs: any[] = [];
+  try { const { getSetting } = await import('@/lib/settings'); ov = await getSetting('email_tpl_overrides', {} as any); sigs = await getSetting('email_signatures', [] as any); } catch {}
+  return emailTplWith(ov, id, lang, vars, Array.isArray(sigs) ? sigs : []);
 }
 
 // Idioma del perfil del usuario ('es' por defecto). Para que cada correo salga
