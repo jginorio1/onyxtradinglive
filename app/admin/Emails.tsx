@@ -189,17 +189,26 @@ function TplEditor({ tpl, es, L, sigs, onBack, onSaved }: { tpl: Tpl; es: boolea
   const [busy, setBusy] = useState('');
   const [aiOpen, setAiOpen] = useState(false);
   const [aiInstr, setAiInstr] = useState('');
+  const [histOpen, setHistOpen] = useState(false);
+  const [hist, setHist] = useState<HistEntry[]>([]);
+  useEffect(() => { setHist(histLoad(tpl.id)); }, [tpl.id]);
   const cur = l === 'es' ? eEs : eEn;
   const setCur = (patch: any) => (l === 'es' ? setEs({ ...eEs, ...patch }) : setEn({ ...eEn, ...patch }));
 
   async function save() {
     setBusy('save');
     try {
+      // Guarda una versión en el historial local ANTES de enviar (para poder volver).
+      histPush(tpl.id, { ts: Date.now(), es: eEs, en: eEn, sig }); setHist(histLoad(tpl.id));
       const overrides = { [tpl.id]: { sig, es: eEs, en: eEn } };
       const r = await fetch('/api/admin/email-templates', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ overrides }) });
       const j = await r.json(); if (!r.ok) { toastErr(j); return; }
       toast(L('Correo guardado.', 'Email saved.'), 'ok'); onSaved();
     } finally { setBusy(''); }
+  }
+  function restoreHist(h: HistEntry) {
+    setEs(h.es); setEn(h.en); setSig(h.sig || ''); setHistOpen(false);
+    toast(L('Versión restaurada (revisa y guarda).', 'Version restored (review & save).'), 'ok');
   }
   function restore() {
     if (l === 'es') setEs({ subject: tpl.es.defSubject, body: tpl.es.defBody, html: '' });
@@ -223,9 +232,10 @@ function TplEditor({ tpl, es, L, sigs, onBack, onSaved }: { tpl: Tpl; es: boolea
       const r = await fetch('/api/admin/emails/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode, instruction: aiInstr, vars: tpl.vars, format: htmlMode ? 'html' : 'text', currentEs: eEs, currentEn: eEn }) });
       const j = await r.json(); if (!r.ok) { toastErr(j); return; }
       const d = j.draft || {};
-      // Texto siempre (es el fallback si el HTML queda vacío).
-      if (d.subject_es || d.body_es) setEs((p) => ({ ...p, subject: d.subject_es || p.subject, body: d.body_es || p.body, ...(htmlMode && d.html_es ? { html: d.html_es } : {}) }));
-      if (d.subject_en || d.body_en) setEn((p) => ({ ...p, subject: d.subject_en || p.subject, body: d.body_en || p.body, ...(htmlMode && d.html_en ? { html: d.html_en } : {}) }));
+      // Texto siempre. En modo HTML, el texto se DERIVA del HTML para que ambos
+      // digan lo mismo (el HTML generado es la fuente de verdad).
+      if (d.subject_es || d.body_es || d.html_es) setEs((p) => ({ ...p, subject: d.subject_es || p.subject, body: (htmlMode && d.html_es) ? htmlToText(d.html_es) : (d.body_es || p.body), ...(htmlMode && d.html_es ? { html: d.html_es } : {}) }));
+      if (d.subject_en || d.body_en || d.html_en) setEn((p) => ({ ...p, subject: d.subject_en || p.subject, body: (htmlMode && d.html_en) ? htmlToText(d.html_en) : (d.body_en || p.body), ...(htmlMode && d.html_en ? { html: d.html_en } : {}) }));
       toast(htmlMode ? L('HTML generado por la IA (revísalo y guarda).', 'AI HTML ready (review & save).') : L('Texto generado por la IA (revísalo y guarda).', 'AI draft ready (review & save).'), 'ok');
     } finally { setBusy(''); }
   }
@@ -278,20 +288,32 @@ function TplEditor({ tpl, es, L, sigs, onBack, onSaved }: { tpl: Tpl; es: boolea
           </>
         ) : (
           <>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6, alignItems: 'center' }}>
+              <select value="" onChange={(e) => { const s = EMAIL_STARTERS.find((x) => x.id === e.target.value); if (s && (!cur.html || window.confirm(L('¿Reemplazar el HTML actual con esta plantilla?', 'Replace the current HTML with this starter?')))) setCur({ html: s.html }); e.currentTarget.value = ''; }} style={{ margin: 0, maxWidth: 170, fontSize: 12 }} title={L('Plantilla de arranque', 'Starter template')}>
+                <option value="">✦ {L('Arranque…', 'Starter…')}</option>
+                {EMAIL_STARTERS.map((s) => <option key={s.id} value={s.id}>{L(s.es, s.en)}</option>)}
+              </select>
               {tpl.vars.map((v) => <button key={v} onClick={() => setCur({ html: cur.html + ' {' + v + '}' })} style={chip}>{'{' + v + '}'}</button>)}
-              <button onClick={() => setCur({ html: cur.html + '\n<a href="{enlace}" style="display:inline-block;background:#7a5cff;color:#fff;text-decoration:none;padding:11px 20px;border-radius:9px;font-weight:600;">Botón</a>' })} style={chip}>+ {L('Botón', 'Button')}</button>
+              <button onClick={() => setCur({ html: cur.html + '\n<table role="presentation" cellpadding="0" cellspacing="0" style="margin:18px 0;"><tr><td bgcolor="#7a5cff" style="border-radius:9px;"><a href="{enlace}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;">Botón</a></td></tr></table>' })} style={chip}>+ {L('Botón', 'Button')}</button>
+              <button onClick={() => setCur({ html: preheaderSnippet() + cur.html })} style={chip} title={L('Línea de vista previa en la bandeja (oculta en el correo)', 'Inbox preview line (hidden in the email)')}>+ {L('Preheader', 'Preheader')}</button>
               <button onClick={() => setCur({ html: cur.html + '\n{firma}' })} style={chip} title={L('Inserta la firma elegida abajo', 'Inserts the chosen signature below')}>+ {L('Firma', 'Signature')}</button>
               <label style={{ ...chip, cursor: 'pointer' }}>+ {L('Imagen', 'Image')}
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const fl = e.target.files?.[0]; if (fl) uploadImage(fl); e.currentTarget.value = ''; }} />
               </label>
+              <button onClick={() => { if (cur.html && (!cur.body || window.confirm(L('¿Sobrescribir el texto con el contenido del HTML?', 'Overwrite the text with the HTML content?')))) setCur({ body: htmlToText(cur.html) }); }} style={chip} title={L('Pasa el contenido del HTML a la versión de texto', 'Copies the HTML content into the text version')}>↻ {L('Texto desde HTML', 'Text from HTML')}</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10 }}>
               <textarea value={cur.html} onChange={(e) => setCur({ html: e.target.value })} spellCheck={false} placeholder={L('Pega aquí tu HTML profesional…', 'Paste your professional HTML here…')}
                 style={{ width: '100%', minHeight: 230, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
-              <PreviewFrame srcDoc={previewDoc(fillSample(cur.html.replace(/\{\{?\s*firma\s*\}?\}/gi, sig ? (sigs.find((s) => s.id === sig)?.html || '') : '')))} />
+              <PreviewFrame L={L} inner={fillSample(cur.html.replace(/\{\{?\s*firma\s*\}?\}/gi, sig ? (sigs.find((s) => s.id === sig)?.html || '') : ''))} />
             </div>
-            <p className="muted" style={{ fontSize: 11, marginTop: 6 }}><OnyxIcon emoji="👁" size={11} glow={false} /> {L('Vista previa con datos de ejemplo. Si dejas el HTML vacío, se envía la versión de texto.', 'Preview with sample data. If you leave HTML empty, the text version is sent.')}</p>
+            {(() => { const warns = lintEmail(cur.html, cur.subject, cur.body); return warns.length ? (
+              <div style={{ marginTop: 8, background: 'color-mix(in srgb,#f5a623 12%,transparent)', border: '1px solid color-mix(in srgb,#f5a623 35%,transparent)', borderRadius: 8, padding: '8px 11px' }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--tx)', marginBottom: 3 }}>⚠ {L('Revisa antes de enviar', 'Check before sending')}</div>
+                {warns.map((wn, i) => <div key={i} style={{ fontSize: 11.5, color: 'var(--mut)', lineHeight: 1.5 }}>• {L(wn[0], wn[1])}</div>)}
+              </div>
+            ) : null; })()}
+            <p className="muted" style={{ fontSize: 11, marginTop: 6 }}><OnyxIcon emoji="👁" size={11} glow={false} /> {L('Vista previa con datos de ejemplo (prueba escritorio/móvil y claro/oscuro). Si dejas el HTML vacío, se envía la versión de texto.', 'Preview with sample data (try desktop/mobile and light/dark). If you leave HTML empty, the text version is sent.')}</p>
           </>
         )}
 
@@ -321,8 +343,19 @@ function TplEditor({ tpl, es, L, sigs, onBack, onSaved }: { tpl: Tpl; es: boolea
         <div className="row" style={{ gap: 8, flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 12 }}>
           <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={!!busy} onClick={test}><OnyxIcon emoji="📨" size={13} glow={false} /> {busy === 'test' ? '…' : L('Enviarme una prueba', 'Send me a test')}</button>
           <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={restore}><OnyxIcon emoji="↩" size={13} glow={false} /> {L('Restaurar original', 'Restore original')}</button>
+          {hist.length > 0 && <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => setHistOpen((v) => !v)}><OnyxIcon emoji="🕑" size={13} glow={false} /> {L('Historial', 'History')} ({hist.length}) {histOpen ? '▴' : '▾'}</button>}
           <button className="btn btn-primary" style={{ fontSize: 12.5, marginLeft: 'auto' }} disabled={!!busy} onClick={save}>{busy === 'save' ? '…' : L('Guardar', 'Save')}</button>
         </div>
+        {histOpen && hist.length > 0 && (
+          <div style={{ marginTop: 10, background: 'var(--bg2)', borderRadius: 10, padding: 10 }}>
+            <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{L('Versiones guardadas en este navegador (clic para restaurar):', 'Versions saved in this browser (click to restore):')}</div>
+            {hist.map((h, i) => (
+              <button key={i} onClick={() => restoreHist(h)} style={{ display: 'block', width: '100%', textAlign: 'left', border: '1px solid var(--line)', background: 'var(--card)', color: 'var(--tx)', borderRadius: 7, padding: '7px 10px', marginBottom: 5, cursor: 'pointer', fontSize: 12 }}>
+                ↩ {fmtDateTime(new Date(h.ts).toISOString())} — <span className="muted">{(h.es?.subject || h.en?.subject || '').slice(0, 50) || L('(sin asunto)', '(no subject)')}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );
@@ -340,10 +373,112 @@ function fillSample(s: string): string {
     .replace(/\{\s*(\w+)\s*\}/g, (_m, k) => (sample[k] != null ? sample[k] : _m));
 }
 
+// Convierte el HTML del correo a TEXTO limpio, para mantener la versión de texto
+// en sincronía con la de HTML (mismo contenido, sin etiquetas). Conserva las
+// variables {var}/{{var}} y respeta saltos de párrafo, listas y botones (como enlace).
+function htmlToText(html: string): string {
+  let s = String(html || '');
+  s = s.replace(/<!--[\s\S]*?-->/g, '');
+  s = s.replace(/<(script|style)[\s\S]*?<\/\1>/gi, '');
+  // Un botón/enlace "Texto {enlace}" → "Texto: url"
+  s = s.replace(/<a\b[^>]*href=["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi, (_m, href, txt) => {
+    const t = txt.replace(/<[^>]+>/g, '').trim(); const h = String(href).trim();
+    return h && h !== '#' ? (t ? `${t}: ${h}` : h) : t;
+  });
+  s = s.replace(/<li\b[^>]*>/gi, '\n• ').replace(/<\/li>/gi, '');
+  s = s.replace(/<br\s*\/?>/gi, '\n');
+  s = s.replace(/<\/(p|div|tr|table|ul|ol|h[1-6])>/gi, '\n\n');
+  s = s.replace(/<[^>]+>/g, '');                                   // resto de etiquetas
+  s = s.replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '"').replace(/&#39;/gi, "'");
+  s = s.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/[ \t]{2,}/g, ' ');
+  return s.trim();
+}
+
+// Preheader: línea oculta que los clientes (Gmail/Outlook) muestran junto al asunto
+// en la bandeja. Va al PRINCIPIO del cuerpo y no se ve dentro del correo.
+function preheaderSnippet(text = 'Escribe aquí el texto de vista previa…'): string {
+  return `<span style="display:none !important;max-height:0;overflow:hidden;opacity:0;color:transparent;height:0;width:0;">${text}</span>\n`;
+}
+
+// Plantillas de ARRANQUE: estructuras HTML profesionales listas (inline, compatibles
+// con clientes de correo, claro/oscuro) para no empezar de cero. {nombre}/{enlace}.
+const EMAIL_STARTERS: { id: string; es: string; en: string; html: string }[] = [
+  {
+    id: 'welcome', es: 'Bienvenida', en: 'Welcome',
+    html: `<p style="margin:0 0 14px;color:#1a1d24;font-size:16px;line-height:1.6;">Hola <strong style="color:#1a1d24;">{nombre}</strong>,</p>
+<p style="margin:0 0 16px;color:#1a1d24;font-size:15px;line-height:1.6;">¡Bienvenido a Onyx Trading Live! Ya tienes todo listo para empezar.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border-radius:10px;"><tr><td bgcolor="#f4f1ff" style="padding:16px 18px;border-radius:10px;border:1px solid #e7e1ff;">
+<p style="margin:0;color:#1a1d24;font-size:14px;line-height:1.6;">Conecta tu plataforma, activa Guardian y empieza a ver tus resultados en un solo lugar.</p>
+</td></tr></table>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr><td bgcolor="#7a5cff" style="border-radius:9px;"><a href="{enlace}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;">Abrir mi panel</a></td></tr></table>
+<p style="margin:0;color:#596070;font-size:13px;line-height:1.6;">¿Dudas? Responde a este correo y te ayudamos.</p>`,
+  },
+  {
+    id: 'announce', es: 'Anuncio', en: 'Announcement',
+    html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-radius:10px;"><tr><td bgcolor="#121829" style="padding:18px 20px;border-radius:10px;">
+<p style="margin:0;color:#ffffff;font-size:18px;font-weight:700;line-height:1.4;">Novedad en Onyx</p></td></tr></table>
+<p style="margin:0 0 14px;color:#1a1d24;font-size:15px;line-height:1.6;">Hola {nombre}, tenemos algo nuevo que queremos contarte.</p>
+<p style="margin:0 0 16px;color:#1a1d24;font-size:15px;line-height:1.6;">Describe aquí la novedad en 2-3 frases claras y directas.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 4px;"><tr><td bgcolor="#7a5cff" style="border-radius:9px;"><a href="{enlace}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;">Ver más</a></td></tr></table>`,
+  },
+  {
+    id: 'promo', es: 'Promoción', en: 'Promotion',
+    html: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-radius:10px;"><tr><td bgcolor="#fff6e9" style="padding:18px 20px;border-radius:10px;border:1px solid #f3e4c6;text-align:center;">
+<p style="margin:0 0 4px;color:#8a5a00;font-size:13px;font-weight:700;letter-spacing:.5px;">OFERTA POR TIEMPO LIMITADO</p>
+<p style="margin:0;color:#1a1d24;font-size:22px;font-weight:800;line-height:1.3;">Tu título de oferta aquí</p></td></tr></table>
+<p style="margin:0 0 16px;color:#1a1d24;font-size:15px;line-height:1.6;">Hola {nombre}, por tiempo limitado puedes aprovechar esta oferta. Explica el beneficio en una frase.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 10px;"><tr><td bgcolor="#7a5cff" style="border-radius:9px;"><a href="{enlace}" style="display:inline-block;padding:13px 28px;color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;border-radius:9px;">Aprovechar ahora</a></td></tr></table>
+<p style="margin:0;color:#596070;font-size:12px;line-height:1.6;text-align:center;">La oferta termina pronto.</p>`,
+  },
+  {
+    id: 'notice', es: 'Aviso', en: 'Notice',
+    html: `<p style="margin:0 0 14px;color:#1a1d24;font-size:15px;line-height:1.6;">Hola {nombre},</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-radius:10px;"><tr><td bgcolor="#eef6ff" style="padding:16px 18px;border-radius:10px;border:1px solid #d7e8fb;">
+<p style="margin:0;color:#1a1d24;font-size:15px;line-height:1.6;">Escribe aquí el aviso importante que el usuario debe conocer.</p></td></tr></table>
+<p style="margin:0 0 18px;color:#1a1d24;font-size:15px;line-height:1.6;">Si necesitas ayuda, estamos para apoyarte.</p>
+<table role="presentation" cellpadding="0" cellspacing="0"><tr><td bgcolor="#7a5cff" style="border-radius:9px;"><a href="{enlace}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;">Ir a mi cuenta</a></td></tr></table>`,
+  },
+];
+
+// Linter: revisa el HTML (y el asunto) y devuelve avisos [es,en] de cosas que rompen
+// en algunos clientes o disparan spam. No bloquea; solo advierte.
+const SPAM_WORDS = ['gratis', '100%', 'garantizado', 'sin riesgo', 'dinero fácil', 'urgente', 'clic aquí', 'ganador', '$$$', 'free money', 'guaranteed', 'risk-free', 'act now', 'click here', 'winner', 'cash bonus'];
+function lintEmail(html: string, subject: string, body: string): [string, string][] {
+  const w: [string, string][] = [];
+  const h = String(html || '');
+  if (/\sclass=/.test(h)) w.push(['Hay class="…": Gmail/Outlook ignoran clases CSS. Usa estilos en línea.', 'Found class="…": Gmail/Outlook strip CSS classes. Use inline styles.']);
+  if (/<style[\s>]/i.test(h)) w.push(['Hay <style>: muchos clientes lo eliminan. Pon los estilos en línea.', 'Found <style>: many clients strip it. Use inline styles.']);
+  if (/position\s*:/i.test(h)) w.push(['Usas position: no funciona en correo.', 'You use position: it does not work in email.']);
+  if (/display\s*:\s*(flex|grid)/i.test(h)) w.push(['Usas flex/grid: no funciona en Outlook. Usa tablas.', 'You use flex/grid: not supported in Outlook. Use tables.']);
+  if (/background-image/i.test(h)) w.push(['background-image no se ve en Outlook. Usa bgcolor.', 'background-image is not shown in Outlook. Use bgcolor.']);
+  if (/<img\b(?![^>]*\balt=)[^>]*>/i.test(h)) w.push(['Hay imágenes sin alt: añade alt="" para accesibilidad y vista previa.', 'Images without alt: add alt="" for accessibility and preview.']);
+  if (/href=["']http:\/\//i.test(h)) w.push(['Hay enlaces http:// (no seguros): usa https://.', 'There are http:// links (insecure): use https://.']);
+  const blob = (subject + ' ' + body).toLowerCase();
+  const hits = SPAM_WORDS.filter((k) => blob.includes(k));
+  if (hits.length >= 3) w.push([`Varias palabras "gancho" (${hits.slice(0, 4).join(', ')}): pueden caer en spam.`, `Several spammy words (${hits.slice(0, 4).join(', ')}): may hit the spam folder.`]);
+  if ((subject || '').length > 70) w.push(['El asunto es largo (>70): se corta en el móvil.', 'Subject is long (>70): it gets cut off on mobile.']);
+  return w;
+}
+
+// Historial de versiones por plantilla (local, por navegador). Permite volver atrás
+// si un cambio no gustó. Guarda las últimas 10.
+type HistEntry = { ts: number; es: any; en: any; sig: string };
+function histKey(id: string) { return 'onyx_mailhist_' + id; }
+function histLoad(id: string): HistEntry[] {
+  try { const r = JSON.parse(localStorage.getItem(histKey(id)) || '[]'); return Array.isArray(r) ? r : []; } catch { return []; }
+}
+function histPush(id: string, e: HistEntry) {
+  try { const arr = [e, ...histLoad(id)].slice(0, 10); localStorage.setItem(histKey(id), JSON.stringify(arr)); } catch { /* sin localStorage, no pasa nada */ }
+}
+
 // Marco de marca (igual al del servidor) para que el preview se vea como el correo real.
-function previewDoc(innerHtml: string): string {
-  return `<!doctype html><html><head><meta charset="utf-8"></head>
-<body style="margin:0;background:#eef0f4;padding:16px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+// dark=true simula un cliente en modo oscuro: el fondo ALREDEDOR de la tarjeta se
+// oscurece, pero la tarjeta sigue clara (así es como se ve un correo transaccional
+// bien hecho en Gmail/Outlook oscuro: la tarjeta mantiene su fondo explícito).
+function previewDoc(innerHtml: string, dark = false): string {
+  const outer = dark ? '#0d0f14' : '#eef0f4';
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="color-scheme" content="light dark"></head>
+<body style="margin:0;background:${outer};padding:16px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e3e6ec;">
 <tr><td style="background:#121829;padding:14px 24px;"><span style="color:#fff;font-size:17px;font-weight:700;">Onyx Trading Live</span></td></tr>
@@ -352,12 +487,14 @@ function previewDoc(innerHtml: string): string {
 </table></td></tr></table></body></html>`;
 }
 
-// Vista previa que se AUTOAJUSTA a la altura real del correo (no se corta).
-// Lee el scrollHeight del documento del iframe (mismo origen por srcDoc) y
-// crece hasta mostrarlo completo, con un mínimo cómodo.
-function PreviewFrame({ srcDoc, minHeight = 260 }: { srcDoc: string; minHeight?: number }) {
+// Vista previa que se AUTOAJUSTA a la altura real del correo (no se corta) y permite
+// ver ESCRITORIO / MÓVIL y CLARO / OSCURO. Recibe el HTML interno ya con datos de
+// ejemplo; arma el documento según el ancho y el tema elegidos.
+function PreviewFrame({ inner, L, minHeight = 260 }: { inner: string; L: (a: string, b: string) => string; minHeight?: number }) {
   const ref = useRef<HTMLIFrameElement | null>(null);
   const [h, setH] = useState(minHeight);
+  const [mobile, setMobile] = useState(false);
+  const [dark, setDark] = useState(false);
   const fit = () => {
     try {
       const d = ref.current?.contentDocument;
@@ -366,10 +503,24 @@ function PreviewFrame({ srcDoc, minHeight = 260 }: { srcDoc: string; minHeight?:
       if (sh) setH(Math.max(minHeight, sh + 4));
     } catch { /* same-origin srcDoc; si falla, queda el mínimo */ }
   };
-  useEffect(() => { const t = setTimeout(fit, 60); return () => clearTimeout(t); }, [srcDoc]);   // re-medir al cambiar el HTML
+  const srcDoc = previewDoc(inner, dark);
+  useEffect(() => { const t = setTimeout(fit, 60); return () => clearTimeout(t); }, [srcDoc, mobile]);
+  const pill = (on: boolean): any => ({ border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: on ? 700 : 500, padding: '4px 10px', color: on ? 'var(--tx)' : 'var(--mut)', background: on ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'transparent' });
   return (
-    <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', background: '#eef0f4' }}>
-      <iframe ref={ref} title="preview" onLoad={fit} srcDoc={srcDoc} style={{ width: '100%', height: h, minHeight, border: 'none', display: 'block' }} />
+    <div>
+      <div className="row" style={{ gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+        <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 7, overflow: 'hidden' }}>
+          <button onClick={() => setMobile(false)} style={pill(!mobile)}>🖥 {L('Escritorio', 'Desktop')}</button>
+          <button onClick={() => setMobile(true)} style={pill(mobile)}>📱 {L('Móvil', 'Mobile')}</button>
+        </div>
+        <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 7, overflow: 'hidden' }}>
+          <button onClick={() => setDark(false)} style={pill(!dark)}>☀ {L('Claro', 'Light')}</button>
+          <button onClick={() => setDark(true)} style={pill(dark)}>🌙 {L('Oscuro', 'Dark')}</button>
+        </div>
+      </div>
+      <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', background: dark ? '#0d0f14' : '#eef0f4', display: 'flex', justifyContent: 'center' }}>
+        <iframe ref={ref} title="preview" onLoad={fit} srcDoc={srcDoc} style={{ width: mobile ? 380 : '100%', maxWidth: '100%', height: h, minHeight, border: 'none', display: 'block', transition: 'width .15s' }} />
+      </div>
     </div>
   );
 }
@@ -442,7 +593,12 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
       const r = await fetch('/api/admin/emails/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'draft', instruction: aiInstr, vars: ['nombre', 'enlace'], format: htmlMode ? 'html' : 'text' }) });
       const j = await r.json(); if (!r.ok) { toastErr(j); return; }
       const d = j.draft || {};
-      setF({ subject_es: d.subject_es || '', body_es: d.body_es || '', subject_en: d.subject_en || '', body_en: d.body_en || '' });
+      // En modo HTML el texto se deriva del HTML para que ambos coincidan.
+      setF({
+        subject_es: d.subject_es || '', subject_en: d.subject_en || '',
+        body_es: (htmlMode && d.html_es) ? htmlToText(d.html_es) : (d.body_es || ''),
+        body_en: (htmlMode && d.html_en) ? htmlToText(d.html_en) : (d.body_en || ''),
+      });
       if (htmlMode) setFh({ html_es: d.html_es || '', html_en: d.html_en || '' });
       toast(htmlMode ? L('HTML generado por la IA (revísalo).', 'AI HTML ready (review it).') : L('Borrador listo (revísalo).', 'Draft ready (review it).'), 'ok');
     } finally { setBusy(''); }
@@ -524,20 +680,32 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
         ) : (
           <>
             {/* Barra del editor HTML */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6, alignItems: 'center' }}>
+              <select value="" onChange={(e) => { const s = EMAIL_STARTERS.find((x) => x.id === e.target.value); if (s && (!(fh as any)[curHtml] || window.confirm(L('¿Reemplazar el HTML actual con esta plantilla?', 'Replace the current HTML with this starter?')))) setFh((p) => ({ ...p, [curHtml]: s.html.replace(/\{(nombre|enlace)\}/g, '{{$1}}') })); e.currentTarget.value = ''; }} style={{ margin: 0, maxWidth: 170, fontSize: 12 }} title={L('Plantilla de arranque', 'Starter template')}>
+                <option value="">✦ {L('Arranque…', 'Starter…')}</option>
+                {EMAIL_STARTERS.map((s) => <option key={s.id} value={s.id}>{L(s.es, s.en)}</option>)}
+              </select>
               {['nombre', 'enlace'].map((v) => <button key={v} onClick={() => ins(' {{' + v + '}}')} style={chip}>{'{{' + v + '}}'}</button>)}
-              <button onClick={() => ins('\n<a href="{{enlace}}" style="display:inline-block;background:#7a5cff;color:#fff;text-decoration:none;padding:11px 20px;border-radius:9px;font-weight:600;">Botón</a>')} style={chip}>+ {L('Botón', 'Button')}</button>
+              <button onClick={() => ins('\n<table role="presentation" cellpadding="0" cellspacing="0" style="margin:18px 0;"><tr><td bgcolor="#7a5cff" style="border-radius:9px;"><a href="{{enlace}}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;">Botón</a></td></tr></table>')} style={chip}>+ {L('Botón', 'Button')}</button>
+              <button onClick={() => setFh((p) => ({ ...p, [curHtml]: preheaderSnippet() + (p as any)[curHtml] }))} style={chip} title={L('Línea de vista previa en la bandeja (oculta en el correo)', 'Inbox preview line (hidden in the email)')}>+ {L('Preheader', 'Preheader')}</button>
               <label style={{ ...chip, cursor: 'pointer' }}>+ {L('Imagen', 'Image')}
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const fl = e.target.files?.[0]; if (fl) uploadImage(fl); e.currentTarget.value = ''; }} />
               </label>
+              <button onClick={() => { const h = (fh as any)[curHtml]; if (h && (!(f as any)[curBody] || window.confirm(L('¿Sobrescribir el texto con el contenido del HTML?', 'Overwrite the text with the HTML content?')))) setF((p) => ({ ...p, [curBody]: htmlToText(h) })); }} style={chip} title={L('Pasa el contenido del HTML a la versión de texto', 'Copies the HTML content into the text version')}>↻ {L('Texto desde HTML', 'Text from HTML')}</button>
             </div>
             {/* Editor + preview en vivo */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10 }}>
               <textarea value={(fh as any)[curHtml]} onChange={(e) => setFh({ ...fh, [curHtml]: e.target.value })} placeholder={L('Pega aquí tu HTML profesional…', 'Paste your professional HTML here…')} spellCheck={false}
                 style={{ width: '100%', minHeight: 230, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
-              <PreviewFrame srcDoc={previewDoc(fillSample((fh as any)[curHtml]) + (sigId ? (sigs.find((s) => s.id === sigId)?.html ? '<br><br>' + sigs.find((s) => s.id === sigId)!.html : '') : ''))} />
+              <PreviewFrame L={L} inner={fillSample((fh as any)[curHtml]) + (sigId ? (sigs.find((s) => s.id === sigId)?.html ? '<br><br>' + sigs.find((s) => s.id === sigId)!.html : '') : '')} />
             </div>
-            <p className="muted" style={{ fontSize: 11, marginTop: 6 }}><OnyxIcon emoji="👁" size={11} glow={false} /> {L('Vista previa en vivo con datos de ejemplo. El correo saldrá dentro del marco de Onyx.', 'Live preview with sample data. The email ships inside the Onyx frame.')}</p>
+            {(() => { const warns = lintEmail((fh as any)[curHtml], (f as any)[curSub], (f as any)[curBody]); return warns.length ? (
+              <div style={{ marginTop: 8, background: 'color-mix(in srgb,#f5a623 12%,transparent)', border: '1px solid color-mix(in srgb,#f5a623 35%,transparent)', borderRadius: 8, padding: '8px 11px' }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--tx)', marginBottom: 3 }}>⚠ {L('Revisa antes de enviar', 'Check before sending')}</div>
+                {warns.map((wn, i) => <div key={i} style={{ fontSize: 11.5, color: 'var(--mut)', lineHeight: 1.5 }}>• {L(wn[0], wn[1])}</div>)}
+              </div>
+            ) : null; })()}
+            <p className="muted" style={{ fontSize: 11, marginTop: 6 }}><OnyxIcon emoji="👁" size={11} glow={false} /> {L('Vista previa en vivo (prueba escritorio/móvil y claro/oscuro). El correo saldrá dentro del marco de Onyx.', 'Live preview (try desktop/mobile and light/dark). The email ships inside the Onyx frame.')}</p>
           </>
         )}
         <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L('Rellena ambos idiomas (ES/EN): cada quien recibe el suyo.', 'Fill both languages (ES/EN): each person gets theirs.')}</p>
