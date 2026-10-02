@@ -949,6 +949,11 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               En escritorio va a la derecha (order:3, sticky); en móvil, por el orden del
               DOM, sube al tope — justo lo que se pidió: las bandas dejan de empujar el
               contenido hacia abajo y el dashboard sube. */}
+          {/* El panel personal solo tiene sentido si realmente hay algo dentro: la guía
+              (cuando ya hay cuenta), el Neto real (Pro+) o el Coach (Pro+). Si el usuario
+              es nuevo/gratis y no hay nada que mostrar, NO pintamos el botón para que no
+              quede un desplegable vacío (hallazgo #6 de QA: "spinner sin contenido"). */}
+          {(hasAccounts || caps?.expenses || caps?.coach) && (
           <div className="rail-right" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {/* En móvil este panel se pliega en un menú (como Mi cuenta): las estadísticas
                 quedan arriba y estas tarjetas se abren al tocar. En escritorio siempre visible. */}
@@ -958,12 +963,14 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             </button>
             <div className={'rail-body' + (railOpen ? ' open' : '')}>
               {hasAccounts && <SetupGuide />}
-              {/* El estado del mercado ya vive en el riel izquierdo (Sesiones del mercado),
-                  así que aquí se omite MarketClock para no duplicar el "Mercado cerrado". */}
+              {/* Siempre mostramos el reloj de mercado dentro del panel: garantiza que el
+                  desplegable nunca esté vacío aunque el plan no incluya Neto ni Coach. */}
+              <MarketClock />
               {caps?.expenses ? <NetRealCard /> : null}
               {caps?.coach ? <CoachCard rail from={rangeDates.from} to={rangeDates.to} account={sel} /> : null}
             </div>
           </div>
+          )}
           <div className="center">
         {!hasAccounts ? (
           <div className="card" style={{ textAlign: 'center', padding: '30px 20px' }}>
