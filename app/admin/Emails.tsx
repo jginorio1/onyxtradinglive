@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 import { fmtDateTime } from '@/lib/fmtDate';
@@ -289,10 +289,7 @@ function TplEditor({ tpl, es, L, sigs, onBack, onSaved }: { tpl: Tpl; es: boolea
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10 }}>
               <textarea value={cur.html} onChange={(e) => setCur({ html: e.target.value })} spellCheck={false} placeholder={L('Pega aquí tu HTML profesional…', 'Paste your professional HTML here…')}
                 style={{ width: '100%', minHeight: 230, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
-              <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', minHeight: 230, background: '#eef0f4' }}>
-                <iframe title="preview" style={{ width: '100%', height: '100%', minHeight: 230, border: 'none' }}
-                  srcDoc={previewDoc(fillSample(cur.html.replace(/\{\{?\s*firma\s*\}?\}/gi, sig ? (sigs.find((s) => s.id === sig)?.html || '') : '')))} />
-              </div>
+              <PreviewFrame srcDoc={previewDoc(fillSample(cur.html.replace(/\{\{?\s*firma\s*\}?\}/gi, sig ? (sigs.find((s) => s.id === sig)?.html || '') : '')))} />
             </div>
             <p className="muted" style={{ fontSize: 11, marginTop: 6 }}><OnyxIcon emoji="👁" size={11} glow={false} /> {L('Vista previa con datos de ejemplo. Si dejas el HTML vacío, se envía la versión de texto.', 'Preview with sample data. If you leave HTML empty, the text version is sent.')}</p>
           </>
@@ -353,6 +350,28 @@ function previewDoc(innerHtml: string): string {
 <tr><td style="padding:22px 24px;font-size:15px;color:#1a1d24;">${innerHtml}</td></tr>
 <tr><td style="background:#f6f7f9;padding:14px 24px;color:#8a90a0;font-size:12px;border-top:1px solid #eceef2;">Onyx Trading Live · onyxtradinglive.com</td></tr>
 </table></td></tr></table></body></html>`;
+}
+
+// Vista previa que se AUTOAJUSTA a la altura real del correo (no se corta).
+// Lee el scrollHeight del documento del iframe (mismo origen por srcDoc) y
+// crece hasta mostrarlo completo, con un mínimo cómodo.
+function PreviewFrame({ srcDoc, minHeight = 260 }: { srcDoc: string; minHeight?: number }) {
+  const ref = useRef<HTMLIFrameElement | null>(null);
+  const [h, setH] = useState(minHeight);
+  const fit = () => {
+    try {
+      const d = ref.current?.contentDocument;
+      const body = d?.body, html = d?.documentElement;
+      const sh = Math.max(body?.scrollHeight || 0, html?.scrollHeight || 0, body?.offsetHeight || 0);
+      if (sh) setH(Math.max(minHeight, sh + 4));
+    } catch { /* same-origin srcDoc; si falla, queda el mínimo */ }
+  };
+  useEffect(() => { const t = setTimeout(fit, 60); return () => clearTimeout(t); }, [srcDoc]);   // re-medir al cambiar el HTML
+  return (
+    <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', background: '#eef0f4' }}>
+      <iframe ref={ref} title="preview" onLoad={fit} srcDoc={srcDoc} style={{ width: '100%', height: h, minHeight, border: 'none', display: 'block' }} />
+    </div>
+  );
 }
 
 function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string }) {
@@ -516,9 +535,7 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10 }}>
               <textarea value={(fh as any)[curHtml]} onChange={(e) => setFh({ ...fh, [curHtml]: e.target.value })} placeholder={L('Pega aquí tu HTML profesional…', 'Paste your professional HTML here…')} spellCheck={false}
                 style={{ width: '100%', minHeight: 230, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
-              <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', minHeight: 230, background: '#eef0f4' }}>
-                <iframe title="preview" style={{ width: '100%', height: '100%', minHeight: 230, border: 'none' }} srcDoc={previewDoc(fillSample((fh as any)[curHtml]) + (sigId ? (sigs.find((s) => s.id === sigId)?.html ? '<br><br>' + sigs.find((s) => s.id === sigId)!.html : '') : ''))} />
-              </div>
+              <PreviewFrame srcDoc={previewDoc(fillSample((fh as any)[curHtml]) + (sigId ? (sigs.find((s) => s.id === sigId)?.html ? '<br><br>' + sigs.find((s) => s.id === sigId)!.html : '') : ''))} />
             </div>
             <p className="muted" style={{ fontSize: 11, marginTop: 6 }}><OnyxIcon emoji="👁" size={11} glow={false} /> {L('Vista previa en vivo con datos de ejemplo. El correo saldrá dentro del marco de Onyx.', 'Live preview with sample data. The email ships inside the Onyx frame.')}</p>
           </>

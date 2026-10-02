@@ -73,7 +73,14 @@ ADEMÁS del texto plano, genera el CUERPO en HTML (claves html_es y html_en). RE
 - Resaltados en negrita con <strong style="color:#1a1d24;">…</strong>.
 - Botón/CTA (patrón a prueba de balas, usa la variable {enlace} si existe): <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;"><tr><td bgcolor="#7a5cff" style="border-radius:9px;"><a href="{enlace}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">Texto del botón</a></td></tr></table>
 - Si hay {firma}, colócala al final en su propia línea.
-- NO uses imágenes de fondo, position, flexbox, grid, ni colores que dependan del tema del cliente. Mismo contenido y mismas variables que el cuerpo de texto.` : '';
+- NO uses imágenes de fondo (background-image), position, flexbox, grid, media queries, ni colores que dependan del tema del cliente. Mismo contenido y mismas variables que el cuerpo de texto.
+
+DISEÑO PROFESIONAL (úsalo para que el correo se vea cuidado, y SOBRE TODO si el dueño pide "fondo", "fondos", "colores", "banner", "secciones", "cajas", "destacado" o "más profesional"):
+- Fondos y paneles: píntalos con bgcolor + style en una celda de tabla, nunca con <div> suelto. Caja/sección de color: <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border-radius:10px;"><tr><td bgcolor="#f4f1ff" style="padding:16px 18px;border-radius:10px;border:1px solid #e7e1ff;">…contenido…</td></tr></table>. Usa tonos CLAROS de fondo (#f4f1ff lila, #eef6ff azul, #eafaf1 verde, #fff6e9 ámbar, #f6f7f9 gris) con texto oscuro (#1a1d24) para que sea legible en claro y oscuro.
+- Banda/encabezado destacado: una celda bgcolor="#121829" con texto blanco (#ffffff) y padding, bordes redondeados arriba; úsala como título de sección, no para reemplazar la cabecera de marca.
+- Separadores: <table role="presentation" width="100%"><tr><td style="border-top:1px solid #e7e8ee;font-size:0;line-height:0;">&nbsp;</td></tr></table>.
+- Listas: <ul style="margin:0 0 14px;padding-left:20px;color:#1a1d24;font-size:15px;line-height:1.6;"><li style="margin:0 0 6px;">…</li></ul>.
+- Paleta de marca Onyx: morado #7a5cff (acentos/botón), carbón #121829 (bandas oscuras), texto #1a1d24. Mantén 1 color de acento, no más de 2-3 fondos distintos. Asegura contraste alto siempre (texto oscuro sobre fondo claro, texto blanco sobre fondo oscuro).` : '';
 
   const keys = html
     ? '{"subject_es":"...","body_es":"...","subject_en":"...","body_en":"...","html_es":"...","html_en":"..."}'
