@@ -280,48 +280,89 @@ function TplEditor({ tpl, es, L, onBack, onSaved }: { tpl: Tpl; es: boolean; L: 
 }
 
 // ================= 2) REDACTAR Y ENVIAR ===================================
+type Sig = { id: string; name: string; html: string };
+
+// Rellena las variables con datos de EJEMPLO para el preview en vivo (soporta
+// {{var}} y {var}). Así ves cómo quedará el correo ya personalizado.
+function fillSample(s: string): string {
+  const sample: any = { nombre: 'Jerry', name: 'Jerry', enlace: '#', plan: 'Pro', sitio: 'onyxtradinglive.com', site: 'onyxtradinglive.com' };
+  return String(s || '')
+    .replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => (sample[k] != null ? sample[k] : ''))
+    .replace(/\{\s*(\w+)\s*\}/g, (_m, k) => (sample[k] != null ? sample[k] : _m));
+}
+
+// Marco de marca (igual al del servidor) para que el preview se vea como el correo real.
+function previewDoc(innerHtml: string): string {
+  return `<!doctype html><html><head><meta charset="utf-8"></head>
+<body style="margin:0;background:#eef0f4;padding:16px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e3e6ec;">
+<tr><td style="background:#121829;padding:14px 24px;"><span style="color:#fff;font-size:17px;font-weight:700;">Onyx Trading Live</span></td></tr>
+<tr><td style="padding:22px 24px;font-size:15px;color:#1a1d24;">${innerHtml}</td></tr>
+<tr><td style="background:#f6f7f9;padding:14px 24px;color:#8a90a0;font-size:12px;border-top:1px solid #eceef2;">Onyx Trading Live · onyxtradinglive.com</td></tr>
+</table></td></tr></table></body></html>`;
+}
+
 function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string }) {
   const [segs, setSegs] = useState<{ id: string; es: string; en: string }[]>([]);
   const [mode, setMode] = useState<'segment' | 'emails'>('segment');
   const [seg, setSeg] = useState('all');
   const [emails, setEmails] = useState('');
   const [f, setF] = useState({ subject_es: '', body_es: '', subject_en: '', body_en: '' });
+  const [fh, setFh] = useState({ html_es: '', html_en: '' });     // cuerpo HTML por idioma
+  const [htmlMode, setHtmlMode] = useState(false);                 // editor HTML + preview
   const [l, setL] = useState<'es' | 'en'>(es ? 'es' : 'en');
   const [count, setCount] = useState<number | null>(null);
   const [busy, setBusy] = useState('');
   const [aiInstr, setAiInstr] = useState('');
   const [when, setWhen] = useState('');
+  const [sigs, setSigs] = useState<Sig[]>([]);
+  const [sigId, setSigId] = useState('');
+  const [sigMgr, setSigMgr] = useState(false);
+  const [atts, setAtts] = useState<{ filename: string; content: string; size: number }[]>([]);
 
-  useEffect(() => { (async () => { try { const r = await fetch('/api/admin/campaigns'); const j = await r.json(); setSegs(j.segments || []); } catch {} })(); }, []);
+  useEffect(() => { (async () => {
+    try { const r = await fetch('/api/admin/campaigns'); const j = await r.json(); setSegs(j.segments || []); } catch {}
+    try { const r = await fetch('/api/admin/emails/assets'); const j = await r.json(); setSigs(j.signatures || []); } catch {}
+  })(); }, []);
 
-  const body = () => ({ segment: seg, emails: mode === 'emails' ? emails : '', ...f });
   const curSub = l === 'es' ? 'subject_es' : 'subject_en';
   const curBody = l === 'es' ? 'body_es' : 'body_en';
+  const curHtml = l === 'es' ? 'html_es' : 'html_en';
+  // Payload común para la API (texto o HTML según el modo).
+  const payload = () => ({
+    segment: seg, emails: mode === 'emails' ? emails : '',
+    subject_es: f.subject_es, subject_en: f.subject_en,
+    body_es: f.body_es, body_en: f.body_en,
+    ...(htmlMode ? { html_es: fh.html_es, html_en: fh.html_en } : {}),
+    signature_id: sigId || undefined,
+    attachments: atts.map((a) => ({ filename: a.filename, content: a.content })),
+  });
 
   async function doCount() {
     setBusy('count');
-    try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'count', ...body() }) }); const j = await r.json(); setCount(j.count ?? 0); } finally { setBusy(''); }
+    try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'count', ...payload() }) }); const j = await r.json(); setCount(j.count ?? 0); } finally { setBusy(''); }
   }
   async function test() {
     const to = window.prompt(L('¿A qué correo envío la prueba?', 'Which email should I send the test to?'), '');
     if (to === null) return;
     const dest = (to || '').trim();
     setBusy('test');
-    try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test', to: dest || undefined, lang: l, ...f }) }); const j = await r.json(); if (!r.ok) toastErr(j); else toast(L(`Prueba enviada a ${dest || L('tu dirección', 'your address')}.`, `Test sent to ${dest || 'your address'}.`), 'ok'); } finally { setBusy(''); }
+    try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'test', to: dest || undefined, lang: l, ...payload() }) }); const j = await r.json(); if (!r.ok) toastErr(j); else toast(L(`Prueba enviada a ${dest || L('tu dirección', 'your address')}.`, `Test sent to ${dest || 'your address'}.`), 'ok'); } finally { setBusy(''); }
   }
   async function send() {
     if (!f.subject_es && !f.subject_en) { toast(L('Falta el asunto.', 'Subject is missing.')); return; }
     if (mode === 'emails' && !emails.trim()) { toast(L('Añade al menos una dirección.', 'Add at least one address.')); return; }
     if (!window.confirm(L('¿Enviar este correo ahora?', 'Send this email now?'))) return;
     setBusy('send');
-    try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'send', ...body() }) }); const j = await r.json(); if (!r.ok) toastErr(j); else toast(L(`Enviado a ${j.sent} destinatario(s).`, `Sent to ${j.sent} recipient(s).`), 'ok'); } finally { setBusy(''); }
+    try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'send', ...payload() }) }); const j = await r.json(); if (!r.ok) toastErr(j); else toast(L(`Enviado a ${j.sent} destinatario(s).`, `Sent to ${j.sent} recipient(s).`), 'ok'); } finally { setBusy(''); }
   }
   async function schedule() {
     if (mode === 'emails') { toast(L('Para programar, elige un segmento.', 'To schedule, pick a segment.')); return; }
     if (!when) { toast(L('Elige fecha y hora.', 'Pick date and time.')); return; }
     if (!f.subject_es && !f.subject_en) { toast(L('Falta el asunto.', 'Subject is missing.')); return; }
     setBusy('sched');
-    try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'schedule', scheduled_at: new Date(when).toISOString(), ...body() }) }); const j = await r.json(); if (!r.ok) toastErr(j); else { toast(L('Correo programado.', 'Email scheduled.'), 'ok'); setWhen(''); } } finally { setBusy(''); }
+    try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'schedule', scheduled_at: new Date(when).toISOString(), ...payload() }) }); const j = await r.json(); if (!r.ok) toastErr(j); else { toast(L('Correo programado.', 'Email scheduled.'), 'ok'); setWhen(''); } } finally { setBusy(''); }
   }
   async function ai() {
     if (!aiInstr.trim()) { toast(L('Escribe el tema o la instrucción.', 'Write the topic or instruction.')); return; }
@@ -335,8 +376,33 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
     } finally { setBusy(''); }
   }
 
+  // Subir una imagen al Storage y pegar su etiqueta <img> en el HTML.
+  async function uploadImage(file: File) {
+    if (file.size > 6 * 1024 * 1024) { toast(L('Imagen demasiado grande (máx 6 MB).', 'Image too large (6 MB max).')); return; }
+    setBusy('img');
+    try {
+      const data: string = await new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(String(rd.result)); rd.onerror = rej; rd.readAsDataURL(file); });
+      const r = await fetch('/api/admin/emails/assets', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'upload_image', name: file.name, data }) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); return; }
+      const tag = `<img src="${j.url}" alt="" style="max-width:100%;border-radius:8px;" />`;
+      setFh((p) => ({ ...p, [curHtml]: (p as any)[curHtml] + '\n' + tag }));
+      toast(L('Imagen subida e insertada.', 'Image uploaded and inserted.'), 'ok');
+    } finally { setBusy(''); }
+  }
+  // Adjuntar un archivo cualquiera (se manda en base64).
+  async function addAttachment(file: File) {
+    if (file.size > 8 * 1024 * 1024) { toast(L('Adjunto demasiado grande (máx 8 MB).', 'Attachment too large (8 MB max).')); return; }
+    const b64: string = await new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(String(rd.result).split(',')[1] || ''); rd.onerror = rej; rd.readAsDataURL(file); });
+    setAtts((p) => [...p, { filename: file.name, content: b64, size: file.size }].slice(0, 10));
+  }
+
+  const ins = (txt: string) => setFh((p) => ({ ...p, [curHtml]: (p as any)[curHtml] + txt }));
+  const insText = (txt: string) => setF((p) => ({ ...p, [curBody]: (p as any)[curBody] + txt }));
+
   return (
     <div className="card" style={{ display: 'grid', gap: 14 }}>
+      {sigMgr && <SignatureManager es={es} L={L} sigs={sigs} onClose={() => setSigMgr(false)} onSaved={(s) => { setSigs(s); setSigMgr(false); }} />}
+
       <div>
         <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('¿A quién va?', 'Who is it for?')}</div>
         <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
@@ -358,15 +424,76 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
       </div>
 
       <div>
-        <div className="row between" style={{ alignItems: 'center', marginBottom: 6 }}>
+        <div className="row between" style={{ alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 8 }}>
           <span className="muted" style={{ fontSize: 12 }}>{L('Contenido', 'Content')}</span>
-          <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
-            {(['es', 'en'] as const).map((x) => <button key={x} onClick={() => setL(x)} style={{ border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: l === x ? 700 : 500, padding: '5px 12px', color: l === x ? 'var(--tx)' : 'var(--mut)', background: l === x ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'transparent' }}>{x.toUpperCase()}</button>)}
+          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+            {/* Modo Texto / HTML */}
+            <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+              {([['text', L('Texto', 'Text')], ['html', 'HTML']] as const).map(([k, lab]) => (
+                <button key={k} onClick={() => setHtmlMode(k === 'html')} style={{ border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: (htmlMode === (k === 'html')) ? 700 : 500, padding: '5px 11px', color: (htmlMode === (k === 'html')) ? 'var(--tx)' : 'var(--mut)', background: (htmlMode === (k === 'html')) ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'transparent' }}>{lab}</button>
+              ))}
+            </div>
+            {/* Idioma */}
+            <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+              {(['es', 'en'] as const).map((x) => <button key={x} onClick={() => setL(x)} style={{ border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: l === x ? 700 : 500, padding: '5px 12px', color: l === x ? 'var(--tx)' : 'var(--mut)', background: l === x ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'transparent' }}>{x.toUpperCase()}</button>)}
+            </div>
           </div>
         </div>
         <input value={(f as any)[curSub]} onChange={(e) => setF({ ...f, [curSub]: e.target.value })} placeholder={L('Asunto', 'Subject')} style={{ margin: '0 0 8px' }} />
-        <textarea value={(f as any)[curBody]} onChange={(e) => setF({ ...f, [curBody]: e.target.value })} placeholder={L('Cuerpo del correo…', 'Email body…')} style={{ width: '100%', minHeight: 130, fontSize: 13.5, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
-        <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L('Rellena ambos idiomas: cada quien recibe el suyo. Variables: {nombre}, {enlace}.', 'Fill both languages: each person gets theirs. Variables: {nombre}, {enlace}.')}</p>
+
+        {!htmlMode ? (
+          <>
+            <textarea value={(f as any)[curBody]} onChange={(e) => setF({ ...f, [curBody]: e.target.value })} placeholder={L('Cuerpo del correo…', 'Email body…')} style={{ width: '100%', minHeight: 130, fontSize: 13.5, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+              <span className="muted" style={{ fontSize: 11, alignSelf: 'center' }}>{L('Variables', 'Variables')}:</span>
+              {['nombre', 'enlace'].map((v) => <button key={v} onClick={() => insText(' {{' + v + '}}')} style={chip}>{'{{' + v + '}}'}</button>)}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Barra del editor HTML */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+              {['nombre', 'enlace'].map((v) => <button key={v} onClick={() => ins(' {{' + v + '}}')} style={chip}>{'{{' + v + '}}'}</button>)}
+              <button onClick={() => ins('\n<a href="{{enlace}}" style="display:inline-block;background:#7a5cff;color:#fff;text-decoration:none;padding:11px 20px;border-radius:9px;font-weight:600;">Botón</a>')} style={chip}>+ {L('Botón', 'Button')}</button>
+              <label style={{ ...chip, cursor: 'pointer' }}>+ {L('Imagen', 'Image')}
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const fl = e.target.files?.[0]; if (fl) uploadImage(fl); e.currentTarget.value = ''; }} />
+              </label>
+            </div>
+            {/* Editor + preview en vivo */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10 }}>
+              <textarea value={(fh as any)[curHtml]} onChange={(e) => setFh({ ...fh, [curHtml]: e.target.value })} placeholder={L('Pega aquí tu HTML profesional…', 'Paste your professional HTML here…')} spellCheck={false}
+                style={{ width: '100%', minHeight: 230, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5, padding: 10, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
+              <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', minHeight: 230, background: '#eef0f4' }}>
+                <iframe title="preview" style={{ width: '100%', height: '100%', minHeight: 230, border: 'none' }} srcDoc={previewDoc(fillSample((fh as any)[curHtml]) + (sigId ? (sigs.find((s) => s.id === sigId)?.html ? '<br><br>' + sigs.find((s) => s.id === sigId)!.html : '') : ''))} />
+              </div>
+            </div>
+            <p className="muted" style={{ fontSize: 11, marginTop: 6 }}><OnyxIcon emoji="👁" size={11} glow={false} /> {L('Vista previa en vivo con datos de ejemplo. El correo saldrá dentro del marco de Onyx.', 'Live preview with sample data. The email ships inside the Onyx frame.')}</p>
+          </>
+        )}
+        <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>{L('Rellena ambos idiomas (ES/EN): cada quien recibe el suyo.', 'Fill both languages (ES/EN): each person gets theirs.')}</p>
+      </div>
+
+      {/* Firma + adjuntos */}
+      <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: 12, display: 'grid', gap: 10 }}>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="muted" style={{ fontSize: 12 }}><OnyxIcon emoji="✒️" size={12} glow={false} /> {L('Firma', 'Signature')}:</span>
+          <select value={sigId} onChange={(e) => setSigId(e.target.value)} style={{ margin: 0, maxWidth: 240 }}>
+            <option value="">{L('Sin firma', 'No signature')}</option>
+            {sigs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => setSigMgr(true)}>{L('Gestionar firmas', 'Manage signatures')}</button>
+        </div>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="muted" style={{ fontSize: 12 }}><OnyxIcon emoji="📎" size={12} glow={false} /> {L('Adjuntos', 'Attachments')}:</span>
+          <label className="btn btn-ghost" style={{ fontSize: 12, cursor: 'pointer' }}>+ {L('Añadir archivo', 'Add file')}
+            <input type="file" style={{ display: 'none' }} onChange={(e) => { const fl = e.target.files?.[0]; if (fl) addAttachment(fl); e.currentTarget.value = ''; }} />
+          </label>
+          {atts.map((a, i) => (
+            <span key={i} style={{ fontSize: 11.5, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 20, padding: '3px 6px 3px 10px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {a.filename} <button onClick={() => setAtts(atts.filter((_, j) => j !== i))} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--mut)', fontSize: 14, lineHeight: 1 }}>✕</button>
+            </span>
+          ))}
+        </div>
       </div>
 
       <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid var(--line)', paddingTop: 12 }}>
@@ -381,6 +508,54 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
         <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} style={{ margin: 0, maxWidth: 220 }} />
         <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={!!busy || !when} onClick={schedule}>{busy === 'sched' ? '…' : L('Programar', 'Schedule')}</button>
         <span className="muted" style={{ fontSize: 11 }}>{L('(programar requiere un grupo)', '(scheduling needs a group)')}</span>
+      </div>
+    </div>
+  );
+}
+
+const chip: any = { cursor: 'pointer', fontSize: 11, fontFamily: 'monospace', padding: '3px 8px', borderRadius: 6, border: '1px solid color-mix(in srgb,var(--brand) 35%,transparent)', background: 'color-mix(in srgb,var(--brand) 10%,transparent)', color: 'var(--brand)' };
+
+// ---- Gestor de firmas (crear/editar/borrar, con preview) ----
+function SignatureManager({ es, L, sigs, onClose, onSaved }: { es: boolean; L: (a: string, b: string) => string; sigs: Sig[]; onClose: () => void; onSaved: (s: Sig[]) => void }) {
+  const [list, setList] = useState<Sig[]>(sigs.map((s) => ({ ...s })));
+  const [busy, setBusy] = useState(false);
+  const add = () => setList([...list, { id: Date.now() + '' + Math.random().toString(36).slice(2, 6), name: L('Nueva firma', 'New signature'), html: '' }]);
+  const upd = (i: number, patch: Partial<Sig>) => setList(list.map((s, j) => j === i ? { ...s, ...patch } : s));
+  const del = (i: number) => setList(list.filter((_, j) => j !== i));
+  async function save() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/admin/emails/assets', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'save_signatures', signatures: list }) });
+      const j = await r.json(); if (!r.ok) { toastErr(j); return; }
+      toast(L('Firmas guardadas.', 'Signatures saved.'), 'ok'); onSaved(j.signatures || list);
+    } finally { setBusy(false); }
+  }
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 80, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 16, overflow: 'auto' }} onClick={onClose}>
+      <div className="card" style={{ maxWidth: 680, width: '100%', marginTop: 30 }} onClick={(e) => e.stopPropagation()}>
+        <div className="row between" style={{ alignItems: 'center', marginBottom: 12 }}>
+          <b style={{ fontSize: 15 }}><OnyxIcon emoji="✒️" size={14} glow={false} /> {L('Firmas guardadas', 'Saved signatures')}</b>
+          <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={onClose}>✕</button>
+        </div>
+        <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{L('Escribe cada firma en HTML (nombre, cargo, logo con URL, enlaces, redes). Se insertan al final del correo.', 'Write each signature in HTML (name, role, logo via URL, links, socials). Added at the end of the email.')}</p>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {list.map((s, i) => (
+            <div key={s.id} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10 }}>
+              <div className="row" style={{ gap: 8, marginBottom: 6 }}>
+                <input value={s.name} onChange={(e) => upd(i, { name: e.target.value })} placeholder={L('Nombre de la firma', 'Signature name')} style={{ margin: 0, flex: 1 }} />
+                <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => del(i)}>{L('Borrar', 'Delete')}</button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 8 }}>
+                <textarea value={s.html} onChange={(e) => upd(i, { html: e.target.value })} spellCheck={false} placeholder={'<strong>Jerry</strong><br>Fundador · Onyx'} style={{ width: '100%', minHeight: 110, fontFamily: 'monospace', fontSize: 11.5, padding: 9, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', resize: 'vertical' }} />
+                <div style={{ border: '1px solid var(--line)', borderRadius: 8, background: '#fff', padding: 10, fontSize: 13, color: '#1a1d24', overflow: 'auto' }} dangerouslySetInnerHTML={{ __html: s.html || '<span style="color:#999">preview…</span>' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="row" style={{ gap: 8, marginTop: 12 }}>
+          <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={add}>+ {L('Añadir firma', 'Add signature')}</button>
+          <button className="btn btn-primary" style={{ fontSize: 12.5, marginLeft: 'auto' }} disabled={busy} onClick={save}>{busy ? '…' : L('Guardar firmas', 'Save signatures')}</button>
+        </div>
       </div>
     </div>
   );

@@ -19,6 +19,8 @@ type MailOpts = { kind?: string; userId?: string | null; meta?: any; unsub?: str
   brandLogo?: string;   // logo en la cabecera (por defecto el de Onyx)
   replyTo?: string;     // a dónde llega la respuesta del destinatario (Reply-To)
   attachments?: { filename: string; content: string }[];  // adjuntos (content en base64)
+  htmlBody?: string;    // HTML ya listo del cuerpo (editor profesional). Si viene, se
+                        // usa tal cual dentro del marco Onyx en vez de convertir el texto.
 };
 
 // Construye un remitente "Nombre <dirección>" reutilizando la dirección verificada
@@ -75,8 +77,14 @@ function bodyToHtml(text: string) {
 const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 const LOGO = process.env.EMAIL_LOGO_URL || `${SITE}/onyx-symbol.png`;
 
-function renderEmailHtml(text: string, unsub?: string | null, brand?: { name?: string; logo?: string }) {
-  const body = bodyToHtml(text);
+// Envuelve un cuerpo ya en HTML (del editor profesional) con la cabecera y el pie
+// de marca, para que mantenga el logo, la línea de respuesta y el enlace de baja.
+export function wrapBrandedHtml(innerHtml: string, unsub?: string | null, brand?: { name?: string; logo?: string }) {
+  return renderEmailHtml('', unsub, brand, innerHtml);
+}
+
+function renderEmailHtml(text: string, unsub?: string | null, brand?: { name?: string; logo?: string }, preRenderedBody?: string) {
+  const body = preRenderedBody != null ? preRenderedBody : bodyToHtml(text);
   const bName = esc(brand?.name || 'Onyx Trading Live');
   const bLogo = brand?.logo || LOGO;
   const unsubRow = unsub
@@ -123,8 +131,11 @@ export async function sendEmailId(to: string, subject: string, text: string, opt
   if (!key || !to) return { ok: false, id: null };
   const from = opts?.from || await resolvedFrom();
   // Versión de texto plano (sin markdown) como respaldo, y versión HTML con marca.
-  const plain = String(text || '').replace(/\*\*(.+?)\*\*/g, '$1') + (opts?.unsub ? `\n\n—\nDarte de baja / Unsubscribe: ${opts.unsub}` : '');
-  const html = renderEmailHtml(text, opts?.unsub, (opts?.brandName || opts?.brandLogo) ? { name: opts?.brandName, logo: opts?.brandLogo } : undefined);
+  const plain = String(text || '').replace(/<[^>]+>/g, ' ').replace(/\*\*(.+?)\*\*/g, '$1').replace(/[ \t]+\n/g, '\n').trim() + (opts?.unsub ? `\n\n—\nDarte de baja / Unsubscribe: ${opts.unsub}` : '');
+  const brand = (opts?.brandName || opts?.brandLogo) ? { name: opts?.brandName, logo: opts?.brandLogo } : undefined;
+  // htmlBody = el admin escribió HTML profesional en el editor → se usa tal cual
+  // dentro del marco de marca. Si no, se convierte el texto (markdown básico).
+  const html = opts?.htmlBody != null ? renderEmailHtml('', opts?.unsub, brand, opts.htmlBody) : renderEmailHtml(text, opts?.unsub, brand);
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',

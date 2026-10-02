@@ -73,6 +73,10 @@ const TEMPLATES: Record<string, Entry> = {
   },
 
   // === Seguridad y sistema ============================================
+  password_reset: {
+    es: { subject: 'Restablece tu contraseña · Onyx Trading Live', body: 'Hola {nombre},\n\nRecibimos una solicitud para restablecer la contraseña de tu cuenta en Onyx Trading Live.\n\nHaz clic en el botón para crear una nueva contraseña (el enlace caduca pronto):\n{enlace}\n\nSi no pediste esto, puedes ignorar este correo: tu contraseña no cambiará.\n\n— El equipo de Onyx Trading Live' },
+    en: { subject: 'Reset your password · Onyx Trading Live', body: 'Hi {nombre},\n\nWe received a request to reset the password for your Onyx Trading Live account.\n\nClick the button to set a new password (the link expires soon):\n{enlace}\n\nIf you didn\'t request this, you can ignore this email — your password won\'t change.\n\n— The Onyx Trading Live team' },
+  },
   security_locked: {
     es: { subject: '⚠️ Onyx · Cuenta bloqueada por PIN', body: 'Se bloqueó el acceso al panel por intentos de PIN fallidos.\n\nSi fuiste tú, espera unos minutos e inténtalo de nuevo. Si no reconoces esto, cambia tus credenciales cuanto antes.' },
     en: { subject: '⚠️ Onyx · Account locked by PIN', body: 'Access to the panel was locked due to failed PIN attempts.\n\nIf this was you, wait a few minutes and try again. If you don\'t recognize this, change your credentials as soon as possible.' },
@@ -129,6 +133,7 @@ export const TEMPLATE_META: { id: string; cat: string; es: string; en: string; v
   // Crecimiento
   { id: 'referral_bridge', cat: 'growth', es: 'Puedes ser Embajador (al referidor)', en: 'You can become an Ambassador', vars: ['nombre', 'count', 'enlace'], to: 'usuario' },
   // Seguridad
+  { id: 'password_reset', cat: 'security', es: 'Restablecer contraseña (al usuario)', en: 'Reset password (to user)', vars: ['nombre', 'enlace'], to: 'usuario' },
   { id: 'security_locked', cat: 'security', es: 'Cuenta bloqueada por PIN (al admin)', en: 'Account locked by PIN (to admin)', vars: [], to: 'admin' },
   { id: 'dispute_alert', cat: 'security', es: 'Disputa de tarjeta (al admin)', en: 'Card dispute (to admin)', vars: ['id'], to: 'admin' },
   { id: 'mail_test', cat: 'security', es: 'Correo de prueba', en: 'Test email', vars: [], to: 'admin' },

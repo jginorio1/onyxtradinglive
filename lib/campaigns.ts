@@ -221,10 +221,13 @@ async function unsubUrl(r: Recipient): Promise<string> {
 }
 
 // Envía UN correo de campaña a un destinatario y lo registra (dedupe/analítica).
-async function sendOne(c: { id?: string; key?: string | null; kind: string }, r: Recipient, subject: string, body: string, runId?: string | null) {
+async function sendOne(c: { id?: string; key?: string | null; kind: string }, r: Recipient, subject: string, body: string, runId?: string | null, html?: string) {
   const unsub = await unsubUrl(r);
+  // Si hay HTML (del editor profesional), se envía como cuerpo HTML con las
+  // variables {{...}} ya resueltas; si no, se usa el texto (markdown básico).
+  const htmlBody = html ? renderTemplate(html, r) : undefined;
   const { ok, id } = await sendEmailId(r.email, renderTemplate(subject, r), renderTemplate(body, r), {
-    kind: 'campaign', userId: r.id, unsub, meta: { campaign: c.key || c.id },
+    kind: 'campaign', userId: r.id, unsub, meta: { campaign: c.key || c.id }, ...(htmlBody ? { htmlBody } : {}),
   });
   try {
     await supabaseAdmin.from('campaign_sends').insert({
@@ -414,9 +417,11 @@ export async function campaignRuns(key: string, limit = 12): Promise<Array<{ id:
 
 export async function sendManual(opts: {
   campaignId?: string; segment?: string; subject_es?: string; body_es?: string; subject_en?: string; body_en?: string; dryRun?: boolean; respectCap?: boolean;
+  html_es?: string; html_en?: string;   // cuerpo HTML opcional (editor profesional)
 }): Promise<{ count: number; sent: number }> {
   let seg = opts.segment || 'all';
   let sEs = opts.subject_es || '', bEs = opts.body_es || '', sEn = opts.subject_en || '', bEn = opts.body_en || '';
+  const hEs = opts.html_es || '', hEn = opts.html_en || '';
   let camp: { id?: string; key?: string | null; kind: string } = { kind: 'manual' };
 
   if (opts.campaignId) {
@@ -441,8 +446,10 @@ export async function sendManual(opts: {
     if (wk && (wk.get(r.id) || 0) >= cap) continue;   // ya llegó a su tope semanal
     const subject = r.lang === 'en' ? (sEn || sEs) : sEs;
     const body = r.lang === 'en' ? (bEn || bEs) : bEs;
-    if (!subject || !body) continue;
-    const ok = await sendOne(camp, r, subject, body);
+    const html = r.lang === 'en' ? (hEn || hEs) : (hEs || hEn);
+    // Con HTML basta el asunto + el HTML; sin HTML se exige también el texto.
+    if (!subject || (!body && !html)) continue;
+    const ok = await sendOne(camp, r, subject, body, null, html || undefined);
     if (ok) { sent++; if (wk) wk.set(r.id, (wk.get(r.id) || 0) + 1); }
   }
   return { count: recips.length, sent };
