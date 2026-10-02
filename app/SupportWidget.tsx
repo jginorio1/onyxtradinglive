@@ -115,16 +115,23 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       if (tgt && tgt !== document && tgt !== window && typeof tgt.scrollTop === 'number') el = tgt;
       else el = document.scrollingElement || document.documentElement;
       const y = (el && typeof el.scrollTop === 'number' ? el.scrollTop : (window.scrollY || 0)) || 0;
+      // ¿Está el usuario pegado al fondo de la página? Ahí suelen vivir los botones
+      // de acción (guardar, enviar…) que la burbuja tapaba. Si es así, la dejamos
+      // escondida para no cubrir esos controles (hallazgo #2 de QA).
+      const sh = (el && el.scrollHeight) || 0, ch = (el && el.clientHeight) || window.innerHeight || 0;
+      const nearBottom = sh > 0 && (sh - y - ch) < 140;
       // Si cambió el contenedor que scrollea, no comparamos entre distintos: solo
       // guardamos la referencia nueva y esperamos al próximo evento.
-      if (el !== lastTarget) { lastTarget = el; lastY = y; return; }
+      if (el !== lastTarget) { lastTarget = el; lastY = y; if (nearBottom) setHideLauncher(true); return; }
       if (lastY < 0) { lastY = y; return; }
       const dy = y - lastY;
-      if (y > 140 && dy > 4) setHideLauncher(true);        // bajando → esconder
+      if (nearBottom) setHideLauncher(true);               // al fondo → esconder (deja ver los botones)
+      else if (y > 140 && dy > 4) setHideLauncher(true);   // bajando → esconder
       else if (dy < -4) setHideLauncher(false);            // subiendo → mostrar
       lastY = y;
       clearTimeout(stopTimer);
-      stopTimer = setTimeout(() => setHideLauncher(false), 650);  // al parar → mostrar
+      // Al parar reaparece, SALVO que esté pegado al fondo (ahí seguiría tapando).
+      stopTimer = setTimeout(() => { if (!nearBottom) setHideLauncher(false); }, 650);
     };
     // capture:true → atrapa el scroll de CUALQUIER contenedor (el evento scroll no
     // burbujea, pero sí llega al document en fase de captura). Cubre app y web.
