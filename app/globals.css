@@ -127,6 +127,11 @@ a{color:inherit;text-decoration:none;}
    nivel de elevacion. El primario destaca por color, no por brillo. */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 16px;border-radius:10px;font-weight:500;font-size:14px;line-height:1;cursor:pointer;border:1px solid transparent;transition:background .15s,border-color .15s,opacity .15s;white-space:nowrap;}
 .btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+/* Android WebView: el "flash" al tocar era un rectángulo gris por defecto que no
+   respetaba el radio del botón. Lo quitamos en toda interacción táctil y
+   garantizamos que el estado :active conserva la forma/redondeo del botón. */
+a,button,.btn,[role="button"],input,select,textarea{-webkit-tap-highlight-color:transparent;-webkit-tap-highlight-color:rgba(0,0,0,0);}
+.btn:active{border-radius:10px;}
 .btn:disabled{cursor:not-allowed;opacity:.5;}
 .btn-primary{background:var(--brand);color:#111726;}
 .btn-primary:hover:not(:disabled){background:#8f9dff;}

@@ -9,6 +9,7 @@ import { ACC_TYPES } from '@/lib/accountMeta';
 import { errMsg } from '@/lib/i18nErrors';
 import InstallWizard, { WIZ } from './InstallWizard';
 import QrPop from '@/app/components/QrPop';
+import { isNativeApp, openExternal } from '@/lib/native';
 import MacInstallNote from '@/app/components/MacInstallNote';
 import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 import { useCatalog } from '@/lib/useCatalog';
@@ -513,7 +514,7 @@ export default function KeysPage() {
                   {platData.note && <div style={{ color: 'var(--amber)' }}>! {platData.note}</div>}
                 </div>
                 <a className="btn btn-primary" style={{ width: '100%', background: platAccent[plat] || 'var(--brand)', borderColor: platAccent[plat] || 'var(--brand)', color: '#0b1020' }} href={platData.dl[0].href} download
-                  onClick={() => markDone('dl')}><span className="ic">↓</span>{platData.dl[0].label}</a>
+                  onClick={(e) => { markDone('dl'); if (isNativeApp()) { e.preventDefault(); openExternal(platData.dl[0].href); } }}><span className="ic">↓</span>{platData.dl[0].label}</a>
                 <div className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: 'center' }}>{platData.fileName}</div>
                 {kind === 'ctrader' && (
                   <div style={{ textAlign: 'center', marginTop: 8 }}>

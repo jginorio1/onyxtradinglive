@@ -73,7 +73,7 @@ const D: any = {
     nTitle: 'Qué avisos quieres recibir', nEmail: 'Correos de la cuenta y pagos', nWeek: 'Resumen semanal de tu operativa', nFund: 'Alertas de reglas de fondeo', nMkt: 'Novedades y ofertas',
     nSub: 'Elige por dónde y de qué quieres enterarte.', nMailT: 'Correo',
     nEmailS: 'Cobros, recibos y cambios de plan', nWeekS: 'Tu semana por email', nFundS: 'Cuando te acercas a un límite', nMktS: 'Promos y lanzamientos',
-    pwT: 'Cambiar contraseña', pwNew: 'Nueva contraseña', pwRep: 'Repetir contraseña', pwBtn: 'Actualizar contraseña', pwShort: 'Mínimo 8 caracteres.', pwDiff: 'Las contraseñas no coinciden.', pwOk: 'Contraseña actualizada.',
+    pwT: 'Cambiar contraseña', pwCur: 'Contraseña actual', pwNew: 'Nueva contraseña', pwRep: 'Repetir contraseña', pwBtn: 'Actualizar contraseña', pwShort: 'Mínimo 8 caracteres.', pwDiff: 'Las contraseñas no coinciden.', pwCurReq: 'Escribe tu contraseña actual.', pwOk: 'Contraseña actualizada.',
     dTitle: 'Eliminar mi cuenta', dTxt: 'Se borrarán tus cuentas, operaciones y notas para siempre, y se cancelará tu suscripción. Esto no se puede deshacer.', dType: 'Escribe ELIMINAR para confirmar', dBtn: 'Eliminar mi cuenta',
     dWord: 'ELIMINAR', dHintA: 'Escribe ', dHintB: ' (en mayúsculas) para activar el botón.', dCaps: 'Debe ir TODO en mayúsculas.', dReady: 'Coincide. Ya puedes eliminar.',
     dMTitle: '¿Eliminar tu cuenta?', dMBody: 'Esta acción no se puede deshacer. Se borra todo y se cancela tu suscripción.', dMCancel: 'Cancelar', dMDel: 'Eliminar',
@@ -130,7 +130,7 @@ const D: any = {
     nTitle: 'Which alerts you want', nEmail: 'Account and billing emails', nWeek: 'Weekly performance recap', nFund: 'Prop-firm rule alerts', nMkt: 'News and offers',
     nSub: 'Choose where and what you want to hear about.', nMailT: 'Email',
     nEmailS: 'Charges, receipts and plan changes', nWeekS: 'Your week by email', nFundS: 'When you get close to a limit', nMktS: 'Promos and launches',
-    pwT: 'Change password', pwNew: 'New password', pwRep: 'Repeat password', pwBtn: 'Update password', pwShort: 'At least 8 characters.', pwDiff: 'Passwords do not match.', pwOk: 'Password updated.',
+    pwT: 'Change password', pwCur: 'Current password', pwNew: 'New password', pwRep: 'Repeat password', pwBtn: 'Update password', pwShort: 'At least 8 characters.', pwDiff: 'Passwords do not match.', pwCurReq: 'Enter your current password.', pwOk: 'Password updated.',
     dTitle: 'Delete my account', dTxt: 'Your accounts, trades and notes will be erased forever and your subscription will be canceled. This cannot be undone.', dType: 'Type DELETE to confirm', dBtn: 'Delete my account',
     dWord: 'DELETE', dHintA: 'Type ', dHintB: ' (uppercase) to enable the button.', dCaps: 'It must be ALL uppercase.', dReady: 'Match. You can delete now.',
     dMTitle: 'Delete your account?', dMBody: 'This cannot be undone. Everything is erased and your subscription is canceled.', dMCancel: 'Cancel', dMDel: 'Delete',
@@ -1052,17 +1052,18 @@ function Security({ L, lang, only }: { L: any; lang: Lang; only?: 'password' | '
   const showPw = !only || only === 'password';
   const showSignin = !only || only === 'signin';
   const showDel = !only || only === 'delete';
-  const [pw1, setPw1] = useState(''); const [pw2, setPw2] = useState('');
+  const [pw0, setPw0] = useState(''); const [pw1, setPw1] = useState(''); const [pw2, setPw2] = useState('');
   const [conf, setConf] = useState(''); const [busy, setBusy] = useState(''); const [ok, setOk] = useState(''); const [delModal, setDelModal] = useState(false);
 
   async function changePw() {
+    if (!pw0) { toast((L as any).pwCurReq || 'Enter your current password.'); return; }
     if (pw1.length < 8) { toast(L.pwShort); return; }
     if (pw1 !== pw2) { toast(L.pwDiff); return; }
     setBusy('pw');
-    const r = await fetch('/api/account/password', { method: 'POST', body: JSON.stringify({ password: pw1 }) });
+    const r = await fetch('/api/account/password', { method: 'POST', body: JSON.stringify({ currentPassword: pw0, password: pw1 }) });
     const j = await r.json(); setBusy('');
     if (!r.ok) { toast(errMsg(j, lang)); return; }
-    setPw1(''); setPw2(''); setOk(L.pwOk); setTimeout(() => setOk(''), 3000);
+    setPw0(''); setPw1(''); setPw2(''); setOk(L.pwOk); setTimeout(() => setOk(''), 3000);
   }
   async function delAcc() {
     if (!(await confirmDialog(L.dTxt))) return;
@@ -1070,7 +1071,10 @@ function Security({ L, lang, only }: { L: any; lang: Lang; only?: 'password' | '
     const r = await fetch('/api/account/delete', { method: 'POST', body: JSON.stringify({ confirm: conf }) });
     const j = await r.json(); setBusy('');
     if (!r.ok) { toast(errMsg(j, lang)); return; }
-    window.location.href = '/';
+    // La cuenta ya no existe: limpiar cualquier rastro local y mandar a login
+    // (no a home, para que no parezca que "sigue dentro").
+    try { localStorage.clear(); sessionStorage.clear(); } catch {}
+    window.location.href = '/login';
   }
   const lbl = { fontSize: 12, color: 'var(--mut)', marginTop: 10, display: 'block' } as any;
 
@@ -1079,8 +1083,10 @@ function Security({ L, lang, only }: { L: any; lang: Lang; only?: 'password' | '
       {showPw && (
       <div className="card" style={{ marginBottom: 14 }}>
         <h3 style={{ marginBottom: 4 }}>{L.pwT}</h3>
+        <span style={lbl}>{(L as any).pwCur}</span>
+        <input type="password" autoComplete="current-password" value={pw0} onChange={(e) => setPw0(e.target.value)} style={{ margin: '4px 0 0' }} />
         <span style={lbl}>{L.pwNew}</span>
-        <input type="password" value={pw1} onChange={(e) => setPw1(e.target.value)} style={{ margin: '4px 0 0' }} />
+        <input type="password" autoComplete="new-password" value={pw1} onChange={(e) => setPw1(e.target.value)} style={{ margin: '4px 0 0' }} />
         <span style={lbl}>{L.pwRep}</span>
         <input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} style={{ margin: '4px 0 0' }} />
         <div className="row" style={{ gap: 10, marginTop: 14 }}>

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { isNativeApp, openExternal } from '@/lib/native';
 
 // ============================================================
 // Asistente de instalación (multiplataforma).
@@ -453,7 +454,7 @@ function StepExtras({ s, t, w, origin, apiKey, copy, copied, onDownload, first, 
     return (
       <div className="row" style={{ gap: 10, flexWrap: 'wrap', marginTop: 4 }}>
         {(dlButtons || []).map((b: any, i: number) => (
-          <a key={i} className={b.primary ? 'btn btn-primary' : 'btn btn-ghost'} href={b.href} download onClick={onDownload}>
+          <a key={i} className={b.primary ? 'btn btn-primary' : 'btn btn-ghost'} href={b.href} download onClick={(e) => { onDownload && onDownload(); if (isNativeApp()) { e.preventDefault(); openExternal(b.href); } }}>
             <span className="ic">↓</span>{b.label}
           </a>
         ))}

@@ -29,6 +29,11 @@ export async function POST(req: Request) {
     const { error } = await supabaseAdmin.auth.admin.deleteUser(user.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    // Cerrar la sesión en el SERVIDOR: invalida los tokens y limpia las cookies.
+    // Sin esto, el JWT de la sesión sigue siendo válido unos minutos y el usuario
+    // "parece seguir dentro" aunque la cuenta ya no exista.
+    try { await sb.auth.signOut(); } catch {}
+
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
