@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { sendManual, renderTemplate } from '@/lib/campaigns';
-import { processEmailLinks } from '@/lib/emailLinks';
+import { processEmailLinks, normalizeButtonLinks } from '@/lib/emailLinks';
 import { sendEmailId } from '@/lib/mail';
 import { userLangByEmail } from '@/lib/emailTemplates';
 import { getSetting } from '@/lib/settings';
@@ -61,12 +61,17 @@ export async function POST(req: Request) {
     hEs = withSigHtml(hEs); hEn = withSigHtml(hEn);
     const bEsS = withSigText(bEs), bEnS = withSigText(bEn);
 
-    // Seguimiento de enlaces: UTM en los botones y/o enlace corto de marca (/r/código).
-    // Se aplica una vez al HTML (igual para todos los destinatarios) antes de enviar.
-    if ((b.utm || b.short_links) && action !== 'count') {
-      const linkOpts = { utm: !!b.utm, shorten: !!b.short_links, campaign: String(b.campaign || b.subject_es || b.subject_en || 'email') };
-      if (hEs) hEs = await processEmailLinks(hEs, linkOpts);
-      if (hEn) hEn = await processEmailLinks(hEn, linkOpts);
+    // Enlaces: SIEMPRE se normalizan (candado anti-enlace-roto). Además, si se pidió,
+    // se les añade UTM y/o se acortan a enlace de marca. Igual para todos los destinatarios.
+    if (action !== 'count') {
+      if (b.utm || b.short_links) {
+        const linkOpts = { utm: !!b.utm, shorten: !!b.short_links, campaign: String(b.campaign || b.subject_es || b.subject_en || 'email') };
+        if (hEs) hEs = await processEmailLinks(hEs, linkOpts);   // processEmailLinks ya normaliza primero
+        if (hEn) hEn = await processEmailLinks(hEn, linkOpts);
+      } else {
+        if (hEs) hEs = normalizeButtonLinks(hEs);
+        if (hEn) hEn = normalizeButtonLinks(hEn);
+      }
     }
 
     // Prueba a la dirección que indique el admin (o su propio correo).

@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { fixLink } from '@/lib/emailDestinations';
 
 // ============================================================
 // Enlaces de los correos: seguimiento (UTM) y enlace corto de marca.
@@ -44,10 +45,19 @@ export async function shortenHtmlLinks(html: string, campaign?: string): Promise
   return s.replace(/href=["'](https?:\/\/[^"']+)["']/gi, (m, u) => (map[u] ? `href="${map[u]}"` : m));
 }
 
+// Candado final: corrige cualquier enlace roto o con dominio equivocado
+// (p. ej. onyxtradingvault.com → onyxtradinglive.com, rutas relativas → absolutas,
+// placeholders → la web). Deja intactos los enlaces externos legítimos.
+export function normalizeButtonLinks(html: string): string {
+  return String(html || '').replace(/href=["']([^"']*)["']/gi, (_m, u) => `href="${fixLink(u)}"`);
+}
+
 // Procesa el HTML de un correo según las opciones elegidas en el Centro de correos.
+// SIEMPRE normaliza los enlaces primero (candado), luego UTM/acortado si se pidieron.
 export async function processEmailLinks(html: string, opts?: { utm?: boolean; shorten?: boolean; campaign?: string }): Promise<string> {
   let h = String(html || '');
   if (!h) return h;
+  h = normalizeButtonLinks(h);                                  // 0º candado: enlaces seguros
   const campaign = (opts?.campaign || 'email').slice(0, 60);
   if (opts?.utm) h = addUtmToHtml(h, { campaign });             // 1º UTM sobre la URL real
   if (opts?.shorten) h = await shortenHtmlLinks(h, campaign);   // 2º acortar (redirige a la URL con UTM)

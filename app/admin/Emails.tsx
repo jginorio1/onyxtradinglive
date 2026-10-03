@@ -4,6 +4,7 @@ import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 import { fmtDateTime } from '@/lib/fmtDate';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { EMAIL_DESTINATIONS, destUrl, isAllowedLink, fixLink, destLabel } from '@/lib/emailDestinations';
 
 // ============================================================
 // Admin → Centro de correos. UN solo lugar para TODO el correo:
@@ -196,6 +197,7 @@ function TplEditor({ tpl, es, L, sigs, onBack, onSaved }: { tpl: Tpl; es: boolea
   const setCur = (patch: any) => (l === 'es' ? setEs({ ...eEs, ...patch }) : setEn({ ...eEn, ...patch }));
 
   async function save() {
+    if (htmlMode && (hasBadButton(eEs.html) || hasBadButton(eEn.html))) { toast(L('Hay un botón con enlace inválido. Corrígelo antes de guardar.', 'A button has an invalid link. Fix it before saving.')); return; }
     setBusy('save');
     try {
       // Guarda una versión en el historial local ANTES de enviar (para poder volver).
@@ -411,31 +413,41 @@ function setButtonHrefAt(html: string, index: number, url: string): string {
     return /href=["'][^"']*["']/i.test(tag) ? tag.replace(/href=["'][^"']*["']/i, `href="${url}"`) : tag.replace(/<a\b/i, `<a href="${url}"`);
   });
 }
-// ¿El enlace es válido? OK si es variable de plantilla ({enlace}), https:// o mailto:.
-function isLinkOk(u: string): boolean {
-  const s = (u || '').trim();
-  if (!s) return false;
-  if (/^\{\{?\s*\w+\s*\}?\}$/.test(s)) return true;            // {enlace} / {{enlace}}
-  return /^https:\/\//i.test(s) || /^mailto:/i.test(s);
+// ¿Hay algún botón con enlace inválido? (para bloquear el envío)
+function hasBadButton(html: string): boolean {
+  return allButtonHrefs(html).some((h) => !isAllowedLink(h));
 }
-// Editor de enlaces de los botones: ver / editar / aplicar cada uno, con validación.
+// Editor de enlaces de los botones: desplegable de destino del catálogo, campo libre,
+// "Va a: …", validación contra el catálogo de Onyx y botón "Corregir".
 function CtaEditor({ html, onChange, L }: { html: string; onChange: (h: string) => void; L: (a: string, b: string) => string }) {
   const hrefs = allButtonHrefs(html);
   const [vals, setVals] = useState<string[]>(hrefs);
   useEffect(() => { setVals(hrefs); /* re-sincroniza al cambiar el HTML */ }, [html]);
   if (!hrefs.length) return null;
+  const apps = EMAIL_DESTINATIONS.filter((d) => d.group === 'app');
+  const webs = EMAIL_DESTINATIONS.filter((d) => d.group === 'web');
   return (
     <div style={{ marginTop: 8, background: 'var(--bg2)', borderRadius: 8, padding: '8px 10px' }}>
       {hrefs.map((h, i) => {
-        const cur = vals[i] ?? h; const ok = isLinkOk(cur);
+        const cur = vals[i] ?? h; const ok = isAllowedLink(cur);
+        const setVal = (v: string) => setVals((p) => { const n = [...p]; n[i] = v; return n; });
         return (
-          <div key={i} style={{ marginBottom: i < hrefs.length - 1 ? 8 : 0 }}>
+          <div key={i} style={{ marginBottom: i < hrefs.length - 1 ? 10 : 0 }}>
             <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span className="muted" style={{ fontSize: 11.5, minWidth: 92 }}>🔗 {hrefs.length > 1 ? L(`Botón ${i + 1}`, `Button ${i + 1}`) : L('Enlace del botón', 'Button link')}:</span>
-              <input value={cur} onChange={(e) => setVals((p) => { const n = [...p]; n[i] = e.target.value; return n; })} placeholder="https://www.onyxtradinglive.com/…" style={{ margin: 0, flex: 1, minWidth: 200, fontSize: 12.5, borderColor: ok ? 'var(--line)' : '#e5484d' }} />
+              <select value="" onChange={(e) => { if (e.target.value) { const u = destUrl(e.target.value); setVal(u); onChange(setButtonHrefAt(html, i, u)); } e.currentTarget.value = ''; }} style={{ margin: 0, maxWidth: 190, fontSize: 12 }} title={L('Elegir destino del catálogo', 'Pick a destination from the catalog')}>
+                <option value="">{L('Destino…', 'Destination…')}</option>
+                <optgroup label={L('En la app', 'In the app')}>{apps.map((d) => <option key={d.id} value={d.path}>{L(d.es, d.en)}</option>)}</optgroup>
+                <optgroup label={L('Páginas web', 'Web pages')}>{webs.map((d) => <option key={d.id} value={d.path}>{L(d.es, d.en)}</option>)}</optgroup>
+              </select>
+              <input value={cur} onChange={(e) => setVal(e.target.value)} placeholder="https://www.onyxtradinglive.com/…" style={{ margin: 0, flex: 1, minWidth: 180, fontSize: 12.5, borderColor: ok ? 'var(--line)' : '#e5484d' }} />
               <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={cur.trim() === h || !ok} onClick={() => onChange(setButtonHrefAt(html, i, cur.trim()))}>{L('Aplicar', 'Apply')}</button>
             </div>
-            {!ok && <div style={{ fontSize: 11, color: '#e5484d', marginTop: 2, marginLeft: 100 }}>{L('Usa https:// (o una variable como {enlace}).', 'Use https:// (or a variable like {enlace}).')}</div>}
+            <div style={{ marginLeft: 100, marginTop: 2, fontSize: 11 }}>
+              {ok
+                ? <span className="muted">{L('Va a', 'Goes to')}: <b style={{ color: 'var(--tx)' }}>{destLabel(cur, true)}</b></span>
+                : <span style={{ color: '#e5484d' }}>{L('Destino no válido. ', 'Invalid destination. ')}<button onClick={() => { const f = fixLink(cur); setVal(f); onChange(setButtonHrefAt(html, i, f)); }} style={{ border: 'none', background: 'none', color: 'var(--brand)', cursor: 'pointer', textDecoration: 'underline', fontSize: 11, padding: 0 }}>{L('Corregir', 'Fix')}</button></span>}
+            </div>
           </div>
         );
       })}
@@ -629,6 +641,7 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
   async function send() {
     if (!f.subject_es && !f.subject_en) { toast(L('Falta el asunto.', 'Subject is missing.')); return; }
     if (mode === 'emails' && !emails.trim()) { toast(L('Añade al menos una dirección.', 'Add at least one address.')); return; }
+    if (htmlMode && (hasBadButton(fh.html_es) || hasBadButton(fh.html_en))) { toast(L('Hay un botón con enlace inválido. Corrígelo antes de enviar.', 'A button has an invalid link. Fix it before sending.')); return; }
     if (!window.confirm(L('¿Enviar este correo ahora?', 'Send this email now?'))) return;
     setBusy('send');
     try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'send', ...payload() }) }); const j = await r.json(); if (!r.ok) toastErr(j); else toast(L(`Enviado a ${j.sent} destinatario(s).`, `Sent to ${j.sent} recipient(s).`), 'ok'); } finally { setBusy(''); }
@@ -756,11 +769,13 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
             <CtaEditor html={(fh as any)[curHtml]} onChange={(h) => setFh({ ...fh, [curHtml]: h })} L={L} />
             {/* Seguimiento de enlaces */}
             <div style={{ marginTop: 8, background: 'var(--bg2)', borderRadius: 8, padding: '8px 10px', display: 'grid', gap: 6 }}>
-              <label className="row" style={{ gap: 7, alignItems: 'center', fontSize: 12.5, cursor: 'pointer' }}>
-                <input type="checkbox" checked={utmOn} onChange={(e) => setUtmOn(e.target.checked)} /> {L('Añadir seguimiento UTM a los enlaces', 'Add UTM tracking to links')}
+              <label style={{ display: 'flex', gap: 7, alignItems: 'center', justifyContent: 'flex-start', fontSize: 12.5, cursor: 'pointer' }}>
+                <input type="checkbox" checked={utmOn} onChange={(e) => setUtmOn(e.target.checked)} style={{ flex: '0 0 auto', width: 16, height: 16 }} />
+                <span>{L('Añadir seguimiento UTM a los enlaces', 'Add UTM tracking to links')}</span>
               </label>
-              <label className="row" style={{ gap: 7, alignItems: 'center', fontSize: 12.5, cursor: 'pointer' }}>
-                <input type="checkbox" checked={shortOn} onChange={(e) => setShortOn(e.target.checked)} /> {L('Usar enlace corto de marca (onyxtradinglive.com/r/…) y contar clics', 'Use branded short link (onyxtradinglive.com/r/…) and count clicks')}
+              <label style={{ display: 'flex', gap: 7, alignItems: 'center', justifyContent: 'flex-start', fontSize: 12.5, cursor: 'pointer' }}>
+                <input type="checkbox" checked={shortOn} onChange={(e) => setShortOn(e.target.checked)} style={{ flex: '0 0 auto', width: 16, height: 16 }} />
+                <span>{L('Usar enlace corto de marca (onyxtradinglive.com/r/…) y contar clics', 'Use branded short link (onyxtradinglive.com/r/…) and count clicks')}</span>
               </label>
               {(utmOn || shortOn) && <input value={campaign} onChange={(e) => setCampaign(e.target.value)} placeholder={L('Nombre de campaña (p. ej. promo-black-onyx)', 'Campaign name (e.g. promo-black-onyx)')} style={{ margin: 0, fontSize: 12.5 }} />}
             </div>

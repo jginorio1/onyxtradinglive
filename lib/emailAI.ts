@@ -1,4 +1,5 @@
 import { brandBrief } from '@/lib/supportAI';
+import { catalogForAI, ONYX_BASE } from '@/lib/emailDestinations';
 
 // ============================================================
 // IA para redactar y modificar correos del Centro de correos.
@@ -60,6 +61,12 @@ export async function draftEmail(opts: {
     ? `\n\nTEXTO ACTUAL a mejorar —\nES asunto: "${opts.currentEs?.subject || ''}"\nES cuerpo: "${(opts.currentEs?.body || '').slice(0, 1500)}"\nEN asunto: "${opts.currentEn?.subject || ''}"\nEN cuerpo: "${(opts.currentEn?.body || '').slice(0, 1500)}"`
     : '';
 
+  // Regla de ENLACES: los botones/CTA deben ir SIEMPRE al dominio real de Onyx
+  // y a una ruta que exista, elegida según el tema del correo. Nunca inventar dominios.
+  const linksRule = `ENLACES (MUY IMPORTANTE): el dominio de la app es ${ONYX_BASE}. Todo botón o enlace debe apuntar a ${ONYX_BASE} + una ruta del CATÁLOGO de abajo, la que mejor encaje con el tema del correo. NUNCA inventes dominios (nada de onyxtradingvault.com ni similares) ni rutas que no estén en la lista. ${vars.includes('{enlace}') ? 'Si el tema no encaja con ninguna, usa la variable {enlace}.' : ''}
+=== CATÁLOGO DE DESTINOS (nombre → URL · cuándo usarla) ===
+${catalogForAI()}`;
+
   const html = opts.format === 'html';
 
   // Reglas estrictas de HTML "a prueba de clientes": inline-only, tabla, colores
@@ -89,6 +96,7 @@ DISEÑO PROFESIONAL (úsalo para que el correo se vea cuidado, y SOBRE TODO si e
   const system = `Eres el redactor de correos de Onyx Trading Live. Escribes correos transaccionales claros, cálidos y honestos, con la voz de la marca. NUNCA inventes funciones ni prometas rentabilidad ni des consejo financiero. Usa el CONOCIMIENTO DE ONYX de abajo como única fuente de verdad del producto. ${TONE[opts.tone || 'friendly'] || TONE.friendly}
 PLATAFORMAS: si mencionas las plataformas compatibles, Onyx es MULTIPLATAFORMA y soporta MetaTrader (MT4 y MT5), cTrader, MatchTrader, TradeLocker y DXtrade. NUNCA listes solo MT4/MT5/cTrader dejando fuera MatchTrader, TradeLocker o DXtrade; o las nombras todas o dices "tu plataforma" en general.
 ${varsRule}
+${linksRule}
 Sé breve (máx ~120 palabras por idioma). Como mucho 1-2 emojis, con criterio.${htmlRule}
 
 Devuelve SOLO un objeto JSON válido, sin texto extra, con EXACTAMENTE estas claves:
