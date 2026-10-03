@@ -197,12 +197,19 @@ function TplEditor({ tpl, es, L, sigs, onBack, onSaved }: { tpl: Tpl; es: boolea
   const setCur = (patch: any) => (l === 'es' ? setEs({ ...eEs, ...patch }) : setEn({ ...eEn, ...patch }));
 
   async function save() {
-    if (htmlMode && (hasBadButton(eEs.html) || hasBadButton(eEn.html))) { toast(L('Hay un botón con enlace inválido. Corrígelo antes de guardar.', 'A button has an invalid link. Fix it before saving.')); return; }
     setBusy('save');
     try {
+      // Corrige solo los enlaces de los botones (dominios raros, rutas relativas…)
+      // sin molestar: si algo cambió, se avisa y se refleja en el editor.
+      const fEs = { ...eEs, html: eEs.html ? fixAllLinks(eEs.html) : eEs.html };
+      const fEn = { ...eEn, html: eEn.html ? fixAllLinks(eEn.html) : eEn.html };
+      if (fEs.html !== eEs.html || fEn.html !== eEn.html) {
+        setEs(fEs); setEn(fEn);
+        toast(L('Corregí algún enlace de botón al dominio de Onyx.', 'Fixed a button link to the Onyx domain.'), 'ok');
+      }
       // Guarda una versión en el historial local ANTES de enviar (para poder volver).
-      histPush(tpl.id, { ts: Date.now(), es: eEs, en: eEn, sig }); setHist(histLoad(tpl.id));
-      const overrides = { [tpl.id]: { sig, es: eEs, en: eEn } };
+      histPush(tpl.id, { ts: Date.now(), es: fEs, en: fEn, sig }); setHist(histLoad(tpl.id));
+      const overrides = { [tpl.id]: { sig, es: fEs, en: fEn } };
       const r = await fetch('/api/admin/email-templates', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ overrides }) });
       const j = await r.json(); if (!r.ok) { toastErr(j); return; }
       toast(L('Correo guardado.', 'Email saved.'), 'ok'); onSaved();
@@ -413,9 +420,14 @@ function setButtonHrefAt(html: string, index: number, url: string): string {
     return /href=["'][^"']*["']/i.test(tag) ? tag.replace(/href=["'][^"']*["']/i, `href="${url}"`) : tag.replace(/<a\b/i, `<a href="${url}"`);
   });
 }
-// ¿Hay algún botón con enlace inválido? (para bloquear el envío)
+// ¿Hay algún botón con enlace inválido? (para avisar, no para bloquear)
 function hasBadButton(html: string): boolean {
   return allButtonHrefs(html).some((h) => !isAllowedLink(h));
+}
+// Corrige TODOS los enlaces del HTML (igual que el candado del servidor):
+// dominios equivocados → onyxtradinglive.com, rutas relativas → absolutas, etc.
+function fixAllLinks(html: string): string {
+  return String(html || '').replace(/href=["']([^"']*)["']/gi, (_m, u) => `href="${fixLink(u)}"`);
 }
 // Editor de enlaces de los botones: desplegable de destino del catálogo, campo libre,
 // "Va a: …", validación contra el catálogo de Onyx y botón "Corregir".
@@ -641,7 +653,6 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
   async function send() {
     if (!f.subject_es && !f.subject_en) { toast(L('Falta el asunto.', 'Subject is missing.')); return; }
     if (mode === 'emails' && !emails.trim()) { toast(L('Añade al menos una dirección.', 'Add at least one address.')); return; }
-    if (htmlMode && (hasBadButton(fh.html_es) || hasBadButton(fh.html_en))) { toast(L('Hay un botón con enlace inválido. Corrígelo antes de enviar.', 'A button has an invalid link. Fix it before sending.')); return; }
     if (!window.confirm(L('¿Enviar este correo ahora?', 'Send this email now?'))) return;
     setBusy('send');
     try { const r = await fetch('/api/admin/emails/compose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'send', ...payload() }) }); const j = await r.json(); if (!r.ok) toastErr(j); else toast(L(`Enviado a ${j.sent} destinatario(s).`, `Sent to ${j.sent} recipient(s).`), 'ok'); } finally { setBusy(''); }
