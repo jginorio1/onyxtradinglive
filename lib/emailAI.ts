@@ -107,7 +107,7 @@ ${await brandBrief('es')}`;
 
   const user = `${opts.mode === 'rewrite' ? 'Reescribe/mejora este correo' : 'Escribe un correo nuevo'} según esta instrucción del dueño: "${opts.instruction}".${cur}\nDevuelve asunto y cuerpo en español y en inglés (traducción natural, no literal).${html ? ' Incluye también el cuerpo en HTML (html_es, html_en) siguiendo las reglas de compatibilidad.' : ''}`;
 
-  const parsed = await callAI(system, user, html ? 3000 : 1400);
+  const parsed = await callAI(system, user, html ? 6000 : 1800);
   if (!parsed) return { ok: false, reason: 'parse' };
   const draft: EmailDraft = {
     subject_es: String(parsed.subject_es || '').slice(0, 200),
