@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { sendManual, renderTemplate } from '@/lib/campaigns';
+import { processEmailLinks } from '@/lib/emailLinks';
 import { sendEmailId } from '@/lib/mail';
 import { userLangByEmail } from '@/lib/emailTemplates';
 import { getSetting } from '@/lib/settings';
@@ -59,6 +60,14 @@ export async function POST(req: Request) {
     const withSigText = (t: string) => t ? (t + (sigText ? '\n\n' + sigText : '')) : '';
     hEs = withSigHtml(hEs); hEn = withSigHtml(hEn);
     const bEsS = withSigText(bEs), bEnS = withSigText(bEn);
+
+    // Seguimiento de enlaces: UTM en los botones y/o enlace corto de marca (/r/código).
+    // Se aplica una vez al HTML (igual para todos los destinatarios) antes de enviar.
+    if ((b.utm || b.short_links) && action !== 'count') {
+      const linkOpts = { utm: !!b.utm, shorten: !!b.short_links, campaign: String(b.campaign || b.subject_es || b.subject_en || 'email') };
+      if (hEs) hEs = await processEmailLinks(hEs, linkOpts);
+      if (hEn) hEn = await processEmailLinks(hEn, linkOpts);
+    }
 
     // Prueba a la dirección que indique el admin (o su propio correo).
     if (action === 'test') {

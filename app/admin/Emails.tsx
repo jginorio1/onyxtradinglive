@@ -395,34 +395,50 @@ function htmlToText(html: string): string {
   return s.trim();
 }
 
-// Lee el enlace (href) del PRIMER botón del HTML (ancla con display:inline-block).
-function firstButtonHref(html: string): string {
-  const s = String(html || '');
-  const tag = s.match(/<a\b[^>]*style=["'][^"']*display:inline-block[^"']*["'][^>]*>/i);
-  const src = tag ? tag[0] : '';
-  const h = src.match(/href=["']([^"']*)["']/i);
-  if (h) return h[1];
-  // Respaldo: cualquier ancla con fondo morado de marca (botón "clásico").
-  const m2 = s.match(/<a\b[^>]*(?:background:#7a5cff|#7a5cff)[^>]*href=["']([^"']*)["']/i) || s.match(/<a\b[^>]*href=["']([^"']*)["'][^>]*(?:background:#7a5cff)/i);
-  return m2 ? m2[1] : '';
+// Lee el href de TODOS los botones del HTML (anclas con display:inline-block).
+function allButtonHrefs(html: string): string[] {
+  const out: string[] = [];
+  const re = /<a\b[^>]*style=["'][^"']*display:inline-block[^"']*["'][^>]*>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(String(html || '')))) { const h = m[0].match(/href=["']([^"']*)["']/i); out.push(h ? h[1] : ''); }
+  return out;
 }
-// Reemplaza el href de TODOS los botones del HTML por una URL nueva.
-function setButtonHref(html: string, url: string): string {
-  return String(html || '').replace(/<a\b[^>]*style=["'][^"']*display:inline-block[^"']*["'][^>]*>/gi, (tag) =>
-    /href=["'][^"']*["']/i.test(tag) ? tag.replace(/href=["'][^"']*["']/i, `href="${url}"`) : tag.replace(/<a\b/i, `<a href="${url}"`));
+// Reemplaza el href del botón número `index` por una URL nueva.
+function setButtonHrefAt(html: string, index: number, url: string): string {
+  let i = -1;
+  return String(html || '').replace(/<a\b[^>]*style=["'][^"']*display:inline-block[^"']*["'][^>]*>/gi, (tag) => {
+    i++; if (i !== index) return tag;
+    return /href=["'][^"']*["']/i.test(tag) ? tag.replace(/href=["'][^"']*["']/i, `href="${url}"`) : tag.replace(/<a\b/i, `<a href="${url}"`);
+  });
 }
-// Editor del enlace del botón: ver / editar / aplicar. Al guardar la plantilla o
-// enviar, el cambio ya va dentro del HTML.
+// ¿El enlace es válido? OK si es variable de plantilla ({enlace}), https:// o mailto:.
+function isLinkOk(u: string): boolean {
+  const s = (u || '').trim();
+  if (!s) return false;
+  if (/^\{\{?\s*\w+\s*\}?\}$/.test(s)) return true;            // {enlace} / {{enlace}}
+  return /^https:\/\//i.test(s) || /^mailto:/i.test(s);
+}
+// Editor de enlaces de los botones: ver / editar / aplicar cada uno, con validación.
 function CtaEditor({ html, onChange, L }: { html: string; onChange: (h: string) => void; L: (a: string, b: string) => string }) {
-  const href = firstButtonHref(html);
-  const [v, setV] = useState(href);
-  useEffect(() => { setV(href); }, [href]);
-  if (!href && !/display:inline-block/i.test(html || '')) return null;
+  const hrefs = allButtonHrefs(html);
+  const [vals, setVals] = useState<string[]>(hrefs);
+  useEffect(() => { setVals(hrefs); /* re-sincroniza al cambiar el HTML */ }, [html]);
+  if (!hrefs.length) return null;
   return (
-    <div className="row" style={{ gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap', background: 'var(--bg2)', borderRadius: 8, padding: '7px 10px' }}>
-      <span className="muted" style={{ fontSize: 11.5 }}>🔗 {L('Enlace del botón', 'Button link')}:</span>
-      <input value={v} onChange={(e) => setV(e.target.value)} placeholder="https://www.onyxtradinglive.com/…" style={{ margin: 0, flex: 1, minWidth: 200, fontSize: 12.5 }} />
-      <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={v.trim() === href} onClick={() => onChange(setButtonHref(html, v.trim()))}>{L('Aplicar', 'Apply')}</button>
+    <div style={{ marginTop: 8, background: 'var(--bg2)', borderRadius: 8, padding: '8px 10px' }}>
+      {hrefs.map((h, i) => {
+        const cur = vals[i] ?? h; const ok = isLinkOk(cur);
+        return (
+          <div key={i} style={{ marginBottom: i < hrefs.length - 1 ? 8 : 0 }}>
+            <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span className="muted" style={{ fontSize: 11.5, minWidth: 92 }}>🔗 {hrefs.length > 1 ? L(`Botón ${i + 1}`, `Button ${i + 1}`) : L('Enlace del botón', 'Button link')}:</span>
+              <input value={cur} onChange={(e) => setVals((p) => { const n = [...p]; n[i] = e.target.value; return n; })} placeholder="https://www.onyxtradinglive.com/…" style={{ margin: 0, flex: 1, minWidth: 200, fontSize: 12.5, borderColor: ok ? 'var(--line)' : '#e5484d' }} />
+              <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={cur.trim() === h || !ok} onClick={() => onChange(setButtonHrefAt(html, i, cur.trim()))}>{L('Aplicar', 'Apply')}</button>
+            </div>
+            {!ok && <div style={{ fontSize: 11, color: '#e5484d', marginTop: 2, marginLeft: 100 }}>{L('Usa https:// (o una variable como {enlace}).', 'Use https:// (or a variable like {enlace}).')}</div>}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -575,6 +591,9 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
   const [sigId, setSigId] = useState('');
   const [sigMgr, setSigMgr] = useState(false);
   const [atts, setAtts] = useState<{ filename: string; content: string; size: number }[]>([]);
+  const [utmOn, setUtmOn] = useState(false);          // añadir UTM a los botones
+  const [shortOn, setShortOn] = useState(false);      // acortar enlaces (marca /r/)
+  const [campaign, setCampaign] = useState('');       // nombre de campaña (utm_campaign)
 
   useEffect(() => { (async () => {
     try { const r = await fetch('/api/admin/campaigns'); const j = await r.json(); setSegs(j.segments || []); } catch {}
@@ -592,6 +611,8 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
     ...(htmlMode ? { html_es: fh.html_es, html_en: fh.html_en } : {}),
     signature_id: sigId || undefined,
     attachments: atts.map((a) => ({ filename: a.filename, content: a.content })),
+    utm: utmOn || undefined, short_links: shortOn || undefined,
+    campaign: (campaign || f.subject_es || f.subject_en || '').slice(0, 60) || undefined,
   });
 
   async function doCount() {
@@ -719,7 +740,7 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
                 {EMAIL_STARTERS.map((s) => <option key={s.id} value={s.id}>{L(s.es, s.en)}</option>)}
               </select>
               {['nombre', 'enlace'].map((v) => <button key={v} onClick={() => ins(' {{' + v + '}}')} style={chip}>{'{{' + v + '}}'}</button>)}
-              <button onClick={() => ins('\n<table role="presentation" cellpadding="0" cellspacing="0" style="margin:18px 0;"><tr><td bgcolor="#7a5cff" style="border-radius:9px;"><a href="{{enlace}}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;">Botón</a></td></tr></table>')} style={chip}>+ {L('Botón', 'Button')}</button>
+              <button onClick={() => ins('\n<table role="presentation" cellpadding="0" cellspacing="0" style="margin:18px 0;"><tr><td bgcolor="#7a5cff" style="border-radius:9px;"><a href="https://www.onyxtradinglive.com/dashboard" style="display:inline-block;padding:12px 24px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;border-radius:9px;">Botón</a></td></tr></table>')} style={chip}>+ {L('Botón', 'Button')}</button>
               <button onClick={() => setFh((p) => ({ ...p, [curHtml]: preheaderSnippet() + (p as any)[curHtml] }))} style={chip} title={L('Línea de vista previa en la bandeja (oculta en el correo)', 'Inbox preview line (hidden in the email)')}>+ {L('Preheader', 'Preheader')}</button>
               <label style={{ ...chip, cursor: 'pointer' }}>+ {L('Imagen', 'Image')}
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const fl = e.target.files?.[0]; if (fl) uploadImage(fl); e.currentTarget.value = ''; }} />
@@ -733,6 +754,16 @@ function Redactar({ es, L }: { es: boolean; L: (a: string, b: string) => string 
               <PreviewFrame L={L} inner={fillSample((fh as any)[curHtml]) + (sigId ? (sigs.find((s) => s.id === sigId)?.html ? '<br><br>' + sigs.find((s) => s.id === sigId)!.html : '') : '')} />
             </div>
             <CtaEditor html={(fh as any)[curHtml]} onChange={(h) => setFh({ ...fh, [curHtml]: h })} L={L} />
+            {/* Seguimiento de enlaces */}
+            <div style={{ marginTop: 8, background: 'var(--bg2)', borderRadius: 8, padding: '8px 10px', display: 'grid', gap: 6 }}>
+              <label className="row" style={{ gap: 7, alignItems: 'center', fontSize: 12.5, cursor: 'pointer' }}>
+                <input type="checkbox" checked={utmOn} onChange={(e) => setUtmOn(e.target.checked)} /> {L('Añadir seguimiento UTM a los enlaces', 'Add UTM tracking to links')}
+              </label>
+              <label className="row" style={{ gap: 7, alignItems: 'center', fontSize: 12.5, cursor: 'pointer' }}>
+                <input type="checkbox" checked={shortOn} onChange={(e) => setShortOn(e.target.checked)} /> {L('Usar enlace corto de marca (onyxtradinglive.com/r/…) y contar clics', 'Use branded short link (onyxtradinglive.com/r/…) and count clicks')}
+              </label>
+              {(utmOn || shortOn) && <input value={campaign} onChange={(e) => setCampaign(e.target.value)} placeholder={L('Nombre de campaña (p. ej. promo-black-onyx)', 'Campaign name (e.g. promo-black-onyx)')} style={{ margin: 0, fontSize: 12.5 }} />}
+            </div>
             {(() => { const warns = lintEmail((fh as any)[curHtml], (f as any)[curSub], (f as any)[curBody]); return warns.length ? (
               <div style={{ marginTop: 8, background: 'color-mix(in srgb,#f5a623 12%,transparent)', border: '1px solid color-mix(in srgb,#f5a623 35%,transparent)', borderRadius: 8, padding: '8px 11px' }}>
                 <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--tx)', marginBottom: 3 }}>⚠ {L('Revisa antes de enviar', 'Check before sending')}</div>
