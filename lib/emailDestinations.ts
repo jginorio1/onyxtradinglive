@@ -74,12 +74,14 @@ export function isTemplateVar(u: string): boolean {
   return /^\{\{?\s*\w+\s*\}?\}$/.test(String(u || '').trim());
 }
 
-// ¿Enlace válido? OK si es variable, mailto, o https de un host de Onyx.
+// ¿Enlace válido? OK si es variable, mailto, ruta relativa de Onyx (/algo),
+// o https de un host de Onyx. (Una ruta relativa el servidor la vuelve absoluta.)
 export function isAllowedLink(u: string): boolean {
   const s = String(u || '').trim();
   if (!s) return false;
   if (isTemplateVar(s)) return true;
   if (/^mailto:/i.test(s)) return true;
+  if (s.startsWith('/')) return true;                          // ruta interna de Onyx
   if (!/^https?:\/\//i.test(s)) return false;
   try { return hostIsOnyx(new URL(s).hostname); } catch { return false; }
 }
