@@ -157,7 +157,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 // igual que el de Notificaciones. Un solo estándar, imposible de desincronizar.
 function Section({ icon, title, subtitle, children }: { icon: string; title: string; subtitle?: string; children: any }) {
   return (
-    <div style={{ maxWidth: 820, margin: '0 auto' }}>
+    <div style={{ maxWidth: 'none', margin: '0 auto' }}>
       <div style={{ marginBottom: 16, textAlign: 'center' }}>
         <span style={{ display: 'inline-flex', width: 44, height: 44, borderRadius: 13, background: 'rgba(124,140,255,.16)', color: 'var(--brand)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>{typeof icon === 'string' ? <OnyxIcon emoji={icon} size={22} /> : icon}</span>
         <h2 style={{ fontSize: 20, marginBottom: 2 }}>{title}</h2>

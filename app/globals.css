@@ -346,16 +346,17 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 @media(min-width:1025px){ .topsep{ display:inline-block; width:1px; height:20px; background:var(--line); margin:0 4px; flex:0 0 auto; } }
 
 /* Layout cabina: sesiones izquierda · panel centro (se estira) · noticias derecha */
-/* El cockpit (rieles + centro) se topa y se centra como bloque: en monitores
-   muy anchos (ultrawide/50") deja de estirarse y los rieles quedan pegados al
-   centro; el espacio sobrante se reparte igual a ambos lados. */
-.cockpit{display:flex;flex-direction:column;gap:16px;width:100%;max-width:1840px;margin-inline:auto;}
+/* El cockpit (rieles + centro) llena el ancho disponible: el centro se estira
+   para ocupar todo el espacio entre los rieles, así el dashboard aprovecha los
+   monitores grandes en vez de quedar centrado y angosto. En pantallas enormes
+   el propio .wrap-wide (2560px) pone el límite; aquí no capamos. */
+.cockpit{display:flex;flex-direction:column;gap:16px;width:100%;max-width:none;margin-inline:auto;}
 .cockpit .center{min-width:0;max-width:none;margin:0;padding:0;}
 @media(min-width:1280px){
   .cockpit{flex-direction:row;align-items:flex-start;}
-  .cockpit .rail-left{flex:0 0 250px;order:1;position:sticky;top:80px;max-height:calc(100vh - 96px);overflow:auto;}
+  .cockpit .rail-left{flex:0 0 260px;order:1;position:sticky;top:80px;max-height:calc(100vh - 96px);overflow:auto;}
   .cockpit .center{flex:1 1 0;order:2;min-width:0;}
-  .cockpit .rail-right{flex:0 0 280px;order:3;position:sticky;top:80px;max-height:calc(100vh - 96px);overflow:auto;}
+  .cockpit .rail-right{flex:0 0 300px;order:3;position:sticky;top:80px;max-height:calc(100vh - 96px);overflow:auto;}
 }
 @media(min-width:2200px){ .cockpit{gap:22px;} .cockpit .rail-left{flex-basis:300px;} .cockpit .rail-right{flex-basis:330px;} }
 
