@@ -6,7 +6,8 @@ import { serverLang } from '@/lib/locale';
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Propuesta de publicidad · Onyx Trading Live', robots: { index: false, follow: false } };
 
-const unit = (u: string) => (u === 'month' ? '/mo' : u === 'cpm' ? ' CPM' : u === 'cpc' ? ' CPC' : u === 'cpa' ? ' CPA' : '/wk');
+// Venta de espacios SOLO por precio fijo: por semana o por mes. (Sin CPM/CPC/CPA.)
+const unit = (u: string) => (u === 'month' ? '/mo' : '/wk');
 
 // Documento imprimible (una sola página web, dos secciones de idioma). Diseñado
 // para "Guardar como PDF" desde el navegador. Colores claros fijos (los PDFs son
@@ -109,7 +110,7 @@ export default async function ProposalDoc({ searchParams }: { searchParams?: { t
 
         {/* Contacto */}
         <h2>{tr('Siguiente paso', 'Next step')}</h2>
-        <p>{tr('Reserva tu espacio o escríbenos para un plan a medida (patrocinio, CPA/afiliado, billboard).', 'Book your space or contact us for a custom plan (sponsorship, CPA/affiliate, billboard).')} <b>{branding.contactEmail}</b> · onyxtradinglive.com/publicidad</p>
+        <p>{tr('Reserva tu espacio por semanas o meses, o escríbenos para un plan a medida (patrocinio o billboard).', 'Book your space by weeks or months, or contact us for a custom plan (sponsorship or billboard).')} <b>{branding.contactEmail}</b> · onyxtradinglive.com/publicidad</p>
 
         <p className="mk-legal">{L ? disclaimer.es : disclaimer.en}</p>
       </section>

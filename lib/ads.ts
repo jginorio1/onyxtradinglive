@@ -51,12 +51,12 @@ export const AD_SLOTS: AdSlot[] = [
   { key: 'article_sidebar',   es: 'Artículo · Lateral vertical',  en: 'Article · Vertical sidebar', size: '300x600', page: 'article', unit: 'month', price: 150, model: 'flat', fmt: 'Half-page' },
   { key: 'landing_top',       es: 'Landing · Leaderboard',       en: 'Landing · Leaderboard',    size: '970x90',  page: 'landing', unit: 'week',  price: 90,  model: 'flat', fmt: 'Súper leaderboard' },
   // --- Fase 4: inventario nuevo ---
-  { key: 'landing_billboard', es: 'Landing · Billboard superior',en: 'Landing · Top billboard',  size: '970x250', page: 'landing', unit: 'week',  price: 140, model: 'cpm',  fmt: 'Billboard' },
+  { key: 'landing_billboard', es: 'Landing · Billboard superior',en: 'Landing · Top billboard',  size: '970x250', page: 'landing', unit: 'week',  price: 140, model: 'flat', fmt: 'Billboard' },
   { key: 'footer_site',       es: 'Sitio · Footer global',       en: 'Site · Global footer',     size: '728x90',  page: 'site',    unit: 'week',  price: 70,  model: 'flat', fmt: 'Leaderboard' },
-  { key: 'sticky_bottom',     es: 'Sitio · Barra sticky inferior',en: 'Site · Sticky bottom bar', size: '320x50',  page: 'site',    unit: 'week',  price: 110, model: 'cpc',  fmt: 'Sticky móvil' },
-  { key: 'article_halfpage',  es: 'Artículo · Media página',     en: 'Article · Half-page',      size: '300x600', page: 'article', unit: 'month', price: 180, model: 'cpm',  fmt: 'Half-page' },
+  { key: 'sticky_bottom',     es: 'Sitio · Barra sticky inferior',en: 'Site · Sticky bottom bar', size: '320x50',  page: 'site',    unit: 'week',  price: 110, model: 'flat', fmt: 'Sticky móvil' },
+  { key: 'article_halfpage',  es: 'Artículo · Media página',     en: 'Article · Half-page',      size: '300x600', page: 'article', unit: 'month', price: 180, model: 'flat', fmt: 'Half-page' },
   { key: 'blog_native',       es: 'Blog · Native destacado',     en: 'Blog · Native featured',   size: '600x300', page: 'blog',    unit: 'week',  price: 75,  model: 'flat', fmt: 'Native' },
-  { key: 'directory_partner', es: 'Directorio · Partner destacado',en: 'Directory · Featured partner', size: '600x300', page: 'directory', unit: 'month', price: 250, model: 'cpa', fmt: 'Listing' },
+  { key: 'directory_partner', es: 'Directorio · Partner destacado',en: 'Directory · Featured partner', size: '600x300', page: 'directory', unit: 'month', price: 250, model: 'flat', fmt: 'Listing' },
 ];
 export const slotByKey = (k: string) => AD_SLOTS.find((s) => s.key === k) || null;
 

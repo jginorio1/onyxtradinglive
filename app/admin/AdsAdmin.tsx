@@ -451,7 +451,6 @@ export default function AdsAdmin({ es }: { es: boolean }) {
               <select value={r.unit} onChange={(e) => setRates((rs) => rs.map((x, j) => j === i ? { ...x, unit: e.target.value as any } : x))} style={{ margin: 0, fontSize: 12 }}>
                 <option value="week">{L('/ semana', '/ week')}</option>
                 <option value="month">{L('/ mes', '/ month')}</option>
-                <option value="cpm">CPM</option>
               </select>
             </div>
           ))}

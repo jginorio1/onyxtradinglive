@@ -50,7 +50,7 @@ export const DEFAULT_MK: MediaKitOverrides = {
   packages: [
     { id: 'starter', es: 'Starter', en: 'Starter', priceMonthly: 150, descEs: '1 banner en blog o footer durante el mes.', descEn: '1 banner on blog or footer for the month.', slots: ['blog_top', 'footer_site'] },
     { id: 'growth',  es: 'Growth',  en: 'Growth',  priceMonthly: 420, descEs: 'Portada + artículo + footer, presencia en todo el sitio.', descEn: 'Landing + article + footer, site-wide presence.', slots: ['landing_top', 'article_halfpage', 'footer_site'] },
-    { id: 'enterprise', es: 'Enterprise', en: 'Enterprise', priceMonthly: 0, descEs: 'A medida: patrocinio, CPA/afiliado, billboard y directorio destacado.', descEn: 'Custom: sponsorship, CPA/affiliate, billboard and featured directory.', slots: ['landing_billboard', 'directory_partner'] },
+    { id: 'enterprise', es: 'Enterprise', en: 'Enterprise', priceMonthly: 0, descEs: 'A medida: patrocinio, billboard y directorio destacado.', descEn: 'Custom: sponsorship, billboard and featured directory.', slots: ['landing_billboard', 'directory_partner'] },
   ],
 };
 
