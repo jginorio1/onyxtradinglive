@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { Hint } from '@/app/components/HintPop';
 import GuidePanel, { type GuideStep } from '@/app/components/GuidePanel';
+import AdSpaceBooking from './AdSpaceBooking';
 
 type Slot = { key: string; es: string; en: string; size: string; page: string };
 type Rate = Slot & { price: number; unit: 'week' | 'month' | 'cpm' };
@@ -173,11 +174,12 @@ export default function AdsAdmin({ es }: { es: boolean }) {
   const lbl: any = { fontSize: 11.5, color: 'var(--mut)', marginBottom: 5 };
 
   // --- Pestañas de tarjetas de colores: una sección a la vez (menos scroll) ---
-  const [tab, setTab] = useState<'panel' | 'review' | 'rates' | 'mediakit' | 'campaign' | 'partners'>('panel');
+  const [tab, setTab] = useState<'panel' | 'review' | 'rates' | 'mediakit' | 'campaign' | 'partners' | 'spaces'>('panel');
   const TABS = [
     { key: 'panel',    color: '#4f9dff', icon: '⚙️', es: 'Panel',     en: 'Panel',      subEs: 'Interruptores y ajustes', subEn: 'Switches & settings' },
     { key: 'review',   color: '#f5b23e', icon: '✅', es: 'Revisión',  en: 'Review',     subEs: 'Aprobar artes',          subEn: 'Approve creatives', badge: pending?.length || 0 },
     { key: 'rates',    color: '#34e2a0', icon: '💲', es: 'Tarifario', en: 'Rate card',  subEs: 'Precios por espacio',     subEn: 'Prices per space' },
+    { key: 'spaces',   color: '#5ec0ff', icon: '📅', es: 'Reservas',  en: 'Bookings',   subEs: 'Reservas y cotizaciones', subEn: 'Bookings & quotes' },
     { key: 'mediakit', color: '#a679ff', icon: '📊', es: 'Media Kit', en: 'Media Kit',  subEs: 'Estadísticas y propuesta',subEn: 'Stats & proposal' },
     { key: 'campaign', color: '#ef6ea0', icon: '📢', es: 'Campañas',  en: 'Campaigns',  subEs: 'Crear y gestionar',       subEn: 'Create & manage' },
     { key: 'partners', color: '#d9b661', icon: '🤝', es: 'Socios',    en: 'Partners',   subEs: 'Directorio CPA',          subEn: 'CPA directory' },
@@ -744,6 +746,11 @@ export default function AdsAdmin({ es }: { es: boolean }) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Pestaña Reservas: reserva de espacios + cotizaciones (antes iba suelta al final). */}
+      <div style={{ display: tab === 'spaces' ? 'block' : 'none' }}>
+        <AdSpaceBooking es={es} />
       </div>
 
       <div className="muted" style={{ fontSize: 11, borderTop: '1px dashed var(--line)', paddingTop: 8 }}>
