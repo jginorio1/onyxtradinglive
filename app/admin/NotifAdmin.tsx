@@ -92,7 +92,7 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
   const chLabel = (c: string) => c === 'bell' ? (es ? 'Campana' : 'Bell') : c === 'push' ? 'Push' : 'Telegram';
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div style={{ maxWidth: 'none' }}>
       <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h2 style={{ fontSize: 18, margin: 0 }}><OnyxIcon emoji="🔔" size={15} /> {es ? 'Notificaciones' : 'Notifications'}</h2>
@@ -119,7 +119,7 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
       {groups.map((g) => (
         <div key={g} style={{ marginBottom: 18 }}>
           <div style={{ fontSize: 11, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>{g}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(480px,1fr))', gap: 10, alignItems: 'start' }}>
             {cat.filter((d) => d.group === g).map((d) => {
               const o = ov[d.key] || {};
               const chans: string[] = d.editableChannels || ['bell', 'push', 'telegram'];

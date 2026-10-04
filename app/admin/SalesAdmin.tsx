@@ -485,8 +485,8 @@ function CrecimientoBox({ inp, btn, btnP, canManage, lvName }: any) {
               <th style={{ padding: '6px', textAlign: 'left' }}>Vendedor</th><th style={{ padding: '6px' }}>Clics</th><th style={{ padding: '6px' }}>Registros</th><th style={{ padding: '6px' }}>Pruebas</th><th style={{ padding: '6px' }}>Pagados</th><th style={{ padding: '6px' }}>Conv.</th>
             </tr></thead>
             <tbody>
-              {(funnel?.rows || []).map((r: any) => (
-                <tr key={r.rep_id} style={{ borderTop: '1px solid var(--line,#2a3350)' }}>
+              {(funnel?.rows || []).map((r: any, ri: number) => (
+                <tr className={`urow${ri % 2 ? ' alt' : ''}`} key={r.rep_id} style={{ borderTop: '1px solid var(--line,#2a3350)' }}>
                   <td style={{ padding: '7px 6px', color: 'var(--tx,#e8ecf5)' }}>{r.name} <span className="muted" style={{ fontSize: 11 }}>· {lvName(r.level)}</span></td>
                   <td style={{ padding: '7px 6px', textAlign: 'right', color: 'var(--mut,#9aa6bd)' }}>{r.clicks}</td>
                   <td style={{ padding: '7px 6px', textAlign: 'right', color: '#8b93ff' }}>{r.signups}</td>
@@ -513,8 +513,8 @@ function CrecimientoBox({ inp, btn, btnP, canManage, lvName }: any) {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <tbody>
-                {leads.slice(0, 50).map((l: any) => (
-                  <tr key={l.user_id} style={{ borderTop: '1px solid var(--line,#2a3350)' }}>
+                {leads.slice(0, 50).map((l: any, ri: number) => (
+                  <tr className={`urow${ri % 2 ? ' alt' : ''}`} key={l.user_id} style={{ borderTop: '1px solid var(--line,#2a3350)' }}>
                     <td style={{ padding: '7px 6px', color: 'var(--tx,#e8ecf5)' }}>{l.email || l.name || l.user_id.slice(0, 8)}</td>
                     <td style={{ padding: '7px 6px', color: 'var(--mut,#9aa6bd)' }}>{l.plan}</td>
                     <td style={{ padding: '7px 6px', color: 'var(--mut,#9aa6bd)', fontSize: 12, textAlign: 'right' }}>{l.since ? new Date(l.since).toLocaleDateString() : ''}</td>

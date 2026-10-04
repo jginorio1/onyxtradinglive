@@ -152,11 +152,11 @@ export default function PayoutsHub({ canManage }: { canManage: boolean }) {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => {
+                {rows.map((r, ri) => {
                   const b = busy === r.program + r.id;
                   const usdtNoAddr = /usdt|crypto|cripto|trc|erc/i.test(r.method) && !r.destination.trim();
                   return (
-                    <tr key={r.program + r.id} style={{ borderTop: '1px solid var(--line)' }}>
+                    <tr className={`urow${ri % 2 ? ' alt' : ''}`} key={r.program + r.id} style={{ borderTop: '1px solid var(--line)' }}>
                       <td style={td}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji={r.icon} size={16} /> {r.programLabel}</span></td>
                       <td style={td}><span style={{ fontWeight: 600 }}>{r.who}</span></td>
                       <td style={{ ...td, textAlign: 'right', fontWeight: 800 }}>{money(r.amountCents)}</td>
@@ -207,8 +207,8 @@ export default function PayoutsHub({ canManage }: { canManage: boolean }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {(d?.infoRows || []).slice(0, 60).map((r) => (
-                    <tr key={r.program + r.id} style={{ borderTop: '1px solid var(--line)' }}>
+                  {(d?.infoRows || []).slice(0, 60).map((r, ri) => (
+                    <tr className={`urow${ri % 2 ? ' alt' : ''}`} key={r.program + r.id} style={{ borderTop: '1px solid var(--line)' }}>
                       <td style={td}><span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji={r.icon} size={16} /> {r.programLabel}</span></td>
                       <td style={td}>{r.who}</td>
                       <td style={{ ...td, textAlign: 'right', fontWeight: 800 }}>{money(r.amountCents)}</td>

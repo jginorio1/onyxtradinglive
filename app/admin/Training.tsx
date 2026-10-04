@@ -489,8 +489,8 @@ function Cumplimiento({ L, post, lang, canManage }: any) {
             {rep.tracks.map((t: any) => <th key={t.id} style={{ textAlign: 'center', padding: '6px 8px', color: 'var(--mut,#9aa6bd)', fontWeight: 500, minWidth: 90 }}>{t.title}</th>)}
           </tr></thead>
           <tbody>
-            {rep.people.map((p: any) => (
-              <tr key={p.user_id} style={{ borderTop: '1px solid var(--line,#2a3350)', opacity: p.active ? 1 : 0.55 }}>
+            {rep.people.map((p: any, ri: number) => (
+              <tr className={`urow${ri % 2 ? ' alt' : ''}`} key={p.user_id} style={{ borderTop: '1px solid var(--line,#2a3350)', opacity: p.active ? 1 : 0.55 }}>
                 <td style={{ padding: '8px', position: 'sticky', left: 0, background: 'var(--panel,#161c2e)' }}>
                   <div style={{ color: 'var(--tx,#e8ecf5)', fontWeight: 600 }}>{p.name || p.email || p.user_id.slice(0, 8)} {p.compliant && <span title={L('Al día', 'Compliant')}>✓</span>}</div>
                   <div style={{ color: 'var(--mut,#9aa6bd)', fontSize: 11 }}>{p.role}</div>

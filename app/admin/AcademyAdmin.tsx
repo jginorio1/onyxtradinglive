@@ -591,8 +591,8 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
                 </tr>
               </thead>
               <tbody>
-                {list.map((a: any) => (
-                  <tr key={a.userId} style={{ borderTop: '1px solid var(--bd)' }}>
+                {list.map((a: any, ri: number) => (
+                  <tr className={`urow${ri % 2 ? ' alt' : ''}`} key={a.userId} style={{ borderTop: '1px solid var(--bd)' }}>
                     <td style={{ padding: '8px' }}>
                       <b>{a.name}</b>
                       <div className="muted" style={{ fontSize: 12 }}>{L('código', 'code')}: {a.code}</div>
@@ -658,8 +658,8 @@ export default function AcademyAdmin({ canManage = false }: { canManage?: boolea
                 </tr>
               </thead>
               <tbody>
-                {d.feeLog.map((r: any) => (
-                  <tr key={r.id} style={{ borderTop: '1px solid var(--bd)' }}>
+                {d.feeLog.map((r: any, ri: number) => (
+                  <tr className={`urow${ri % 2 ? ' alt' : ''}`} key={r.id} style={{ borderTop: '1px solid var(--bd)' }}>
                     <td style={{ padding: '8px', whiteSpace: 'nowrap' }}>{new Date(r.created_at).toLocaleString(es ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                     <td style={{ padding: '8px' }}>{r.actor_email || '—'}</td>
                     <td style={{ padding: '8px' }}>{r.scope === 'default' ? L('Global', 'Default') : r.scope === 'plan' ? L('Plan', 'Plan') : L('Mentor', 'Mentor')}</td>

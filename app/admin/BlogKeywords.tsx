@@ -124,10 +124,10 @@ export default function BlogKeywords() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map(({ k, st }) => {
+                {rows.map(({ k, st }, ri) => {
                   const dot = TIER_COLOR[st.tier] || 'var(--mut)';
                   return (
-                    <tr key={k}>
+                    <tr className={`urow${ri % 2 ? ' alt' : ''}`} key={k}>
                       <td style={{ ...cell, fontWeight: 600 }}>{k}</td>
                       <td style={{ ...cell, textAlign: 'center', whiteSpace: 'nowrap' }} title={TIER_LABEL(st.tier, L)}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>

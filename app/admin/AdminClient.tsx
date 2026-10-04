@@ -954,7 +954,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                         {i === uAdmins.length && uOthers.length > 0 && (
                           <tr><td colSpan={6} style={{ background: 'var(--bg2)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--mut)', padding: '7px 12px' }}><OnyxIcon emoji="👥" size={15} /> {lang === 'en' ? 'Users' : 'Usuarios'} · {uOthers.length}</td></tr>
                         )}
-                        <tr>
+                        <tr className={`urow${i % 2 ? ' alt' : ''}`}>
                           <td><div className="row" style={{ gap: 9 }}><span className="avatar-init" style={{ width: 28, height: 28, fontSize: 11 }}>{initials(u.full_name || u.email)}</span><span style={{ minWidth: 0 }}>
                   <span style={{ display: 'block' }}>{u.full_name || u.email}{u.is_admin && <span className="pill brand" style={{ marginLeft: 6 }}>{u.email === meEmail ? (lang === 'en' ? 'Owner' : 'Dueño') : t.u_admin}</span>}</span>
                   {u.full_name && <span className="muted" style={{ fontSize: 12, display: 'block' }}>{u.email}</span>}
