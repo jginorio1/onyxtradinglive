@@ -13,12 +13,24 @@ export async function POST(req: Request) {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Not signed in.', code: 'no_auth' }, { status: 401 });
 
-    const { confirm } = await req.json();
+    const { confirm, reason } = await req.json();
     if (String(confirm || '').trim().toUpperCase() !== 'ELIMINAR') {
       return NextResponse.json({ error: 'Type ELIMINAR to confirm.', code: 'confirm_required' }, { status: 400 });
     }
 
-    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_subscription_id').eq('id', user.id).maybeSingle();
+    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_subscription_id, full_name, plan, email').eq('id', user.id).maybeSingle();
+
+    // Lápida: antes de borrar, dejamos constancia de la BAJA para poder contarla
+    // y verla en Admin → Usuarios. No guarda datos sensibles.
+    try {
+      await supabaseAdmin.from('account_closures').insert({
+        user_id: user.id,
+        email: (prof as any)?.email || user.email || null,
+        full_name: (prof as any)?.full_name || null,
+        plan: (prof as any)?.plan || null,
+        reason: (typeof reason === 'string' ? reason.slice(0, 300) : null),
+      });
+    } catch { /* si la tabla aún no existe, no bloquea el borrado */ }
 
     // Cancelar la suscripción de Stripe para que no siga cobrando
     if (prof?.stripe_subscription_id) {

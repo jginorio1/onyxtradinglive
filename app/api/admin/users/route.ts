@@ -41,7 +41,17 @@ export async function GET() {
     email_confirmed: confirmed[p.id] !== false, // desconocido → se asume confirmado
   }));
 
-  return NextResponse.json({ users });
+  // Bajas: cuentas que el usuario borró desde "Mi cuenta" (lápidas). Como el perfil
+  // se elimina, no aparecen en la lista; aquí damos el conteo y las últimas para Admin.
+  let closures = 0; let closuresList: any[] = [];
+  try {
+    const { count } = await supabaseAdmin.from('account_closures').select('id', { count: 'exact', head: true });
+    closures = count || 0;
+    const { data: cl } = await supabaseAdmin.from('account_closures').select('email,full_name,plan,reason,created_at').order('created_at', { ascending: false }).limit(50);
+    closuresList = cl || [];
+  } catch { /* tabla aún no creada */ }
+
+  return NextResponse.json({ users, closures, closuresList });
 }
 
 // PATCH · acciones: plan | ban | unban | admin

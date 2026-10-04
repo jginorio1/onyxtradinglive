@@ -593,6 +593,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   // Saltar de pestaña desde cualquier sitio cambiando el hash (p. ej. el Centro de correos → Campañas).
   useEffect(() => { const onHash = () => { const h = window.location.hash.replace('#', ''); if (h) setTab(h as Tab); }; window.addEventListener('hashchange', onHash); return () => window.removeEventListener('hashchange', onHash); }, []);
   const [users, setUsers] = useState<User[]>([]);
+  const [closures, setClosures] = useState(0);
+  const [closuresList, setClosuresList] = useState<any[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [team, setTeam] = useState<Team[]>([]);
   const [q, setQ] = useState('');
@@ -618,7 +620,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  async function loadUsers() { const r = await fetch('/api/admin/users'); const j = await r.json(); setUsers(j.users || []); }
+  async function loadUsers() { const r = await fetch('/api/admin/users'); const j = await r.json(); setUsers(j.users || []); setClosures(j.closures || 0); setClosuresList(j.closuresList || []); }
   async function loadPlans() { const r = await fetch('/api/admin/plans'); const j = await r.json(); setPlans(j.plans || []); }
   async function loadTeam() { const r = await fetch('/api/admin/team'); const j = await r.json(); setTeam(j.team || []); const mine = (j.team || []).find((t: Team) => t.email === meEmail); if (mine) setAvailable(!!mine.available); }
   useEffect(() => { loadUsers(); loadPlans(); loadTeam(); }, []);
@@ -907,7 +909,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                   { k: lang === 'en' ? 'Total' : 'Total', v: uTotal, c: 'var(--tx)', s: '' },
                   { k: lang === 'en' ? 'Active' : 'Activos', v: uActive, c: 'var(--green)', s: lang === 'en' ? 'confirmed' : 'confirmados' },
                   { k: lang === 'en' ? 'New (30d)' : 'Nuevos (30d)', v: uNew30, c: 'var(--brand)', s: lang === 'en' ? 'this period' : 'este periodo' },
-                  { k: lang === 'en' ? 'Left' : 'Se fueron', v: uLeft, c: 'var(--red)', s: lang === 'en' ? 'banned / unconfirmed' : 'bloq./sin confirmar' },
+                  { k: lang === 'en' ? 'Banned / unconfirmed' : 'Baneados / sin confirmar', v: uLeft, c: 'var(--amber)', s: lang === 'en' ? 'still exist' : 'aún existen' },
+                  { k: lang === 'en' ? 'Closures' : 'Bajas', v: closures, c: 'var(--red)', s: lang === 'en' ? 'deleted account' : 'borraron su cuenta' },
                   { k: lang === 'en' ? 'Paid' : 'De pago', v: paid, c: 'var(--amber)', s: `${comped} ${lang === 'en' ? 'comp' : 'cortesía'}` },
                   { k: lang === 'en' ? 'Connected' : 'Conectados', v: uConnected, c: 'var(--tx)', s: lang === 'en' ? '≥1 account' : '≥1 cuenta' },
                 ].map((m, i) => (
