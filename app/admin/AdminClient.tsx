@@ -601,6 +601,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const [uFrom, setUFrom] = useState('');   // Usuarios: registrados desde (YYYY-MM-DD)
   const [uTo, setUTo] = useState('');       // Usuarios: registrados hasta
   const [uPage, setUPage] = useState(1);    // Usuarios: página actual
+  const [uSeg, setUSeg] = useState('');      // Usuarios: filtro por plan/add-on ('' = todos)
   const U_PER = 25;                          // usuarios por página
   const [busy, setBusy] = useState('');
   const [uRange, setURange] = useState<Range>(() => defaultRange('month'));
@@ -697,13 +698,39 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   }
   async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { toastErr(j); return; } if (j.link) { navigator.clipboard.writeText(j.link); toast((lang === 'en' ? 'Recovery link copied:\n\n' : 'Enlace de recuperación copiado:\n\n') + j.link); } else toast(lang === 'en' ? 'Recovery email sent.' : 'Email de recuperación enviado.'); }
 
-  // Búsqueda por email o nombre + rango de fecha de registro (created_at).
+  // Segmentos por plan y add-ons para las pastillas de conteo (todo data-driven).
+  //  · Planes: se recorren desde `plans` → un plan nuevo aparece solo, sin tocar código.
+  //  · Add-ons: cada uno es una COLUMNA real del perfil, así que vive en esta lista.
+  //    Para agregar un add-on nuevo basta con añadir UNA línea aquí (etiqueta + condición).
+  const ADDON_DEFS = [
+    { key: 'algo',     es: 'Robots',        en: 'Algo',           test: (u: any) => !!u.addon_algo },
+    { key: 'masters',  es: 'Masters extra', en: 'Extra masters',  test: (u: any) => Number(u.extra_masters) > 0 },
+    { key: 'accounts', es: 'Cuentas extra', en: 'Extra accounts', test: (u: any) => Number(u.extra_accounts) > 0 },
+  ];
+  const isFreeU = (u: any) => !u.plan || u.plan === 'free';
+  const segMatch = (u: any, seg: string) => {
+    if (!seg) return true;
+    if (seg === 'free') return isFreeU(u);
+    if (seg.startsWith('plan:')) return u.plan === seg.slice(5);
+    if (seg.startsWith('addon:')) { const d = ADDON_DEFS.find((a) => a.key === seg.slice(6)); return d ? d.test(u) : true; }
+    return true;
+  };
+  // Pastillas: Free + un plan por cada uno (sin duplicar "free") + un add-on por cada uno.
+  const segChips = [
+    { seg: 'free', label: 'Free', count: users.filter(isFreeU).length, color: 'var(--tx)' },
+    ...plans.filter((p) => p.id !== 'free').map((p) => ({ seg: `plan:${p.id}`, label: p.name, count: users.filter((u) => u.plan === p.id).length, color: 'var(--green)' })),
+    ...ADDON_DEFS.map((d) => ({ seg: `addon:${d.key}`, label: lang === 'en' ? d.en : d.es, count: users.filter((u) => d.test(u)).length, color: 'var(--amber)' })),
+  ];
+  const segLabel = uSeg ? (segChips.find((c) => c.seg === uSeg)?.label || '') : '';
+
+  // Búsqueda por email o nombre + rango de fecha de registro (created_at) + segmento.
   const uFromMs = uFrom ? new Date(uFrom + 'T00:00:00').getTime() : 0;
   const uToMs = uTo ? new Date(uTo + 'T23:59:59').getTime() : Infinity;
   const filtered = users.filter((u) => {
     const hit = (u.email + ' ' + (u.full_name || '')).toLowerCase().includes(q.toLowerCase());
     if (!hit) return false;
     if (uFrom || uTo) { const t = u.created_at ? new Date(u.created_at).getTime() : 0; if (t < uFromMs || t > uToMs) return false; }
+    if (!segMatch(u, uSeg)) return false;
     return true;
   });
   // Métricas de usuarios (con los datos disponibles, sin inventar):
@@ -921,6 +948,38 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                   </div>
                 ))}
               </div>
+              {/* Pastillas de conteo por plan y add-ons. Clic = filtra la lista de abajo. */}
+              <div style={{ marginBottom: 12 }}>
+                <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>
+                  {lang === 'en' ? 'Filter by plan / add-on' : 'Filtrar por plan / add-on'}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="button" onClick={() => { setUSeg(''); setUPage(1); }}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '7px 13px', borderRadius: 10, cursor: 'pointer',
+                      border: uSeg === '' ? '2px solid var(--brand)' : '1px solid var(--line)',
+                      background: uSeg === '' ? 'var(--bg2)' : 'transparent' }}>
+                    <span className="muted" style={{ fontSize: 11 }}>{lang === 'en' ? 'All' : 'Todos'}</span>
+                    <span style={{ fontSize: 17, fontWeight: 800 }}>{uTotal}</span>
+                  </button>
+                  {segChips.map((c) => {
+                    const on = uSeg === c.seg;
+                    return (
+                      <button key={c.seg} type="button" onClick={() => { setUSeg(on ? '' : c.seg); setUPage(1); }}
+                        style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '7px 13px', borderRadius: 10, cursor: 'pointer',
+                          border: on ? '2px solid var(--brand)' : '1px solid var(--line)',
+                          background: on ? 'var(--bg2)' : 'transparent' }}>
+                        <span className="muted" style={{ fontSize: 11 }}>{c.label}</span>
+                        <span style={{ fontSize: 17, fontWeight: 800, color: c.color }}>{c.count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {uSeg && (
+                  <div className="muted" style={{ fontSize: 12, marginTop: 7 }}>
+                    {lang === 'en' ? 'Showing' : 'Mostrando'}: <b style={{ color: 'var(--tx)' }}>{segLabel}</b> · {filtered.length} {lang === 'en' ? 'users' : 'usuarios'}
+                  </div>
+                )}
+              </div>
               <div className="card">
                 <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
                   {unconfirmed > 0 && (
@@ -941,7 +1000,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     <span className="muted" style={{ fontSize: 12 }}>{lang === 'en' ? 'Registered' : 'Registro'}</span>
                     <input type="date" value={uFrom} onChange={(e) => { setUFrom(e.target.value); setUPage(1); }} style={{ width: 150, margin: 0 }} title={lang === 'en' ? 'From' : 'Desde'} />
                     <input type="date" value={uTo} onChange={(e) => { setUTo(e.target.value); setUPage(1); }} style={{ width: 150, margin: 0 }} title={lang === 'en' ? 'To' : 'Hasta'} />
-                    {(uFrom || uTo || q) && <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => { setQ(''); setUFrom(''); setUTo(''); setUPage(1); }}>{lang === 'en' ? 'Clear' : 'Limpiar'}</button>}
+                    {(uFrom || uTo || q || uSeg) && <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => { setQ(''); setUFrom(''); setUTo(''); setUSeg(''); setUPage(1); }}>{lang === 'en' ? 'Clear' : 'Limpiar'}</button>}
                   </div>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
