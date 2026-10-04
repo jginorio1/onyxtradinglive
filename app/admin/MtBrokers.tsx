@@ -38,15 +38,18 @@ export default function MtBrokers() {
   const del = async (code: string) => { if (!confirm('¿Borrar ' + code + '?')) return; await fetch('/api/admin/mt-brokers', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) }); load(); };
 
   return (
-    <div style={{ maxWidth: 780, margin: '0 auto', padding: 20 }}>
+    <div style={{ padding: '4px 0 20px' }}>
       <h2 style={{ marginBottom: 4 }}>Brókers MatchTrader (Platform API)</h2>
-      <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7 }}>
+      <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7, maxWidth: 760 }}>
         Añade aquí cada bróker/prop firm que use MatchTrader. La URL base es la de su Platform API
         (mírala en la pestaña Network del web trader del bróker: algo como <code>https://mtr.subroker.com</code>).
         Marca <b>Prop firm</b> para que el trader vea el aviso de reglas antes de conectar.
       </p>
 
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 480, marginBottom: 18 }}>
+      {/* Dos columnas en pantallas anchas: formulario a la izquierda, lista de
+          brókers a la derecha (rejilla que llena el ancho). En móvil, una columna. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,420px) minmax(0,1fr)', gap: 16, alignItems: 'start', marginTop: 12 }} className="brk-grid">
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <label className="muted" style={{ fontSize: 12 }}>Nombre<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="FundedNext" style={{ marginTop: 4 }} /></label>
         <div style={{ border: '1px dashed var(--line)', borderRadius: 10, padding: 10 }}>
           <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>🔎 Autodetectar API (dominio o nombre del bróker)</div>
@@ -66,20 +69,23 @@ export default function MtBrokers() {
         {msg ? <div className="muted" style={{ fontSize: 12.5 }}>{msg}</div> : null}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 10, alignContent: 'start' }}>
         {rows.map((b) => (
-          <div key={b.code} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px' }}>
-            <b>{b.name}</b>
-            <span className="muted" style={{ fontSize: 11 }}>{b.base_url}</span>
-            {b.is_prop ? <span style={{ fontSize: 11, color: 'var(--warn, #e0a800)' }}>prop</span> : null}
-            {!b.enabled ? <span className="muted" style={{ fontSize: 11 }}>(off)</span> : null}
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-              <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => edit(b)}>Editar</button>
-              <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => del(b.code)}>Borrar</button>
+          <div key={b.code} style={{ display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <b style={{ flex: 1, minWidth: 0 }}>{b.name}</b>
+              {b.is_prop ? <span style={{ fontSize: 11, color: 'var(--warn, #e0a800)' }}>prop</span> : null}
+              {!b.enabled ? <span className="muted" style={{ fontSize: 11 }}>(off)</span> : null}
+            </div>
+            <span className="muted" style={{ fontSize: 11, wordBreak: 'break-all' }}>{b.base_url}</span>
+            <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+              <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => edit(b)}>Editar</button>
+              <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => del(b.code)}>Borrar</button>
             </div>
           </div>
         ))}
         {!rows.length ? <p className="muted" style={{ fontSize: 13 }}>Sin brókers todavía (o no tienes permiso de admin).</p> : null}
+      </div>
       </div>
     </div>
   );

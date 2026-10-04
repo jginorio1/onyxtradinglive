@@ -205,6 +205,9 @@ a:active .onyx-ic, button:active .onyx-ic, .navtile:active .onyx-ic, .adminnav-i
 .muted{color:var(--mut);}
 input,select{width:100%;padding:11px 13px;border-radius:10px;background:var(--bg2);border:1px solid var(--line);color:var(--tx);font-size:15px;margin-top:6px;}
 input:focus{outline:none;border-color:var(--brand);}
+/* Las casillas y radios NO deben estirarse al 100% ni llevar el padding/margen
+   de los campos de texto: si no, se enciman con su etiqueta (bug de los brókers). */
+input[type="checkbox"],input[type="radio"]{width:auto;min-width:0;flex:none;padding:0;margin:0;border-radius:3px;vertical-align:middle;}
 label{font-size:14px;color:var(--mut);}
 table{width:100%;border-collapse:collapse;font-size:14px;}
 th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);}
@@ -332,12 +335,11 @@ section[id],div[id]{scroll-margin-top:120px;}
 h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .section{padding:34px 0;}
 
-/* Contenedor del dashboard: llena cualquier monitor con margen proporcional */
-.wrap-wide{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,64px);}
-/* En monitores muy anchos (ultrawide/50") el contenedor se topa y se centra en
-   lugar de estirarse de borde a borde: así la barra superior, la fila del trader
-   y la cabina quedan alineadas al mismo ancho y con márgenes iguales a los lados. */
-@media(min-width:1720px){ .wrap-wide{max-width:1840px;} }
+/* Contenedor de TODAS las secciones (dashboard, cuentas, robots, copy, academia,
+   admin…): llena monitores grandes. Tope alto para que en pantallas anchas de PC
+   aproveche el ancho en vez de dejar franjas vacías a los lados; en monitores
+   enormes (>2560px) se topa y se centra. Móvil/tablet no cambian. */
+.wrap-wide{max-width:2560px;margin:0 auto;padding:0 clamp(16px,3vw,48px);}
 /* Separadores del cabezal: entre grupos de la nav y entre zonas del clúster derecho. */
 .navsep{ display:inline-block; width:1px; height:18px; background:var(--line); margin:0 8px; flex:0 0 auto; }
 .topsep{ display:none; }
@@ -441,6 +443,9 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .admin-wrap .g2,.admin-wrap .g3,.admin-wrap .g4,.admin-wrap .g5{
   grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
 }
+/* Paneles de brókers (MatchTrader/TradeLocker/DXtrade): formulario + lista en dos
+   columnas en escritorio, una sola en móvil/tablet. */
+@media(max-width:900px){ .brk-grid{grid-template-columns:1fr !important; } }
 .adminnav-items{display:flex;flex-direction:column;gap:4px;}
 .adminnav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--mut);cursor:pointer;font-size:14px;font-weight:600;border:none;background:transparent;text-align:left;width:100%;transition:.15s;}
 .adminnav-item:hover{background:var(--card2);color:#fff;}

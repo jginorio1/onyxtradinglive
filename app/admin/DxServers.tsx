@@ -28,9 +28,9 @@ export default function DxServers() {
   const del = async (code: string) => { if (!confirm('¿Borrar ' + code + '?')) return; await fetch('/api/admin/dx-servers', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) }); load(); };
 
   return (
-    <div style={{ maxWidth: 780, margin: '0 auto', padding: 20 }}>
+    <div style={{ padding: '4px 0 20px' }}>
       <h2 style={{ marginBottom: 4 }}>Brókers DXtrade</h2>
-      <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7 }}>
+      <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.7, maxWidth: 760 }}>
         Estos son los brókers que aparecen en el menú al conectar por DXtrade. Se añaden
         solos cuando un trader conecta con un host nuevo (aparecen con prefijo <code>auto_</code>),
         y también puedes añadirlos o editarlos a mano aquí. El <b>host</b> es el mismo dominio
@@ -39,7 +39,8 @@ export default function DxServers() {
         Marca <b>Prop firm</b> para mostrar el aviso de reglas.
       </p>
 
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 480, marginBottom: 18 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,420px) minmax(0,1fr)', gap: 16, alignItems: 'start', marginTop: 12 }} className="brk-grid">
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <label className="muted" style={{ fontSize: 12 }}>Nombre visible<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="FTMO (DXtrade)" style={{ marginTop: 4 }} /></label>
         <label className="muted" style={{ fontSize: 12 }}>Host del bróker<input value={f.host} onChange={(e) => setF({ ...f, host: e.target.value })} placeholder="dxtrade.ftmo.com" style={{ marginTop: 4 }} /></label>
         <label className="muted" style={{ fontSize: 12 }}>Dominio (clearing)<input value={f.domain_default} onChange={(e) => setF({ ...f, domain_default: e.target.value })} placeholder="default" style={{ marginTop: 4 }} /></label>
@@ -53,23 +54,25 @@ export default function DxServers() {
         {msg ? <div className="muted" style={{ fontSize: 12.5 }}>{msg}</div> : null}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 10, alignContent: 'start' }}>
         {rows.map((b) => (
-          <div key={b.code} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 12px' }}>
-            <b>{b.name}</b>
-            <span className="muted" style={{ fontSize: 11 }}>host: {b.host}</span>
-            {b.domain_default && b.domain_default !== 'default' ? <span className="muted" style={{ fontSize: 11 }}>dom: {b.domain_default}</span> : null}
-            {b.demo_default ? <span className="muted" style={{ fontSize: 11 }}>demo</span> : null}
-            {b.is_prop ? <span style={{ fontSize: 11, color: 'var(--warn, #e0a800)' }}>prop</span> : null}
-            {String(b.code || '').startsWith('auto_') ? <span style={{ fontSize: 11, color: 'var(--soft-brand, #7c8cff)' }}>auto</span> : null}
-            {!b.enabled ? <span className="muted" style={{ fontSize: 11 }}>(off)</span> : null}
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-              <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => edit(b)}>Editar</button>
-              <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 11 }} onClick={() => del(b.code)}>Borrar</button>
+          <div key={b.code} style={{ display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <b style={{ flex: 1, minWidth: 0 }}>{b.name}</b>
+              {b.demo_default ? <span className="muted" style={{ fontSize: 11 }}>demo</span> : null}
+              {b.is_prop ? <span style={{ fontSize: 11, color: 'var(--warn, #e0a800)' }}>prop</span> : null}
+              {String(b.code || '').startsWith('auto_') ? <span style={{ fontSize: 11, color: 'var(--soft-brand, #7c8cff)' }}>auto</span> : null}
+              {!b.enabled ? <span className="muted" style={{ fontSize: 11 }}>(off)</span> : null}
+            </div>
+            <span className="muted" style={{ fontSize: 11, wordBreak: 'break-all' }}>host: {b.host}{b.domain_default && b.domain_default !== 'default' ? ` · dom: ${b.domain_default}` : ''}</span>
+            <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+              <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => edit(b)}>Editar</button>
+              <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={() => del(b.code)}>Borrar</button>
             </div>
           </div>
         ))}
         {!rows.length ? <p className="muted" style={{ fontSize: 13 }}>Sin brókers todavía (se añaden solos cuando un trader conecta, o añádelos a mano arriba).</p> : null}
+      </div>
       </div>
     </div>
   );
