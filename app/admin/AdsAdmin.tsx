@@ -465,8 +465,9 @@ export default function AdsAdmin({ es }: { es: boolean }) {
               <Hint text={L('La página pública /publicidad/estadisticas y la propuesta PDF /publicidad/propuesta se llenan solas con tu tráfico real. Aquí ajustas los textos, los pisos (cifra mínima creíble mientras hay poco tráfico) y los paquetes. Cuando el dato real supera el piso, manda el real.', 'The public page /publicidad/estadisticas and the PDF proposal /publicidad/propuesta fill themselves from your real traffic. Here you tune the copy, the floors (a credible minimum while traffic is low) and the packages. When the real number beats the floor, the real one wins.')} />
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <a className="btn btn-ghost" href="/publicidad/estadisticas" target="_blank" style={{ fontSize: 12 }}>{L('Ver página', 'View page')}</a>
-              <a className="btn btn-ghost" href="/publicidad/propuesta" target="_blank" style={{ fontSize: 12 }}>{L('Ver propuesta', 'View proposal')}</a>
+              <a className="btn btn-ghost" href={es ? '/publicidad' : '/en/publicidad'} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12 }}>{L('Ver página', 'View page')}</a>
+              <a className="btn btn-ghost" href={es ? '/publicidad/estadisticas' : '/en/publicidad/estadisticas'} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12 }}>{L('Ver estadísticas', 'View stats')}</a>
+              <a className="btn btn-ghost" href={es ? '/publicidad/propuesta' : '/en/publicidad/propuesta'} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12 }}>{L('Ver propuesta', 'View proposal')}</a>
               <button className="btn btn-primary" onClick={saveMk} disabled={busy === 'mk'} style={{ fontSize: 12 }}>{L('Guardar', 'Save')}</button>
             </div>
           </div>
