@@ -157,7 +157,7 @@ export default function SupportClient() {
     : { alignSelf: 'flex-start', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: '12px 12px 12px 2px' };
 
   return (
-    <div className="wrap" style={{ padding: '26px 22px 60px', maxWidth: 820 }}>
+    <div className="wrap-wide" style={{ padding: '26px 0 60px' }}>
       <h1 style={{ fontSize: 26 }}>{t.title}</h1>
       <p className="muted" style={{ margin: '8px 0 20px' }}>{t.sub}</p>
 

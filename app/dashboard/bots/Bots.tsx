@@ -513,7 +513,7 @@ export default function Bots() {
     : L('Empieza creando tu primer robot. Te guiamos paso a paso hasta verlo operar aquí.', 'Start by creating your first robot. We guide you step by step until you see it trading here.');
 
   return (
-    <div className="wrap" style={{ padding: '24px 0 60px', maxWidth: 1180, fontSize: 15 }}>
+    <div className="wrap-wide" style={{ padding: '24px 0 60px', fontSize: 15 }}>
       <div style={{ padding: '0 4px', marginBottom: 16 }}>
         <div>
           <h1 style={{ fontSize: 24 }}><OnyxIcon emoji="🤖" size={16} /> {t.title}</h1>

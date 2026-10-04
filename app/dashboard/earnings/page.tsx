@@ -26,7 +26,7 @@ export default function EarningsCenterPage() {
   const active = (d?.programs || []).filter((p) => (p.availableCents + p.pendingCents + p.paidCents) > 0);
 
   return (
-    <div className="wrap" style={{ maxWidth: 960, margin: '0 auto', padding: '18px 16px 70px' }}>
+    <div className="wrap-wide" style={{ margin: '0 auto', padding: '18px 0 70px' }}>
       <div style={{ marginBottom: 18, display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 220 }}>
           <h1 style={{ fontSize: 26, margin: '0 0 4px' }}>{es ? 'Centro de ganancias' : 'Earnings center'}</h1>

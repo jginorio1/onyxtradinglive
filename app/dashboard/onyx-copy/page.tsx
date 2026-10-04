@@ -213,7 +213,7 @@ export default function OnyxCopyHub() {
   const badge = (t: string, txt: string) => <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, border: '1px solid ' + (TIERC[t] || 'var(--line)'), color: TIERC[t] || 'var(--mut)' }}>{txt}</span>;
 
   return (
-    <div className="wrap section" style={{ maxWidth: 920 }}>
+    <div className="wrap-wide section" style={{ padding: '0' }}>
       <div style={{ marginBottom: 14 }}>
         <h2 style={{ fontSize: 24 }}>{T.title}</h2>
         <p className="muted" style={{ fontSize: 14 }}>{T.sub}</p>

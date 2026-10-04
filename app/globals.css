@@ -450,9 +450,9 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 /* Ajustes de Admin: las tarjetas se reparten en columnas de ~640px (el ancho para
    el que están hechos sus editores), así en monitores grandes llenan en 2 columnas
    sin apretar nada. Cada tarjeta queda entera (no se parte entre columnas). */
-.settings-grid{column-width:640px;column-gap:16px;}
-.settings-grid > *{break-inside:avoid;}
-@media(max-width:700px){ .settings-grid{column-width:auto;} }
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px;align-items:start;}
+.settings-grid > *{margin-bottom:0 !important;min-width:0;}
+@media(max-width:700px){ .settings-grid{grid-template-columns:1fr;} }
 .adminnav-items{display:flex;flex-direction:column;gap:4px;}
 .adminnav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--mut);cursor:pointer;font-size:14px;font-weight:600;border:none;background:transparent;text-align:left;width:100%;transition:.15s;}
 .adminnav-item:hover{background:var(--card2);color:#fff;}
