@@ -23,6 +23,8 @@ const T = {
     checking: 'Verificando el enlace…', show: 'Mostrar', hide: 'Ocultar',
     mfaH: 'Tu cuenta tiene verificación en dos pasos. Escribe el código de tu app para continuar.',
     strength: ['Muy débil', 'Débil', 'Aceptable', 'Fuerte', 'Excelente'],
+    confirmH: 'Pulsa el botón para continuar y crear tu nueva contraseña.',
+    confirmBtn: 'Continuar', verifying: 'Comprobando…',
   },
   en: {
     title: 'New password', help: 'Type your new password to sign in.',
@@ -34,6 +36,8 @@ const T = {
     checking: 'Checking the link…', show: 'Show', hide: 'Hide',
     mfaH: 'Your account has two-step verification. Enter the code from your app to continue.',
     strength: ['Very weak', 'Weak', 'Okay', 'Strong', 'Excellent'],
+    confirmH: 'Tap the button to continue and set your new password.',
+    confirmBtn: 'Continue', verifying: 'Checking…',
   },
 };
 
@@ -64,6 +68,8 @@ function ResetInner() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [done, setDone] = useState(false);
+  const [pendingToken, setPendingToken] = useState<{ th: string; type: any } | null>(null); // token aún SIN canjear (espera clic)
+  const [verifying, setVerifying] = useState(false);
 
   // ¿La cuenta necesita elevar a aal2 (2FA) antes de cambiar la contraseña?
   async function checkMfa() {
@@ -83,17 +89,15 @@ function ResetInner() {
     const { data: sub } = sb.auth.onAuthStateChange((_e, session) => { if (session?.user && alive && !ready) onReady(); });
 
     (async () => {
-      // 1) Enlace nuevo con token_hash: se verifica AQUÍ con verifyOtp. Funciona en
-      //    cualquier navegador (incluido el visor del correo) y NO lo consumen los
-      //    escáneres de enlaces (ellos no ejecutan este JavaScript).
+      // 1) Enlace nuevo con token_hash: NO lo canjeamos automáticamente. Gmail,
+      //    iOS Mail, Outlook y antivirus PRE-VISITAN los enlaces del correo, y el
+      //    token es de un solo uso: si lo canjeáramos al cargar, el escáner lo
+      //    quemaría antes que el usuario → "enlace inválido". En su lugar guardamos
+      //    el token y mostramos un botón "Continuar": el token se canjea SOLO con
+      //    el clic humano (un escáner nunca pulsa botones).
       const th = params.get('token_hash');
       const type = (params.get('type') || 'recovery') as any;
-      if (th) {
-        const { data, error } = await sb.auth.verifyOtp({ type, token_hash: th });
-        if (!alive) return;
-        if (!error && data?.session?.user) { onReady(); return; }
-        setChecking(false); return;   // token vencido/usado → mostramos aviso
-      }
+      if (th) { setPendingToken({ th, type }); setChecking(false); return; }
       // 2) Respaldo: enlace viejo (?code PKCE / #hash) o sesión ya presente.
       const { data } = await sb.auth.getSession();
       if (!alive) return;
@@ -103,6 +107,19 @@ function ResetInner() {
     const to = setTimeout(() => { if (alive) setChecking(false); }, 5000);
     return () => { alive = false; clearTimeout(to); sub.subscription.unsubscribe(); };
   }, []);
+
+  // Canje del token: SOLO al pulsar "Continuar". Aquí sí se consume el token de
+  // un solo uso, ya con un clic humano de por medio (a prueba de pre-visitas).
+  async function verifyNow() {
+    if (!pendingToken) return;
+    setVerifying(true); setMsg('');
+    try {
+      const { data, error } = await sb.auth.verifyOtp({ type: pendingToken.type, token_hash: pendingToken.th });
+      if (!error && data?.session?.user) { setPendingToken(null); setReady(true); await checkMfa(); }
+      else { setPendingToken(null); setMsg(''); }   // token vencido/usado → cae al aviso noSession
+    } catch { setPendingToken(null); }
+    finally { setVerifying(false); }
+  }
 
   const score = scorePass(p1);
 
@@ -133,7 +150,13 @@ function ResetInner() {
       <div className="card">
         <h2 style={{ marginBottom: 8 }}>{t.title}</h2>
         {checking && <p className="muted" style={{ fontSize: 14 }}>{t.checking}</p>}
-        {!checking && !ready && <p className="muted" style={{ fontSize: 14 }}>{t.noSession}</p>}
+        {!checking && !ready && pendingToken && (
+          <>
+            <p className="muted" style={{ fontSize: 14, marginBottom: 14 }}>{t.confirmH}</p>
+            <button className="btn btn-primary" style={{ width: '100%' }} disabled={verifying} onClick={verifyNow}>{verifying ? t.verifying : t.confirmBtn}</button>
+          </>
+        )}
+        {!checking && !ready && !pendingToken && <p className="muted" style={{ fontSize: 14 }}>{t.noSession}</p>}
 
         {showMfa && (
           <>

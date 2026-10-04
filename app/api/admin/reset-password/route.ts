@@ -29,7 +29,18 @@ export async function POST(req: Request) {
       options: { redirectTo: (process.env.NEXT_PUBLIC_APP_URL || '') + '/reset-password' },
     });
     if (error) throw error;
-    const link = data?.properties?.action_link || '';
+
+    // IMPORTANTE: NO usamos data.properties.action_link. Ese enlace apunta al
+    // endpoint /auth/v1/verify de Supabase, que CONSUME el token de un solo uso
+    // en el primer GET; Gmail/iOS Mail/antivirus pre-visitan los enlaces del
+    // correo y lo quemarían antes que el usuario → "enlace inválido".
+    // En su lugar construimos el enlace a NUESTRA página con el token_hash, que
+    // solo se canjea con verifyOtp al pulsar el botón (un escáner no pulsa).
+    const base = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+    const hashed = (data as any)?.properties?.hashed_token || '';
+    const link = hashed
+      ? `${base}/reset-password?token_hash=${encodeURIComponent(hashed)}&type=recovery`
+      : (data?.properties?.action_link || '');   // respaldo si no viniera el hash
 
     // Enviar el correo al usuario en su idioma. El nombre se saca del perfil si lo hay.
     let sent = false;
@@ -41,7 +52,7 @@ export async function POST(req: Request) {
         nombre = ((p as any)?.first_name || (p as any)?.full_name || '').toString().split(' ')[0] || '';
       } catch {}
       const t = await emailTplLive('password_reset', lang, { nombre, enlace: link });
-      sent = await sendEmail(email, t.subject, t.text, { kind: 'security', meta: { what: 'admin_reset' } });
+      sent = await sendEmail(email, t.subject, t.text, { kind: 'security', meta: { what: 'admin_reset' }, htmlBody: t.html || undefined });
     }
 
     await logAdmin(user.email, 'reset_password', email, { sent });
