@@ -192,6 +192,9 @@ export default function BlogEditor() {
   const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
   const [dragId, setDragId] = useState('');                  // id del artículo que se arrastra
   const [blogBacklogQ, setBlogBacklogQ] = useState('');       // filtro de la bandeja "Sin programar"
+  const [blogListQ, setBlogListQ] = useState('');             // buscador de la vista Lista
+  const [blogListStatus, setBlogListStatus] = useState<'all' | 'published' | 'scheduled' | 'draft'>('all');
+  const [blogListPage, setBlogListPage] = useState(0);        // paginación de la vista Lista
   const [overDay, setOverDay] = useState('');                // día resaltado al arrastrar encima
   const [origin, setOrigin] = useState('');                  // origen absoluto (para abrir enlaces desde la app instalada)
   const [authors, setAuthors] = useState<any>(null);         // plantel de autores
@@ -723,10 +726,32 @@ export default function BlogEditor() {
         )}
 
         {/* -------- LISTA -------- */}
-        {view === 'list' && (
+        {view === 'list' && (() => {
+          const L_PER = 25;
+          const q = blogListQ.trim().toLowerCase();
+          const lf = posts.filter((p) => {
+            if (blogListStatus !== 'all' && p.status !== blogListStatus) return false;
+            if (!q) return true;
+            return (`${p.title_es || ''} ${p.title_en || ''} ${p.slug || ''} ${p.slug_en || ''}`).toLowerCase().includes(q);
+          });
+          const pages = Math.max(1, Math.ceil(lf.length / L_PER));
+          const pageSafe = Math.min(blogListPage, pages - 1);
+          const start = pageSafe * L_PER;
+          const pageItems = lf.slice(start, start + L_PER);
+          return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {posts.map((p) => (
-              <div key={p.id} className="card" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 2 }}>
+              <input value={blogListQ} onChange={(e) => { setBlogListQ(e.target.value); setBlogListPage(0); }} placeholder={es ? 'Buscar por título o slug…' : 'Search by title or slug…'} style={{ flex: '1 1 240px', margin: 0 }} />
+              <select value={blogListStatus} onChange={(e) => { setBlogListStatus(e.target.value as any); setBlogListPage(0); }} style={{ margin: 0, width: 'auto' }}>
+                <option value="all">{es ? 'Todos' : 'All'}</option>
+                <option value="published">{es ? 'Publicados' : 'Published'}</option>
+                <option value="scheduled">{es ? 'Programados' : 'Scheduled'}</option>
+                <option value="draft">{es ? 'Borradores' : 'Drafts'}</option>
+              </select>
+              <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{lf.length} {es ? 'artículos' : 'articles'}</span>
+            </div>
+            {pageItems.map((p) => (
+              <div key={p.id} className="card urow" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <b>{p.title_es || p.title_en}</b> {statusChip(p.status)}
@@ -747,8 +772,20 @@ export default function BlogEditor() {
                 </div>
               </div>
             ))}
+            {pageItems.length === 0 && <div className="muted" style={{ fontSize: 13, padding: 14, textAlign: 'center' }}>{es ? 'Sin resultados.' : 'No results.'}</div>}
+            {pages > 1 && (
+              <div className="row between" style={{ alignItems: 'center', marginTop: 6, fontSize: 13 }}>
+                <span className="muted">{start + 1}–{Math.min(start + L_PER, lf.length)} {es ? 'de' : 'of'} {lf.length}</span>
+                <div className="row" style={{ gap: 6 }}>
+                  <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={pageSafe <= 0} onClick={() => setBlogListPage(pageSafe - 1)}>‹ {es ? 'Anterior' : 'Prev'}</button>
+                  <span className="muted" style={{ padding: '0 6px' }}>{pageSafe + 1} / {pages}</span>
+                  <button className="btn btn-ghost" style={{ fontSize: 12 }} disabled={pageSafe >= pages - 1} onClick={() => setBlogListPage(pageSafe + 1)}>{es ? 'Siguiente' : 'Next'} ›</button>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+          );
+        })()}
       </div>
     );
   }

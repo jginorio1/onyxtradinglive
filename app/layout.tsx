@@ -255,6 +255,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               // cuenta, onboarding, login), en español ni en /en. Solo en páginas públicas.
               const appArea = ['/dashboard', '/admin', '/account', '/onboarding', '/login', '/en/dashboard', '/en/admin', '/en/account', '/en/onboarding', '/en/login'].some((p) => path === p || path.startsWith(p + '/'));
               if (appArea) return null;
+              // Con sesión iniciada el footer de marketing NO se muestra en NINGUNA página:
+              // si el usuario entra a /blog, /copy, /academy, Bot Lab o el landing estando
+              // dentro de su cuenta, sigue sin ver el footer. Solo lo ven los visitantes
+              // sin sesión en las páginas públicas.
+              if (loggedIn) return null;
               // En Bot Lab público, si ya hay sesión, el footer de marketing sobra en móvil
               // (el usuario ya está dentro): lo ocultamos SOLO en móvil con .blf-hide-mobile.
               // En PC se sigue viendo.

@@ -462,6 +462,9 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .rowlist > *:nth-child(even){background:rgba(124,140,255,.045);}
 .rowlist > *:hover{background:rgba(124,140,255,.13) !important;box-shadow:inset 3px 0 0 var(--brand);}
 .rowlist > .rowlist-head{background:transparent !important;box-shadow:none !important;}
+/* .urow sobre un bloque (div/card), no solo filas de tabla */
+div.urow,button.urow,a.urow{transition:background .12s;}
+div.urow:hover,button.urow:hover,a.urow:hover{background:rgba(124,140,255,.12) !important;box-shadow:inset 3px 0 0 var(--brand);}
 .adminnav-items{display:flex;flex-direction:column;gap:4px;}
 .adminnav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--mut);cursor:pointer;font-size:14px;font-weight:600;border:none;background:transparent;text-align:left;width:100%;transition:.15s;}
 .adminnav-item:hover{background:var(--card2);color:#fff;}
