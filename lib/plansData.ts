@@ -60,7 +60,6 @@ export const PLAN_ROWS: PlanRow[] = [
   { es: 'Cupones y cobro anual', en: 'Coupons & annual billing', v: [false, true, true, true] },
   { es: 'Muro de logros de alumnos', en: 'Student wins wall', v: [false, true, true, true] },
   { es: 'Inscripción por rondas y lista de espera', en: 'Cohort enrollment & waitlist', v: [false, true, true, true] },
-  { es: 'Onyx Guardian VIP para tus niveles', en: 'Onyx Guardian VIP for your tiers', v: [false, true, true, true] },
   { es: 'Compatible con móvil', en: 'Works on mobile', v: [false, true, true, true] },
   { es: 'Comisión de Onyx por venta', en: 'Onyx fee per sale', v: ['—', '10%', '6%', '3%'] },
 ];

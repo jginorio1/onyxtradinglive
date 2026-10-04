@@ -2190,8 +2190,8 @@ function BotPlanMatrixEditor() {
     <div className="card" style={{ marginTop: 18 }}>
       <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
         <div>
-          <div style={{ fontWeight: 800, fontSize: 15 }}><OnyxIcon emoji="🤖" size={15} /> {es ? 'Planes del Bot Builder' : 'Bot Builder plans'}</div>
-          <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'Controla la tabla comparativa del landing y qué desbloquea cada plan (métricas avanzadas, laboratorio, etc.).' : 'Controls the landing comparison table and what each plan unlocks (advanced metrics, portfolio lab, etc.).'}</div>
+          <div style={{ fontWeight: 800, fontSize: 15 }}><OnyxIcon emoji="🤖" size={15} /> {es ? 'Tabla del landing "Crea tu bot" (solo esa página)' : '"Build a bot" landing table (that page only)'}</div>
+          <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'NO son planes reales ni cobran: solo editan la tabla comparativa de la página del constructor de bots (/bot-builder). Los planes y precios reales se gestionan arriba, en Planes.' : 'These are NOT real plans and do not charge: they only edit the comparison table on the bot-builder landing (/bot-builder). Real plans and prices are managed above, in Plans.'}</div>
         </div>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
           {msg && <span style={{ fontSize: 12.5, color: 'var(--brand)' }}>{msg}</span>}
