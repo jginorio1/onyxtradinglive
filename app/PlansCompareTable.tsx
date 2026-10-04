@@ -133,6 +133,8 @@ export default function PlansCompareTable({
                   const isFee = /por venta|per sale/i.test(r.es + r.en);
                   let cell: boolean | string = rowVal(r, id);
                   if (isFee) { const pct = (byId(id) as any)?.capabilities?.academy_fee_pct; if (pct != null && !isNaN(Number(pct))) cell = `${Number(pct)}%`; }
+                  // Traduce los textos de celda (p. ej. History "30 días / Ilimitado") al idioma activo.
+                  if (typeof cell === 'string' && lang !== 'es') cell = cell.replace(/Ilimitado/g, 'Unlimited').replace(/d[ií]as/g, 'days').replace(/D[ií]as/g, 'Days');
                   return <td key={id} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(cell)}</td>;
                 })}</tr>))}
 

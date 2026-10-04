@@ -262,7 +262,7 @@ const dict = {
     mgr: {
       badge: 'Live module · Pro and Elite',
       title: 'Onyx Guardian — the manager that protects you from yourself',
-      sub: 'It never opens trades. It only looks after the ones you open and enforces the trading plan you wrote while you were calm. Already running on MetaTrader (MT4/MT5) and cTrader.',
+      sub: 'It never opens trades. It only looks after the ones you open and enforces the trading plan you wrote while you were calm. Running on MetaTrader (MT4/MT5) and cTrader, and on MatchTrader, TradeLocker and DXtrade via broker API.',
       cards: [
         { i: '🎯', t: 'Break even that really means zero', d: 'Moves the stop once the trade goes your way and adds the commission and swap your broker charged. Real zero, not price zero.' },
         { i: '📐', t: 'Trailing and partial closes', d: 'Follows price and closes at several levels. You choose whether you measure in pips, R or money.' },

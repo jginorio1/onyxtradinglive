@@ -176,8 +176,11 @@ export async function listMarketplace(opts: { category?: string; platform?: stri
   let query = supabaseAdmin.from('bot_products').select('*').eq('status', 'active').order('position').order('created_at', { ascending: false });
   if (opts.category) query = query.eq('category', opts.category);
   if (opts.platform && opts.platform !== 'any') query = query.eq('platform', opts.platform);
-  const { data } = await query.limit(Math.min(opts.limit || 60, 100));
+  const { data } = await query.limit(Math.min(opts.limit || 100, 200));
   let rows = (data || []) as any[];
+  // Marketplace público: solo robots oficiales o verificados por el admin, o que ya
+  // tengan historial real (perf.score). Así los robots de prueba no salen al público.
+  rows = rows.filter((r) => r.is_official || r.verified || (r.perf && r.perf.score != null));
   if (opts.q) { const s = opts.q.toLowerCase(); rows = rows.filter((r) => (r.name + ' ' + (r.tagline || '')).toLowerCase().includes(s)); }
   const names = await sellerNames(rows.map((r) => r.seller_id));
   return rows.map((r) => ({ ...r, seller_name: r.is_official ? 'Onyx oficial' : (names[r.seller_id] || 'Trader') }));

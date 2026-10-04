@@ -20,6 +20,11 @@ export const PLAN_ROWS: PlanRow[] = [
   { es: 'Reglas de fondeo y retiros', en: 'Funding rules & payouts', v: [false, true, true, true] },
   { es: 'Costes (comisión y swap)', en: 'Costs (commission & swap)', v: [false, true, true, true] },
   { es: 'Exportar CSV', en: 'Export CSV', v: [false, true, true, true] },
+  { es: 'Analítica avanzada (Edge)', en: 'Advanced analytics (Edge)', v: [false, true, true, true] },
+  { es: 'Mi reto (seguimiento prop firm)', en: 'Challenge tracker (prop firm)', v: [false, true, true, true] },
+  { es: 'Reporte público / Compartir', en: 'Public report / Share', v: [false, true, true, true] },
+  { es: 'Notificaciones push', en: 'Push notifications', v: [false, true, true, true] },
+  { es: 'Brókers por API (MatchTrader, TradeLocker, DXtrade)', en: 'API brokers (MatchTrader, TradeLocker, DXtrade)', v: [false, true, true, true] },
 
   { es: 'Onyx Guardian', en: 'Onyx Guardian', v: ['', '', '', ''], head: true },
   { es: 'Break even que cubre costes', en: 'Break even that covers costs', v: [false, true, true, true] },
@@ -37,6 +42,7 @@ export const PLAN_ROWS: PlanRow[] = [
   { es: 'Cuentas Master', en: 'Master accounts', v: [false, false, '1', '∞'] },
   { es: 'Cuentas esclava', en: 'Slave accounts', v: [false, false, '5', '∞'] },
   { es: 'Control remoto (web y Telegram)', en: 'Remote control (web & Telegram)', v: [false, false, true, true] },
+  { es: 'Onyx Copy: seguir o ser proveedor', en: 'Onyx Copy: follow or be a provider', v: [false, true, true, true] },
 
   { es: 'Onyx Academy (para mentores)', en: 'Onyx Academy (for mentors)', v: ['', '', '', ''], head: true },
   { es: 'Crea tu propia academia', en: 'Create your own academy', v: [false, true, true, true] },
