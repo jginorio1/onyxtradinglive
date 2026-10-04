@@ -60,6 +60,14 @@ export default function PlansCompareTable({
     if (price < elite) return 1; if (price < black) return 2; return 3;
   };
   const rowVal = (r: any, id: string): boolean | string => {
+    const caps = (byId(id) as any)?.capabilities || {};
+    // Filas numéricas: leen el campo real del plan (historial, master, esclava).
+    if (r.dyn === 'history') { const d = Number(caps.history_days) || 0; return d <= 0 ? (lang === 'es' ? 'Ilimitado' : 'Unlimited') : `${d} ${lang === 'es' ? 'días' : 'days'}`; }
+    if (r.dyn === 'masters') { if (!caps.copy) return false; const n = Number(caps.copy_masters) || 0; return n >= 999 ? '∞' : String(n); }
+    if (r.dyn === 'slaves') { if (!caps.copy) return false; const n = Number(caps.copy_slaves) || 0; return n >= 999 ? '∞' : String(n); }
+    // Filas con capacidad: la marca sale del interruptor REAL del plan en Admin.
+    if (r.cap) return !!caps[r.cap];
+    // Resto: valor de respaldo por banda de precio.
     const idx = baseIdx(id);
     return Array.isArray(r.v) ? (r.v[idx] ?? r.v[r.v.length - 1]) : r.v;
   };
