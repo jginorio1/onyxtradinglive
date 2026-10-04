@@ -47,6 +47,19 @@ export default function OnyxCopyHub() {
   const [tab, setTab] = useState<'copy' | 'mine' | 'trader'>('copy');
   const [providers, setProviders] = useState<any[]>([]);
   const ios = useIsIOSApp(); // iOS (Apple 3.1.1): seguir un trader de pago es una compra → se hace en la web
+  // Candado de plan para Onyx Copy (capacidad 'copymkt'): apagado en Free, encendido en pago por defecto.
+  const [copyLock, setCopyLock] = useState<{ on: boolean; upName: string; upPrice: number }>({ on: true, upName: 'Pro', upPrice: 0 });
+  useEffect(() => {
+    fetch('/api/account').then((r) => r.json()).then((j) => {
+      const myPlan = j?.profile?.plan || 'free';
+      const isFree = myPlan === 'free';
+      const plans: any[] = j?.plans || [];
+      const v = plans.find((p: any) => p.id === myPlan)?.capabilities?.copymkt;
+      const on = (v === undefined || v === null) ? !isFree : !!v;
+      const cand = plans.filter((p: any) => p.id !== myPlan && p.capabilities?.copymkt && p.active !== false).sort((a: any, b: any) => (a.price_month || 0) - (b.price_month || 0))[0] || plans.find((p: any) => p.id === 'pro');
+      setCopyLock({ on, upName: cand?.name || 'Pro', upPrice: cand?.price_month || 0 });
+    }).catch(() => {});
+  }, []);
   const [follows, setFollows] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [myProviders, setMyProviders] = useState<any[]>([]);
@@ -218,6 +231,16 @@ export default function OnyxCopyHub() {
         <h2 style={{ fontSize: 24 }}>{T.title}</h2>
         <p className="muted" style={{ fontSize: 14 }}>{T.sub}</p>
       </div>
+      {!copyLock.on ? (
+        <div className="card" style={{ textAlign: 'center', padding: 32 }}>
+          <div style={{ fontSize: 34, marginBottom: 8 }}>🔒</div>
+          <h3 style={{ marginBottom: 6 }}>{es ? 'Disponible en' : 'Available in'} <span style={{ color: 'var(--brand2)' }}>{copyLock.upName}</span></h3>
+          <p className="muted" style={{ fontSize: 14, maxWidth: 440, margin: '0 auto 14px' }}>
+            {es ? 'Sigue a los mejores traders o conviértete en proveedor de señales en el ranking Onyx Copy.' : 'Follow top traders or become a signal provider on the Onyx Copy ranking.'}
+          </p>
+          {!ios && <a className="btn btn-primary" href="/pricing">{es ? 'Mejorar a' : 'Upgrade to'} {copyLock.upName}{copyLock.upPrice ? ` · $${copyLock.upPrice}/${es ? 'mes' : 'mo'}` : ''} →</a>}
+        </div>
+      ) : (<>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
         <TabBtn k="copy" label={T.tCopy} />
         <TabBtn k="mine" label={T.tMine + (follows.length ? ` (${follows.length})` : '')} />
@@ -450,6 +473,7 @@ export default function OnyxCopyHub() {
           </div>
         </div>
       )}
+      </>)}
     </div>
   );
 }

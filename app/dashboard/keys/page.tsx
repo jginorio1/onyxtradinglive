@@ -255,6 +255,21 @@ export default function KeysPage() {
     const p = localStorage.getItem('onyx_plat'); if (p) setPlat(p);
   } catch {} }, []);
   function pickPlat(k: string) { setPlat(k); try { localStorage.setItem('onyx_plat', k); } catch {} }
+  // Candado de plan para Multi-plataforma (capacidad 'platforms'): las plataformas por
+  // API (MatchTrader/TradeLocker/DXtrade) requieren plan con la capacidad; MT siempre libre.
+  const [multi, setMulti] = useState<{ on: boolean; upName: string }>({ on: true, upName: 'Pro' });
+  useEffect(() => {
+    fetch('/api/account').then((r) => r.json()).then((j) => {
+      const myPlan = j?.profile?.plan || 'free';
+      const isFree = myPlan === 'free';
+      const plans: any[] = j?.plans || [];
+      const v = plans.find((p: any) => p.id === myPlan)?.capabilities?.platforms;
+      const on = (v === undefined || v === null) ? !isFree : !!v;
+      const cand = plans.filter((p: any) => p.id !== myPlan && p.capabilities?.platforms && p.active !== false).sort((a: any, b: any) => (a.price_month || 0) - (b.price_month || 0))[0] || plans.find((p: any) => p.id === 'pro');
+      setMulti({ on, upName: cand?.name || 'Pro' });
+    }).catch(() => {});
+  }, []);
+  const API_KINDS = ['matchtrader', 'tradelocker', 'dxtrade'];
   const activePlat = (t.platforms || []).find((p: any) => p.key === plat) || t.platforms[0];
   const kind = activePlat.kind; // 'mt' | 'ctrader' | 'soon'
 
@@ -481,14 +496,23 @@ export default function KeysPage() {
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800,
                     }}>{on ? '✓' : ''}</span>
                   </div>
-                  <span className="pill" style={{ marginTop: 8, fontSize: 11, background: on ? `color-mix(in srgb, ${ac} 18%, transparent)` : 'var(--card2)', color: on ? ac : 'var(--mut)' }}>{p.badge}</span>
+                  <span className="pill" style={{ marginTop: 8, fontSize: 11, background: on ? `color-mix(in srgb, ${ac} 18%, transparent)` : 'var(--card2)', color: on ? ac : 'var(--mut)' }}>{API_KINDS.includes(p.kind) && !multi.on ? `🔒 ${p.badge}` : p.badge}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {kind === 'matchtrader' ? (
+        {API_KINDS.includes(kind) && !multi.on ? (
+          <div className="card" style={{ textAlign: 'center', padding: 32 }}>
+            <div style={{ fontSize: 34, marginBottom: 8 }}>🔒</div>
+            <h3 style={{ marginBottom: 6 }}>{lang === 'en' ? 'Available in' : 'Disponible en'} <span style={{ color: 'var(--brand2)' }}>{multi.upName}</span></h3>
+            <p className="muted" style={{ fontSize: 14, maxWidth: 440, margin: '0 auto 14px' }}>
+              {lang === 'en' ? 'Connect MatchTrader, TradeLocker and DXtrade by broker API. MetaTrader stays available on every plan.' : 'Conecta MatchTrader, TradeLocker y DXtrade por API del bróker. MetaTrader sigue disponible en todos los planes.'}
+            </p>
+            <a className="btn btn-primary" href="/pricing">{lang === 'en' ? 'Upgrade to' : 'Mejorar a'} {multi.upName} →</a>
+          </div>
+        ) : kind === 'matchtrader' ? (
           <MatchtraderConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
         ) : kind === 'tradelocker' ? (
           <TradeLockerConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />

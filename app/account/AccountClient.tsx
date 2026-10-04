@@ -285,6 +285,11 @@ export default function AccountClient({ email }: { email: string }) {
   const pct = isUnlimited ? 0 : Math.min(100, Math.round((used / Math.max(maxAcc, 1)) * 100));
   const barColor = pct >= 100 ? 'var(--red)' : pct >= 75 ? 'var(--amber)' : 'var(--green)';
   const upgrades = useMemo(() => plans.filter((x) => (x.price_month || 0) > (myPlan?.price_month || 0)), [plans, myPlan]);
+  // Candado de plan para Notificaciones push (capacidad 'push'): apagado en Free, encendido en pago por defecto.
+  const isFreePlan = (p.plan || 'free') === 'free';
+  const pushV = (myPlan?.capabilities as any)?.push;
+  const pushOn = (pushV === undefined || pushV === null) ? !isFreePlan : !!pushV;
+  const pushUp = plans.filter((x) => x.id !== (p.plan || 'free') && (x.capabilities as any)?.push && x.active !== false).sort((a, b) => (a.price_month || 0) - (b.price_month || 0))[0] || plans.find((x) => x.id === 'pro');
 
   async function saveProfile(extra: any = {}) {
     setBusy('save'); setMsg('');
@@ -902,7 +907,14 @@ export default function AccountClient({ email }: { email: string }) {
             {data && tab === 'avisos' && (
               <Section icon="🔔" title={L.nav.avisos} subtitle={L.nSub}>
                 <InstallApp lang={lang} />
-                <PushToggle lang={lang} />
+                {pushOn ? <PushToggle lang={lang} /> : (
+                  <div className="card" style={{ marginBottom: 14, textAlign: 'center', padding: 20 }}>
+                    <div style={{ fontSize: 26, marginBottom: 6 }}>🔒</div>
+                    <b>{lang === 'en' ? 'Push notifications' : 'Notificaciones push'}</b>
+                    <p className="muted" style={{ fontSize: 13, margin: '4px auto 10px', maxWidth: 360 }}>{lang === 'en' ? 'Get instant alerts on your phone and desktop.' : 'Recibe alertas al instante en tu móvil y escritorio.'}</p>
+                    {!iosApp && <a className="btn btn-primary" href="/pricing" style={{ fontSize: 13 }}>{lang === 'en' ? 'Upgrade to' : 'Mejorar a'} {pushUp?.name || 'Pro'} →</a>}
+                  </div>
+                )}
                 <div className="card" style={{ marginBottom: 14 }}>
                   <div className="row" style={{ gap: 9, marginBottom: 8, alignItems: 'center' }}>
                     <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand)' }}><OnyxIcon name="mail" size={16} /></span>
