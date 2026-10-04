@@ -220,9 +220,14 @@ export default function LandingBuilder() {
               </div>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+          <p className="muted" style={{ fontSize: 12, marginTop: 12, lineHeight: 1.5 }}>
+            {L('💡 Por defecto la tabla es AUTOMÁTICA: lee los interruptores reales de cada plan (Admin → Planes) y siempre cuadra sola. Edita aquí solo si quieres una versión fija escrita a mano (esta override tiene prioridad sobre la automática).',
+               '💡 By default the table is AUTOMATIC: it reads each plan\'s real toggles (Admin → Plans) and always stays in sync. Edit here only if you want a fixed hand-written version (this override takes priority over the automatic one).')}
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
             <button className="btn btn-ghost" onClick={() => setCompare([...compareRows, { es: '', en: '', v: [false, false, false, false] }])}>＋ {L('Añadir fila', 'Add row')}</button>
-            <button className="btn btn-ghost" onClick={async () => { if (await confirmDialog(L('¿Volver a las filas del código?', 'Reset to code rows?'))) setCompare(defaults.compare || []); }}>{L('Restaurar por defecto', 'Reset to default')}</button>
+            <button className="btn btn-ghost" onClick={async () => { if (await confirmDialog(L('Esto rellena el editor con las filas del código como versión FIJA (seguirá siendo manual, no automática). ¿Continuar?', 'This fills the editor with the code rows as a FIXED version (still manual, not automatic). Continue?'))) setCompare(defaults.compare || []); }}>{L('Cargar filas del código (fija)', 'Load code rows (fixed)')}</button>
+            <button className="btn btn-ghost" style={{ color: 'var(--green)' }} onClick={async () => { if (await confirmDialog(L('Vaciará tu tabla escrita a mano y el landing volverá a la tabla AUTOMÁTICA que lee los planes reales. ¿Continuar?', 'This clears your hand-written table and the landing goes back to the AUTOMATIC table that reads the real plans. Continue?'))) { setCompare([]); await save({ compare: [] }); } }} disabled={busy}>✨ {L('Usar tabla automática', 'Use automatic table')}</button>
             <button className="btn btn-primary" onClick={() => save({ compare: compareRows })} disabled={busy}>{busy ? '…' : L('Guardar comparación', 'Save comparison')}</button>
           </div>
         </div>
