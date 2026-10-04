@@ -75,7 +75,7 @@ type User = { id: string; email: string; full_name?: string | null; plan: string
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
 type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'nomina' | 'carreras' | 'formacion' | 'embajadores' | 'ventas' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'mtbrokers' | 'tlservers' | 'dxservers' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'copytraders' | 'botlab' | 'factory' | 'pagos' | 'antifraude' | 'trackrecord' | 'monitor' | 'ads' | 'ajustes';
 
-const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'expenses', 'coach', 'academy'];
+const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'expenses', 'coach', 'academy', 'challenge', 'habits', 'edge', 'copymkt', 'share', 'push', 'platforms'];
 const CAP_FALLBACK: Record<string, string> = { tv: 'TradingView (señales → EA)' };
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {

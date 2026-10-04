@@ -617,6 +617,13 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const canJournal = caps ? !!caps.journal : !isFree;
   const canCompare = caps ? !!caps.compare : !isFree;
   const canFunding = caps ? !!caps.funding : !isFree;
+  // Capacidades nuevas: si el plan tiene el interruptor definido, se respeta; si no,
+  // el valor por defecto es apagado en Free y encendido en planes de pago.
+  const capNew = (key: string) => { const v = (caps as any)?.[key]; return (v === undefined || v === null) ? !isFree : !!v; };
+  const canChallenge = capNew('challenge');
+  const canHabits = capNew('habits');
+  const canEdge = capNew('edge');
+  const canShare = capNew('share');
   // Plan más barato (distinto al actual) que desbloquea una capacidad → para el candado y su precio.
   const upsell = (capKey: string) => {
     const cands = plans.filter((p: any) => p.id !== (plan || 'free') && p.capabilities?.[capKey] && p.active !== false).sort((x: any, y: any) => (x.price_month || 0) - (y.price_month || 0));
@@ -624,6 +631,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
     return { name: t?.name || 'Pro', price: t?.price_month || proPrice };
   };
   const upJ = upsell('journal'), upC = upsell('compare'), upF = upsell('funding');
+  const upCh = upsell('challenge'), upH = upsell('habits'), upE = upsell('edge');
 
   // Ata al usuario con el embajador que lo trajo (si viene de un enlace)
   useEffect(() => { fetch('/api/ref', { method: 'POST' }).catch(() => {}); }, []);
@@ -1021,7 +1029,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 {/* MÓVIL: tarjeta de acciones (Compartir · Filtros · Más) del MISMO tamaño que Portafolio. */}
                 {isMobile && (
                   <div style={{ flex: 1, minWidth: 0, minHeight: 56, display: 'flex', alignItems: 'stretch', gap: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 6 }}>
-                    {!isFree && <ShareReport lang={lang} from={expFrom} to={expTo} acc={sel} pdfHref={pdfHref} compact />}
+                    {canShare && <ShareReport lang={lang} from={expFrom} to={expTo} acc={sel} pdfHref={pdfHref} compact />}
                     {view === 'rendimiento' && (
                       <span style={{ position: 'relative', display: 'inline-flex', flex: 1 }}>
                         <button type="button" aria-label={L.filterBy} className={'btn ' + ((segSym || segBot) ? 'btn-primary' : 'btn-ghost')} style={{ flex: 1, width: '100%', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setFiltOpen((o) => !o)}><OnyxIcon emoji="🔎" size={17} /></button>
@@ -1056,8 +1064,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                         <span onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
                         <div style={{ position: 'absolute', right: 0, left: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 230, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
                           <button className="btn btn-ghost" onClick={() => { setDemo(!demo); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="🎬" size={14} /> {L.demo}{demo ? ' ✓' : ''}</button>
-                          <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} onClick={() => { setRange(range === 'custom' ? 'all' : 'custom'); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: !isFree ? 6 : 0 }}><OnyxIcon emoji="📅" size={14} /> {L.customRange}{range === 'custom' ? ' ✓' : ''}</button>
-                          {!isFree && <>
+                          <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} onClick={() => { setRange(range === 'custom' ? 'all' : 'custom'); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: canShare ? 6 : 0 }}><OnyxIcon emoji="📅" size={14} /> {L.customRange}{range === 'custom' ? ' ✓' : ''}</button>
+                          {canShare && <>
                             <div className="muted" style={{ fontSize: 11, padding: '6px 8px 6px', borderTop: '1px solid var(--line)', marginTop: 2 }}>{lang === 'es' ? 'Exportar reporte' : 'Export report'}</div>
                             <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(pdfDlHref, `onyx-reporte-${expFrom}.pdf`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
                             <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(xlsxHref, `onyx-reporte-${expFrom}.xlsx`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel</button>
@@ -1079,10 +1087,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   {!isMobile && <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', flex: 'none' }} onClick={() => setRange(range === 'custom' ? 'all' : 'custom')} title={L.customRange}><OnyxIcon emoji="📅" size={15} /></button>}
                 </div>
                 {/* Compartir: en escritorio va suelto; en móvil, junto a "Más" en su propia fila. */}
-                {!isMobile && !isFree && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
+                {!isMobile && canShare && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
                 {/* ESCRITORIO: Demo + Exportar sueltos, como antes. */}
                 {!isMobile && <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>}
-                {!isMobile && !isFree && (
+                {!isMobile && canShare && (
                   <span style={{ position: 'relative', display: 'inline-flex' }}>
                     <button type="button" className="btn btn-ghost" style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => setExpOpen((o) => !o)}><OnyxIcon emoji="⬇️" size={15} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span></button>
                     {expOpen && (<>
@@ -1320,9 +1328,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
 
             {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} focusUndoc={journalUndoc} accounts={accounts} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} accounts={accounts} />}
-            {view === 'reto' && <Challenge lang={lang} />}
-            {view === 'plan' && <PlanHabits lang={lang} account={sel} accountName={curName} />}
-            {view === 'edge' && <QuantEdgeCard a={a} lang={lang} />}
+            {view === 'reto' && (!canChallenge ? <ProLock L={L} plan={upCh.name} price={upCh.price} desc={lang === 'en' ? 'Track your prop firm challenge: phase, limits and verdict.' : 'Sigue tu reto de prop firm: fase, límites y veredicto.'} /> : <Challenge lang={lang} />)}
+            {view === 'plan' && (!canHabits ? <ProLock L={L} plan={upH.name} price={upH.price} desc={lang === 'en' ? 'Daily plan, habit check-in, adherence and streak.' : 'Plan diario, check-in de hábitos, adherencia y racha.'} /> : <PlanHabits lang={lang} account={sel} accountName={curName} />)}
+            {view === 'edge' && (!canEdge ? <ProLock L={L} plan={upE.name} price={upE.price} desc={lang === 'en' ? 'Advanced quantitative metrics of your edge.' : 'Métricas cuantitativas avanzadas de tu ventaja.'} /> : <QuantEdgeCard a={a} lang={lang} />)}
 
             {view === 'cuentas' && (<>
               <Card title={L.accCard} icon="🗂️">
