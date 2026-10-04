@@ -63,9 +63,10 @@ export default function PlansCompareTable({
     const caps = (byId(id) as any)?.capabilities || {};
     // Filas numéricas: leen el campo real del plan (historial, master, esclava).
     if (r.dyn === 'history') { const d = Number(caps.history_days) || 0; return d <= 0 ? (lang === 'es' ? 'Ilimitado' : 'Unlimited') : `${d} ${lang === 'es' ? 'días' : 'days'}`; }
-    // Copy master/esclava: 0 = ilimitado (∞), igual que ≥999. Solo muestra número 1–998.
-    if (r.dyn === 'masters') { if (!caps.copy) return false; const n = Number(caps.copy_masters) || 0; return (n <= 0 || n >= 999) ? '∞' : String(n); }
-    if (r.dyn === 'slaves') { if (!caps.copy) return false; const n = Number(caps.copy_slaves) || 0; return (n <= 0 || n >= 999) ? '∞' : String(n); }
+    // Copy master/esclava: mismo fallback que el editor de Admin (masters→1, esclavas→2)
+    // para que la tabla y el editor SIEMPRE cuadren. 0 o ≥999 = ilimitado (∞); 1–998 = número.
+    if (r.dyn === 'masters') { if (!caps.copy) return false; const n = Number(caps.copy_masters ?? 1); return (n <= 0 || n >= 999) ? '∞' : String(n); }
+    if (r.dyn === 'slaves') { if (!caps.copy) return false; const n = Number(caps.copy_slaves ?? 2); return (n <= 0 || n >= 999) ? '∞' : String(n); }
     // Filas con capacidad: la marca sale del interruptor REAL del plan en Admin.
     if (r.cap) return !!caps[r.cap];
     // Resto: valor de respaldo por banda de precio.
