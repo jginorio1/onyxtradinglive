@@ -339,7 +339,7 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
    admin…): llena monitores grandes. Tope alto para que en pantallas anchas de PC
    aproveche el ancho en vez de dejar franjas vacías a los lados; en monitores
    enormes (>2560px) se topa y se centra. Móvil/tablet no cambian. */
-.wrap-wide{max-width:2560px;margin:0 auto;padding:0 clamp(16px,3vw,48px);}
+.wrap-wide{max-width:none;margin:0 auto;padding:0 clamp(16px,2.2vw,44px);}
 /* Separadores del cabezal: entre grupos de la nav y entre zonas del clúster derecho. */
 .navsep{ display:inline-block; width:1px; height:18px; background:var(--line); margin:0 8px; flex:0 0 auto; }
 .topsep{ display:none; }
@@ -447,6 +447,12 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 /* Paneles de brókers (MatchTrader/TradeLocker/DXtrade): formulario + lista en dos
    columnas en escritorio, una sola en móvil/tablet. */
 @media(max-width:900px){ .brk-grid{grid-template-columns:1fr !important; } }
+/* Ajustes de Admin: las tarjetas se reparten en columnas de ~640px (el ancho para
+   el que están hechos sus editores), así en monitores grandes llenan en 2 columnas
+   sin apretar nada. Cada tarjeta queda entera (no se parte entre columnas). */
+.settings-grid{column-width:640px;column-gap:16px;}
+.settings-grid > *{break-inside:avoid;}
+@media(max-width:700px){ .settings-grid{column-width:auto;} }
 .adminnav-items{display:flex;flex-direction:column;gap:4px;}
 .adminnav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--mut);cursor:pointer;font-size:14px;font-weight:600;border:none;background:transparent;text-align:left;width:100%;transition:.15s;}
 .adminnav-item:hover{background:var(--card2);color:#fff;}

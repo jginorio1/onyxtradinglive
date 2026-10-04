@@ -1220,7 +1220,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'optim' && <Optimize />}
 
             {tab === 'ajustes' && (
-              <div style={{ maxWidth: 640 }}>
+              <div className="settings-grid" style={{ maxWidth: 'none' }}>
                 <Head ic="⚙️" t={t.h_ajustes_t} s={t.h_ajustes_s} />
                 <div className="card" style={{ marginBottom: 12 }}>
                   <div className="row between" style={{ flexWrap: 'wrap', gap: 8 }}>
