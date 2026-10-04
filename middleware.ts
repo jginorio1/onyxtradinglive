@@ -86,6 +86,17 @@ export async function middleware(req: NextRequest) {
   );
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Con sesión iniciada, el LANDING no se muestra nunca: cualquier enlace, botón
+  // "← Onyx", logo o botón "atrás" que apunte a "/" manda al usuario directo a su
+  // panel. Es un guardia único — así no hay que arreglar enlace por enlace.
+  // (No aplica en vista previa de anuncios, que se renderiza como visitante.)
+  if (user && path === '/' && !isAdPreview) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/dashboard';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
   // Puerta única: todo lo que cuelga de estas rutas exige sesión. Así no
   // dependemos de que cada página se acuerde de comprobarlo — que fue justo
   // lo que falló con /dashboard/keys, que era 'use client' y no miraba nada.

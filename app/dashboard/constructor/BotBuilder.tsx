@@ -181,7 +181,7 @@ export default function BotBuilder() {
   const [opsByMagic, setOpsByMagic] = useState<Record<number, { trades: number; accountId: string }>>({});
   const [tpls, setTpls] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
-  const [big, setBig] = useState(false);
+  const [big, setBig] = useState(true);
   const [symOpen, setSymOpen] = useState(false);   // selector de instrumento con buscador
   // Filtros de "Mis robots": buscador por nombre, orden y estado.
   const [rq, setRq] = useState('');
@@ -445,7 +445,7 @@ export default function BotBuilder() {
   return (
     <BB.Provider value={{ s, set, es, reqKeys, okKey: okVal }}>
     {symOpen && <SymbolPicker es={es} current={s.symbol} onPick={(sym) => set('symbol', sym)} onClose={() => setSymOpen(false)} />}
-    <div className="bbx" style={{ maxWidth: big ? 1500 : 1120, margin: '0 auto' }}>
+    <div className="bbx" style={{ maxWidth: big ? 'none' : 1120, margin: '0 auto' }}>
       <style>{`
       .bbx{--ac:#8b93ff;--ac2:#5b63d3;--ok:#5fe0aa;--wn:#f2c265;--ink:#eef0fa;--mut:#98a0b8;--line:rgba(255,255,255,.09)}
       .bbx *{box-sizing:border-box}
