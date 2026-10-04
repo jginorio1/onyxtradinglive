@@ -290,7 +290,7 @@ export default function SupportInbox() {
 
       <div className="wa2" ref={wrapRef}>
         {/* Lista de conversaciones estilo WhatsApp */}
-        <div className={'wa-list' + (mobileOpen ? ' wa-hide-m' : '')} style={{ height: paneH }}>
+        <div className={'wa-list rowlist' + (mobileOpen ? ' wa-hide-m' : '')} style={{ height: paneH }}>
           {!list.length && <p className="muted" style={{ fontSize: 13, padding: '10px 8px' }}>{t.s_empty}</p>}
           {list.map((it) => {
             const parts = participants.filter((p) => p.ticket_id === it.id);

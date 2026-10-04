@@ -94,7 +94,7 @@ function Plantillas({ es, L }: { es: boolean; L: (a: string, b: string) => strin
             <span style={{ width: 30, height: 30, borderRadius: 8, display: 'grid', placeItems: 'center', background: (c?.color || '#888') + '22' }}><OnyxIcon emoji={c?.icon || '✉'} size={15} /></span>
             <b style={{ fontSize: 15 }}>{es ? c?.es : c?.en}</b>
           </div>
-          <div style={{ display: 'grid', gap: 8 }}>
+          <div className="rowlist" style={{ display: 'grid', gap: 8 }}>
             {list.map((it) => (
               <button key={it.id} onClick={() => setOpenId(it.id)}
                 style={{ textAlign: 'left', cursor: 'pointer', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '11px 13px', display: 'flex', alignItems: 'center', gap: 10, color: 'var(--tx)' }}>

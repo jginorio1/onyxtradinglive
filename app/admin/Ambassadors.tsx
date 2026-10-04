@@ -121,7 +121,7 @@ function Recruit({ lang }: { lang: 'es' | 'en' }) {
         {/* Pipeline */}
         <div>
           <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{L('Pipeline de prospectos', 'Prospect pipeline')}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+          <div className="rowlist" style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
             {!list.length && <div className="muted" style={{ fontSize: 13 }}>{L('Aún no hay prospectos.', 'No prospects yet.')}</div>}
             {list.map((p) => { const st = STAT[p.status] || STAT.new; return (
               <div key={p.id} style={{ background: sel?.id === p.id ? 'rgba(124,140,255,.12)' : 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '8px 10px' }}>

@@ -96,8 +96,8 @@ export default function CatalogAdmin() {
           {msg && <span style={{ color: 'var(--green)', fontSize: 14 }}>{msg}</span>}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 520, overflowY: 'auto' }}>
-          <div className="row" style={{ gap: 8 }}>
+        <div className="rowlist" style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 520, overflowY: 'auto' }}>
+          <div className="row rowlist-head" style={{ gap: 8 }}>
             <span style={{ ...lbl, width: 130, margin: 0 }}>{L('Código', 'Code')}</span>
             <span style={{ ...lbl, flex: 1, margin: 0 }}>{L('Nombre (ES)', 'Name (ES)')}</span>
             <span style={{ ...lbl, flex: 1, margin: 0 }}>{L('Nombre (EN)', 'Name (EN)')}</span>

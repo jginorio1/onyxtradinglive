@@ -651,7 +651,7 @@ export default function AdsAdmin({ es }: { es: boolean }) {
       <div style={{ ...box, ...sec('campaign') }}>
         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>{L('Campañas', 'Campaigns')} ({camps.length})</div>
         {camps.length === 0 ? <div className="muted" style={{ fontSize: 13 }}>{L('Aún no hay campañas. Crea una arriba o llegan solas desde /publicidad.', 'No campaigns yet. Create one above or they arrive from /publicidad.')}</div> : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="rowlist" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {camps.map((c) => (
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid var(--line)', paddingTop: 8 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: stColor[c.status] || 'var(--mut)', flex: 'none' }} />

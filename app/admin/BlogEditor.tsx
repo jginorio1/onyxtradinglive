@@ -589,7 +589,7 @@ export default function BlogEditor() {
 
     const byDay: Record<string, any[]> = {};
     for (const p of posts) { const k = dateKeyOf(p); if (k) (byDay[k] = byDay[k] || []).push(p); }
-    const backlog = posts.filter((p) => p.status === 'draft' && !dateKeyOf(p));
+    const backlog = posts.filter((p) => p.status === 'draft' && !dateKeyOf(p) && !p.is_news);
     const cPub = posts.filter((p) => p.status === 'published' && (dateKeyOf(p) || '').startsWith(monthPrefix)).length;
     const cSch = posts.filter((p) => p.status === 'scheduled' && (dateKeyOf(p) || '').startsWith(monthPrefix)).length;
 
@@ -706,7 +706,7 @@ export default function BlogEditor() {
                 {backlog.length > 6 && (
                   <input placeholder={es ? 'Buscar…' : 'Search…'} value={blogBacklogQ} onChange={(e) => setBlogBacklogQ(e.target.value)} style={{ margin: '0 0 8px', padding: '5px 8px', fontSize: 12, width: '100%' }} />
                 )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, maxHeight: 360, overflowY: 'auto' }}>
+                <div className="rowlist" style={{ display: 'flex', flexDirection: 'column', gap: 7, maxHeight: 360, overflowY: 'auto' }}>
                   {backlog.length === 0 && <div className="muted" style={{ fontSize: 12 }}>{es ? 'Nada pendiente.' : 'Nothing pending.'}</div>}
                   {backlog
                     .filter((p) => !blogBacklogQ || (`${p.title_es || ''} ${p.title_en || ''}`).toLowerCase().includes(blogBacklogQ.toLowerCase()))
