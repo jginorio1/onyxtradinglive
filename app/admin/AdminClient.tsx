@@ -597,6 +597,10 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const [plans, setPlans] = useState<Plan[]>([]);
   const [team, setTeam] = useState<Team[]>([]);
   const [q, setQ] = useState('');
+  const [uFrom, setUFrom] = useState('');   // Usuarios: registrados desde (YYYY-MM-DD)
+  const [uTo, setUTo] = useState('');       // Usuarios: registrados hasta
+  const [uPage, setUPage] = useState(1);    // Usuarios: página actual
+  const U_PER = 25;                          // usuarios por página
   const [busy, setBusy] = useState('');
   const [uRange, setURange] = useState<Range>(() => defaultRange('month'));
   const [uDrawer, setUDrawer] = useState<{ id: string; email: string } | null>(null);
@@ -692,11 +696,33 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   }
   async function resetPass(u: User) { setBusy(u.id + 'rst'); const r = await fetch('/api/admin/reset-password', { method: 'POST', body: JSON.stringify({ email: u.email }) }); const j = await r.json(); setBusy(''); if (!r.ok) { toastErr(j); return; } if (j.link) { navigator.clipboard.writeText(j.link); toast((lang === 'en' ? 'Recovery link copied:\n\n' : 'Enlace de recuperación copiado:\n\n') + j.link); } else toast(lang === 'en' ? 'Recovery email sent.' : 'Email de recuperación enviado.'); }
 
-  const filtered = users.filter((u) => (u.email + ' ' + (u.full_name || '')).toLowerCase().includes(q.toLowerCase()));
+  // Búsqueda por email o nombre + rango de fecha de registro (created_at).
+  const uFromMs = uFrom ? new Date(uFrom + 'T00:00:00').getTime() : 0;
+  const uToMs = uTo ? new Date(uTo + 'T23:59:59').getTime() : Infinity;
+  const filtered = users.filter((u) => {
+    const hit = (u.email + ' ' + (u.full_name || '')).toLowerCase().includes(q.toLowerCase());
+    if (!hit) return false;
+    if (uFrom || uTo) { const t = u.created_at ? new Date(u.created_at).getTime() : 0; if (t < uFromMs || t > uToMs) return false; }
+    return true;
+  });
+  // Métricas de usuarios (con los datos disponibles, sin inventar):
+  //  Activos = confirmados y no bloqueados · Nuevos = registrados en los últimos 30 días
+  //  Se fueron = bloqueados o sin confirmar (abandonados) · Conectados = con ≥1 cuenta
+  const now30 = Date.now() - 30 * 864e5;
+  const uTotal = users.length;
+  const uActive = users.filter((u) => u.email_confirmed !== false && !u.banned).length;
+  const uNew30 = users.filter((u) => u.created_at && new Date(u.created_at).getTime() >= now30).length;
+  const uLeft = users.filter((u) => u.banned || u.email_confirmed === false).length;
+  const uConnected = users.filter((u) => (u.accounts || 0) > 0).length;
   // Admins arriba (el dueño primero), luego el resto. Grupos con cabecera propia.
   const uAdmins = filtered.filter((u) => u.is_admin).sort((a, b) => (a.email === meEmail ? -1 : 0) - (b.email === meEmail ? -1 : 0));
   const uOthers = filtered.filter((u) => !u.is_admin);
   const uOrdered = [...uAdmins, ...uOthers];
+  // Paginación: 25 por página. La página se recorta al total y nunca baja de 1.
+  const uPages = Math.max(1, Math.ceil(uOrdered.length / U_PER));
+  const uPageSafe = Math.min(uPage, uPages);
+  const uStart = (uPageSafe - 1) * U_PER;
+  const uPageItems = uOrdered.slice(uStart, uStart + U_PER);
   // Etiqueta de cobro: Pago (suscripción Stripe activa), Cortesía (plan de pago sin suscripción), o Free.
   const planTag = (u: User): 'paid' | 'comp' | 'free' => {
     if (!u.plan || u.plan === 'free') return 'free';
@@ -764,7 +790,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
         );
       })()}
 
-      <div className="wrap-wide" style={{ padding: '22px 0' }}>
+      <div className="wrap-wide admin-wrap" style={{ padding: '22px 0' }}>
         <div className="adminlayout">
           <div className="adminnav card" style={{ padding: 12 }}>
             {/* Buscador rápido + acción contextual */}
@@ -876,6 +902,23 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                 pdfUrl={(f, tt) => `/api/admin/users/report?from=${f}&to=${tt}&lang=${lang}`}
                 csvUrl={(f, tt) => `/api/admin/users/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
               <CleanSignups />
+              {/* Métricas rápidas: total, activos, nuevos 30d, se fueron, de pago, conectados */}
+              <div className="g5" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10, marginBottom: 12 }}>
+                {[
+                  { k: lang === 'en' ? 'Total' : 'Total', v: uTotal, c: 'var(--tx)', s: '' },
+                  { k: lang === 'en' ? 'Active' : 'Activos', v: uActive, c: 'var(--green)', s: lang === 'en' ? 'confirmed' : 'confirmados' },
+                  { k: lang === 'en' ? 'New (30d)' : 'Nuevos (30d)', v: uNew30, c: 'var(--brand)', s: lang === 'en' ? 'this period' : 'este periodo' },
+                  { k: lang === 'en' ? 'Left' : 'Se fueron', v: uLeft, c: 'var(--red)', s: lang === 'en' ? 'banned / unconfirmed' : 'bloq./sin confirmar' },
+                  { k: lang === 'en' ? 'Paid' : 'De pago', v: paid, c: 'var(--amber)', s: `${comped} ${lang === 'en' ? 'comp' : 'cortesía'}` },
+                  { k: lang === 'en' ? 'Connected' : 'Conectados', v: uConnected, c: 'var(--tx)', s: lang === 'en' ? '≥1 account' : '≥1 cuenta' },
+                ].map((m, i) => (
+                  <div key={i} className="card" style={{ padding: '12px 14px', margin: 0 }}>
+                    <div className="muted" style={{ fontSize: 12 }}>{m.k}</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: m.c }}>{m.v}</div>
+                    {m.s && <div className="muted" style={{ fontSize: 11 }}>{m.s}</div>}
+                  </div>
+                ))}
+              </div>
               <div className="card">
                 <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
                   {unconfirmed > 0 && (
@@ -891,13 +934,19 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                       {busy === 'resendall' ? '…' : `✉️ ${lang === 'en' ? 'Resend to all' : 'Reenviar a todos'} (${unconfirmed})`}
                     </button>
                   )}
-                  <input placeholder={t.u_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 260, margin: 0, marginLeft: 'auto' }} />
+                  <div className="row" style={{ gap: 8, marginLeft: 'auto', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <input placeholder={lang === 'en' ? 'Search email or name' : 'Buscar email o nombre'} value={q} onChange={(e) => { setQ(e.target.value); setUPage(1); }} style={{ width: 220, margin: 0 }} />
+                    <span className="muted" style={{ fontSize: 12 }}>{lang === 'en' ? 'Registered' : 'Registro'}</span>
+                    <input type="date" value={uFrom} onChange={(e) => { setUFrom(e.target.value); setUPage(1); }} style={{ width: 150, margin: 0 }} title={lang === 'en' ? 'From' : 'Desde'} />
+                    <input type="date" value={uTo} onChange={(e) => { setUTo(e.target.value); setUPage(1); }} style={{ width: 150, margin: 0 }} title={lang === 'en' ? 'To' : 'Hasta'} />
+                    {(uFrom || uTo || q) && <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => { setQ(''); setUFrom(''); setUTo(''); setUPage(1); }}>{lang === 'en' ? 'Clear' : 'Limpiar'}</button>}
+                  </div>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table>
                     <thead><tr><th>Email</th><th>Plan</th><th>{lang === 'en' ? 'Status' : 'Estado'}</th><th>{lang === 'en' ? 'Accounts' : 'Cuentas'}</th><th>{lang === 'en' ? 'Last sync' : 'Últ. sync'}</th><th style={{ minWidth: 260 }}>{lang === 'en' ? 'Actions' : 'Acciones'}</th></tr></thead>
                     <tbody>
-                      {uOrdered.map((u, i) => (
+                      {uPageItems.map((u, li) => { const i = uStart + li; return (
                         <Fragment key={u.id}>
                         {i === 0 && uAdmins.length > 0 && (
                           <tr><td colSpan={6} style={{ background: 'var(--bg2)', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--soft-brand,var(--brand))', padding: '7px 12px' }}><OnyxIcon emoji="🛡" size={15} />️ {lang === 'en' ? 'Administrators' : 'Administradores'} · {uAdmins.length}</td></tr>
@@ -978,10 +1027,25 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                           );
                         })()}
                         </Fragment>
-                      ))}
+                      ); })}
                     </tbody>
                   </table>
                 </div>
+                {/* Pie de paginación: 25 por página, con Anterior/Siguiente. */}
+                {uOrdered.length > U_PER && (
+                  <div className="row between" style={{ marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
+                    <span className="muted" style={{ fontSize: 12 }}>
+                      {lang === 'en'
+                        ? `Showing ${uStart + 1}–${Math.min(uStart + U_PER, uOrdered.length)} of ${uOrdered.length}`
+                        : `Mostrando ${uStart + 1}–${Math.min(uStart + U_PER, uOrdered.length)} de ${uOrdered.length}`}
+                    </span>
+                    <div className="row" style={{ gap: 6, alignItems: 'center' }}>
+                      <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }} disabled={uPageSafe <= 1} onClick={() => setUPage(uPageSafe - 1)}>‹ {lang === 'en' ? 'Prev' : 'Anterior'}</button>
+                      <span className="muted" style={{ fontSize: 12 }}>{uPageSafe} / {uPages}</span>
+                      <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }} disabled={uPageSafe >= uPages} onClick={() => setUPage(uPageSafe + 1)}>{lang === 'en' ? 'Next' : 'Siguiente'} ›</button>
+                    </div>
+                  </div>
+                )}
               </div>
               </>
             )}

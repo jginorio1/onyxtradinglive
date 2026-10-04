@@ -191,6 +191,7 @@ export default function BlogEditor() {
   const [view, setView] = useState<'cal' | 'list'>('cal');   // vista del blog: calendario o lista
   const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
   const [dragId, setDragId] = useState('');                  // id del artículo que se arrastra
+  const [blogBacklogQ, setBlogBacklogQ] = useState('');       // filtro de la bandeja "Sin programar"
   const [overDay, setOverDay] = useState('');                // día resaltado al arrastrar encima
   const [origin, setOrigin] = useState('');                  // origen absoluto (para abrir enlaces desde la app instalada)
   const [authors, setAuthors] = useState<any>(null);         // plantel de autores
@@ -695,12 +696,21 @@ export default function BlogEditor() {
                 <p className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>{es ? 'Clic en un día → nuevo artículo con esa fecha · clic en un chip → editar · arrastra un chip a otro día → reprogramar.' : 'Click a day → new article on that date · click a chip → edit · drag a chip to another day → reschedule.'}</p>
               </div>
 
-              {/* Bandeja de borradores sin fecha */}
+              {/* Bandeja de borradores sin fecha. Con buscador + scroll para que no
+                  sea una lista interminable aunque las noticias automáticas se acumulen. */}
               <div style={{ border: '1px solid var(--line)', borderRadius: 12, padding: 11 }}>
-                <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--mut)', marginBottom: 9 }}>{es ? 'Sin programar' : 'Unscheduled'}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                <div className="row between" style={{ marginBottom: 9, gap: 6 }}>
+                  <span style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--mut)' }}>{es ? 'Sin programar' : 'Unscheduled'}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--mut)', background: 'var(--card2)', borderRadius: 999, padding: '1px 7px' }}>{backlog.length}</span>
+                </div>
+                {backlog.length > 6 && (
+                  <input placeholder={es ? 'Buscar…' : 'Search…'} value={blogBacklogQ} onChange={(e) => setBlogBacklogQ(e.target.value)} style={{ margin: '0 0 8px', padding: '5px 8px', fontSize: 12, width: '100%' }} />
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7, maxHeight: 360, overflowY: 'auto' }}>
                   {backlog.length === 0 && <div className="muted" style={{ fontSize: 12 }}>{es ? 'Nada pendiente.' : 'Nothing pending.'}</div>}
-                  {backlog.map((p) => (
+                  {backlog
+                    .filter((p) => !blogBacklogQ || (`${p.title_es || ''} ${p.title_en || ''}`).toLowerCase().includes(blogBacklogQ.toLowerCase()))
+                    .map((p) => (
                     <div key={p.id} draggable onDragStart={(e) => { setDragId(p.id); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', p.id); } catch {} }} onDragEnd={() => { setDragId(''); setOverDay(''); }}
                       onClick={() => edit(p)} title={p.title_es || p.title_en}
                       style={{ fontSize: 11.5, background: 'var(--card2)', color: 'var(--tx)', borderRadius: 7, padding: '7px 9px', cursor: 'grab', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid var(--line)' }}><OnyxIcon emoji="✍" size={15} />️ {p.title_es || p.title_en || (es ? '(sin título)' : '(untitled)')}</div>

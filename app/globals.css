@@ -429,8 +429,18 @@ h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
 .fixed-dark h1,.fixed-dark h2,.fixed-dark h3{color:var(--tx);}
 
 /* Panel de admin con barra lateral */
-.adminlayout{display:grid;grid-template-columns:220px 1fr;gap:18px;align-items:start;}
+.adminlayout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px;align-items:start;}
 .adminnav{position:sticky;top:80px;}
+/* El panel Admin llena pantallas grandes (no queda espacio muerto a los lados).
+   El contenedor pasa a full-bleed con márgenes razonables, y el menú lateral se
+   ensancha un poco en monitores grandes. En móvil/tablet no cambia nada. */
+.admin-wrap{max-width:none;padding-left:clamp(16px,2.2vw,40px);padding-right:clamp(16px,2.2vw,40px);}
+@media(min-width:1500px){ .admin-wrap .adminlayout{grid-template-columns:250px minmax(0,1fr);gap:22px;} }
+/* Rejillas de tarjetas del admin: que se reacomoden solas según el ancho
+   (auto-fit) en vez de quedar fijas y dejar huecos en pantallas anchas. */
+.admin-wrap .g2,.admin-wrap .g3,.admin-wrap .g4,.admin-wrap .g5{
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+}
 .adminnav-items{display:flex;flex-direction:column;gap:4px;}
 .adminnav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--mut);cursor:pointer;font-size:14px;font-weight:600;border:none;background:transparent;text-align:left;width:100%;transition:.15s;}
 .adminnav-item:hover{background:var(--card2);color:#fff;}
