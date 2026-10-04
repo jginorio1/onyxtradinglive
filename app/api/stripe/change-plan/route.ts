@@ -17,7 +17,11 @@ async function planEmailBiText(tplId: string, userId: string, planEs: string, pl
   const enlace = site + (extra?.path || '/dashboard');
   const es = emailTplWith(ov, tplId, 'es', { plan: planEs, nombre, enlace, ...(extra?.esVars || {}) });
   const en = emailTplWith(ov, tplId, 'en', { plan: planEn, nombre, enlace, ...(extra?.enVars || {}) });
-  return { subject: { es: es.subject, en: en.subject }, body: { es: es.text, en: en.text } };
+  return {
+    subject: { es: es.subject, en: en.subject },
+    body: { es: es.text, en: en.text },
+    html: { es: es.html || '', en: en.html || '' },   // HTML profesional si la plantilla lo tiene
+  };
 }
 
 export const dynamic = 'force-dynamic';
@@ -116,7 +120,7 @@ export async function POST(req: Request) {
 
       {
         const em = await planEmailBiText('plan_welcome', user.id, planLabel.es, planLabel.en);
-        await notifyPlanChange(user.id, em.subject, em.body);
+        await notifyPlanChange(user.id, em.subject, em.body, em.html);
       }
 
       return NextResponse.json({ ok: true, upgrade: true });
@@ -153,7 +157,7 @@ export async function POST(req: Request) {
     const fEn = fecha.toLocaleDateString('en-US');
     {
       const em = await planEmailBiText('plan_downgrade', user.id, planLabel.es, planLabel.en, { path: '/account', esVars: { fecha: fEs }, enVars: { fecha: fEn } });
-      await notifyPlanChange(user.id, em.subject, em.body);
+      await notifyPlanChange(user.id, em.subject, em.body, em.html);
     }
 
     return NextResponse.json({ ok: true, upgrade: false, scheduledAt: new Date(periodEnd * 1000).toISOString() });

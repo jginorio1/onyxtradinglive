@@ -16,13 +16,19 @@ type BiText = { es: string; en: string };
 // Aviso de facturación: correo siempre + Telegram si lo tiene vinculado.
 // No depende de la capacidad "telegram" del plan (un aviso de cobro debe llegar
 // aunque el plan nuevo ya no incluya Telegram).
-export async function notifyPlanChange(userId: string, subject: BiText, body: BiText) {
+// `html` es opcional: si la plantilla trae cuerpo HTML profesional (guardado en el
+// editor de Admin), se envía para que el correo salga "bonito" en Gmail/Outlook.
+// Si no, mail.ts envuelve el texto en el marco de marca simple.
+export async function notifyPlanChange(userId: string, subject: BiText, body: BiText, html?: BiText) {
   try {
     const { data: p } = await supabaseAdmin.from('profiles')
       .select('email,lang,telegram_chat_id,tg_alerts,tg_billing').eq('id', userId).maybeSingle() as any;
     if (!p) return;
     const lang: 'es' | 'en' = p.lang === 'es' ? 'es' : 'en';
-    if (p.email) { try { await sendEmail(p.email, subject[lang], body[lang]); } catch { /* mailer opcional */ } }
+    if (p.email) {
+      const htmlBody = html && html[lang] ? html[lang] : undefined;
+      try { await sendEmail(p.email, subject[lang], body[lang], htmlBody ? { htmlBody } : undefined); } catch { /* mailer opcional */ }
+    }
     if (p.telegram_chat_id && p.tg_alerts !== false && p.tg_billing !== false) {
       try { await sendMessage(p.telegram_chat_id, `💳 ${subject[lang]}\n\n${body[lang]}`, { kind: 'billing', userId }); } catch { /* opcional */ }
     }

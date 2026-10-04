@@ -220,7 +220,7 @@ export async function POST(req: Request) {
         let nombre = ''; try { const { data } = await supabaseAdmin.from('profiles').select('full_name').eq('id', prof.id).maybeSingle(); nombre = String((data as any)?.full_name || '').trim().split(/\s+/)[0] || ''; } catch {}
         const esT = emailTplWith(ov, 'payment_failed', 'es', { plan: 'actual', nombre, enlace: site + '/account' });
         const enT = emailTplWith(ov, 'payment_failed', 'en', { plan: 'current', nombre, enlace: site + '/account' });
-        await notifyPlanChange(prof.id, { es: esT.subject, en: enT.subject }, { es: esT.text, en: enT.text });
+        await notifyPlanChange(prof.id, { es: esT.subject, en: enT.subject }, { es: esT.text, en: enT.text }, { es: esT.html || '', en: enT.html || '' });
       }
     } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const sub: any = event.data.object;
