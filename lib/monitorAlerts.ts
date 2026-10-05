@@ -66,9 +66,25 @@ async function emailAdmins(subject: string, body: string): Promise<void> {
   for (const e of set) { try { await sendEmail(e, subject, body + '\n\nRevisa Admin → Diagnóstico / Command Center.', { kind: 'admin' }); } catch {} }
 }
 
+// REGISTRO DE ENFRIAMIENTO · clave SEPARADA (monitor_alerts_sent).
+// Antes vivía dentro de 'monitor_alerts' (en cfg._sent). Problema: ese objeto es el
+// MISMO que guarda el panel de Ajustes "en automático"; cada guardado del panel
+// reescribía con una copia vieja y REINICIABA el enfriamiento → la misma alerta se
+// repetía cada hora en vez de respetar las 3 h. Ahora el registro está aparte, en
+// su propia clave que el panel NUNCA toca, así el enfriamiento es a prueba de eso.
+let SENT: Record<string, string> = {};
+
+async function loadSent(cfg: MonitorAlerts): Promise<void> {
+  SENT = (await getSetting<Record<string, string>>('monitor_alerts_sent', {})) || {};
+  // Migración suave: si el registro nuevo está vacío pero quedaba algo en el viejo
+  // cfg._sent, lo tomamos una vez para no perder el enfriamiento en curso.
+  if (Object.keys(SENT).length === 0 && cfg._sent && Object.keys(cfg._sent).length) SENT = { ...cfg._sent };
+}
+async function saveSent(): Promise<void> { try { await saveSetting('monitor_alerts_sent', SENT); } catch {} }
+
 // Envía una alerta (con enfriamiento por clave). Devuelve true si se envió.
 async function fire(cfg: MonitorAlerts, key: string, text: string): Promise<boolean> {
-  const last = cfg._sent?.[key];
+  const last = SENT[key];
   if (last && Date.now() - new Date(last).getTime() < cfg.cooldownH * H) return false;   // en enfriamiento
   // Deja rastro en el Command Center pase lo que pase.
   await logActivity({ actor_role: 'system', actor_name: 'Command Center', kind: 'alert', label: text.replace(/\*/g, '').slice(0, 180) });
@@ -79,7 +95,7 @@ async function fire(cfg: MonitorAlerts, key: string, text: string): Promise<bool
   // CORREO al buzón de alertas (alerts@) + ADMIN_EMAILS. Así los avisos importantes
   // (backup viejo, sitio caído, pico de errores…) también llegan por email, no solo Telegram.
   if (cfg.email !== false) { try { await emailAdmins('🛰️ Onyx Command Center · alerta', text.replace(/\*/g, '')); } catch {} }
-  cfg._sent = { ...(cfg._sent || {}), [key]: new Date().toISOString() };
+  SENT[key] = new Date().toISOString();
   return true;
 }
 
@@ -88,33 +104,31 @@ export async function runAlerts(): Promise<{ checked: number; fired: string[] }>
   const cfg = await getAlertCfg();
   const fired: string[] = [];
   if (!cfg.enabled) return { checked: 0, fired };
+  await loadSent(cfg);   // enfriamiento desde su clave propia (no la toca el panel)
 
   // 1) Blog atascado: última publicación hace demasiado.
-  // IMPORTANTE: excluimos published_at NULL. Postgres ordena los NULL PRIMERO en
-  // "DESC", así que si un post publicado quedó sin published_at, la consulta antigua
-  // leía ese NULL como "el más reciente", creía que no había fecha y disparaba 999 h
-  // (falsa alarma: "el blog no publica" cuando SÍ había publicado). Con .not(is null)
-  // y, de respaldo, la fecha real más reciente entre published_at y created_at.
+  // FUENTE DE VERDAD = created_at. Las NOTICIAS se publican con status='published'
+  // pero SIN published_at (queda NULL); solo los artículos "normales" fijan
+  // published_at al salir de programados. La consulta vieja filtraba published_at
+  // NOT NULL → IGNORABA las noticias diarias y agarraba un artículo normal viejo,
+  // disparando "el blog no publica desde hace 107 h" aunque las noticias salían a
+  // diario. Igual que el newsPilot: contamos por created_at (SIEMPRE se graba) y,
+  // de respaldo, el published_at más reciente; tomamos el MÁS reciente de los dos.
   try {
-    const { data } = await supabaseAdmin.from('blog_posts')
-      .select('published_at, created_at')
-      .eq('status', 'published')
-      .not('published_at', 'is', null)
-      .order('published_at', { ascending: false })
-      .limit(1);
-    let last = (data || [])[0]?.published_at || null;
-    // Respaldo: si por lo que sea no vino published_at, usa el created_at más reciente
-    // de un post publicado (así nunca dispara por un dato faltante, solo por atasco real).
-    if (!last) {
-      const { data: d2 } = await supabaseAdmin.from('blog_posts')
-        .select('created_at').eq('status', 'published')
-        .order('created_at', { ascending: false }).limit(1);
-      last = (d2 || [])[0]?.created_at || null;
-    }
+    const [byCreated, byPublished] = await Promise.all([
+      supabaseAdmin.from('blog_posts').select('created_at').eq('status', 'published')
+        .order('created_at', { ascending: false }).limit(1),
+      supabaseAdmin.from('blog_posts').select('published_at').eq('status', 'published')
+        .not('published_at', 'is', null).order('published_at', { ascending: false }).limit(1),
+    ]);
+    const tCreated = new Date((byCreated.data || [])[0]?.created_at || 0).getTime();
+    const tPub = new Date((byPublished.data || [])[0]?.published_at || 0).getTime();
+    const lastMs = Math.max(tCreated, tPub);    // el momento real más reciente de cualquier publicación
     // Si de plano no hay ningún post publicado, NO avisamos (no es un "atasco").
+    // Ignoramos fechas FUTURAS (posts programados): solo cuenta lo ya publicado.
     // blogStuckHours <= 0 apaga este aviso (por si publicas a un ritmo irregular).
-    if (last && (cfg.blogStuckHours || 0) > 0) {
-      const hrs = (Date.now() - new Date(last).getTime()) / H;
+    if (lastMs > 0 && (cfg.blogStuckHours || 0) > 0) {
+      const hrs = (Date.now() - lastMs) / H;
       if (hrs > cfg.blogStuckHours) { if (await fire(cfg, 'blog_stuck', `📝 El *blog automático* no publica desde hace ${Math.round(hrs)} h. Revisa el autopiloto o el crédito de la IA.`)) fired.push('blog_stuck'); }
     }
   } catch {}
@@ -189,7 +203,7 @@ export async function runAlerts(): Promise<{ checked: number; fired: string[] }>
   // (El backup se vigila en el auto-test diario y en las alertas de negocio; aquí no,
   //  para no triplicar el mismo aviso cada 15 min.)
 
-  // Persistir los "_sent" actualizados (enfriamientos).
-  try { await saveSetting('monitor_alerts', cfg); } catch {}
+  // Persistir el registro de enfriamiento en su clave propia.
+  await saveSent();
   return { checked: 5, fired };
 }
