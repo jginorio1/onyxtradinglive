@@ -29,8 +29,8 @@ export type MonitorAlerts = {
 
 export const ALERTS_DEFAULT: MonitorAlerts = {
   enabled: true, chat: '', toAdmins: true, email: true,
-  blogStuckHours: 36, empIdleHours: 5, errorSpike: 15, activityDrop: true, anomaly: true,
-  backupStaleDays: 2, cooldownH: 3, _sent: {},
+  blogStuckHours: 72, empIdleHours: 5, errorSpike: 15, activityDrop: true, anomaly: true,
+  backupStaleDays: 0, cooldownH: 3, _sent: {},
 };
 
 const H = 3600 * 1000;
@@ -112,7 +112,8 @@ export async function runAlerts(): Promise<{ checked: number; fired: string[] }>
       last = (d2 || [])[0]?.created_at || null;
     }
     // Si de plano no hay ningún post publicado, NO avisamos (no es un "atasco").
-    if (last) {
+    // blogStuckHours <= 0 apaga este aviso (por si publicas a un ritmo irregular).
+    if (last && (cfg.blogStuckHours || 0) > 0) {
       const hrs = (Date.now() - new Date(last).getTime()) / H;
       if (hrs > cfg.blogStuckHours) { if (await fire(cfg, 'blog_stuck', `📝 El *blog automático* no publica desde hace ${Math.round(hrs)} h. Revisa el autopiloto o el crédito de la IA.`)) fired.push('blog_stuck'); }
     }
@@ -185,25 +186,10 @@ export async function runAlerts(): Promise<{ checked: number; fired: string[] }>
     } catch {}
   }
 
-  // 6) BACKUP viejo: la copia más reciente (last_at o historial) supera el umbral.
-  //    Corre cada 15 min, así que un backup que dejó de hacerse se detecta el mismo día.
-  if ((cfg.backupStaleDays || 0) > 0) {
-    try {
-      const { data: bk } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'backup').maybeSingle();
-      const v = (bk as any)?.value || {};
-      const stamps = [v.last_at, ...((v.history || []) as any[]).map((h) => h?.at)]
-        .map((s) => (s ? new Date(s).getTime() : 0)).filter((n) => Number.isFinite(n) && n > 0);
-      const newest = stamps.length ? Math.max(...stamps) : 0;
-      if (!newest) {
-        if (await fire(cfg, 'backup_none', `🗄️ *Sin copias de seguridad registradas.* Revisa el backup automático (GitHub Actions).`)) fired.push('backup_none');
-      } else {
-        const days = (Date.now() - newest) / (24 * H);
-        if (days >= cfg.backupStaleDays) { if (await fire(cfg, 'backup_stale', `🗄️ *La última copia tiene ${Math.floor(days)} día(s)* (umbral ${cfg.backupStaleDays}). El backup pudo detenerse.`)) fired.push('backup_stale'); }
-      }
-    } catch {}
-  }
+  // (El backup se vigila en el auto-test diario y en las alertas de negocio; aquí no,
+  //  para no triplicar el mismo aviso cada 15 min.)
 
   // Persistir los "_sent" actualizados (enfriamientos).
   try { await saveSetting('monitor_alerts', cfg); } catch {}
-  return { checked: 6, fired };
+  return { checked: 5, fired };
 }
