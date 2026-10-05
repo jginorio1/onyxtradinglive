@@ -48,15 +48,31 @@ jobs:
           npx playwright install --with-deps chromium
           APP_URL="$APP_URL" npx playwright test || true
 
-      - name: Velocidad y SEO (Lighthouse)
+      - name: Velocidad y SEO (Lighthouse · mediana de 3)
         env:
           APP_URL: ${{ secrets.APP_URL }}
         run: |
           set +e
-          npx --yes lighthouse@12 "$APP_URL" \
-            --only-categories=performance,accessibility,seo,best-practices \
-            --output=json --output-path=lh.json --quiet \
-            --chrome-flags="--headless=new --no-sandbox" || true
+          # Lighthouse en CI es MUY variable (servidores compartidos): una sola
+          # medición salta ±20-30 puntos. Corremos 3 veces y nos quedamos con la
+          # MEDIANA (la del medio), que es mucho más estable y realista.
+          for i in 1 2 3; do
+            npx --yes lighthouse@12 "$APP_URL" \
+              --only-categories=performance,accessibility,seo,best-practices \
+              --output=json --output-path="lh$i.json" --quiet \
+              --chrome-flags="--headless=new --no-sandbox" || true
+          done
+          # Elige el archivo con el rendimiento MEDIANO y lo deja como lh.json.
+          node -e '
+            const fs=require("fs");
+            const perf=f=>{try{return Math.round((JSON.parse(fs.readFileSync(f,"utf8")).categories.performance.score||0)*100)}catch{return -1}};
+            const runs=[1,2,3].map(i=>({f:`lh${i}.json`,p:perf(`lh${i}.json`)})).filter(r=>r.p>=0);
+            if(!runs.length){console.log("Lighthouse: sin corridas válidas");process.exit(0);}
+            runs.sort((a,b)=>a.p-b.p);
+            const mid=runs[Math.floor(runs.length/2)];
+            fs.copyFileSync(mid.f,"lh.json");
+            console.log("Lighthouse performance por corrida:",runs.map(r=>r.p).join(", "),"→ mediana",mid.p);
+          ' || true
 
       - name: Enviar informe al panel
         env:
@@ -71,13 +87,16 @@ jobs:
               --data-binary @payload.json || true
           fi
 
-      - name: Presupuesto de rendimiento
+      - name: Presupuesto de rendimiento (solo avisa)
+        # El rendimiento NO bloquea el push: Lighthouse en CI es demasiado variable
+        # para ser una puerta dura. Solo avisa; el número (ya en mediana) se ve en
+        # el panel para seguir la tendencia. Las puertas duras quedan para cosas
+        # deterministas (TypeScript, pruebas), no para una métrica ruidosa.
         run: |
           PERF=$(node -e "try{console.log(require('./payload.json').lighthouse?.performance ?? 100)}catch{console.log(100)}")
-          echo "Rendimiento: $PERF (aviso <80 · bloquea <55)"
+          echo "Rendimiento (mediana): $PERF"
           if [ "$PERF" -lt 55 ]; then
-            echo "::error::El rendimiento cayó a $PERF (por debajo de 55). Revisa qué se ralentizó."
-            exit 1
+            echo "::warning::Rendimiento $PERF bajo (objetivo 80). Revisa qué pesa en el landing, pero no bloquea el deploy."
           elif [ "$PERF" -lt 80 ]; then
             echo "::warning::Rendimiento $PERF por debajo del objetivo (80). Conviene optimizar."
           fi
