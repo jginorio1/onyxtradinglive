@@ -265,6 +265,21 @@ async function alreadySent(campaignKey: string | null, campaignId: string): Prom
   return set;
 }
 
+// Quién YA recibió esta campaña en los últimos N días. Para las programadas
+// (boletín semanal/mensual): evita reenviar a la misma persona dentro de la ventana,
+// aunque el cron corra cada hora y la lista se reparta en varias corridas.
+async function sentWithinDays(campaignKey: string | null, campaignId: string, days: number): Promise<Set<string>> {
+  const set = new Set<string>();
+  try {
+    const since = new Date(Date.now() - Math.max(1, days) * 86400000).toISOString();
+    let q = supabaseAdmin.from('campaign_sends').select('user_id').gte('created_at', since);
+    q = campaignKey ? q.eq('campaign_key', campaignKey) : q.eq('campaign_id', campaignId);
+    const { data } = await q.limit(50000);
+    for (const s of (data || []) as any[]) if (s.user_id) set.add(s.user_id);
+  } catch {}
+  return set;
+}
+
 // --- Tope de frecuencia por persona (anti-fatiga). Nadie recibe más de N correos
 // de marketing por semana. 0 = sin tope. Ajustable en Ajustes (email_weekly_cap).
 const DEFAULT_WEEKLY_CAP = 4;
@@ -328,10 +343,11 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
 
     // Las programadas solo corren cada X días (evita reenviar el boletín a diario).
     // El intervalo es por campaña (trigger.everyDays): semanal=7, mensual=30, aniversario=1.
+    let schedInterval = SCHEDULED_INTERVAL_DAYS;
     if (c.kind === 'scheduled') {
-      const interval = Number(c.trigger?.everyDays) || SCHEDULED_INTERVAL_DAYS;
+      schedInterval = Number(c.trigger?.everyDays) || SCHEDULED_INTERVAL_DAYS;
       const since = c.last_run_at ? (Date.now() - new Date(c.last_run_at).getTime()) / 86400000 : Infinity;
-      if (since < interval) { detail.push({ campaign: c.key || c.name, sent: 0 }); continue; }
+      if (since < schedInterval) { detail.push({ campaign: c.key || c.name, sent: 0 }); continue; }
     }
     // Candado diario para las 'trigger': aunque el cron corra cada hora, cada campaña
     // de disparo se evalúa como mucho una vez al día. Red de seguridad ante cualquier
@@ -342,8 +358,13 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
     }
 
     const recips = await resolveSegment(c.segment, c.trigger || {});
-    // 'trigger' = una vez por usuario (para siempre). 'scheduled' = una vez por corrida.
-    const seen = c.kind === 'trigger' ? await alreadySent(c.key, c.id) : new Set<string>();
+    // 'trigger' = una vez por usuario (para siempre).
+    // 'scheduled' = una vez por VENTANA (p. ej. semanal): así, aunque el cron corra
+    // cada hora y la lista se reparta en varias corridas, NADIE recibe el mismo
+    // boletín dos veces en la semana. Esto arregla los correos duplicados.
+    const seen = c.kind === 'trigger'
+      ? await alreadySent(c.key, c.id)
+      : await sentWithinDays(c.key, c.id, schedInterval);
     // Tope de frecuencia: salta a quien ya llegó a su límite semanal de correos.
     const targets = recips
       .filter((r) => !seen.has(r.id))
@@ -368,6 +389,15 @@ export async function runCampaigns(dryRun = false): Promise<{ sent: number; deta
     }
     budget -= sent; total += sent;
     if (!dryRun) await supabaseAdmin.from('campaigns').update({ last_run_at: new Date().toISOString() }).eq('id', c.id);
+    // Si este boletín semanal "a todos" sí mandó, cierra el candado de la semana
+    // para que ninguna otra campaña semanal a todos duplique el correo.
+    if (!dryRun && sent > 0 && c.kind === 'scheduled') {
+      const iv = Number(c.trigger?.everyDays) || SCHEDULED_INTERVAL_DAYS;
+      if (iv >= 7 && iv < 30 && c.segment === 'all') {
+        weeklyAllSentThisRun = true;
+        try { await saveSetting('newsletter_week_lock', { week: thisWeek }); } catch {}
+      }
+    }
     detail.push({ campaign: c.key || c.name, sent });
   }
 

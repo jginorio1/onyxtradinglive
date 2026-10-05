@@ -153,9 +153,19 @@ export async function runAlerts(): Promise<{ checked: number; fired: string[] }>
   if (cfg.anomaly) {
     try {
       const now = Date.now();
+      // Correos de dueño/admin para EXCLUIR su propia actividad del conteo: así tus
+      // clics en el panel no disparan falsos "picos inusuales" cuando pruebas la app.
+      const adminEmails = new Set<string>();
+      try { const { data: ad } = await supabaseAdmin.from('profiles').select('email').eq('is_admin', true).limit(50); (ad || []).forEach((r: any) => { if (r.email) adminEmails.add(String(r.email).toLowerCase()); }); } catch {}
+      (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean).forEach((e) => adminEmails.add(e));
+      const adminList = [...adminEmails];
       const countIn = async (fromMs: number, toMs: number) => {
-        const { count } = await supabaseAdmin.from('activity_events').select('id', { count: 'exact', head: true })
+        let q = supabaseAdmin.from('activity_events').select('id', { count: 'exact', head: true })
           .gte('created_at', new Date(fromMs).toISOString()).lt('created_at', new Date(toMs).toISOString());
+        // Excluye eventos de admin/owner y del propio sistema (Command Center).
+        if (adminList.length) q = q.not('actor_email', 'in', `(${adminList.map((e) => `"${e}"`).join(',')})`);
+        q = q.neq('actor_role', 'system');
+        const { count } = await q;
         return count || 0;
       };
       const cur = await countIn(now - H, now);
