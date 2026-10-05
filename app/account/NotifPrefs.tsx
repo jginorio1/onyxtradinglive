@@ -11,10 +11,11 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
 export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
   const es = lang === 'es';
   const [items, setItems] = useState<any[] | null>(null);
+  const [planHasPush, setPlanHasPush] = useState(true);
   const [saved, setSaved] = useState(false);
 
   async function load() {
-    try { const r = await fetch('/api/account/notif-prefs'); const j = await r.json(); setItems(j.items || []); } catch { setItems([]); }
+    try { const r = await fetch('/api/account/notif-prefs'); const j = await r.json(); setItems(j.items || []); setPlanHasPush(j.planHasPush !== false); } catch { setItems([]); }
   }
   useEffect(() => { load(); }, []);
 
@@ -42,7 +43,7 @@ export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div className="row between" style={{ fontSize: 11, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.04em', padding: '0 2px' }}>
           <span>{es ? 'Aviso' : 'Alert'}</span>
-          <span className="row" style={{ gap: 22 }}><span style={{ width: 46, textAlign: 'center' }}>{es ? 'Campana' : 'Bell'}</span><span style={{ width: 46, textAlign: 'center' }}>Push</span></span>
+          <span className="row" style={{ gap: 22 }}><span style={{ width: 46, textAlign: 'center' }}>{es ? 'Campana' : 'Bell'}</span><span style={{ width: 46, textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>Push{!planHasPush && <OnyxIcon name="lock" size={11} glow={false} />}</span></span>
         </div>
         {items.map((it) => (
           <div key={it.key} className="row between" style={{ background: 'var(--bg2)', borderRadius: 10, padding: '9px 12px', gap: 10 }}>
@@ -52,7 +53,15 @@ export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
             </div>
             <span className="row" style={{ gap: 22, flex: 'none' }}>
               <span style={{ width: 46, display: 'flex', justifyContent: 'center' }}>{it.bellAvail ? <Toggle on={!!it.bell} onClick={() => toggle(it.key, 'bell')} /> : <span className="muted" style={{ fontSize: 11 }}>—</span>}</span>
-              <span style={{ width: 46, display: 'flex', justifyContent: 'center' }}>{it.pushAvail ? <Toggle on={!!it.push} onClick={() => toggle(it.key, 'push')} /> : <span className="muted" style={{ fontSize: 11 }}>—</span>}</span>
+              <span style={{ width: 46, display: 'flex', justifyContent: 'center' }}>{
+                it.pushAvail
+                  ? <Toggle on={!!it.push} onClick={() => toggle(it.key, 'push')} />
+                  : it.pushType
+                    // El tipo admite push pero el PLAN no lo incluye → candado gris (no un interruptor falso).
+                    ? <span title={es ? 'Disponible en un plan con push' : 'Available on a plan with push'} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'var(--card2)', color: 'var(--mut)' }}><OnyxIcon name="lock" size={12} glow={false} /></span>
+                    // El tipo de aviso no tiene push → simplemente no aplica.
+                    : <span className="muted" style={{ fontSize: 11 }}>—</span>
+              }</span>
             </span>
           </div>
         ))}

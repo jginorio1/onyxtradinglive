@@ -14,18 +14,27 @@ export async function GET() {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return NextResponse.json({ error: 'no auth' }, { status: 401 });
     const cfg = await loadNotifConfig();
-    const { data: p } = await supabaseAdmin.from('profiles').select('notif_prefs,lang').eq('id', user.id).maybeSingle();
+    const { data: p } = await supabaseAdmin.from('profiles').select('notif_prefs,lang,plan').eq('id', user.id).maybeSingle();
     const prefs = (p as any)?.notif_prefs || {};
     const lang = (p as any)?.lang === 'en' ? 'en' : 'es';
+    // ¿El PLAN del usuario incluye push? (apagado en Free, encendido en pago por defecto).
+    // Así la columna Push no muestra interruptores falsos: si el plan no lo cubre, se bloquea.
+    const planId = (p as any)?.plan || 'free';
+    const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', planId).maybeSingle();
+    const pushCap = (plan as any)?.capabilities?.push;
+    const planHasPush = (pushCap === undefined || pushCap === null) ? (planId !== 'free') : !!pushCap;
     const items = Object.values(cfg)
       .filter((d: any) => d.on && (d.bell || d.push))
       .map((d: any) => ({
         key: d.key, group: d.group,
         title: d[lang].title, body: d[lang].body,
-        bellAvail: !!d.bell, pushAvail: !!d.push,
+        // El push solo está disponible si el tipo lo permite Y el plan lo incluye.
+        // pushType = el tipo de aviso admite push (para distinguir "bloqueado por plan" de "no aplica").
+        bellAvail: !!d.bell, pushType: !!d.push, pushAvail: !!d.push && planHasPush,
         bell: (prefs[d.key]?.bell ?? true), push: (prefs[d.key]?.push ?? true),
       }));
-    return NextResponse.json({ items, lang });
+    // planHasPush se usa en la UI para distinguir "bloqueado por plan" de "no aplica".
+    return NextResponse.json({ items, lang, planHasPush });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
