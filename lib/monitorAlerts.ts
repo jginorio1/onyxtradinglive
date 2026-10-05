@@ -9,24 +9,28 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSetting, saveSetting } from '@/lib/settings';
 import { sendMessage, telegramEnabled } from '@/lib/telegram';
 import { logActivity } from '@/lib/monitor';
+import { sendEmail } from '@/lib/mail';
+import { mailRoutes } from '@/lib/settings';
 
 export type MonitorAlerts = {
   enabled: boolean;
   chat: string;              // chat id de Telegram del dueño (opcional)
   toAdmins: boolean;         // también a los admins con Telegram vinculado
+  email: boolean;            // también por CORREO a alerts@ + ADMIN_EMAILS (ON por defecto)
   blogStuckHours: number;    // avisar si el blog no publica en > N h
   empIdleHours: number;      // empleado sin actividad > N h (en el día)
   errorSpike: number;        // errores en la última hora > N
   activityDrop: boolean;     // avisar si la actividad general cae a 0 de golpe
   anomaly: boolean;          // detección de anomalías (aprende lo "normal" por hora)
+  backupStaleDays: number;   // avisar si la última copia tiene > N días (0 = no revisar)
   cooldownH: number;         // no repetir la MISMA alerta antes de N horas
   _sent?: Record<string, string>;   // interno: última vez enviada por clave (ISO)
 };
 
 export const ALERTS_DEFAULT: MonitorAlerts = {
-  enabled: true, chat: '', toAdmins: true,
+  enabled: true, chat: '', toAdmins: true, email: true,
   blogStuckHours: 36, empIdleHours: 5, errorSpike: 15, activityDrop: true, anomaly: true,
-  cooldownH: 3, _sent: {},
+  backupStaleDays: 2, cooldownH: 3, _sent: {},
 };
 
 const H = 3600 * 1000;
@@ -53,6 +57,15 @@ async function recipients(cfg: MonitorAlerts): Promise<string[]> {
   return [...out];
 }
 
+// Destinatarios de CORREO para avisos de dueño: el buzón de alertas (alerts@ de
+// Direcciones de correo) + ADMIN_EMAILS del entorno, sin duplicar.
+async function emailAdmins(subject: string, body: string): Promise<void> {
+  const set = new Set<string>();
+  try { const r = await mailRoutes(); if (r?.alerts) set.add(String(r.alerts).toLowerCase()); } catch {}
+  (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean).forEach((e) => set.add(e.toLowerCase()));
+  for (const e of set) { try { await sendEmail(e, subject, body + '\n\nRevisa Admin → Diagnóstico / Command Center.', { kind: 'admin' }); } catch {} }
+}
+
 // Envía una alerta (con enfriamiento por clave). Devuelve true si se envió.
 async function fire(cfg: MonitorAlerts, key: string, text: string): Promise<boolean> {
   const last = cfg._sent?.[key];
@@ -63,6 +76,9 @@ async function fire(cfg: MonitorAlerts, key: string, text: string): Promise<bool
     const to = await recipients(cfg);
     for (const chat of to) { try { await sendMessage(chat, '🛰️ *Onyx Command Center*\n' + text); } catch {} }
   }
+  // CORREO al buzón de alertas (alerts@) + ADMIN_EMAILS. Así los avisos importantes
+  // (backup viejo, sitio caído, pico de errores…) también llegan por email, no solo Telegram.
+  if (cfg.email !== false) { try { await emailAdmins('🛰️ Onyx Command Center · alerta', text.replace(/\*/g, '')); } catch {} }
   cfg._sent = { ...(cfg._sent || {}), [key]: new Date().toISOString() };
   return true;
 }
@@ -159,7 +175,25 @@ export async function runAlerts(): Promise<{ checked: number; fired: string[] }>
     } catch {}
   }
 
+  // 6) BACKUP viejo: la copia más reciente (last_at o historial) supera el umbral.
+  //    Corre cada 15 min, así que un backup que dejó de hacerse se detecta el mismo día.
+  if ((cfg.backupStaleDays || 0) > 0) {
+    try {
+      const { data: bk } = await supabaseAdmin.from('app_settings').select('value').eq('key', 'backup').maybeSingle();
+      const v = (bk as any)?.value || {};
+      const stamps = [v.last_at, ...((v.history || []) as any[]).map((h) => h?.at)]
+        .map((s) => (s ? new Date(s).getTime() : 0)).filter((n) => Number.isFinite(n) && n > 0);
+      const newest = stamps.length ? Math.max(...stamps) : 0;
+      if (!newest) {
+        if (await fire(cfg, 'backup_none', `🗄️ *Sin copias de seguridad registradas.* Revisa el backup automático (GitHub Actions).`)) fired.push('backup_none');
+      } else {
+        const days = (Date.now() - newest) / (24 * H);
+        if (days >= cfg.backupStaleDays) { if (await fire(cfg, 'backup_stale', `🗄️ *La última copia tiene ${Math.floor(days)} día(s)* (umbral ${cfg.backupStaleDays}). El backup pudo detenerse.`)) fired.push('backup_stale'); }
+      }
+    } catch {}
+  }
+
   // Persistir los "_sent" actualizados (enfriamientos).
   try { await saveSetting('monitor_alerts', cfg); } catch {}
-  return { checked: 5, fired };
+  return { checked: 6, fired };
 }

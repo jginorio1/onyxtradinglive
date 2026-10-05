@@ -44,6 +44,7 @@
     { "path": "/api/cron/factory-pipeline", "schedule": "0 4 * * *" },
     { "path": "/api/cron/dispute-autosubmit", "schedule": "0 11 * * *" },
     { "path": "/api/cron/monitor-prune", "schedule": "20 4 * * *" },
-    { "path": "/api/cron/monitor-alerts", "schedule": "*/15 * * * *" }
+    { "path": "/api/cron/monitor-alerts", "schedule": "*/15 * * * *" },
+    { "path": "/api/admin/alerts", "schedule": "30 7 * * *" }
   ]
 }

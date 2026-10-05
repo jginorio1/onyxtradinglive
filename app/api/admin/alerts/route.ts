@@ -4,6 +4,8 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSetting, saveSetting } from '@/lib/settings';
 import { computeRevenue } from '@/lib/revenue';
 import { sendMessage, telegramEnabled } from '@/lib/telegram';
+import { sendEmail } from '@/lib/mail';
+import { mailRoutes } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,20 +21,29 @@ const A0: Alerts = {
   lastFired: {}, feed: [], snapshots: [],
 };
 
-// Manda el aviso a todos los admins que tengan Telegram vinculado.
+// Manda el aviso por Telegram (admins vinculados) Y por CORREO (alerts@ + ADMIN_EMAILS).
+// Así los avisos de negocio (pago fallido, backup viejo, caída de MRR…) llegan a tu email.
 async function notifyAdmins(text: string) {
-  if (!telegramEnabled()) return;
+  // Telegram
+  if (telegramEnabled()) {
+    try {
+      const { data } = await supabaseAdmin.from('profiles').select('telegram_chat_id').eq('is_admin', true).not('telegram_chat_id', 'is', null);
+      for (const p of data || []) if (p.telegram_chat_id) await sendMessage(p.telegram_chat_id, text, { kind: 'admin' });
+    } catch {}
+  }
+  // Correo al buzón de alertas + ADMIN_EMAILS (sin duplicar)
   try {
-    const { data } = await supabaseAdmin.from('profiles').select('telegram_chat_id').eq('is_admin', true).not('telegram_chat_id', 'is', null);
-    for (const p of data || []) if (p.telegram_chat_id) await sendMessage(p.telegram_chat_id, text, { kind: 'admin' });
+    const set = new Set<string>();
+    try { const r = await mailRoutes(); if (r?.alerts) set.add(String(r.alerts).toLowerCase()); } catch {}
+    (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim()).filter(Boolean).forEach((e) => set.add(e.toLowerCase()));
+    for (const e of set) { try { await sendEmail(e, '📊 Onyx · alerta de negocio', text.replace(/\*/g, '') + '\n\nRevisa Admin → Alertas.', { kind: 'admin' }); } catch {} }
   } catch {}
 }
 
 // POST · lo llama la tarea programada (CRON_SECRET). Toma foto y evalúa reglas.
-export async function POST(req: Request) {
-  const secret = req.headers.get('x-cron-secret') || new URL(req.url).searchParams.get('secret');
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
-
+// Evalúa las reglas, guarda la foto y dispara avisos. La usan el POST (manual) y
+// el cron diario (GET con CRON_SECRET), así que vive en una sola función.
+async function runBusinessAlerts() {
   const a = await getSetting<Alerts>('alerts', A0);
   const today = new Date().toISOString().slice(0, 10);
   const dayAgo = new Date(Date.now() - 86400000).toISOString();
@@ -70,11 +81,29 @@ export async function POST(req: Request) {
   const feed = [...fired, ...a.feed].slice(0, 30);
   await saveSetting('alerts', { ...a, snapshots, feed });
   for (const f of fired) await notifyAdmins(f.text);
-  return NextResponse.json({ ok: true, fired: fired.length, snapshot: snap });
+  return { ok: true, fired: fired.length, snapshot: snap };
 }
 
-// GET · config + feed para el panel (owner/ver ajustes)
-export async function GET() {
+// ¿La petición trae el secreto del cron? (header Bearer, ?key= o ?secret=)
+function isCron(req: Request): boolean {
+  const s = process.env.CRON_SECRET;
+  if (!s) return false;
+  const auth = req.headers.get('authorization') || '';
+  const u = new URL(req.url);
+  return auth === `Bearer ${s}` || req.headers.get('x-cron-secret') === s || u.searchParams.get('secret') === s || u.searchParams.get('key') === s;
+}
+
+// POST · lo puede llamar la tarea programada con el secreto.
+export async function POST(req: Request) {
+  if (!isCron(req)) return NextResponse.json({ error: 'no autorizado' }, { status: 401 });
+  const r = await runBusinessAlerts();
+  return NextResponse.json(r);
+}
+
+// GET · si trae el secreto del cron → corre las alertas (Vercel Cron usa GET).
+//       si no → sirve config + feed para el panel (requiere permiso).
+export async function GET(req: Request) {
+  if (isCron(req)) { const r = await runBusinessAlerts(); return NextResponse.json(r); }
   const { ok } = await requirePerm('ajustes', 'view');
   if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   const a = await getSetting<Alerts>('alerts', A0);
