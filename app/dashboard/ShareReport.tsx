@@ -96,7 +96,9 @@ export default function ShareReport({
     const M = 88;
     // Marca de agua sutil (logo + nombre arriba a la izquierda).
     ctx.save();
-    ctx.fillStyle = '#7c8cff'; roundRect(ctx, M, M, 44, 44, 12); ctx.fill();
+    // Logo real de Onyx (el mismo del Track Record). Si no carga, cae al cuadro.
+    try { const logo = await loadImg('/onyx-symbol.png'); ctx.drawImage(logo, M, M, 44, 44); }
+    catch { ctx.fillStyle = '#7c8cff'; roundRect(ctx, M, M, 44, 44, 12); ctx.fill(); }
     ctx.fillStyle = TXT; ctx.font = '600 34px Arial, sans-serif'; ctx.textBaseline = 'middle';
     ctx.fillText('Onyx Trading Live', M + 60, M + 22);
     ctx.restore();

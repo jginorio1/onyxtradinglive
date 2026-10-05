@@ -173,8 +173,15 @@ export async function proposalPdf(d: ProposalData, opts?: { company?: string; la
 
   // ---- Cabecera de marca ----
   page.drawRectangle({ x: 0, y: 784, width: W, height: 58, color: dark });
-  T('Onyx Trading Live', 40, 812, 15, bold, rgb(1, 1, 1));
-  T(`${en ? 'Proposal' : 'Propuesta'} - ${d.levelName}`, 40, 794, 10, font, rgb(0.78, 0.8, 0.86));
+  // Logo Onyx (el mismo del Track Record). Si no carga, el texto queda al margen.
+  let tx = 40;
+  try {
+    const { brandLogoPng } = await import('@/lib/brandLogo');
+    const bytes = await brandLogoPng();
+    if (bytes) { const img = await doc.embedPng(bytes); const s = 30; page.drawImage(img, { x: 40, y: 798, width: s, height: s }); tx = 40 + s + 10; }
+  } catch {}
+  T('Onyx Trading Live', tx, 812, 15, bold, rgb(1, 1, 1));
+  T(`${en ? 'Proposal' : 'Propuesta'} - ${d.levelName}`, tx, 794, 10, font, rgb(0.78, 0.8, 0.86));
 
   // ---- Titular emocional ----
   const potential = d.hasTeam ? d.combinedPotentialMonthly : d.potentialMonthly;

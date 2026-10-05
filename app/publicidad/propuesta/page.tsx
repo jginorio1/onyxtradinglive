@@ -34,7 +34,7 @@ export default async function ProposalDoc({ searchParams }: { searchParams?: { t
       <section className="mk-page">
         {/* Portada / cabecera */}
         <div className="mk-hero">
-          <div className="mk-logo"><span className="mk-mark" /> Onyx Trading Live</div>
+          <div className="mk-logo"><img className="mk-mark" src="/onyx-symbol.png" alt="Onyx" /> Onyx Trading Live</div>
           <div className="mk-kicker">{tr('Kit de medios · Propuesta de publicidad', 'Media Kit · Advertising proposal')}</div>
           <h1>{tr('Llega a traders con intención de compra', 'Reach traders with buying intent')}</h1>
           <p className="mk-sub">{L ? branding.headlineEs : branding.headlineEn}</p>
@@ -132,7 +132,7 @@ export default async function ProposalDoc({ searchParams }: { searchParams?: { t
         .mk-page { padding:34px 46px; }
         .mk-hero { background:linear-gradient(135deg,#0b0f1e,#1e2a4a); color:#fff; margin:0 -46px 26px; padding:34px 46px; }
         .mk-logo { display:flex; align-items:center; gap:9px; font-weight:800; font-size:17px; }
-        .mk-mark { width:22px; height:22px; border-radius:6px; background:linear-gradient(135deg,#e8b64c,#a679ff); display:inline-block; }
+        .mk-mark { width:26px; height:26px; border-radius:6px; display:inline-block; object-fit:contain; }
         .mk-kicker { color:#e8b64c; font-size:12px; font-weight:700; letter-spacing:.05em; margin-top:16px; text-transform:uppercase; }
         .mk-hero h1 { font-size:27px; margin:8px 0 6px; color:#fff; }
         .mk-sub { color:#c9d3e6; font-size:14px; margin:0; max-width:560px; }

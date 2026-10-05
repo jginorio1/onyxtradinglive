@@ -100,10 +100,20 @@ export async function adProposalPdf(inp: AdProposalInput, opts?: { lang?: 'es' |
   let page = doc.addPage([W, H]);
   let y = 0;
 
+  // Logo Onyx (el mismo del Track Record), embebido una vez y reusado por página.
+  let logoImg: any = null;
+  try {
+    const { brandLogoPng } = await import('@/lib/brandLogo');
+    const bytes = await brandLogoPng();
+    if (bytes) logoImg = await doc.embedPng(bytes);
+  } catch {}
+
   const header = () => {
     page.drawRectangle({ x: 0, y: H - 58, width: W, height: 58, color: dark });
-    page.drawText('Onyx Trading Live', { x: M, y: H - 30, size: 15, font: bold, color: rgb(1, 1, 1) });
-    page.drawText(clean(en ? 'Advertising proposal' : 'Propuesta de publicidad'), { x: M, y: H - 48, size: 10, font, color: rgb(0.78, 0.8, 0.86) });
+    let tx = M;
+    if (logoImg) { const s = 30; page.drawImage(logoImg, { x: M, y: H - 44, width: s, height: s }); tx = M + s + 10; }
+    page.drawText('Onyx Trading Live', { x: tx, y: H - 30, size: 15, font: bold, color: rgb(1, 1, 1) });
+    page.drawText(clean(en ? 'Advertising proposal' : 'Propuesta de publicidad'), { x: tx, y: H - 48, size: 10, font, color: rgb(0.78, 0.8, 0.86) });
     const today = new Date().toLocaleDateString(en ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
     page.drawText(clean((en ? 'Date: ' : 'Fecha: ') + today), { x: W - 190, y: H - 42, size: 9, font, color: rgb(0.78, 0.8, 0.86) });
     y = H - 90;

@@ -59,8 +59,15 @@ export async function certificatePdf(opts: {
   flourish(40, 40, 1, 1); flourish(W - 40, 40, -1, 1); flourish(40, H - 40, 1, -1); flourish(W - 40, H - 40, -1, -1);
 
   // ---- Cabecera ----
-  centerFit((opts.brand || 'Onyx Academy · Formación interna').toUpperCase(), 536, 12, bold, brand, W - 260);
-  page.drawLine({ start: { x: W / 2 - 60, y: 528 }, end: { x: W / 2 + 60, y: 528 }, thickness: 0.8, color: goldLt });
+  // ---- Logo Onyx centrado arriba (mismo símbolo del Track Record) ----
+  try {
+    const { brandLogoPng } = await import('@/lib/brandLogo');
+    const bytes = await brandLogoPng();
+    if (bytes) { const img = await doc.embedPng(new Uint8Array(bytes)); const s = 22; page.drawImage(img, { x: (W - s) / 2, y: 543, width: s, height: s }); }
+  } catch { /* sin logo seguimos */ }
+
+  centerFit((opts.brand || 'Onyx Academy · Formación interna').toUpperCase(), 524, 12, bold, brand, W - 260);
+  page.drawLine({ start: { x: W / 2 - 60, y: 516 }, end: { x: W / 2 + 60, y: 516 }, thickness: 0.8, color: goldLt });
 
   centerFit(en ? 'CERTIFICATE' : 'CERTIFICADO', 476, 46, serif, dark, W - 200);
   centerFit(en ? 'of completion' : 'de finalización', 450, 16, serifIt, gold, W - 200);

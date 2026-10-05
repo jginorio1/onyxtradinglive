@@ -136,13 +136,13 @@ h2{font-size:15px;margin:22px 0 8px;border-bottom:2px solid #e6e8ee;padding-bott
 .foot{margin:26px 0 8px;color:#99a;font-size:11px;border-top:1px solid #e6e8ee;padding-top:10px}
 .obar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;background:rgba(244,245,250,.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-bottom:1px solid #e6e8ee;padding:10px 16px}
 .obrand{display:flex;align-items:center;gap:7px;font-weight:800;font-size:14px;color:#0b1020;margin-right:auto}
-.obrand span.dot{width:16px;height:16px;border-radius:5px;background:linear-gradient(135deg,#4b3ff0,#7c8cff);display:inline-block}
+.obrand img.logo{width:20px;height:20px;border-radius:5px;display:inline-block;object-fit:contain}
 .obtn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer;border:1px solid #d6d9e6;background:#fff;color:#0b1020;text-decoration:none}
 .obtn.pri{border-color:#6d5efc;background:#4b3ff0;color:#fff}
 .wmark{position:fixed;inset:0;pointer-events:none;z-index:0;display:flex;align-items:center;justify-content:center;opacity:.04;font-size:120px;font-weight:900;color:#4b3ff0;transform:rotate(-24deg);letter-spacing:8px}
 @media print{body{background:#fff}.print,.obar{display:none}.wrap{max-width:none;padding:0}.wmark{opacity:.05}}</style></head><body>
 <div class="obar">
-  <div class="obrand"><span class="dot"></span> Onyx Trading Live</div>
+  <div class="obrand"><img class="logo" src="/onyx-symbol.png" alt="Onyx" /> Onyx Trading Live</div>
   <a class="obtn" href="/dashboard">${es ? '← Volver a Onyx' : '← Back to Onyx'}</a>
   <button class="obtn" onclick="window.print()">${es ? '🖨️ Imprimir / PDF' : '🖨️ Print / PDF'}</button>
   <button class="obtn pri" onclick="onyxShare()">${es ? '📤 Compartir' : '📤 Share'}</button>
