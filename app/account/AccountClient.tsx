@@ -290,6 +290,13 @@ export default function AccountClient({ email }: { email: string }) {
   const pushV = (myPlan?.capabilities as any)?.push;
   const pushOn = (pushV === undefined || pushV === null) ? !isFreePlan : !!pushV;
   const pushUp = plans.filter((x) => x.id !== (p.plan || 'free') && (x.capabilities as any)?.push && x.active !== false).sort((a, b) => (a.price_month || 0) - (b.price_month || 0))[0] || plans.find((x) => x.id === 'pro');
+  // Mismo patrón que el push para los correos de PAGO: apagado en Free, encendido en pago por defecto.
+  // El resumen semanal usa la capacidad 'reports'; las alertas de fondeo usan 'funding'.
+  const capOn = (key: string) => { const v = (myPlan?.capabilities as any)?.[key]; return (v === undefined || v === null) ? !isFreePlan : !!v; };
+  // Qué correos requieren plan. Los demás (cuenta/pagos, novedades) son para todos.
+  const mailCap: Record<string, string> = { notify_weekly: 'reports', notify_funding: 'funding' };
+  // El plan de pago más barato que incluye esa capacidad, para el enlace "Mejorar a …".
+  const upForCap = (key: string) => plans.filter((x) => x.id !== (p.plan || 'free') && (x.capabilities as any)?.[key] && x.active !== false).sort((a, b) => (a.price_month || 0) - (b.price_month || 0))[0] || plans.find((x) => x.id === 'pro');
 
   async function saveProfile(extra: any = {}) {
     setBusy('save'); setMsg('');
@@ -920,12 +927,22 @@ export default function AccountClient({ email }: { email: string }) {
                     <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand)' }}><OnyxIcon name="mail" size={16} /></span>
                     <b style={{ fontSize: 15 }}>{L.nMailT}</b>
                   </div>
-                  {([['notify_email', L.nEmail, L.nEmailS], ['notify_weekly', L.nWeek, L.nWeekS], ['notify_funding', L.nFund, L.nFundS], ['notify_marketing', L.nMkt, L.nMktS]] as [string, string, string][]).map(([k, label, sub], i) => (
+                  {([['notify_email', L.nEmail, L.nEmailS], ['notify_weekly', L.nWeek, L.nWeekS], ['notify_funding', L.nFund, L.nFundS], ['notify_marketing', L.nMkt, L.nMktS]] as [string, string, string][]).map(([k, label, sub], i) => {
+                    // ¿Este correo es de pago y el plan no lo incluye? → candado (no un interruptor que no haría nada).
+                    const needCap = mailCap[k];
+                    const locked = !!needCap && !capOn(needCap);
+                    const up = locked ? upForCap(needCap) : null;
+                    return (
                     <div key={k} className="row between" style={{ padding: '11px 0', borderTop: i ? '1px solid var(--line)' : 'none', gap: 10 }}>
                       <div><div style={{ fontSize: 14 }}>{label}</div><div className="muted" style={{ fontSize: 11.5 }}>{sub}</div></div>
-                      {(() => { const cur = k === 'notify_marketing' ? (p.notify_marketing !== false && p.marketing_emails !== false) : !!p[k]; return <Toggle on={cur} onClick={() => setField(k, !cur)} />; })()}
+                      {locked
+                        ? (!iosApp
+                            ? <a className="btn btn-ghost" href="/pricing" style={{ fontSize: 12, padding: '5px 10px', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }}><OnyxIcon name="lock" size={12} glow={false} /> {(en ? 'Upgrade to ' : 'Mejorar a ') + (up?.name || 'Pro')}</a>
+                            : <span title={en ? 'Available on a paid plan' : 'Disponible en un plan de pago'} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'var(--card2)', color: 'var(--mut)' }}><OnyxIcon name="lock" size={12} glow={false} /></span>)
+                        : (() => { const cur = k === 'notify_marketing' ? (p.notify_marketing !== false && p.marketing_emails !== false) : !!p[k]; return <Toggle on={cur} onClick={() => setField(k, !cur)} />; })()}
                     </div>
-                  ))}
+                    );
+                  })}
                   <div className="row" style={{ gap: 10, marginTop: 14 }}>
                     <button className="btn btn-primary" onClick={() => saveProfile()} disabled={busy === 'save'}>{busy === 'save' ? L.saving : L.save}</button>
                     {msg && <span style={{ color: 'var(--green)', fontSize: 13 }}>{msg}</span>}
