@@ -107,7 +107,7 @@ export default function CareersClient() {
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="pin" s={14} /> {p.location || 'Remoto'}</span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="clock" s={14} /> {(TYPE[p.type] || TYPE.full)[lang]}</span>
                   {p.salary_range && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="cash" s={14} /> {p.salary_range}</span>}
-                  {p.sales_level && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#c98bff' }}><Ic n="cash" s={14} c="#c98bff" /> {L('Por comisión', 'Commission')}</span>}
+                  {p.sales_level && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--purple,#8b5cff)' }}><Ic n="cash" s={14} c="var(--purple,#8b5cff)" /> {L('Por comisión', 'Commission')}</span>}
                 </div>
                 {!!TG(p).length && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                   {TG(p).slice(0, 6).map((t: string, i: number) => <span key={i} style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)', border: '1px solid var(--line,#2a3350)', borderRadius: 6, padding: '2px 8px' }}>{t}</span>)}
@@ -203,7 +203,7 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
         {tab === 'detail' && <>
           <div style={body}>
             {isSales && <div style={{ background: 'rgba(201,139,255,.12)', border: '1px solid rgba(201,139,255,.4)', borderRadius: 10, padding: '10px 12px', marginBottom: 12, fontSize: 12.5, color: 'var(--tx,#e8ecf5)' }}>
-              <b style={{ color: '#c98bff' }}>{L(`Equipo de ventas · nivel ${levelLabel}`, `Sales team · ${levelLabel} level`)}</b><br />
+              <b style={{ color: 'var(--purple,#8b5cff)' }}>{L(`Equipo de ventas · nivel ${levelLabel}`, `Sales team · ${levelLabel} level`)}</b><br />
               {L('Este puesto es por comisión recurrente, no es un empleo de nómina. Ganas según lo que vendas.', 'This role is recurring-commission based, not payroll employment. You earn from what you sell.')}
             </div>}
             {T('description') ? <div style={{ fontSize: 14, color: 'var(--tx,#e8ecf5)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{T('description')}</div> : <p style={{ color: 'var(--mut,#9aa6bd)', margin: 0 }}>{T('summary')}</p>}

@@ -149,7 +149,7 @@ export default function Invita() {
           <div style={{ display: 'flex', alignItems: 'stretch', gap: 8, textAlign: 'left' }}>
             {[
               { c: 'var(--brand)', k: lang === 'en' ? 'INVITE & EARN' : 'INVITA Y GANA', v: lang === 'en' ? 'Credit' : 'Crédito', s: `$${you} / $${friend}` },
-              { c: '#c0c6d4', k: 'PLATA', v: `${amb.base}%`, s: lang === 'en' ? 'recurring cash' : 'efectivo recurrente' },
+              { c: '#5b6474', k: 'PLATA', v: `${amb.base}%`, s: lang === 'en' ? 'recurring cash' : 'efectivo recurrente' },
               { c: 'var(--gold)', k: 'ORO', v: `${amb.rate}%`, s: lang === 'en' ? 'at 10 active · retroactive' : 'a 10 activos · retroactivo' },
             ].map((r, i, arr) => (
               <div key={r.k} style={{ display: 'contents' }}>

@@ -71,7 +71,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
   if (any.warn) return (
     <div style={{ background: 'rgba(255,107,125,.06)', border: '1px solid var(--red)', padding: '13px 15px', marginBottom: 16, borderRadius: 10 }}>
       {any.title && <div style={{ color: 'var(--red)', fontSize: 12, marginBottom: 5 }}>{any.title}</div>}
-      <div style={{ fontSize: 14, lineHeight: 1.75, color: '#e8d5d8' }}>{renderVps(dyn(any.warn), vps)}</div>
+      <div style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--tx)' }}>{renderVps(dyn(any.warn), vps)}</div>
     </div>
   );
   if (any.tip) return (

@@ -219,7 +219,7 @@ export default function Embajadores() {
 
         <h2 style={{ textAlign: 'center', marginBottom: 20 }}>{t.tiers}</h2>
         <div className="grid g2" style={{ marginBottom: 44 }}>
-          <div className="card"><div className="row between"><b style={{ color: '#c7ccd6' }}>{t.tier1}</b><span style={{ fontSize: 26, fontWeight: 800 }}>{s?.base_rate || 20}%</span></div><p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{t.tier1d}</p></div>
+          <div className="card"><div className="row between"><b style={{ color: 'var(--tx)' }}>{t.tier1}</b><span style={{ fontSize: 26, fontWeight: 800 }}>{s?.base_rate || 20}%</span></div><p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{t.tier1d}</p></div>
           <div className="card" style={{ border: '1px solid var(--gold)' }}><div className="row between"><b style={{ color: 'var(--gold)' }}>{t.tier2}</b><span style={{ fontSize: 26, fontWeight: 800, color: 'var(--gold)' }}>{s?.tier_rate || 30}%</span></div><p className="muted" style={{ fontSize: 13, marginTop: 6 }}>{t.tier2d}</p></div>
         </div>
 

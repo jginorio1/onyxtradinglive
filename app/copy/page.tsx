@@ -17,9 +17,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const TIER_STYLE: Record<Tier, { bg: string; br: string; tx: string }> = {
-  diamond: { bg: 'rgba(55,138,221,.14)', br: '#378ADD', tx: '#8fbdf0' },
-  gold: { bg: 'rgba(255,192,77,.14)', br: 'var(--gold)', tx: 'var(--gold)' },
-  silver: { bg: 'rgba(180,180,190,.14)', br: '#9aa0ac', tx: '#c7ccd6' },
+  diamond: { bg: 'rgba(55,138,221,.16)', br: '#378ADD', tx: '#2f7fd0' },
+  gold: { bg: 'rgba(255,192,77,.16)', br: 'var(--gold)', tx: 'var(--gold)' },
+  silver: { bg: 'rgba(140,148,165,.18)', br: '#9aa0ac', tx: '#5b6474' },
   none: { bg: 'var(--bg2)', br: 'var(--line)', tx: 'var(--mut)' },
 };
 
@@ -132,7 +132,7 @@ export default async function CopyLanding() {
 
       {/* Hero */}
       <div style={{ textAlign: 'center', marginBottom: 34 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 999, background: 'rgba(255,122,26,.10)', border: '1px solid rgba(255,157,61,.5)', color: '#ffcf8f', fontSize: 13, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 14, boxShadow: '0 0 24px -8px rgba(255,122,26,.5)' }}>{L.kicker}</div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 999, background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', border: '1px solid rgba(255,106,43,.55)', color: '#241002', fontSize: 13, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 14, boxShadow: '0 6px 18px -6px rgba(255,106,43,.55)' }}>{L.kicker}</div>
         <h1 style={{ fontSize: 34, lineHeight: 1.15, maxWidth: 780, marginInline: 'auto' }}>{L.h1}</h1>
         <p className="muted" style={{ fontSize: 17, marginTop: 12, maxWidth: 660, marginInline: 'auto' }}>{L.sub}</p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
