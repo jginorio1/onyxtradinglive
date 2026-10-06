@@ -1139,8 +1139,13 @@ html.native-app .onyx-boot{display:flex}
 .onyx-vivid{--grad:linear-gradient(100deg,#ffcf5c,#ff9d3d 46%,#ff5e4d)}
 
 /* Auroras: 3 manchas de color cálido que laten de fondo. Fijas, sin capturar clics. */
-.lv-aurora{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
-.lv-aurora span{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;animation:lvFloat 16s ease-in-out infinite}
+/* La aurora vive en su PROPIA capa de GPU estable. Sin esto, tocar/hover un botón (que
+   repinta su sombra) obligaba al navegador a re-componer esta capa borrosa a pantalla
+   completa y "parpadeaba"/aclaraba el fondo. will-change + translateZ la aíslan. */
+.lv-aurora{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;
+  transform:translateZ(0);will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.lv-aurora span{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;animation:lvFloat 16s ease-in-out infinite;
+  will-change:transform;transform:translateZ(0);backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .lv-aurora span:nth-child(1){width:620px;height:620px;background:radial-gradient(circle,#ff7a1a,transparent 60%);top:-180px;left:-120px}
 .lv-aurora span:nth-child(2){width:560px;height:560px;background:radial-gradient(circle,#ffbf40,transparent 60%);top:38%;right:-140px;animation-delay:-6s}
 .lv-aurora span:nth-child(3){width:480px;height:480px;background:radial-gradient(circle,#ff3d5a,transparent 60%);bottom:-160px;left:40%;opacity:.3;animation-delay:-11s}
@@ -1172,12 +1177,23 @@ html.native-app .onyx-boot{display:flex}
   background:linear-gradient(180deg,rgba(255,122,26,.12),rgba(255,122,26,.03)),var(--card) !important;
   box-shadow:inset 3px 0 0 0 #ff9d3d, 0 0 28px -4px rgba(255,122,26,.6) !important}
 .onyx-vivid details[open] > summary{color:#ffb15e !important}
+/* Build-a-bot usa un acordeón propio (.faq .qa, no <details>): mismo tratamiento china
+   para que reaccione igual que el resto. Marcador +/− naranja y al abrir (.open) se enciende. */
+.onyx-vivid .faq .qa{transition:box-shadow .25s ease,border-color .2s ease,background .25s ease}
+.onyx-vivid .faq .qa .qa-mk{color:#ff9d3d}
+.onyx-vivid .faq .qa.open{border-color:rgba(255,157,61,.7) !important;
+  background:linear-gradient(180deg,rgba(255,122,26,.12),rgba(255,122,26,.03)),var(--card) !important;
+  box-shadow:inset 3px 0 0 0 #ff9d3d, 0 0 28px -4px rgba(255,122,26,.6) !important}
+.onyx-vivid .faq .qa.open .q > span:first-child{color:#ffb15e}
 
 /* Los EFECTOS DE PASAR EL CURSOR (elevar + glow) solo con MOUSE real. En móvil el
    :hover se queda "pegado" tras tocar y molesta, así que ahí NO se aplican. */
 @media (hover:hover) and (pointer:fine){
+  /* Al pasar el cursor el botón se ELEVA, pero el halo NO crece: antes se inflaba a un
+     resplandor dorado de 42px que se derramaba sobre el fondo de la página (parecía que
+     el fondo se encendía). Ahora el brillo queda contenido en el botón, igual que en reposo. */
   .onyx-vivid .btn-primary:hover{transform:translateY(-2px);
-    box-shadow:0 0 0 1px rgba(255,255,255,.16),0 16px 42px -8px rgba(255,106,43,.85),0 0 42px -6px rgba(255,207,92,.6)}
+    box-shadow:0 0 0 1px rgba(255,255,255,.12),0 12px 24px -10px rgba(255,106,43,.6)}
   .onyx-vivid .btn-ghost:hover{transform:translateY(-2px);border-color:rgba(255,157,61,.65);box-shadow:0 0 24px -8px rgba(255,157,61,.5)}
   /* FAQ (acordeón) sí reacciona al cursor: un borde naranja tenue, sin iluminar fondo. */
   .onyx-vivid details:hover{border-color:rgba(255,157,61,.4)}

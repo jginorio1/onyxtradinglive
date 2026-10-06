@@ -479,8 +479,8 @@ export default function LandingConstructor() {
         <div style={{ textAlign: 'center' }}><span className="eyebrow">{L('Preguntas', 'Questions')}</span><h2>{L('Lo que suelen preguntar', 'What people usually ask')}</h2></div>
         <div className="faq">
           {faqs.map(([q, a], i) => (
-            <div key={i} className="qa" onClick={() => setFaqOpen(faqOpen === i ? null : i)}>
-              <div className="q"><span>{q}</span><span style={{ color: 'var(--brand,#5b63d3)', flex: 'none' }}>{faqOpen === i ? '−' : '+'}</span></div>
+            <div key={i} className={'qa' + (faqOpen === i ? ' open' : '')} onClick={() => setFaqOpen(faqOpen === i ? null : i)}>
+              <div className="q"><span>{q}</span><span className="qa-mk" style={{ flex: 'none' }}>{faqOpen === i ? '−' : '+'}</span></div>
               {faqOpen === i && <div className="a">{a}</div>}
             </div>
           ))}

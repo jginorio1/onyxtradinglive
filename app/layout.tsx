@@ -169,7 +169,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // páginas PÚBLICAS de marketing. Las zonas de app (dashboard, admin, cuenta,
   // academia, login, onboarding, conectar, constructor) quedan sobrias para no
   // cansar la vista al trabajar dentro. Se enciende con la clase onyx-vivid.
-  const appArea = ['/dashboard', '/admin', '/account', '/login', '/onboarding', '/academy', '/staff', '/connect', '/bot-builder']
+  const appArea = ['/dashboard', '/admin', '/account', '/login', '/onboarding', '/academy', '/staff', '/connect']
     .some((p) => { const q = path.replace(/^\/en/, '') || '/'; return q === p || q.startsWith(p + '/'); });
   const vivid = !appArea;
 
