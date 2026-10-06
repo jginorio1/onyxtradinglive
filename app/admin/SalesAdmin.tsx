@@ -1182,7 +1182,7 @@ function ProposalCard({ f, names, inp, btnP, card }: any) {
         {/* Bloque de override de equipo (Lead / Director) */}
         {hasTeam && (
           <div style={{ marginTop: 10, border: '1px solid rgba(166,121,255,.4)', background: 'rgba(166,121,255,.10)', borderRadius: 9, padding: 11 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>{ic('users-group', 15, '#a679ff')}<span style={{ fontSize: 11.5, fontWeight: 700, color: '#c9b3ff' }}>Lo que ganas de tu equipo</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>{ic('users-group', 15, '#a679ff')}<span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--purple,#8b5cff)' }}>Lo que ganas de tu equipo</span></div>
             <div style={{ fontSize: 11.5, color: 'var(--tx,#e8ecf5)', lineHeight: 1.5 }}>
               {level === 'l2'
                 ? <>Como {levelName}: <b>+{num(f.override1_rate)}%</b> de tu equipo directo ({teamN}) y <b>+{num(f.override2_rate)}%</b> de la red ({netN}).</>

@@ -67,7 +67,7 @@ export default function CareersAdmin({ canManage = true }: { canManage?: boolean
               <div key={p.id} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 <div>
                   <b style={{ color: 'var(--tx,#e8ecf5)' }}>{p.title}</b>
-                  {p.sales_level && <span style={{ fontSize: 10.5, fontWeight: 700, color: '#c98bff', background: 'rgba(201,139,255,.15)', padding: '2px 7px', borderRadius: 20, marginLeft: 6 }}>Ventas · {p.sales_level === 'director' ? 'Director' : p.sales_level === 'lead' ? 'Lead' : 'Advisor'} · comisión</span>}
+                  {p.sales_level && <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--purple,#8b5cff)', background: 'rgba(201,139,255,.15)', padding: '2px 7px', borderRadius: 20, marginLeft: 6 }}>Ventas · {p.sales_level === 'director' ? 'Director' : p.sales_level === 'lead' ? 'Lead' : 'Advisor'} · comisión</span>}
                   <span className="muted" style={{ fontSize: 12 }}> · {DL[p.department] || p.department} · {p.location}</span>
                   <div style={{ fontSize: 11, color: p.status === 'open' ? '#5ed6a0' : p.status === 'draft' ? '#e5b567' : '#9aa6bd' }}>{p.status === 'open' ? 'publicada' : p.status === 'draft' ? 'borrador' : 'cerrada'}</div>
                 </div>
@@ -397,7 +397,7 @@ function PositionModal({ p, act, onClose, inp, btn, btnP, onShare }: any) {
               <option value="advisor">Advisor</option>
             </select>}
           </div>
-          {!!f.sales_level && <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: '#c98bff' }}>La postulación aparecerá en Carreras y en el reclutamiento de ventas. No pongas salario fijo (es comisión).</div>}
+          {!!f.sales_level && <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: 'var(--purple,#8b5cff)' }}>La postulación aparecerá en Carreras y en el reclutamiento de ventas. No pongas salario fijo (es comisión).</div>}
           <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Título {lang === 'es' ? '*' : '(EN)'}</span><input style={{ ...inp, width: '100%' }} value={f[F('title')] || ''} onChange={(e) => u(F('title'), e.target.value)} placeholder={lang === 'es' ? 'Desarrollador Backend Sr.' : 'Sr. Backend Developer'} /></label>
           <label><span style={lbl}>Área</span><select style={{ ...inp, width: '100%' }} value={f.department} onChange={(e) => u('department', e.target.value)}>{DEPTS.map((k) => <option key={k} value={k}>{DL[k]}</option>)}</select></label>
           <label><span style={lbl}>Tipo</span><select style={{ ...inp, width: '100%' }} value={f.type} onChange={(e) => u('type', e.target.value)}><option value="full">Tiempo completo</option><option value="part">Medio tiempo</option><option value="contract">Por contrato</option><option value="intern">Prácticas</option></select></label>
