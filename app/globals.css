@@ -1313,23 +1313,24 @@ html.is-auth .auth-center > *:not(canvas){position:relative;z-index:1}
 /* Compacta el toggle para que quepa limpio en la esquina. */
 .login-lang .langtoggle, .login-lang button{transform:scale(.92);transform-origin:top right}
 
-/* ===== Fondo principal: AURORA/BRASA en tono chinita (públicas MENOS login) ====
-   Manchas naranjas suaves en las esquinas sobre la base oscura (sin cuadros). Capa
-   fija detrás del contenido; no afecta clics. Se EXCLUYE el login (html.is-auth),
-   que conserva su red de puntos. */
+/* ===== Fondo principal: HALO central chinita, con la parte de ARRIBA limpia =====
+   Un foco de luz naranja centrado más abajo (opción B), y una franja superior que
+   deja el header/menú sin naranja. Capa fija detrás del contenido; no afecta clics.
+   Se EXCLUYE el login (html.is-auth), que conserva su red de puntos. */
 html:not(.is-auth) body.onyx-vivid::before{
   content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:1;
   background-image:
-    radial-gradient(760px 540px at 10% -4%, rgba(255,122,26,.22), transparent 60%),
-    radial-gradient(720px 560px at 102% 34%, rgba(255,90,40,.15), transparent 60%),
-    radial-gradient(700px 560px at 48% 114%, rgba(255,61,90,.12), transparent 62%);
+    radial-gradient(62% 60% at 50% 72%, rgba(255,140,50,.20), rgba(255,100,40,.055) 48%, transparent 74%);
   background-repeat:no-repeat;
+}
+/* Franja superior: tapa cualquier naranja arriba → header/menú limpio. */
+html:not(.is-auth) body.onyx-vivid::after{
+  content:"";position:fixed;top:0;left:0;right:0;height:130px;z-index:0;pointer-events:none;
+  background:linear-gradient(var(--bg,#06070b) 52%, transparent);
 }
 /* El contenido queda por encima del fondo. */
 html:not(.is-auth) body.onyx-vivid > *{position:relative;z-index:1}
 /* En tema claro, más tenue para no saturar. */
 :root:not([data-theme="dark"]) html:not(.is-auth) body.onyx-vivid::before{
   background-image:
-    radial-gradient(760px 540px at 10% -4%, rgba(255,122,26,.10), transparent 60%),
-    radial-gradient(720px 560px at 102% 34%, rgba(255,90,40,.07), transparent 60%),
-    radial-gradient(700px 560px at 48% 114%, rgba(255,61,90,.05), transparent 62%);}
+    radial-gradient(62% 60% at 50% 72%, rgba(255,140,50,.09), rgba(255,100,40,.03) 48%, transparent 74%);}
