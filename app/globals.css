@@ -1298,3 +1298,9 @@ html.is-auth .site-footer{display:none !important}
 .login-box input:focus{border-color:#ff9d3d !important;box-shadow:0 0 0 3px rgba(255,157,61,.18) !important}
 /* Jerarquía: el título ("Sign in" / "Crear cuenta") no debe dominar la caja. */
 .login-box h2{font-size:26px !important;line-height:1.15 !important}
+
+/* ===== Login: red de partículas 3D de fondo (SOLO login) ====================
+   El <canvas> va en position:fixed; z-index:0. Para que el formulario, el logo
+   y el selector de idioma queden por ENCIMA del canvas (y no debajo), se les da
+   su propio contexto de apilamiento con z-index:1. Se excluye el canvas. */
+html.is-auth .auth-center > *:not(canvas){position:relative;z-index:1}

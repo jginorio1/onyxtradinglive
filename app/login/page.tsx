@@ -10,6 +10,7 @@ import LangToggle from '@/app/LangToggle';
 import Turnstile, { TURNSTILE_KEY, type TurnstileHandle } from '@/app/Turnstile';
 import { setPending } from '@/lib/pendingCheckout';
 import { isNativeApp } from '@/lib/native';
+import LoginParticles from './LoginParticles';
 
 type Lang = 'es' | 'en';
 
@@ -379,6 +380,8 @@ function LoginInner() {
   const barColors = ['#e2531f', '#e2531f', '#f0a020', 'var(--green)', 'var(--green)'];
   return (
     <div className="center auth-center">
+      {/* Fondo de red de partículas 3D (solo login). Va detrás de todo (zIndex:0). */}
+      <LoginParticles />
       {/* Selector de idioma en la propia pantalla de entrada: imprescindible en la
           app nativa, donde la barra superior está oculta y no habría otra forma de
           cambiar el idioma antes de entrar. Alineado a la derecha, sobre el logo. */}
