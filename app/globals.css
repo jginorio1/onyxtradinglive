@@ -1052,7 +1052,7 @@ html.native-app .auth-center{
   align-items:center;
   /* Más aire arriba que abajo: con el contenido centrado, esto baja un poco el
      bloque para que quede mejor equilibrado en pantalla alta. */
-  padding:calc(10vh + env(safe-area-inset-top)) 22px calc(5vh + env(safe-area-inset-bottom)) !important;
+  padding:calc(5vh + env(safe-area-inset-top)) 18px calc(4vh + env(safe-area-inset-bottom)) !important;
 }
 /* El formulario nunca más ancho de ~440px, aunque la pantalla (iPad) sea enorme. */
 html.native-app .auth-center .card{ background:transparent; border:none; box-shadow:none; padding:0; width:100%; max-width:440px; margin-left:auto; margin-right:auto; }
@@ -1067,7 +1067,7 @@ html.native-app .auth-center .card>h2{ text-align:center; }
 html.native-app .auth-center .btn-primary{ background:var(--grad); }
 /* Verificación de Cloudflare: centrada y un punto más pequeña para que no domine
    la pantalla. Sigue siendo funcional; al verificar desaparece. */
-html.native-app .cf-wrap{ display:flex; justify-content:center; transform:scale(.94); transform-origin:top center; }
+html.native-app .cf-wrap{ display:flex; justify-content:center; transform:scale(.9); transform-origin:top center; margin:8px 0 2px; }
 /* App nativa: en la pantalla de login no se puede "salir" a la web de marketing.
    Se oculta el enlace "Volver al inicio" y los logos (cabecera + sobre el
    formulario) dejan de responder al clic — siguen visibles como marca. */
@@ -1192,12 +1192,27 @@ html.native-app .onyx-boot{display:flex}
 
 /* LOGIN "EN CAJA" con tono china (la pantalla de login NO lleva onyx-vivid, así que
    el estilo naranja se aplica solo a su tarjeta). Franja de acento arriba + glow. */
-.login-box{position:relative;overflow:hidden;padding-top:30px;
-  border:1px solid rgba(255,157,61,.35) !important;
+.login-box{position:relative;overflow:hidden;
+  /* Padding real por los 4 lados. CLAVE: en la app nativa la regla
+     html.native-app .auth-center .card ponía padding:0 (login de borde a borde),
+     lo que dejaba el texto pegado al filo. Con !important la caja recupera su aire. */
+  padding:30px 24px 26px !important;
+  /* Fondo sólido de tarjeta (la regla nativa lo volvía transparente): así se ve
+     como una caja flotante, no como la pantalla entera. */
+  background:linear-gradient(180deg,rgba(255,255,255,.045),transparent),var(--card) !important;
+  border:1px solid rgba(255,157,61,.38) !important;
+  border-radius:20px !important;
   box-shadow:0 30px 70px -24px rgba(0,0,0,.7),0 0 44px -16px rgba(255,122,26,.45) !important}
 .login-box::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ffcf5c,#ff9d3d,#ff6a2b)}
-.login-logo{box-shadow:0 0 24px -4px rgba(255,122,26,.6) !important}
+/* Logo enmarcado en tono china: aro + glow naranja alrededor del símbolo de marca. */
+.login-logo{border:1px solid rgba(255,157,61,.45) !important;
+  box-shadow:0 0 24px -4px rgba(255,122,26,.6) !important}
+/* Enlaces del login en naranja (congruente). Se excluye el logo (href="/") para no
+   teñir el nombre de marca. Cubre "¿Olvidaste tu contraseña?", "Crear cuenta", Términos. */
+.login-box a:not([href="/"]){color:#ffb15e !important}
 /* Botón principal del login en degradado china (congruente con las páginas públicas). */
 .login-box .btn-primary{background:linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b) !important;color:#241002 !important;border:none !important;
   box-shadow:0 10px 26px -10px rgba(255,106,43,.6) !important}
 .login-box input:focus{border-color:#ff9d3d !important;box-shadow:0 0 0 3px rgba(255,157,61,.18) !important}
+/* Jerarquía: el título ("Sign in" / "Crear cuenta") no debe dominar la caja. */
+.login-box h2{font-size:26px !important;line-height:1.15 !important}
