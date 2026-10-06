@@ -165,9 +165,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const ga = process.env.NEXT_PUBLIC_GA_ID;   // Google Analytics 4 (opcional)
   const adsense = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;   // ej. ca-pub-7228105221509555 (verificación + anuncios AdSense)
 
+  // Estilo "con vida" (tono china: naranja/ámbar con auroras y glows) SOLO en las
+  // páginas PÚBLICAS de marketing. Las zonas de app (dashboard, admin, cuenta,
+  // academia, login, onboarding, conectar, constructor) quedan sobrias para no
+  // cansar la vista al trabajar dentro. Se enciende con la clase onyx-vivid.
+  const appArea = ['/dashboard', '/admin', '/account', '/login', '/onboarding', '/academy', '/staff', '/connect', '/bot-builder']
+    .some((p) => { const q = path.replace(/^\/en/, '') || '/'; return q === p || q.startsWith(p + '/'); });
+  const vivid = !appArea;
+
   return (
     <html lang={lang} data-theme={theme || undefined} suppressHydrationWarning>
-      <body>
+      <body className={vivid ? 'onyx-vivid' : undefined}>
+        {/* Auroras de color (tono china) animadas de fondo. Solo en páginas públicas. */}
+        {vivid && <div className="lv-aurora" aria-hidden="true"><span></span><span></span><span></span></div>}
         {/* Google AdSense: carga la librería de anuncios y sirve para verificar el
             sitio (método "AdSense code snippet"). Se activa poniendo
             NEXT_PUBLIC_ADSENSE_CLIENT en las variables de entorno. Además se emite
