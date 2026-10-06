@@ -1318,18 +1318,18 @@ html.is-auth .auth-center > *:not(canvas){position:relative;z-index:1}
    tiene body.onyx-vivid. Se EXCLUYE el login (html.is-auth), que conserva su red de
    puntos. Capa fija detrás del contenido; no afecta clics. */
 html:not(.is-auth) body.onyx-vivid::before{
-  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.6;
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:1;
   background-image:
-    linear-gradient(rgba(255,160,80,.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,160,80,.045) 1px, transparent 1px);
-  background-size:48px 48px;
-  -webkit-mask-image:radial-gradient(85% 80% at 50% 35%, #000, transparent 90%);
-  mask-image:radial-gradient(85% 80% at 50% 35%, #000, transparent 90%);
+    linear-gradient(rgba(255,160,80,.11) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,160,80,.11) 1px, transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:radial-gradient(95% 90% at 50% 40%, #000, transparent 100%);
+  mask-image:radial-gradient(95% 90% at 50% 40%, #000, transparent 100%);
 }
 /* El contenido queda por encima de la rejilla. */
 html:not(.is-auth) body.onyx-vivid > *{position:relative;z-index:1}
-/* En tema claro, aún más tenue para no ensuciar. */
-:root:not([data-theme="dark"]) html:not(.is-auth) body.onyx-vivid::before{opacity:.35;
+/* En tema claro, un poco más tenue para no ensuciar. */
+:root:not([data-theme="dark"]) html:not(.is-auth) body.onyx-vivid::before{opacity:.6;
   background-image:
-    linear-gradient(rgba(120,80,30,.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120,80,30,.05) 1px, transparent 1px);}
+    linear-gradient(rgba(120,80,30,.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120,80,30,.09) 1px, transparent 1px);}

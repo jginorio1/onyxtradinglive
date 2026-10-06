@@ -22,7 +22,7 @@ export default function LoginParticles() {
       H = c!.height = Math.floor(window.innerHeight * DPR);
       c!.style.width = window.innerWidth + 'px';
       c!.style.height = window.innerHeight + 'px';
-      const n = Math.round(window.innerWidth * window.innerHeight / 30000); // aún menos puntos: muy limpio
+      const n = Math.round(window.innerWidth * window.innerHeight / 46000); // muy pocos puntos
       pts = [];
       for (let i = 0; i < n; i++) {
         const teal = Math.random() < 0.12;
@@ -45,7 +45,7 @@ export default function LoginParticles() {
         if (p.z < 0.15 || p.z > 1) { p.vz *= -1; p.z = Math.max(0.15, Math.min(1, p.z)); }
       }
       // líneas: se unen al acercarse, se sueltan al alejarse (según distancia)
-      const LINK = 100 * DPR; // uniones muy cortas: muy pocas líneas
+      const LINK = 78 * DPR; // uniones cortísimas: casi puntos sueltos
       for (let i = 0; i < pts.length; i++) {
         const a = pts[i];
         for (let j = i + 1; j < pts.length; j++) {
