@@ -322,9 +322,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
 
   // Estilo del panel según dispositivo / expandido / tamaño recordado.
   const panelBase: any = { zIndex: 61, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, boxShadow: '0 14px 40px rgba(0,0,0,.45)', overflow: 'hidden', display: 'flex', flexDirection: 'column' };
-  const panelStyle: any = big && !isMobile
-    ? { ...panelBase, position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(640px, 94vw)', height: 'min(88vh, 900px)', maxHeight: '88vh' }
-    : { ...panelBase, position: 'fixed', [sideC]: ox, bottom: oy, width: dim?.w ?? 344, maxWidth: 'calc(100vw - 24px)', ...(dim?.h ? { height: dim.h } : { maxHeight: 'calc(100vh - 40px)' }) };
+  // Tamaño FIJO mediano en escritorio (sin estirar ni expandir). En móvil, la
+  // media query de abajo lo lleva a pantalla completa.
+  const panelStyle: any = { ...panelBase, position: 'fixed', [sideC]: ox, bottom: oy, width: 380, maxWidth: 'calc(100vw - 24px)', height: 600, maxHeight: 'calc(100vh - 40px)' };
 
   // Botón de icono en la cabecera (expandir / anclar), en línea moderna.
   const HBtn = ({ onClick, label, children }: any) => (
@@ -369,17 +369,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
 
       {open && (
         <div className="onyx-panel" style={panelStyle}>
-          {/* Tirador para redimensionar (escritorio/tablet, no expandido) — chip visible en la esquina interior */}
-          {gripOn && (
-            <div className="onyx-resize" onPointerDown={onResizeDown}
-              style={{ position: 'absolute', top: 8, [sideC === 'right' ? 'left' : 'right']: 8, width: 20, height: 20, borderRadius: 6, background: 'rgba(255,255,255,.16)', border: '0.5px solid rgba(255,255,255,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: sideC === 'right' ? 'nwse-resize' : 'nesw-resize', zIndex: 6, color: '#fff', touchAction: 'none' }} aria-label={es ? 'Estirar el chat' : 'Resize'} title={es ? 'Arrastra para estirar el chat' : 'Drag to resize'}>
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ transform: sideC === 'right' ? 'none' : 'scaleX(-1)' }}>
-                <path d="M13 3 L3 13 M13 7 L7 13 M13 11 L11 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </div>
-          )}
           <div style={{ background: 'var(--grad)', color: cfg.fg || '#fff', padding: `calc(12px + env(safe-area-inset-top)) ${headPadR}px 12px ${headPadL}px`, display: 'flex', alignItems: 'center', gap: 9, flex: 'none' }}>
-            {avatar(30)}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? x.humanTitle : x.title}</div>
               <div style={{ fontSize: 11, opacity: .9, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden' }}>
@@ -394,12 +384,6 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                 </HBtn>
                 {menu && (
                   <div style={{ position: 'absolute', top: 36, [sideC === 'right' ? 'right' : 'left']: 0, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 10px 26px rgba(0,0,0,.4)', padding: 6, zIndex: 20, minWidth: 196 }}>
-                    {!isMobile && (
-                    <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, padding: '8px 10px' }} onClick={() => { toggleSide(); setMenu(false); }}>
-                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" style={{ transform: sideC === 'right' ? 'none' : 'scaleX(-1)' }}><path d="M10 3 L5 8 L10 13" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      {sideC === 'right' ? (es ? 'Mover a la izquierda' : 'Move to the left') : (es ? 'Mover a la derecha' : 'Move to the right')}
-                    </button>
-                    )}
                     {started && (
                       <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, padding: '8px 10px' }} onClick={() => { clearChat(); setMenu(false); }}>
                         <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 6h10M6.5 6V4.5h3V6M5 6l.6 7h4.8L11 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -514,7 +498,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 7l-4.5 4.5a2.5 2.5 0 0 1-3.5-3.5L8.5 3.5a1.6 1.6 0 0 1 2.3 2.3L6.3 10.3a.8.8 0 0 1-1.1-1.1L9 5.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
                 </button>
                 <input value={ask} onChange={(e) => setAsk(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendAI(); }} placeholder={x.ph} style={{ flex: 1, margin: 0, fontSize: 13 }} />
-                <button className="btn btn-primary" style={{ padding: '9px 13px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => sendAI()} disabled={busy || !ask.trim()} aria-label={t.send}><OnyxIcon name="send" size={16} glow={false} /></button>
+                <button className="btn btn-primary" style={{ padding: '9px 13px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', color: '#241002', border: 'none' }} onClick={() => sendAI()} disabled={busy || !ask.trim()} aria-label={t.send}><OnyxIcon name="send" size={16} glow={false} /></button>
               </div>
             </div>
           )}
