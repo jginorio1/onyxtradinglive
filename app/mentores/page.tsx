@@ -75,7 +75,7 @@ export default function MentoresPage() {
           <div style={{ fontSize: 12.5, color: 'var(--mut)', marginBottom: 9 }}>{L('¿Cómo vas a usar Onyx?', 'How will you use Onyx?')}</div>
           <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 999, padding: 5, background: 'var(--card2, rgba(255,255,255,.03))' }}>
             <Link href="/" style={{ padding: '11px 26px', borderRadius: 999, fontSize: 15, fontWeight: 600, color: 'var(--tx)', textDecoration: 'none' }}>{L('Soy trader', "I'm a trader")}</Link>
-            <span style={{ padding: '11px 26px', borderRadius: 999, fontSize: 15, fontWeight: 800, background: 'var(--brand)', color: '#fff', boxShadow: '0 0 22px rgba(124,140,255,.65)' }}>{L('Soy mentor', "I'm a mentor")}</span>
+            <span style={{ padding: '11px 26px', borderRadius: 999, fontSize: 15, fontWeight: 800, background: 'linear-gradient(100deg,#ff9d3d,#ff6a2b)', color: '#241002', boxShadow: '0 0 22px rgba(255,122,26,.6)' }}>{L('Soy mentor', "I'm a mentor")}</span>
           </div>
         </div>
         <br />
@@ -122,7 +122,7 @@ export default function MentoresPage() {
           ))}
         </div>
         {copy?.enabled && (
-          <div className="card" style={{ marginTop: 14, padding: 20, border: '2px solid var(--brand)', boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 44px rgba(124,140,255,.35)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          <div className="card" style={{ marginTop: 14, padding: 20, border: '2px solid #ff9d3d', boxShadow: '0 0 0 1px rgba(255,157,61,.5), 0 0 44px rgba(255,122,26,.3)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, maxWidth: 640 }}>
               <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="sessions" size={22} /></span>
               <div>

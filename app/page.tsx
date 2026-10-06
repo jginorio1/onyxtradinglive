@@ -587,7 +587,7 @@ export default function Home() {
         <div style={{ marginBottom: 18 }}>
           <div style={{ fontSize: 12.5, color: 'var(--mut)', marginBottom: 9 }}>{lang === 'es' ? '¿Cómo vas a usar Onyx?' : 'How will you use Onyx?'}</div>
           <div style={{ display: 'inline-flex', border: '1px solid var(--line)', borderRadius: 999, padding: 5, background: 'var(--card2, rgba(255,255,255,.03))' }}>
-            <span style={{ padding: '11px 26px', borderRadius: 999, fontSize: 15, fontWeight: 800, background: '#3a2fd6', color: '#fff', boxShadow: '0 0 22px rgba(124,140,255,.65)' }}>{lang === 'es' ? 'Soy trader' : "I'm a trader"}</span>
+            <span style={{ padding: '11px 26px', borderRadius: 999, fontSize: 15, fontWeight: 800, background: 'linear-gradient(100deg,#ff9d3d,#ff6a2b)', color: '#241002', boxShadow: '0 0 22px rgba(255,122,26,.6)' }}>{lang === 'es' ? 'Soy trader' : "I'm a trader"}</span>
             <Link href="/mentores" style={{ padding: '11px 26px', borderRadius: 999, fontSize: 15, fontWeight: 600, color: 'var(--tx)', textDecoration: 'none' }}>{lang === 'es' ? 'Soy mentor' : "I'm a mentor"}</Link>
           </div>
         </div>

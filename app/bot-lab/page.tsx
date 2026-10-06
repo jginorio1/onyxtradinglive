@@ -141,7 +141,7 @@ export default async function BotLabLanding() {
               ))}
             </div>
           </div>
-          <div style={{ ...card, borderRadius: 22, boxShadow: '0 30px 80px -34px rgba(124,140,255,.4)' }}>
+          <div style={{ ...card, borderRadius: 22, boxShadow: '0 30px 80px -34px rgba(255,122,26,.4)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
                 <div style={{ width: 42, height: 42, borderRadius: 12, background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800 }}>▲</div>

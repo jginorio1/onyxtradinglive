@@ -235,7 +235,7 @@ export default function Pricing() {
           }) }} />
           <div style={{ display: 'grid', gap: 10 }}>
             {dynFaqs.map(([qq, aa], i) => (
-              <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px' }}>
+              <div key={i} className="card" style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '14px 16px' }}>
                 <div style={{ fontWeight: 700, fontSize: 14.5, marginBottom: 5 }}>{qq}</div>
                 <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>{aa}</div>
               </div>

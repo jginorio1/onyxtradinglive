@@ -125,7 +125,7 @@ export default function CareersClient() {
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--tx,#e8ecf5)' }}>{L('¿Quieres ser parte del equipo de ventas?', 'Want to join the sales team?')}</div>
             <div style={{ fontSize: 13, color: 'var(--mut,#9aa6bd)', marginTop: 2 }}>{L('Programa por comisión recurrente, no es empleo de nómina.', 'Recurring-commission program, not payroll employment.')}</div>
           </div>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#c98bff', color: '#1a1030', fontWeight: 700, fontSize: 14 }}>{L('Únete al equipo de ventas', 'Join the sales team')} <Ic n="arrow" s={16} c="#1a1030" /></span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: 'linear-gradient(100deg,#ff9d3d,#ff6a2b)', color: '#241002', fontWeight: 700, fontSize: 14 }}>{L('Únete al equipo de ventas', 'Join the sales team')} <Ic n="arrow" s={16} c="#241002" /></span>
         </div>
       </a>
 

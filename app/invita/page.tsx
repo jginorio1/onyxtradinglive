@@ -108,7 +108,7 @@ export default function Invita() {
       <p className="muted" style={{ textAlign: 'center', fontSize: 13, maxWidth: 620, margin: '0 auto 34px' }}>{fill(t.creditNote, { d: d?.holdDays ?? 21 })}</p>
 
       {/* Calculadora iluminada · usa los importes reales de admin */}
-      <div style={{ maxWidth: 520, margin: '0 auto 44px', background: 'var(--card)', border: '2px solid var(--brand)', borderRadius: 18, padding: 22, boxShadow: '0 0 0 1px rgba(124,140,255,.5), 0 0 44px rgba(124,140,255,.35)' }}>
+      <div style={{ maxWidth: 520, margin: '0 auto 44px', background: 'var(--card)', border: '2px solid #ff9d3d', borderRadius: 18, padding: 22, boxShadow: '0 0 0 1px rgba(255,157,61,.5), 0 0 44px rgba(255,122,26,.3)' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, background: 'rgba(124,140,255,.15)', color: 'var(--brand)', padding: '5px 13px', borderRadius: 999, marginBottom: 16, fontWeight: 700 }}>
           <OnyxIcon name="coins" size={15} glow={false} /> {t.calcT}
         </div>
