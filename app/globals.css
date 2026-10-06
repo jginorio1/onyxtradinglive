@@ -1223,6 +1223,18 @@ body.onyx-vivid{background-image:none !important}
 }
 /* Transición base para que la elevación de botones con estilo propio sea suave (no brusca). */
 .onyx-vivid button{transition:transform .15s ease,box-shadow .2s ease}
+
+/* ============================================================
+   PANTALLAS DE LOGIN / REGISTRO / RECUPERAR: se oculta TODO el menú de arriba
+   (barra promo + TopBar + submenú) y el footer de marketing, DESDE CUALQUIER
+   entrada (se llegue recargando o navegando sin recargar). Al salir (p. ej.
+   "Back to home") el menú VUELVE, porque AuthChrome (cliente) mantiene esta
+   clase sincronizada con la ruta en cada navegación.
+   ============================================================ */
+html.is-auth .promobar,
+html.is-auth .topbar,
+html.is-auth .secnav,
+html.is-auth .site-footer{display:none !important}
 /* Las TARJETAS de contenido NO se iluminan al pasar el cursor ni al presionar (ni en
    PC ni en móvil): el glow/elevación en cada tarjeta resultaba molesto. Solo los
    botones y los FAQ (details) reaccionan. */

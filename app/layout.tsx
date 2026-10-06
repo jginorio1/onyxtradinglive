@@ -9,6 +9,7 @@ import BotLabFooter from './bot-lab/BotLabFooter';
 import PWARegister from './PWARegister';
 import ChunkReload from './ChunkReload';
 import LiveNavRefresh from './LiveNavRefresh';
+import AuthChrome from './AuthChrome';
 import UpdateToast from './UpdateToast';
 import SupportWidget from './SupportWidget';
 import BackToTop from './BackToTop';
@@ -178,7 +179,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const isAuthScreen = ['/login', '/reset-password'].some((p) => { const q = path.replace(/^\/en/, '') || '/'; return q === p || q.startsWith(p + '/'); });
 
   return (
-    <html lang={lang} data-theme={theme || undefined} suppressHydrationWarning>
+    <html lang={lang} data-theme={theme || undefined} className={isAuthScreen ? 'is-auth' : undefined} suppressHydrationWarning>
       <body className={vivid ? 'onyx-vivid' : undefined}>
         {/* Auroras de color (tono china) animadas de fondo. Solo en páginas públicas. */}
         {vivid && <div className="lv-aurora" aria-hidden="true"><span></span><span></span><span></span></div>}
@@ -229,7 +230,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <EnvBanner />
         <LanguageProvider initial={lang}>
           <BetaProvider initial={beta}>
-            {promoLive && promo && !inBotLab && !isAuthScreen && (
+            {/* Nota: el menú de arriba (promo + TopBar + submenú) se renderiza SIEMPRE en
+                páginas públicas y se oculta en login/registro vía la clase html.is-auth
+                (AuthChrome la mantiene en cada navegación). Así vuelve al salir de login. */}
+            {promoLive && promo && !inBotLab && (
               <PromoBar
                 id={promo.id}
                 text={(lang === 'es' ? promo.text_es : promo.text_en) || (lang === 'es' ? promo.text_en : promo.text_es)}
@@ -240,12 +244,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               />
             )}
             <BetaBanner />
-            {inBotLab ? <BotLabHeader loggedIn={loggedIn} /> : (isAuthScreen ? null : <TopBar home={['/', '/en', '/en/', '/bot-builder', '/en/bot-builder'].includes(path)} />)}
+            {inBotLab ? <BotLabHeader loggedIn={loggedIn} /> : <TopBar home={['/', '/en', '/en/', '/bot-builder', '/en/bot-builder'].includes(path)} />}
+            <AuthChrome />
             {/* Segundo menú GLOBAL: siempre visible en las páginas públicas (se auto-oculta
                 con sesión). En Bot Lab NO se muestra: usa su propia barra. */}
             {!inBotLab && (() => {
               const en = path.startsWith('/en');
-              const priv = ['/dashboard', '/admin', '/account', '/login', '/onboarding', '/en/dashboard', '/en/admin', '/en/account', '/en/login', '/en/onboarding'].some((p) => path === p || path.startsWith(p + '/'));
+              // Nota: /login NO se excluye aquí a propósito. El submenú se oculta en login
+              // vía html.is-auth (CSS), para que al salir de login vuelva a aparecer sin recargar.
+              const priv = ['/dashboard', '/admin', '/account', '/onboarding', '/en/dashboard', '/en/admin', '/en/account', '/en/onboarding'].some((p) => path === p || path.startsWith(p + '/'));
               if (priv) return null;
               // Etiquetas en AMBOS idiomas: SectionNav (cliente) elige con el idioma actual
               // (cookie/contexto), así el submenú cambia AL INSTANTE al togglear, sin depender de la URL /en.
@@ -267,7 +274,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {(() => {
               // El footer de marketing NO se muestra dentro de la app (dashboard, admin,
               // cuenta, onboarding, login), en español ni en /en. Solo en páginas públicas.
-              const appArea = ['/dashboard', '/admin', '/account', '/onboarding', '/login', '/en/dashboard', '/en/admin', '/en/account', '/en/onboarding', '/en/login'].some((p) => path === p || path.startsWith(p + '/'));
+              // /login fuera de la lista: el footer se oculta en login vía html.is-auth (CSS),
+              // así vuelve al salir sin recargar.
+              const appArea = ['/dashboard', '/admin', '/account', '/onboarding', '/en/dashboard', '/en/admin', '/en/account', '/en/onboarding'].some((p) => path === p || path.startsWith(p + '/'));
               if (appArea) return null;
               // Con sesión iniciada el footer de marketing NO se muestra en NINGUNA página:
               // si el usuario entra a /blog, /copy, /academy, Bot Lab o el landing estando
