@@ -1142,7 +1142,31 @@ html.native-app .onyx-boot{display:flex}
    dentro de ese resplandor (arriba, p. ej. copy); los de más abajo (landing) no. Lo
    quitamos en páginas públicas: el ambiente cálido ya lo da la aurora. Se conserva el
    COLOR del tema (claro/oscuro), solo se elimina la imagen radial que parpadeaba. */
-body.onyx-vivid{background-image:none !important}
+/* AMBIENTE CHINA = fondo ESTÁTICO del body (no una capa aparte).
+   DEFINITIVO contra el parpadeo: la aurora era un elemento fijo (position:fixed,
+   z-index:-1) que el navegador re-componía cada vez que CUALQUIER elemento de encima
+   (botón, pill de plan, etc.) repintaba su sombra/borde al hacer hover → parpadeaba TODO
+   el fondo. Al pintar el brillo como background del propio body (parte de su pintura, no
+   una capa compositada), ya no hay nada que re-componer: ningún hover vuelve a parpadear.
+   background-attachment:fixed mantiene el brillo anclado a la pantalla como lo estaba la
+   aurora, pero sin animación ni capa propia. */
+body.onyx-vivid{
+  background-image:
+    radial-gradient(900px 560px at 10% -8%, rgba(255,122,26,.11), transparent 60%),
+    radial-gradient(820px 560px at 102% 42%, rgba(255,191,64,.085), transparent 60%),
+    radial-gradient(760px 560px at 44% 110%, rgba(255,61,90,.07), transparent 60%) !important;
+  background-attachment:fixed !important;
+  background-repeat:no-repeat !important;
+}
+:root:not([data-theme="dark"]) body.onyx-vivid{
+  background-image:
+    radial-gradient(900px 560px at 10% -8%, rgba(255,122,26,.06), transparent 60%),
+    radial-gradient(820px 560px at 102% 42%, rgba(255,191,64,.05), transparent 60%),
+    radial-gradient(760px 560px at 44% 110%, rgba(255,61,90,.04), transparent 60%) !important;
+}
+/* La aurora animada (capa fija) se retira: era la fuente del parpadeo. El ambiente lo
+   da ahora el fondo estático de arriba. */
+.onyx-vivid .lv-aurora{display:none !important}
 
 /* Degradado china (dorado → naranja → coral) para los títulos con var(--grad). */
 .onyx-vivid{--grad:linear-gradient(100deg,#ffcf5c,#ff9d3d 46%,#ff5e4d)}
