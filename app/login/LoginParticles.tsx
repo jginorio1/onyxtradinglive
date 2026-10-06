@@ -22,14 +22,14 @@ export default function LoginParticles() {
       H = c!.height = Math.floor(window.innerHeight * DPR);
       c!.style.width = window.innerWidth + 'px';
       c!.style.height = window.innerHeight + 'px';
-      const n = Math.round(window.innerWidth * window.innerHeight / 34000); // algunos puntos más
+      const n = Math.round(window.innerWidth * window.innerHeight / 30000); // más puntos
       pts = [];
       for (let i = 0; i < n; i++) {
         const teal = Math.random() < 0.12;
         pts.push({
           x: Math.random() * W, y: Math.random() * H, z: Math.random(), // z: profundidad 0..1
-          vx: (Math.random() - 0.5) * 0.14 * DPR, vy: (Math.random() - 0.5) * 0.14 * DPR,
-          vz: (Math.random() - 0.5) * 0.0006,
+          vx: (Math.random() - 0.5) * 0.22 * DPR, vy: (Math.random() - 0.5) * 0.22 * DPR, // un poco más rápido
+          vz: (Math.random() - 0.5) * 0.0008,
           col: teal ? TEAL : ORANGE[(Math.random() * ORANGE.length) | 0], teal,
         });
       }
@@ -45,7 +45,7 @@ export default function LoginParticles() {
         if (p.z < 0.15 || p.z > 1) { p.vz *= -1; p.z = Math.max(0.15, Math.min(1, p.z)); }
       }
       // líneas: se unen al acercarse, se sueltan al alejarse (según distancia)
-      const LINK = 95 * DPR; // uniones cortas: algunas líneas más
+      const LINK = 120 * DPR; // alcance mayor: más líneas uniendo puntos
       for (let i = 0; i < pts.length; i++) {
         const a = pts[i];
         for (let j = i + 1; j < pts.length; j++) {

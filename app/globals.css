@@ -1313,6 +1313,24 @@ html.is-auth .auth-center > *:not(canvas){position:relative;z-index:1}
 /* Compacta el toggle para que quepa limpio en la esquina. */
 .login-lang .langtoggle, .login-lang button{transform:scale(.92);transform-origin:top right}
 
+/* ===== Login horizontal (más ancho que alto) SOLO en PC web =====
+   En móvil y en las apps nativas (html.native-app) los wrappers usan
+   display:contents → el login se queda EXACTAMENTE como está hoy (vertical).
+   A partir de 860px de ancho y fuera de la app nativa, el cajón pasa a 2
+   columnas: marca a la izquierda, formulario a la derecha. */
+.lb-left, .lb-right{display:contents}
+@media (min-width:860px){
+  html:not(.native-app) .login-box{
+    max-width:720px !important;
+    display:grid; grid-template-columns:0.82fr 1.18fr; column-gap:30px; align-items:center;
+    padding:30px 34px;
+  }
+  html:not(.native-app) .login-box > .lb-left{display:block; text-align:center}
+  html:not(.native-app) .login-box > .lb-right{display:block; border-left:1px solid var(--line); padding-left:30px}
+  /* la marca y el subtítulo ya no necesitan tanto margen inferior en 2 columnas */
+  html:not(.native-app) .login-box > .lb-left > a{margin-bottom:12px !important}
+}
+
 /* ===== Fondo principal: HALO central chinita, con la parte de ARRIBA limpia =====
    Un foco de luz naranja centrado más abajo (opción B), y una franja superior que
    deja el header/menú sin naranja. Capa fija detrás del contenido; no afecta clics.

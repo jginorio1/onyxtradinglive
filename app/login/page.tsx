@@ -391,6 +391,9 @@ function LoginInner() {
         </div>
         {/* Marca DENTRO de la caja: logo + nombre arriba, para que todo el login
             sea una sola tarjeta (con tono china: borde y glow naranja + franja arriba). */}
+        {/* lb-left / lb-right: en PC (web, no app) se vuelven 2 columnas vía CSS;
+            en móvil y apps nativas usan display:contents → NO cambia nada. */}
+        <div className="lb-left">
         <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit', marginBottom: 18 }}>
           <img className="login-logo" src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 54, height: 54, borderRadius: 15 }} />
           <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '.01em' }}>Onyx Trading Live</span>
@@ -399,6 +402,8 @@ function LoginInner() {
           <h2 style={{ margin: 0 }}>{signup ? t.signupT : t.loginT}</h2>
           <p className="muted" style={{ fontSize: 13, marginTop: 5 }}>{signup ? (lang === 'en' ? 'Join Onyx in a minute' : 'Crea tu cuenta en un minuto') : (lang === 'en' ? 'Access your trading panel' : 'Entra a tu panel de trading')}</p>
         </div>
+        </div>{/* /lb-left */}
+        <div className="lb-right">
         <form onSubmit={submit}>
           {/* Honeypot: invisible para humanos, los bots lo rellenan. */}
           <input type="text" name="company" tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)}
@@ -483,6 +488,7 @@ function LoginInner() {
             {signup ? t.goLogin : t.goSignup}
           </a>
         </p>
+        </div>{/* /lb-right */}
       </div>
       <p className="muted" style={{ textAlign: 'center', marginTop: 18, fontSize: 13 }}>
         <Link href="/" className="home-back">{t.back}</Link>
