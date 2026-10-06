@@ -385,13 +385,13 @@ function LoginInner() {
       <div style={{ width: '100%', maxWidth: 440, display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
         <LangToggle compact />
       </div>
-      <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit', marginBottom: 18 }}>
-        {/* El ícono de Onyx ya es completo (fondo + esquinas redondeadas): se
-            muestra tal cual, sin pastilla extra que lo hacía ver "tipo Instagram". */}
-        <img src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 64, height: 64, borderRadius: 18, boxShadow: '0 10px 28px rgba(124,92,255,.35)' }} />
-        <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: '.01em' }}>Onyx Trading Live</span>
-      </Link>
-      <div className="card" style={{ width: '100%', maxWidth: 440 }}>
+      <div className="card login-box" style={{ width: '100%', maxWidth: 440 }}>
+        {/* Marca DENTRO de la caja: logo + nombre arriba, para que todo el login
+            sea una sola tarjeta (con tono china: borde y glow naranja + franja arriba). */}
+        <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit', marginBottom: 18 }}>
+          <img className="login-logo" src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 54, height: 54, borderRadius: 15 }} />
+          <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '.01em' }}>Onyx Trading Live</span>
+        </Link>
         <div style={{ textAlign: 'center', marginBottom: 18 }}>
           <h2 style={{ margin: 0 }}>{signup ? t.signupT : t.loginT}</h2>
           <p className="muted" style={{ fontSize: 13, marginTop: 5 }}>{signup ? (lang === 'en' ? 'Join Onyx in a minute' : 'Crea tu cuenta en un minuto') : (lang === 'en' ? 'Access your trading panel' : 'Entra a tu panel de trading')}</p>

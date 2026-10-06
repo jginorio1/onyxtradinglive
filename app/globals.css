@@ -1180,3 +1180,15 @@ html.native-app .onyx-boot{display:flex}
 
 /* Respeta a quien pide menos movimiento (accesibilidad). */
 @media (prefers-reduced-motion:reduce){.lv-aurora span{animation:none}}
+
+/* LOGIN "EN CAJA" con tono china (la pantalla de login NO lleva onyx-vivid, así que
+   el estilo naranja se aplica solo a su tarjeta). Franja de acento arriba + glow. */
+.login-box{position:relative;overflow:hidden;padding-top:30px;
+  border:1px solid rgba(255,157,61,.35) !important;
+  box-shadow:0 30px 70px -24px rgba(0,0,0,.7),0 0 44px -16px rgba(255,122,26,.45) !important}
+.login-box::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ffcf5c,#ff9d3d,#ff6a2b)}
+.login-logo{box-shadow:0 0 24px -4px rgba(255,122,26,.6) !important}
+/* Botón principal del login en degradado china (congruente con las páginas públicas). */
+.login-box .btn-primary{background:linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b) !important;color:#241002 !important;border:none !important;
+  box-shadow:0 10px 26px -10px rgba(255,106,43,.6) !important}
+.login-box input:focus{border-color:#ff9d3d !important;box-shadow:0 0 0 3px rgba(255,157,61,.18) !important}

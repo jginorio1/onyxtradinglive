@@ -173,6 +173,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     .some((p) => { const q = path.replace(/^\/en/, '') || '/'; return q === p || q.startsWith(p + '/'); });
   const vivid = !appArea;
 
+  // Pantallas de ENTRADA (login, recuperar contraseña): sin menú superior ni barra
+  // de promo, para que la caja del login sea el único foco (menos distracción).
+  const isAuthScreen = ['/login', '/reset-password'].some((p) => { const q = path.replace(/^\/en/, '') || '/'; return q === p || q.startsWith(p + '/'); });
+
   return (
     <html lang={lang} data-theme={theme || undefined} suppressHydrationWarning>
       <body className={vivid ? 'onyx-vivid' : undefined}>
@@ -225,7 +229,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <EnvBanner />
         <LanguageProvider initial={lang}>
           <BetaProvider initial={beta}>
-            {promoLive && promo && !inBotLab && (
+            {promoLive && promo && !inBotLab && !isAuthScreen && (
               <PromoBar
                 id={promo.id}
                 text={(lang === 'es' ? promo.text_es : promo.text_en) || (lang === 'es' ? promo.text_en : promo.text_es)}
@@ -236,7 +240,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               />
             )}
             <BetaBanner />
-            {inBotLab ? <BotLabHeader loggedIn={loggedIn} /> : <TopBar home={['/', '/en', '/en/', '/bot-builder', '/en/bot-builder'].includes(path)} />}
+            {inBotLab ? <BotLabHeader loggedIn={loggedIn} /> : (isAuthScreen ? null : <TopBar home={['/', '/en', '/en/', '/bot-builder', '/en/bot-builder'].includes(path)} />)}
             {/* Segundo menú GLOBAL: siempre visible en las páginas públicas (se auto-oculta
                 con sesión). En Bot Lab NO se muestra: usa su propia barra. */}
             {!inBotLab && (() => {
