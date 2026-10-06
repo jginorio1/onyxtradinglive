@@ -1163,11 +1163,15 @@ html.native-app .onyx-boot{display:flex}
 /* Sin el destello gris de "toque" del navegador móvil en tarjetas/FAQ/botones. */
 .onyx-vivid .card,.onyx-vivid details,.onyx-vivid .btn,.onyx-vivid summary{-webkit-tap-highlight-color:transparent}
 
-/* FAQ ABIERTO = reacción CLARA al tocar (funciona igual en móvil y escritorio):
-   borde naranja + resplandor cálido visible, y la pregunta se pinta de naranja. */
-.onyx-vivid details[open]{border-color:rgba(255,157,61,.6) !important;
-  box-shadow:0 0 0 1px rgba(255,157,61,.4),0 0 26px -6px rgba(255,122,26,.6) !important}
-.onyx-vivid details[open] > summary{color:#ffb15e}
+/* FAQ ABIERTO = reacción CLARA e IDÉNTICA en TODAS las páginas públicas (landing,
+   mentores, embajadores, invita, precios, copy, prop-firms, bot-lab y bot-lab/faq).
+   Tres señales que SÍ se ven aunque la tarjeta sea oscura (p. ej. Bot Lab):
+   1) fondo con tinte cálido  2) barra naranja a la izquierda (inset, no se recorta
+   con overflow:hidden)  3) halo naranja alrededor. La pregunta se pinta de naranja. */
+.onyx-vivid details[open]{border-color:rgba(255,157,61,.7) !important;
+  background:linear-gradient(180deg,rgba(255,122,26,.12),rgba(255,122,26,.03)),var(--card) !important;
+  box-shadow:inset 3px 0 0 0 #ff9d3d, 0 0 28px -4px rgba(255,122,26,.6) !important}
+.onyx-vivid details[open] > summary{color:#ffb15e !important}
 
 /* Los EFECTOS DE PASAR EL CURSOR (elevar + glow) solo con MOUSE real. En móvil el
    :hover se queda "pegado" tras tocar y molesta, así que ahí NO se aplican. */
@@ -1184,8 +1188,9 @@ html.native-app .onyx-boot{display:flex}
 .onyx-vivid .card:hover,
 .onyx-vivid .card:active,
 .onyx-vivid .card:focus-within{transform:none;box-shadow:0 8px 30px rgba(0,0,0,.35)}
-/* …pero si la tarjeta ES un FAQ abierto, conserva su resplandor naranja. */
-.onyx-vivid details.card[open]{box-shadow:0 0 0 1px rgba(255,157,61,.4),0 0 26px -6px rgba(255,122,26,.6) !important}
+/* …pero si la tarjeta ES un FAQ abierto, mantiene la MISMA señal fuerte que el resto
+   (barra izquierda + halo), para que no haya diferencia entre páginas. */
+.onyx-vivid details.card[open]{box-shadow:inset 3px 0 0 0 #ff9d3d, 0 0 28px -4px rgba(255,122,26,.6) !important}
 
 /* Respeta a quien pide menos movimiento (accesibilidad). */
 @media (prefers-reduced-motion:reduce){.lv-aurora span{animation:none}}
