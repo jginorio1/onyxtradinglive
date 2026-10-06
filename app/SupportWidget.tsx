@@ -345,7 +345,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
         @keyframes onyxTease{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         .onyx-pulse{animation:onyxPulse 1.4s ease-in-out infinite}
         .onyx-d1{animation:onyxType 1.2s infinite}.onyx-d2{animation:onyxType 1.2s .2s infinite}.onyx-d3{animation:onyxType 1.2s .4s infinite}
-        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:0!important;transform:none!important;width:100%!important;max-width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important}
+        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:0!important;transform:none!important;width:100%!important;max-width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important;z-index:2147483000!important}
         .onyx-panel input,.onyx-panel textarea{font-size:16px!important}
         .onyx-resize{display:none!important}}
       `}</style>

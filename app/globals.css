@@ -1167,6 +1167,10 @@ body.onyx-vivid{
 /* La aurora animada (capa fija) se retira: era la fuente del parpadeo. El ambiente lo
    da ahora el fondo estático de arriba. */
 .onyx-vivid .lv-aurora{display:none !important}
+/* Fuera de páginas públicas (login, app) las auroras NO deben verse. El div puede
+   quedar en el DOM al navegar sin recargar; si falta onyx-vivid, lo ocultamos
+   igual (en login solo se ven las líneas de partículas). */
+body:not(.onyx-vivid) .lv-aurora{display:none !important}
 
 /* Degradado china (dorado → naranja → coral) para los títulos con var(--grad). */
 .onyx-vivid{--grad:linear-gradient(100deg,#ffcf5c,#ff9d3d 46%,#ff5e4d)}
@@ -1351,7 +1355,7 @@ html:not(.is-auth) body.onyx-vivid::after{
 }
 /* El contenido queda por encima del fondo. Se EXCLUYE la cáscara fija/sticky
    (promo, barra, sub-nav, footer, header) para no pisar su position:sticky/fixed. */
-html:not(.is-auth) body.onyx-vivid > *:not(.promobar):not(.topbar):not(.secnav):not(.site-footer):not(header){position:relative;z-index:1}
+html:not(.is-auth) body.onyx-vivid > *:not(.promobar):not(.topbar):not(.secnav):not(.site-footer):not(header):not(.onyx-support-root){position:relative;z-index:1}
 /* En tema claro, más tenue para no saturar. */
 :root:not([data-theme="dark"]) html:not(.is-auth) body.onyx-vivid::before{
   background-image:
