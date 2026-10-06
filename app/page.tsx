@@ -576,8 +576,11 @@ export default function Home() {
 
   return (
     // El landmark <main> ahora es global (en el layout raíz), así que aquí solo
-    // devolvemos un fragmento para no duplicarlo.
-    <>
+    // devolvemos un contenedor del landing. La clase landing-vivid aplica el estilo
+    // "con vida" (auroras, neón, glows) SOLO al landing; el resto de la app no cambia.
+    <div className="landing-vivid">
+      {/* Auroras de color animadas de fondo (los glows que laten). Decorativas. */}
+      <div className="lv-aurora" aria-hidden="true"><span></span><span></span><span></span></div>
       {/* La barra de secciones ahora es global (en el layout), visible en todas las páginas. */}
 
       {/* HERO */}
@@ -1015,6 +1018,6 @@ export default function Home() {
       </div>
 
       {/* El footer ahora es global (app/SiteFooter.tsx), en todas las páginas. */}
-    </>
+    </div>
   );
 }

@@ -1127,3 +1127,45 @@ html.native-app .onyx-boot{display:flex}
 .onyx-boot.onyx-boot--hide{opacity:0;pointer-events:none}
 .onyx-boot img{width:92px;height:92px;object-fit:contain;animation:onyxBootPulse 1.4s ease-in-out infinite}
 @keyframes onyxBootPulse{0%,100%{opacity:.5;transform:scale(.95)}50%{opacity:1;transform:scale(1.05)}}
+
+/* ============================================================
+   LANDING "CON VIDA" — estilo neón/aurora SOLO para el landing (.landing-vivid).
+   No toca el dashboard/admin: todo está scoped bajo .landing-vivid.
+   ============================================================ */
+.landing-vivid{position:relative;isolation:isolate}
+
+/* Degradado neón de marca (cian → violeta → rosa) para los títulos con var(--grad). */
+.landing-vivid{--grad:linear-gradient(100deg,#35e0ff,#8b7bff 46%,#ff6bd0)}
+
+/* Auroras: 3 manchas de color borrosas que laten de fondo. Fijas, sin capturar clics. */
+.lv-aurora{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.lv-aurora span{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;animation:lvFloat 16s ease-in-out infinite}
+.lv-aurora span:nth-child(1){width:620px;height:620px;background:radial-gradient(circle,#6b4bff,transparent 60%);top:-180px;left:-120px}
+.lv-aurora span:nth-child(2){width:560px;height:560px;background:radial-gradient(circle,#19d3ff,transparent 60%);top:38%;right:-140px;animation-delay:-6s}
+.lv-aurora span:nth-child(3){width:480px;height:480px;background:radial-gradient(circle,#ff5bc0,transparent 60%);bottom:-160px;left:40%;opacity:.32;animation-delay:-11s}
+@keyframes lvFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(38px,-28px) scale(1.12)}}
+/* En tema claro bajamos la intensidad para que no ensucie el fondo claro. */
+:root:not([data-theme="dark"]) .lv-aurora span{opacity:.22}
+:root:not([data-theme="dark"]) .lv-aurora span:nth-child(3){opacity:.16}
+
+/* Botón primario con degradado + glow que reacciona al hover. */
+.landing-vivid .btn-primary{background:linear-gradient(100deg,#35e0ff,#7b5bff 55%,#b27dff);color:#0a0c16;border:none;
+  box-shadow:0 0 0 1px rgba(255,255,255,.08),0 10px 30px -8px rgba(123,91,255,.7),0 0 30px -6px rgba(53,224,255,.5);
+  transition:transform .15s ease,box-shadow .25s ease}
+.landing-vivid .btn-primary:hover{transform:translateY(-2px);
+  box-shadow:0 0 0 1px rgba(255,255,255,.16),0 16px 42px -8px rgba(123,91,255,.9),0 0 46px -4px rgba(53,224,255,.7)}
+
+/* Botón fantasma: borde que se ilumina en cian al pasar. */
+.landing-vivid .btn-ghost{transition:transform .15s ease,box-shadow .25s ease,border-color .2s ease}
+.landing-vivid .btn-ghost:hover{transform:translateY(-2px);border-color:rgba(53,224,255,.6);box-shadow:0 0 24px -8px rgba(53,224,255,.55)}
+
+/* Píldora superior con borde y resplandor. */
+.landing-vivid .pill{box-shadow:0 0 22px -6px color-mix(in srgb,var(--brand) 70%,transparent)}
+
+/* Tarjetas: borde superior de acento + glow sutil al pasar el cursor (más "vivas"). */
+.landing-vivid .card{transition:transform .18s ease,box-shadow .28s ease,border-color .2s ease}
+.landing-vivid .card:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--brand) 45%,var(--line));
+  box-shadow:0 14px 40px -12px rgba(0,0,0,.5),0 0 32px -10px color-mix(in srgb,var(--brand) 60%,transparent)}
+
+/* Respeta a quien pide menos movimiento (accesibilidad). */
+@media (prefers-reduced-motion:reduce){.lv-aurora span{animation:none}}
