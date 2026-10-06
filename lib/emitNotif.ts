@@ -67,17 +67,44 @@ export async function emitNotif(
     // ha tocado nada, recibe lo que el dueño dejó activo. (Telegram lo controla
     // aparte con sus interruptores de Mi cuenta → Avisos.)
     let pref: any = {};
+    let planId: string | null = null;
     try {
-      const { data } = await supabaseAdmin.from('profiles').select('notif_prefs').eq('id', userId).maybeSingle();
+      const { data } = await supabaseAdmin.from('profiles').select('notif_prefs,plan').eq('id', userId).maybeSingle();
       pref = (data as any)?.notif_prefs?.[key] || {};
+      planId = (data as any)?.plan || null;
     } catch { /* si no existe la columna aún, no filtra */ }
 
     if (d.bell && pref.bell !== false) { try { await notify(userId, { kind: key, title, body, url }); } catch {} }
     // La categoría define el CANAL de la push nativa (Android) para que el usuario
     // pueda activar/silenciar cada tipo por separado y se vea el nombre del canal.
-    if (d.push && pref.push !== false) { try { await sendPush(userId, { title, body, url, category: notifCategory(key) }); } catch {} }
+    // PUSH además exige que el PLAN lo incluya (capabilities.push): si el plan no lo
+    // cubre (p. ej. Free), no se envía push aunque el tipo y las prefs lo permitan.
+    // Así se hace cumplir el candado que ya muestra la UI, y queda configurable por plan.
+    if (d.push && pref.push !== false && await planAllowsPush(planId)) {
+      try { await sendPush(userId, { title, body, url, category: notifCategory(key) }); } catch {}
+    }
     if (d.telegram) { try { await alertUser(userId, d.tgKind as any, `<b>${title}</b>\n${body}`); } catch {} }
   } catch { /* nunca romper el flujo que llamó */ }
+}
+
+// ¿El PLAN del usuario incluye PUSH? Misma regla que la UI de Mi cuenta → Avisos
+// (app/api/account/notif-prefs): si plans.capabilities.push está puesto, manda ese
+// valor; si no, el push viene apagado en Free y encendido en los de pago. Así el
+// candado de push NO está quemado en código: depende de las capacidades del plan,
+// y el día que crees/edites un plan, el push se ajusta solo (UI y backend juntos).
+// Cacheamos por planId durante la corrida (los crons avisan a muchos a la vez).
+const _pushByPlan = new Map<string, boolean>();
+async function planAllowsPush(planId: string | null | undefined): Promise<boolean> {
+  const id = planId || 'free';
+  if (_pushByPlan.has(id)) return _pushByPlan.get(id)!;
+  let allowed = id !== 'free';   // respaldo si el plan no define la capacidad
+  try {
+    const { data } = await supabaseAdmin.from('plans').select('capabilities').eq('id', id).maybeSingle();
+    const cap = (data as any)?.capabilities?.push;
+    allowed = (cap === undefined || cap === null) ? (id !== 'free') : !!cap;
+  } catch { /* si falla, usamos el respaldo por id */ }
+  _pushByPlan.set(id, allowed);
+  return allowed;
 }
 
 // Reexport útil para precargar la config una vez en bucles (crons).
