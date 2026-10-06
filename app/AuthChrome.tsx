@@ -19,6 +19,13 @@ export default function AuthChrome() {
     const q = path.replace(/^\/en/, '') || '/';
     const isAuth = ['/login', '/reset-password'].some((p) => q === p || q.startsWith(p + '/'));
     document.documentElement.classList.toggle('is-auth', isAuth);
+    // El fondo "con vida" (tono china) se enciende con body.onyx-vivid SOLO en
+    // páginas públicas. Como el layout raíz NO se re-renderiza al navegar sin
+    // recargar, lo mantenemos sincronizado aquí: si no, al salir de login a inicio
+    // el fondo china no aparecía hasta refrescar.
+    const appArea = ['/dashboard', '/admin', '/account', '/login', '/onboarding', '/academy', '/staff', '/connect']
+      .some((p) => q === p || q.startsWith(p + '/'));
+    document.body.classList.toggle('onyx-vivid', !appArea);
   }, [path]);
   return null;
 }
