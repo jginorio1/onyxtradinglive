@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     try { const { data } = await supabaseAdmin.from('profiles').select('lang').eq('id', uid).maybeSingle(); lang = (data as any)?.lang === 'en' ? 'en' : 'es'; } catch {}
     const prefix = lang === 'en' ? '[TEST] ' : '[PRUEBA] ';
     try {
-      await emitNotif(uid, key, { cfg, lang, vars: TEST_VARS, title: prefix + (def as any)[lang].title });
+      await emitNotif(uid, key, { cfg, lang, vars: TEST_VARS, title: prefix + (def as any)[lang].title, ignorePlan: true });
     } catch (e: any) { return NextResponse.json({ error: 'no se pudo enviar', detail: String(e?.message || e) }, { status: 500 }); }
     return NextResponse.json({ ok: true, sent: true });
   }

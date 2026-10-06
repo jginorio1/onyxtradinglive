@@ -26,7 +26,7 @@ export function notifCategory(key: string): string {
 export async function emitNotif(
   userId: string,
   key: string,
-  opts: { lang?: string; url?: string; vars?: Record<string, string | number>; cfg?: any; title?: string; body?: string; once?: string } = {}
+  opts: { lang?: string; url?: string; vars?: Record<string, string | number>; cfg?: any; title?: string; body?: string; once?: string; ignorePlan?: boolean } = {}
 ): Promise<void> {
   try {
     const all = opts.cfg || (await loadNotifConfig());
@@ -80,7 +80,9 @@ export async function emitNotif(
     // PUSH además exige que el PLAN lo incluya (capabilities.push): si el plan no lo
     // cubre (p. ej. Free), no se envía push aunque el tipo y las prefs lo permitan.
     // Así se hace cumplir el candado que ya muestra la UI, y queda configurable por plan.
-    if (d.push && pref.push !== false && await planAllowsPush(planId)) {
+    // ignorePlan = envíos del dueño/admin (prueba "Probar ahora", difusión manual):
+    // esos no deben respetar el candado de plan, deben poder llegar a cualquiera.
+    if (d.push && pref.push !== false && (opts.ignorePlan || await planAllowsPush(planId))) {
       try { await sendPush(userId, { title, body, url, category: notifCategory(key) }); } catch {}
     }
     if (d.telegram) { try { await alertUser(userId, d.tgKind as any, `<b>${title}</b>\n${body}`); } catch {} }
