@@ -1328,8 +1328,9 @@ html:not(.is-auth) body.onyx-vivid::after{
   content:"";position:fixed;top:0;left:0;right:0;height:130px;z-index:0;pointer-events:none;
   background:linear-gradient(var(--bg,#06070b) 52%, transparent);
 }
-/* El contenido queda por encima del fondo. */
-html:not(.is-auth) body.onyx-vivid > *{position:relative;z-index:1}
+/* El contenido queda por encima del fondo. Se EXCLUYE la cáscara fija/sticky
+   (promo, barra, sub-nav, footer, header) para no pisar su position:sticky/fixed. */
+html:not(.is-auth) body.onyx-vivid > *:not(.promobar):not(.topbar):not(.secnav):not(.site-footer):not(header){position:relative;z-index:1}
 /* En tema claro, más tenue para no saturar. */
 :root:not([data-theme="dark"]) html:not(.is-auth) body.onyx-vivid::before{
   background-image:
