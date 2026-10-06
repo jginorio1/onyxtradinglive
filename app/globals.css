@@ -1208,9 +1208,21 @@ body.onyx-vivid{background-image:none !important}
   .onyx-vivid .btn-primary:hover{transform:translateY(-2px);
     box-shadow:0 0 0 1px rgba(255,255,255,.12),0 12px 24px -10px rgba(255,106,43,.6)}
   .onyx-vivid .btn-ghost:hover{transform:translateY(-2px);border-color:rgba(255,157,61,.65);box-shadow:0 0 24px -8px rgba(255,157,61,.5)}
+  /* REACCIÓN UNIFORME EN TODAS LAS PÁGINAS PÚBLICAS: muchas páginas (carreras, unete-ventas,
+     entrenamiento, bot-lab, etc.) hicieron sus botones con estilo propio en vez de la clase
+     .btn, así que NO reaccionaban al pasar el cursor. Esta regla da a CUALQUIER <button> y a
+     los enlaces-botón el mismo gesto que la landing: se elevan 2px con una sombra contenida,
+     SIN tocar su color. Se excluyen navegación, pestañas, chips, píldoras, toggles, iconos
+     (aria-label) y acordeones, que no deben elevarse. */
+  .onyx-vivid button:not(.btn):not(.chip):not(.pill):not(.navlink):not(.tab):not(.themetoggle):not(.adminnav-item):not([class*="sk-"]):not([class*="qa"]):not([aria-label]):not([aria-expanded]):hover,
+  .onyx-vivid a.btn:not(.btn-primary):not(.btn-ghost):hover{
+    transform:translateY(-2px);box-shadow:0 10px 22px -10px rgba(0,0,0,.5);
+    transition:transform .15s ease,box-shadow .2s ease}
   /* FAQ (acordeón) sí reacciona al cursor: un borde naranja tenue, sin iluminar fondo. */
   .onyx-vivid details:hover{border-color:rgba(255,157,61,.4)}
 }
+/* Transición base para que la elevación de botones con estilo propio sea suave (no brusca). */
+.onyx-vivid button{transition:transform .15s ease,box-shadow .2s ease}
 /* Las TARJETAS de contenido NO se iluminan al pasar el cursor ni al presionar (ni en
    PC ni en móvil): el glow/elevación en cada tarjeta resultaba molesto. Solo los
    botones y los FAQ (details) reaccionan. */
