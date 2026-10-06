@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLang } from '@/lib/lang';
 
 // Página pública de CARRERAS. Tarjetas por plaza, filtro por área, y postulación
@@ -195,9 +196,9 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
     </div>
   );
 
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20, overflowY: 'auto' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(600px,100%)', maxHeight: '100%', display: 'flex', flexDirection: 'column', background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 16, overflow: 'hidden' }}>
+  const overlay = (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16, overflowY: 'auto' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(600px,100%)', maxHeight: 'calc(100dvh - 32px)', display: 'flex', flexDirection: 'column', background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 16, overflow: 'hidden', margin: 'auto' }}>
         {Header}
 
         {tab === 'detail' && <>
@@ -249,4 +250,7 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
       </div>
     </div>
   );
+  // Renderizamos sobre el <body> para que el popup escape de cualquier
+  // capa/sticky (barra superior) y cubra toda la pantalla de forma consistente.
+  return typeof document !== 'undefined' ? createPortal(overlay, document.body) : overlay;
 }
