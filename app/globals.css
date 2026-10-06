@@ -1320,10 +1320,13 @@ html.is-auth .auth-center > *:not(canvas){position:relative;z-index:1}
    columnas: marca a la izquierda, formulario a la derecha. */
 .lb-left, .lb-right{display:contents}
 @media (min-width:860px){
+  /* El contenedor .auth-center está limitado a 420px → hay que soltarlo para que
+     el cajón horizontal pueda ensancharse de verdad (si no, queda apretado). */
+  html:not(.native-app) .auth-center{max-width:760px !important; width:100%;}
   html:not(.native-app) .login-box{
-    max-width:720px !important;
-    display:grid; grid-template-columns:0.82fr 1.18fr; column-gap:30px; align-items:center;
-    padding:30px 34px;
+    max-width:760px !important; width:100%;
+    display:grid; grid-template-columns:0.9fr 1.1fr; column-gap:32px; align-items:center;
+    padding:30px 36px;
   }
   html:not(.native-app) .login-box > .lb-left{display:block; text-align:center}
   html:not(.native-app) .login-box > .lb-right{display:block; border-left:1px solid var(--line); padding-left:30px}
