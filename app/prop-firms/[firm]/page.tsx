@@ -85,10 +85,12 @@ export default function FirmPage({ params }: { params: { firm: string } }) {
       <h2 style={{ marginTop: 28, marginBottom: 12 }}>{es ? 'Preguntas frecuentes' : 'Frequently asked questions'}</h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {firm.faq.map((q, i) => (
-          <div key={i} className="card">
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>{q.q[l]}</div>
-            <div className="muted" style={{ fontSize: 14, lineHeight: 1.55 }}>{q.a[l]}</div>
-          </div>
+          <details key={i} className="card" style={{ cursor: 'pointer' }}>
+            <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: 'var(--brand)' }}>▶</span> {q.q[l]}
+            </summary>
+            <div className="muted" style={{ fontSize: 14, lineHeight: 1.55, marginTop: 8 }}>{q.a[l]}</div>
+          </details>
         ))}
       </div>
 

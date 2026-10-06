@@ -242,10 +242,12 @@ export default async function CopyLanding() {
       <div style={{ textAlign: 'center', marginBottom: 16 }}><h2 style={{ fontSize: 24 }}>{L.faqT}</h2></div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 30 }}>
         {L.faq.map(([q, a], i) => (
-          <div key={i} className="card">
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>{q}</div>
-            <div className="muted" style={{ fontSize: 14, lineHeight: 1.6 }}>{a}</div>
-          </div>
+          <details key={i} className="card" style={{ cursor: 'pointer' }}>
+            <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: 'var(--brand)' }}>▶</span> {q}
+            </summary>
+            <div className="muted" style={{ fontSize: 14, lineHeight: 1.6, marginTop: 8 }}>{a}</div>
+          </details>
         ))}
       </div>
 

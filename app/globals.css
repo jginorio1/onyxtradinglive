@@ -1159,24 +1159,33 @@ html.native-app .onyx-boot{display:flex}
 .onyx-vivid .card{transition:transform .18s ease,box-shadow .28s ease,border-color .2s ease}
 /* FAQ: cualquier acordeón <details> dentro de páginas públicas se ilumina igual
    (congruente en TODAS las páginas: landing, mentores, bot-lab, precios, etc.). */
-.onyx-vivid details{transition:box-shadow .28s ease,border-color .2s ease}
+.onyx-vivid details{transition:box-shadow .25s ease,border-color .2s ease}
+/* Sin el destello gris de "toque" del navegador móvil en tarjetas/FAQ/botones. */
+.onyx-vivid .card,.onyx-vivid details,.onyx-vivid .btn,.onyx-vivid summary{-webkit-tap-highlight-color:transparent}
 
-/* Los EFECTOS DE PASAR EL CURSOR (elevar + glow) solo con MOUSE real. En móvil
-   el :hover se queda "pegado" tras tocar y molesta, así que ahí no se aplican:
-   la tarjeta/botón se ve normal y solo reacciona al tap como siempre. */
+/* FAQ ABIERTO = reacción CLARA al tocar (funciona igual en móvil y escritorio):
+   borde naranja + resplandor cálido visible, y la pregunta se pinta de naranja. */
+.onyx-vivid details[open]{border-color:rgba(255,157,61,.6) !important;
+  box-shadow:0 0 0 1px rgba(255,157,61,.4),0 0 26px -6px rgba(255,122,26,.6) !important}
+.onyx-vivid details[open] > summary{color:#ffb15e}
+
+/* Los EFECTOS DE PASAR EL CURSOR (elevar + glow) solo con MOUSE real. En móvil el
+   :hover se queda "pegado" tras tocar y molesta, así que ahí NO se aplican. */
 @media (hover:hover) and (pointer:fine){
   .onyx-vivid .btn-primary:hover{transform:translateY(-2px);
     box-shadow:0 0 0 1px rgba(255,255,255,.16),0 16px 42px -8px rgba(255,106,43,.85),0 0 42px -6px rgba(255,207,92,.6)}
   .onyx-vivid .btn-ghost:hover{transform:translateY(-2px);border-color:rgba(255,157,61,.65);box-shadow:0 0 24px -8px rgba(255,157,61,.5)}
-  /* Glow de tarjeta MÁS SUAVE que antes (menos "molestoso"): sin aro de color, solo
-     una sombra cálida tenue y una elevación leve. */
-  .onyx-vivid .card:hover{transform:translateY(-2px);border-color:rgba(255,157,61,.28);
-    box-shadow:0 12px 34px -14px rgba(0,0,0,.5),0 0 22px -12px rgba(255,122,26,.4)}
-  /* FAQ: mismo trato suave al pasar el cursor, en todas las páginas. */
-  .onyx-vivid details:hover{border-color:rgba(255,157,61,.3);box-shadow:0 0 22px -12px rgba(255,122,26,.45)}
+  /* FAQ (acordeón) sí reacciona al cursor: un borde naranja tenue, sin iluminar fondo. */
+  .onyx-vivid details:hover{border-color:rgba(255,157,61,.4)}
 }
-/* FAQ abierto: un resplandor cálido muy leve para marcar el activo (sin exagerar). */
-.onyx-vivid details[open]{box-shadow:0 0 20px -12px rgba(255,122,26,.4)}
+/* Las TARJETAS de contenido NO se iluminan al pasar el cursor ni al presionar (ni en
+   PC ni en móvil): el glow/elevación en cada tarjeta resultaba molesto. Solo los
+   botones y los FAQ (details) reaccionan. */
+.onyx-vivid .card:hover,
+.onyx-vivid .card:active,
+.onyx-vivid .card:focus-within{transform:none;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+/* …pero si la tarjeta ES un FAQ abierto, conserva su resplandor naranja. */
+.onyx-vivid details.card[open]{box-shadow:0 0 0 1px rgba(255,157,61,.4),0 0 26px -6px rgba(255,122,26,.6) !important}
 
 /* Respeta a quien pide menos movimiento (accesibilidad). */
 @media (prefers-reduced-motion:reduce){.lv-aurora span{animation:none}}
