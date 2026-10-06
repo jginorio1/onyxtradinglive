@@ -1144,11 +1144,15 @@ html.native-app .onyx-boot{display:flex}
    completa y "parpadeaba"/aclaraba el fondo. will-change + translateZ la aíslan. */
 .lv-aurora{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;
   transform:translateZ(0);will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden}
-.lv-aurora span{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;animation:lvFloat 16s ease-in-out infinite;
+/* SIN filter:blur. El blur a pantalla completa obligaba al navegador a re-rasterizar
+   toda la aurora cada vez que CUALQUIER botón repintaba su sombra (al pasar/presionar),
+   y eso "encendía" el fondo. El degradado radial ya es suave por sí solo, así que el
+   look se mantiene sin la capa de blur (la causa del parpadeo). */
+.lv-aurora span{position:absolute;border-radius:50%;opacity:.42;animation:lvFloat 16s ease-in-out infinite;
   will-change:transform;transform:translateZ(0);backface-visibility:hidden;-webkit-backface-visibility:hidden}
-.lv-aurora span:nth-child(1){width:620px;height:620px;background:radial-gradient(circle,#ff7a1a,transparent 60%);top:-180px;left:-120px}
-.lv-aurora span:nth-child(2){width:560px;height:560px;background:radial-gradient(circle,#ffbf40,transparent 60%);top:38%;right:-140px;animation-delay:-6s}
-.lv-aurora span:nth-child(3){width:480px;height:480px;background:radial-gradient(circle,#ff3d5a,transparent 60%);bottom:-160px;left:40%;opacity:.3;animation-delay:-11s}
+.lv-aurora span:nth-child(1){width:720px;height:720px;background:radial-gradient(circle,#ff7a1a,transparent 70%);top:-220px;left:-160px}
+.lv-aurora span:nth-child(2){width:660px;height:660px;background:radial-gradient(circle,#ffbf40,transparent 70%);top:38%;right:-180px;animation-delay:-6s}
+.lv-aurora span:nth-child(3){width:560px;height:560px;background:radial-gradient(circle,#ff3d5a,transparent 70%);bottom:-200px;left:40%;opacity:.26;animation-delay:-11s}
 @keyframes lvFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(38px,-28px) scale(1.12)}}
 /* En tema claro bajamos la intensidad para que no ensucie el fondo claro. */
 :root:not([data-theme="dark"]) .lv-aurora span{opacity:.2}
