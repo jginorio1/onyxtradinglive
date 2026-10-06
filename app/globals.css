@@ -1313,23 +1313,23 @@ html.is-auth .auth-center > *:not(canvas){position:relative;z-index:1}
 /* Compacta el toggle para que quepa limpio en la esquina. */
 .login-lang .langtoggle, .login-lang button{transform:scale(.92);transform-origin:top right}
 
-/* ===== Fondo principal: rejilla técnica tenue (TODAS las públicas MENOS login) =
-   Cuadriculado sutil difuminado hacia los bordes, sobre el ambiente naranja que ya
-   tiene body.onyx-vivid. Se EXCLUYE el login (html.is-auth), que conserva su red de
-   puntos. Capa fija detrás del contenido; no afecta clics. */
+/* ===== Fondo principal: AURORA/BRASA en tono chinita (públicas MENOS login) ====
+   Manchas naranjas suaves en las esquinas sobre la base oscura (sin cuadros). Capa
+   fija detrás del contenido; no afecta clics. Se EXCLUYE el login (html.is-auth),
+   que conserva su red de puntos. */
 html:not(.is-auth) body.onyx-vivid::before{
   content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:1;
   background-image:
-    linear-gradient(rgba(255,160,80,.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,160,80,.07) 1px, transparent 1px);
-  background-size:62px 62px;
-  -webkit-mask-image:radial-gradient(95% 90% at 50% 40%, #000, transparent 100%);
-  mask-image:radial-gradient(95% 90% at 50% 40%, #000, transparent 100%);
+    radial-gradient(760px 540px at 10% -4%, rgba(255,122,26,.22), transparent 60%),
+    radial-gradient(720px 560px at 102% 34%, rgba(255,90,40,.15), transparent 60%),
+    radial-gradient(700px 560px at 48% 114%, rgba(255,61,90,.12), transparent 62%);
+  background-repeat:no-repeat;
 }
-/* El contenido queda por encima de la rejilla. */
+/* El contenido queda por encima del fondo. */
 html:not(.is-auth) body.onyx-vivid > *{position:relative;z-index:1}
-/* En tema claro, un poco más tenue para no ensuciar. */
-:root:not([data-theme="dark"]) html:not(.is-auth) body.onyx-vivid::before{opacity:.6;
+/* En tema claro, más tenue para no saturar. */
+:root:not([data-theme="dark"]) html:not(.is-auth) body.onyx-vivid::before{
   background-image:
-    linear-gradient(rgba(120,80,30,.09) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120,80,30,.09) 1px, transparent 1px);}
+    radial-gradient(760px 540px at 10% -4%, rgba(255,122,26,.10), transparent 60%),
+    radial-gradient(720px 560px at 102% 34%, rgba(255,90,40,.07), transparent 60%),
+    radial-gradient(700px 560px at 48% 114%, rgba(255,61,90,.05), transparent 62%);}
