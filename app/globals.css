@@ -1320,9 +1320,9 @@ html.is-auth .auth-center > *:not(canvas){position:relative;z-index:1}
 html:not(.is-auth) body.onyx-vivid::before{
   content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:1;
   background-image:
-    linear-gradient(rgba(255,160,80,.11) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,160,80,.11) 1px, transparent 1px);
-  background-size:46px 46px;
+    linear-gradient(rgba(255,160,80,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,160,80,.07) 1px, transparent 1px);
+  background-size:62px 62px;
   -webkit-mask-image:radial-gradient(95% 90% at 50% 40%, #000, transparent 100%);
   mask-image:radial-gradient(95% 90% at 50% 40%, #000, transparent 100%);
 }
