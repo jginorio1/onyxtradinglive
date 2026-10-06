@@ -79,7 +79,6 @@ export default function AnalizaPage() {
   return (
     <div className="wrap" style={{ maxWidth: 720, margin: '0 auto', padding: '48px 18px' }}>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
-        <img src="/onyx-symbol.png" alt="Onyx" style={{ width: 44, height: 44, objectFit: 'contain', marginBottom: 14 }} />
         <h1 style={{ marginBottom: 8 }}>{px('title', L('Analiza tu cuenta gratis 🔍', 'Analyze your account free 🔍'))}</h1>
         <p className="muted" style={{ fontSize: 15, maxWidth: 560, margin: '0 auto' }}>
           {px('sub', L('Pega tu reporte de MetaTrader o cTrader (o tu lista de operaciones cerradas) y Onyx AI te da estadísticas, un score de disciplina y 3 hallazgos al instante. Sin registro.', 'Paste your MetaTrader or cTrader statement (or your closed-trades list) and Onyx AI gives you stats, a discipline score and 3 findings instantly. No signup.'))}

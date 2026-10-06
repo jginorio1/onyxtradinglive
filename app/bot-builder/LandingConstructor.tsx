@@ -127,7 +127,7 @@ export default function LandingConstructor() {
       .lpc .hero{text-align:center;padding:44px 0 8px}
       .lpc .chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;padding:6px 14px;border-radius:99px;background:rgba(124,140,255,.14);background:color-mix(in srgb,var(--brand) 15%,transparent);border:1px solid color-mix(in srgb,var(--brand) 40%,transparent);color:var(--brand,#5b6cff)}
       .lpc h1{font-size:clamp(30px,5vw,50px);font-weight:800;line-height:1.12;margin:18px 0 0}
-      .lpc .grad{background:linear-gradient(90deg,#7c8cff,#12b981);-webkit-background-clip:text;background-clip:text;color:transparent}
+      .lpc .grad{background:linear-gradient(100deg,#ffcf5c,#ff9d3d 46%,#ff5e4d);-webkit-background-clip:text;background-clip:text;color:transparent}
       .lpc .sub{color:var(--mut);font-size:clamp(15px,2vw,19px);max-width:620px;margin:16px auto 0}
       .lpc .cta{display:flex;gap:12px;justify-content:center;margin-top:24px;flex-wrap:wrap}
       .lpc .trust{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:20px;color:var(--mut);font-size:13px}

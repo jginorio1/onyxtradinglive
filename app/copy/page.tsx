@@ -40,7 +40,7 @@ export default async function CopyLanding() {
   } catch { providers = []; }
 
   const L = es ? {
-    kicker: 'Onyx Copy', h1: 'Copia a traders calificados por Onyx AI',
+    kicker: 'Copy trading · Calificado por IA', h1: 'Copia a traders calificados por Onyx AI',
     sub: 'Onyx AI evalúa a cada trader por su disciplina, su gestión de riesgo y sus KPIs, no por suerte. Los ubica en un ranking transparente y tú eliges a quién copiar.',
     ctaCopy: 'Ver el ranking', ctaApply: 'Postula tu cuenta',
     howT: 'Cómo se califica un trader', howSub: 'Un Onyx Score de 0 a 100 con cuatro pilares. Pesa más la disciplina que el retorno bruto: premia al sostenible, no al que apuesta.',
@@ -66,7 +66,7 @@ export default async function CopyLanding() {
     ],
     riskNote: 'Copiar operaciones conlleva riesgo. Los resultados pasados no garantizan resultados futuros. Onyx no gestiona tu dinero: tú mantienes el control y tus propios límites de riesgo.',
   } : {
-    kicker: 'Onyx Copy', h1: 'Copy traders graded by Onyx AI',
+    kicker: 'Copy trading · Graded by AI', h1: 'Copy traders graded by Onyx AI',
     sub: 'Onyx AI grades every trader by discipline, risk management and KPIs — not luck. It ranks them transparently and you choose who to copy.',
     ctaCopy: 'See the ranking', ctaApply: 'List your account',
     howT: 'How a trader is graded', howSub: 'An Onyx Score from 0 to 100 across four pillars. Discipline weighs more than raw return: it rewards the sustainable trader, not the gambler.',
@@ -132,7 +132,7 @@ export default async function CopyLanding() {
 
       {/* Hero */}
       <div style={{ textAlign: 'center', marginBottom: 34 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 12px', borderRadius: 999, background: 'rgba(124,140,255,.12)', border: '1px solid var(--brand)', color: 'var(--soft-brand)', fontSize: 13, fontWeight: 600, marginBottom: 14 }}>◆ {L.kicker}</div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 999, background: 'rgba(255,122,26,.10)', border: '1px solid rgba(255,157,61,.5)', color: '#ffcf8f', fontSize: 13, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 14, boxShadow: '0 0 24px -8px rgba(255,122,26,.5)' }}>{L.kicker}</div>
         <h1 style={{ fontSize: 34, lineHeight: 1.15, maxWidth: 780, marginInline: 'auto' }}>{L.h1}</h1>
         <p className="muted" style={{ fontSize: 17, marginTop: 12, maxWidth: 660, marginInline: 'auto' }}>{L.sub}</p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
