@@ -112,7 +112,7 @@ export default function CareersClient() {
                 {!!TG(p).length && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                   {TG(p).slice(0, 6).map((t: string, i: number) => <span key={i} style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)', border: '1px solid var(--line,#2a3350)', borderRadius: 6, padding: '2px 8px' }}>{t}</span>)}
                 </div>}
-                <button onClick={() => setApply(p)} style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, border: 'none', background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', color: '#241002', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>{L('Ver y postularme', 'View & apply')} <Ic n="arrow" s={16} c="#241002" /></button>
+                <button onClick={() => setApply(p)} style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, border: '1px solid rgba(255,106,43,.55)', background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', color: '#241002', fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: '0 6px 18px -6px rgba(255,106,43,.6)' }}>{L('Ver y postularme', 'View & apply')} <Ic n="arrow" s={16} c="#241002" /></button>
               </div>
             );
           })}
@@ -175,7 +175,7 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
   };
 
   // Botón de acción en tono china (congruente con el sitio).
-  const chinaBtn: React.CSSProperties = { width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', color: '#241002', fontWeight: 700, fontSize: 15, cursor: 'pointer' };
+  const chinaBtn: React.CSSProperties = { width: '100%', padding: '13px', borderRadius: 10, border: '1px solid rgba(255,106,43,.55)', background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', color: '#241002', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 6px 18px -6px rgba(255,106,43,.6)' };
   // Estructura responsiva: cabecera fija, cuerpo con scroll interno, pie fijo.
   const head: React.CSSProperties = { flex: '0 0 auto', padding: '18px 22px 14px', borderBottom: '1px solid var(--line,#2a3350)' };
   const body: React.CSSProperties = { flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: '16px 22px' };
@@ -196,7 +196,7 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
   );
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 90, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20, overflowY: 'auto' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20, overflowY: 'auto' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(600px,100%)', maxHeight: '100%', display: 'flex', flexDirection: 'column', background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 16, overflow: 'hidden' }}>
         {Header}
 
