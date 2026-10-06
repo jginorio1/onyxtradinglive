@@ -382,13 +382,13 @@ function LoginInner() {
     <div className="center auth-center">
       {/* Fondo de red de partículas 3D (solo login). Va detrás de todo (zIndex:0). */}
       <LoginParticles />
-      {/* Selector de idioma en la propia pantalla de entrada: imprescindible en la
-          app nativa, donde la barra superior está oculta y no habría otra forma de
-          cambiar el idioma antes de entrar. Alineado a la derecha, sobre el logo. */}
-      <div style={{ width: '100%', maxWidth: 440, display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
-        <LangToggle compact />
-      </div>
-      <div className="card login-box" style={{ width: '100%', maxWidth: 440 }}>
+      <div className="card login-box" style={{ width: '100%', maxWidth: 440, position: 'relative' }}>
+        {/* Selector de idioma DENTRO de la tarjeta, esquina superior derecha
+            (integrado, ya no flota suelto). Imprescindible en la app nativa, donde
+            la barra superior está oculta y no habría otra forma de cambiar idioma. */}
+        <div className="login-lang">
+          <LangToggle compact />
+        </div>
         {/* Marca DENTRO de la caja: logo + nombre arriba, para que todo el login
             sea una sola tarjeta (con tono china: borde y glow naranja + franja arriba). */}
         <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit', marginBottom: 18 }}>

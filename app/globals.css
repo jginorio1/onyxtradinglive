@@ -1304,3 +1304,11 @@ html.is-auth .site-footer{display:none !important}
    y el selector de idioma queden por ENCIMA del canvas (y no debajo), se les da
    su propio contexto de apilamiento con z-index:1. Se excluye el canvas. */
 html.is-auth .auth-center > *:not(canvas){position:relative;z-index:1}
+
+/* ===== Login: selector de idioma DENTRO de la tarjeta (esquina sup. derecha) ==
+   Antes flotaba suelto encima de la caja y se veía raro. Ahora va integrado en la
+   esquina, por encima de la franja superior y del contenido. */
+.login-box{position:relative}
+.login-lang{position:absolute;top:12px;right:12px;z-index:4}
+/* Compacta el toggle para que quepa limpio en la esquina. */
+.login-lang .langtoggle, .login-lang button{transform:scale(.92);transform-origin:top right}
