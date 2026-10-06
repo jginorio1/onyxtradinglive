@@ -244,7 +244,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   }
 
   const bubble = (role: string) => role === 'user'
-    ? { alignSelf: 'flex-end', background: 'var(--grad)', color: '#fff', borderRadius: '12px 12px 2px 12px' }
+    ? { alignSelf: 'flex-end', background: 'var(--grad)', color: '#241002', borderRadius: '12px 12px 2px 12px' }
     : { alignSelf: 'flex-start', background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: '12px 12px 12px 2px' };
 
   if (inAdmin || inAcademy || inAuth) return null;
@@ -282,9 +282,11 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>{ic && <OnyxIcon emoji={ic} size={size} glow={false} />}{tx}</span>;
   };
 
-  // Colores del tema del chat (variables locales que heredan los hijos fijos).
-  const grad = cfg.gradient ? `linear-gradient(135deg, ${cfg.c1}, ${cfg.c2})` : cfg.c1;
-  const themeVars: any = { ['--grad']: grad, ['--brand']: cfg.accent };
+  // Colores del tema del chat: TODO en tono china (naranja), texto oscuro encima.
+  const CHINA = 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)';
+  const CHINK = '#241002'; // texto/icono oscuro para contraste sobre naranja
+  const grad = CHINA;
+  const themeVars: any = { ['--grad']: CHINA, ['--brand']: '#ff6a2b' };
   const side = cfg.side === 'left' ? 'left' : 'right';
   const sideC: 'left' | 'right' = sideOv || side;   // lado efectivo del panel (con override)
   const ox = Math.max(0, cfg.offsetX ?? 18), oy = Math.max(0, cfg.offsetY ?? 18);
@@ -360,7 +362,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
           <button onClick={launch} aria-label={x.help || (es ? 'Abrir el chat de ayuda' : 'Open help chat')}
             style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', cursor: 'pointer', flexDirection: side === 'left' ? 'row-reverse' : 'row' }}>
             {x.help && <span style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 20, padding: '7px 13px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 6px 18px rgba(0,0,0,.3)' }}>{x.help}</span>}
-            <span style={{ position: 'relative', width: lsz, height: lsz, borderRadius: '50%', background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 22px rgba(0,0,0,.35)' }}><OnyxIcon emoji={cfg.launcher || '💬'} size={Math.round(lsz * 0.5)} glow={false} />
+            <span style={{ position: 'relative', width: lsz, height: lsz, borderRadius: '50%', background: 'var(--grad)', color: '#241002', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 22px rgba(0,0,0,.35)' }}><OnyxIcon emoji={cfg.launcher || '💬'} size={Math.round(lsz * 0.5)} glow={false} />
               {cfg.showPulse && <span className="onyx-pulse" style={{ position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: '50%', background: 'var(--green)', border: '2px solid var(--bg)' }} />}
             </span>
           </button>
@@ -369,42 +371,16 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
 
       {open && (
         <div className="onyx-panel" style={panelStyle}>
-          <div style={{ background: 'var(--grad)', color: cfg.fg || '#fff', padding: `calc(12px + env(safe-area-inset-top)) ${headPadR}px 12px ${headPadL}px`, display: 'flex', alignItems: 'center', gap: 9, flex: 'none' }}>
+          <div style={{ background: 'var(--grad)', color: CHINK, padding: `calc(12px + env(safe-area-inset-top)) 14px 12px 14px`, display: 'flex', alignItems: 'center', gap: 9, flex: 'none' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? x.humanTitle : x.title}</div>
-              <div style={{ fontSize: 11, opacity: .9, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                {cfg.showPulse && <span className="onyx-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', flex: 'none' }} />}
+              <div style={{ fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? x.humanTitle : x.title}</div>
+              <div style={{ fontSize: 11, opacity: .85, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                {cfg.showPulse && <span className="onyx-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: '#128a4f', flex: 'none' }} />}
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.online}</span>
               </div>
             </div>
-            {(!isMobile || started) && (
-              <div style={{ position: 'relative', flex: 'none' }}>
-                <HBtn onClick={() => setMenu((m) => !m)} label={es ? 'Más opciones' : 'More options'}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="3" r="1.4" /><circle cx="8" cy="8" r="1.4" /><circle cx="8" cy="13" r="1.4" /></svg>
-                </HBtn>
-                {menu && (
-                  <div style={{ position: 'absolute', top: 36, [sideC === 'right' ? 'right' : 'left']: 0, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 10px 26px rgba(0,0,0,.4)', padding: 6, zIndex: 20, minWidth: 196 }}>
-                    {started && (
-                      <button className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start', display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, padding: '8px 10px' }} onClick={() => { clearChat(); setMenu(false); }}>
-                        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 6h10M6.5 6V4.5h3V6M5 6l.6 7h4.8L11 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        {es ? 'Nueva conversación' : 'New conversation'}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            {!isMobile && (
-              <button onClick={toggleBig} aria-label={big ? (es ? 'Reducir' : 'Shrink') : (es ? 'Ampliar' : 'Expand')} title={big ? (es ? 'Reducir el chat' : 'Shrink the chat') : (es ? 'Ampliar el chat a pantalla completa' : 'Expand the chat to full screen')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, padding: '0 11px', border: 'none', borderRadius: 8, background: '#fff', color: cfg.c2 || cfg.c1 || 'var(--brand)', fontSize: 12, fontWeight: 600, cursor: 'pointer', flex: 'none' }}>
-                {big
-                  ? <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M9 3 L9 7 L13 7 M7 13 L7 9 L3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  : <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M9 3 L13 3 L13 7 M7 13 L3 13 L3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>}
-                {big ? (es ? 'Reducir' : 'Shrink') : (es ? 'Ampliar' : 'Expand')}
-              </button>
-            )}
-            {!isMobile && <span style={{ width: 1, height: 20, background: 'rgba(255,255,255,.28)', flex: 'none' }} />}
-            <button onClick={() => setOpen(false)} aria-label="close" style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: cfg.fg || '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1, width: 34, height: 34, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>×</button>
+            {/* Solo el botón de cerrar en la cabecera (sin Expand ni menú de 3 puntos). */}
+            <button onClick={() => setOpen(false)} aria-label="close" style={{ background: 'rgba(0,0,0,.14)', border: 'none', color: CHINK, fontSize: 20, cursor: 'pointer', lineHeight: 1, width: 34, height: 34, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>×</button>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
@@ -486,6 +462,13 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
 
           {!sent && (
             <div style={{ padding: '10px 10px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
+              {/* Nueva conversación: botón fijo arriba del campo (reemplaza al menú). */}
+              {started && (
+                <button onClick={() => clearChat()} style={{ width: '100%', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '9px', borderRadius: 10, border: '1px solid rgba(255,157,61,.5)', background: 'rgba(255,122,26,.08)', color: '#ffb15e', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 6h10M6.5 6V4.5h3V6M5 6l.6 7h4.8L11 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  {es ? 'Nueva conversación' : 'New conversation'}
+                </button>
+              )}
               {loggedIn && cfg.showTicket && (
                 <div className="row" style={{ gap: 6, marginBottom: 8 }}>
                   <Link href="/dashboard/soporte" onClick={() => setOpen(false)} className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }}>{t.openTicket}</Link>
