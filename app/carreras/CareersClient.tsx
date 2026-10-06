@@ -112,7 +112,7 @@ export default function CareersClient() {
                 {!!TG(p).length && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                   {TG(p).slice(0, 6).map((t: string, i: number) => <span key={i} style={{ fontSize: 11, color: 'var(--mut,#9aa6bd)', border: '1px solid var(--line,#2a3350)', borderRadius: 6, padding: '2px 8px' }}>{t}</span>)}
                 </div>}
-                <button onClick={() => setApply(p)} style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, border: 'none', background: 'var(--accent,#8b93ff)', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>{L('Ver y postularme', 'View & apply')} <Ic n="arrow" s={16} c="#fff" /></button>
+                <button onClick={() => setApply(p)} style={{ marginTop: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, border: 'none', background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', color: '#241002', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>{L('Ver y postularme', 'View & apply')} <Ic n="arrow" s={16} c="#241002" /></button>
               </div>
             );
           })}
@@ -174,56 +174,77 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
     setTab('apply');
   };
 
+  // Botón de acción en tono china (congruente con el sitio).
+  const chinaBtn: React.CSSProperties = { width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', color: '#241002', fontWeight: 700, fontSize: 15, cursor: 'pointer' };
+  // Estructura responsiva: cabecera fija, cuerpo con scroll interno, pie fijo.
+  const head: React.CSSProperties = { flex: '0 0 auto', padding: '18px 22px 14px', borderBottom: '1px solid var(--line,#2a3350)' };
+  const body: React.CSSProperties = { flex: '1 1 auto', minHeight: 0, overflowY: 'auto', padding: '16px 22px' };
+  const foot: React.CSSProperties = { flex: '0 0 auto', padding: '14px 22px', borderTop: '1px solid var(--line,#2a3350)', background: 'var(--panel,#161c2e)' };
+
+  const Header = (
+    <div style={head}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+        <h2 style={{ fontSize: 21, margin: 0, color: 'var(--tx,#e8ecf5)', lineHeight: 1.2 }}>{T('title')}</h2>
+        <button onClick={onClose} aria-label="Cerrar" style={{ flex: 'none', background: 'none', border: 'none', color: 'var(--mut,#9aa6bd)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>✕</button>
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--mut,#9aa6bd)', marginTop: 10 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="pin" s={14} /> {job.location || 'Remoto'}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="clock" s={14} /> {(TYPE[job.type] || TYPE.full)[lang]}</span>
+        {job.salary_range && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="cash" s={14} /> {job.salary_range}</span>}
+      </div>
+    </div>
+  );
+
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 90, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: 20, overflowY: 'auto' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(600px,100%)', background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 16, padding: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-          <h2 style={{ fontSize: 22, margin: 0, color: 'var(--tx,#e8ecf5)' }}>{T('title')}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--mut,#9aa6bd)', fontSize: 22, cursor: 'pointer' }}>✕</button>
-        </div>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12.5, color: 'var(--mut,#9aa6bd)', margin: '8px 0 16px' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="pin" s={14} /> {job.location || 'Remoto'}</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="clock" s={14} /> {(TYPE[job.type] || TYPE.full)[lang]}</span>
-          {job.salary_range && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Ic n="cash" s={14} /> {job.salary_range}</span>}
-        </div>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 90, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 20, overflowY: 'auto' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(600px,100%)', maxHeight: '100%', display: 'flex', flexDirection: 'column', background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 16, overflow: 'hidden' }}>
+        {Header}
 
         {tab === 'detail' && <>
-          {isSales && <div style={{ background: 'rgba(201,139,255,.12)', border: '1px solid rgba(201,139,255,.4)', borderRadius: 10, padding: '10px 12px', marginBottom: 12, fontSize: 12.5, color: 'var(--tx,#e8ecf5)' }}>
-            <b style={{ color: '#c98bff' }}>{L(`Equipo de ventas · nivel ${levelLabel}`, `Sales team · ${levelLabel} level`)}</b><br />
-            {L('Este puesto es por comisión recurrente, no es un empleo de nómina. Ganas según lo que vendas.', 'This role is recurring-commission based, not payroll employment. You earn from what you sell.')}
-          </div>}
-          {T('description') ? <div style={{ fontSize: 14, color: 'var(--tx,#e8ecf5)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{T('description')}</div> : <p style={{ color: 'var(--mut,#9aa6bd)' }}>{T('summary')}</p>}
-          <button onClick={applyBtn} style={{ marginTop: 20, width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: 'var(--accent,#8b93ff)', color: '#fff', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>{L('Postularme a esta plaza', 'Apply to this position')}</button>
+          <div style={body}>
+            {isSales && <div style={{ background: 'rgba(201,139,255,.12)', border: '1px solid rgba(201,139,255,.4)', borderRadius: 10, padding: '10px 12px', marginBottom: 12, fontSize: 12.5, color: 'var(--tx,#e8ecf5)' }}>
+              <b style={{ color: '#c98bff' }}>{L(`Equipo de ventas · nivel ${levelLabel}`, `Sales team · ${levelLabel} level`)}</b><br />
+              {L('Este puesto es por comisión recurrente, no es un empleo de nómina. Ganas según lo que vendas.', 'This role is recurring-commission based, not payroll employment. You earn from what you sell.')}
+            </div>}
+            {T('description') ? <div style={{ fontSize: 14, color: 'var(--tx,#e8ecf5)', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>{T('description')}</div> : <p style={{ color: 'var(--mut,#9aa6bd)', margin: 0 }}>{T('summary')}</p>}
+          </div>
+          <div style={foot}>
+            <button onClick={applyBtn} style={chinaBtn}>{L('Postularme a esta plaza', 'Apply to this position')}</button>
+          </div>
         </>}
 
         {tab === 'apply' && (done
-          ? <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          ? <div style={{ ...body, textAlign: 'center', padding: '28px 22px' }}>
               <div style={{ display: 'inline-flex', width: 54, height: 54, borderRadius: '50%', background: 'rgba(94,214,160,.15)', alignItems: 'center', justifyContent: 'center' }}><Ic n="check" s={30} c="#5ed6a0" /></div>
               <h3 style={{ margin: '12px 0 6px', color: 'var(--tx,#e8ecf5)' }}>{L('¡Postulación enviada!', 'Application sent!')}</h3>
               <p style={{ color: 'var(--mut,#9aa6bd)', margin: 0 }}>{L('Gracias. Revisaremos tu perfil y te contactaremos.', 'Thanks. We’ll review your profile and reach out.')}</p>
             </div>
-          : <form onSubmit={submit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <label><span style={lbl}>{L('Nombre', 'Name')} *</span><input style={inp} value={f.name} onChange={(e) => upd('name', e.target.value)} /></label>
-                <label><span style={lbl}>{L('Correo', 'Email')} *</span><input style={inp} type="email" value={f.email} onChange={(e) => upd('email', e.target.value)} /></label>
-                <label><span style={lbl}>{L('Teléfono', 'Phone')}</span><input style={inp} value={f.phone} onChange={(e) => upd('phone', e.target.value)} /></label>
-                <label><span style={lbl}>{L('País', 'Country')}</span><input style={inp} value={f.country} onChange={(e) => upd('country', e.target.value)} /></label>
+          : <form onSubmit={submit} style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <div style={body}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <label><span style={lbl}>{L('Nombre', 'Name')} *</span><input style={inp} value={f.name} onChange={(e) => upd('name', e.target.value)} /></label>
+                  <label><span style={lbl}>{L('Correo', 'Email')} *</span><input style={inp} type="email" value={f.email} onChange={(e) => upd('email', e.target.value)} /></label>
+                  <label><span style={lbl}>{L('Teléfono', 'Phone')}</span><input style={inp} value={f.phone} onChange={(e) => upd('phone', e.target.value)} /></label>
+                  <label><span style={lbl}>{L('País', 'Country')}</span><input style={inp} value={f.country} onChange={(e) => upd('country', e.target.value)} /></label>
+                </div>
+                {isSales && <>
+                  <label style={{ display: 'block', marginTop: 12 }}><span style={lbl}>{L('Tu audiencia / red (dónde vendes)', 'Your audience / network (where you sell)')}</span><textarea style={{ ...inp, minHeight: 56, resize: 'vertical' }} value={f.audience} onChange={(e) => upd('audience', e.target.value)} placeholder={L('Redes, grupos, país, idioma, tamaño…', 'Social, groups, country, language, size…')} /></label>
+                  <label style={{ display: 'block', marginTop: 12 }}><span style={lbl}>{L('Experiencia vendiendo', 'Sales experience')}</span><textarea style={{ ...inp, minHeight: 56, resize: 'vertical' }} value={f.experience} onChange={(e) => upd('experience', e.target.value)} placeholder={L('¿Qué has vendido y cómo?', 'What have you sold and how?')} /></label>
+                </>}
+                <label style={{ display: 'block', marginTop: 12 }}><span style={lbl}>{L('¿Por qué tú?', 'Why you?')}</span><textarea style={{ ...inp, minHeight: 80, resize: 'vertical' }} value={f.message} onChange={(e) => upd('message', e.target.value)} placeholder={L('Cuéntanos de tu experiencia', 'Tell us about your experience')} /></label>
+                <div style={{ marginTop: 12 }}>
+                  <span style={lbl}>{L('Currículum (PDF)', 'Resume (PDF)')}</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, padding: '11px 13px', borderRadius: 10, border: '1px dashed var(--line,#2a3350)', background: 'var(--bg,#0e1220)', cursor: 'pointer', color: 'var(--mut,#9aa6bd)', fontSize: 13.5 }}>
+                    <Ic n={cvPath ? 'check' : 'arrow'} s={17} c={cvPath ? '#5ed6a0' : '#a9b0ff'} />
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cvBusy ? L('Subiendo…', 'Uploading…') : cvName || L('Adjuntar CV (máx 5 MB)', 'Attach resume (max 5 MB)')}</span>
+                    <input type="file" accept="application/pdf" onChange={onCv} style={{ display: 'none' }} />
+                  </label>
+                </div>
+                {err && <div style={{ color: 'var(--red,#f0736f)', fontSize: 13, marginTop: 10 }}>{err}</div>}
               </div>
-              {isSales && <>
-                <label style={{ display: 'block', marginTop: 12 }}><span style={lbl}>{L('Tu audiencia / red (dónde vendes)', 'Your audience / network (where you sell)')}</span><textarea style={{ ...inp, minHeight: 56, resize: 'vertical' }} value={f.audience} onChange={(e) => upd('audience', e.target.value)} placeholder={L('Redes, grupos, país, idioma, tamaño…', 'Social, groups, country, language, size…')} /></label>
-                <label style={{ display: 'block', marginTop: 12 }}><span style={lbl}>{L('Experiencia vendiendo', 'Sales experience')}</span><textarea style={{ ...inp, minHeight: 56, resize: 'vertical' }} value={f.experience} onChange={(e) => upd('experience', e.target.value)} placeholder={L('¿Qué has vendido y cómo?', 'What have you sold and how?')} /></label>
-              </>}
-              <label style={{ display: 'block', marginTop: 12 }}><span style={lbl}>{L('¿Por qué tú?', 'Why you?')}</span><textarea style={{ ...inp, minHeight: 80, resize: 'vertical' }} value={f.message} onChange={(e) => upd('message', e.target.value)} placeholder={L('Cuéntanos de tu experiencia', 'Tell us about your experience')} /></label>
-              <div style={{ marginTop: 12 }}>
-                <span style={lbl}>{L('Currículum (PDF)', 'Resume (PDF)')}</span>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, padding: '11px 13px', borderRadius: 10, border: '1px dashed var(--line,#2a3350)', background: 'var(--bg,#0e1220)', cursor: 'pointer', color: 'var(--mut,#9aa6bd)', fontSize: 13.5 }}>
-                  <Ic n={cvPath ? 'check' : 'arrow'} s={17} c={cvPath ? '#5ed6a0' : '#a9b0ff'} />
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cvBusy ? L('Subiendo…', 'Uploading…') : cvName || L('Adjuntar CV (máx 5 MB)', 'Attach resume (max 5 MB)')}</span>
-                  <input type="file" accept="application/pdf" onChange={onCv} style={{ display: 'none' }} />
-                </label>
+              <div style={foot}>
+                <button type="submit" disabled={busy} style={{ ...chinaBtn, opacity: busy ? .6 : 1 }}>{busy ? L('Enviando…', 'Sending…') : L('Enviar postulación', 'Send application')}</button>
               </div>
-              {err && <div style={{ color: 'var(--red,#f0736f)', fontSize: 13, marginTop: 10 }}>{err}</div>}
-              <button type="submit" disabled={busy} style={{ marginTop: 16, width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: 'var(--accent,#8b93ff)', color: '#fff', fontWeight: 600, fontSize: 15, cursor: 'pointer', opacity: busy ? .6 : 1 }}>{busy ? L('Enviando…', 'Sending…') : L('Enviar postulación', 'Send application')}</button>
             </form>)}
       </div>
     </div>
