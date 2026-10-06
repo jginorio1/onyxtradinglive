@@ -1135,6 +1135,15 @@ html.native-app .onyx-boot{display:flex}
    ============================================================ */
 .onyx-vivid{position:relative}
 
+/* CLAVE del "fondo que se enciende al tocar botones": el <body> base tenía un resplandor
+   radial morado (radial-gradient … rgba(124,140,255,.1)) encima del color sólido. Esa
+   capa semitransparente a pantalla completa se RE-COMPONE cada vez que un botón (con
+   sombra/transición) se repinta encima → parpadeo. Solo se notaba en los botones que caen
+   dentro de ese resplandor (arriba, p. ej. copy); los de más abajo (landing) no. Lo
+   quitamos en páginas públicas: el ambiente cálido ya lo da la aurora. Se conserva el
+   COLOR del tema (claro/oscuro), solo se elimina la imagen radial que parpadeaba. */
+body.onyx-vivid{background-image:none !important}
+
 /* Degradado china (dorado → naranja → coral) para los títulos con var(--grad). */
 .onyx-vivid{--grad:linear-gradient(100deg,#ffcf5c,#ff9d3d 46%,#ff5e4d)}
 
