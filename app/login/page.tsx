@@ -16,7 +16,7 @@ type Lang = 'es' | 'en';
 const T = {
   es: {
     signupT: 'Crear cuenta', loginT: 'Entrar', email: 'Email', pass: 'Contraseña',
-    name: 'Nombre', namePh: 'Jerry', lastName: 'Apellido', lastNamePh: 'Pérez', errName: 'Escribe tu nombre y tu apellido.',
+    name: 'Nombre', namePh: 'Tu nombre', lastName: 'Apellido', lastNamePh: 'Tu apellido', errName: 'Escribe tu nombre y tu apellido.',
     haveAcc: '¿Ya tienes cuenta?', noAcc: '¿No tienes cuenta?', goLogin: 'Entrar', goSignup: 'Crear una',
     back: '← Volver al inicio', loading: 'Cargando…',
     errBad: 'Email o contraseña incorrectos.',
@@ -47,7 +47,7 @@ const T = {
   },
   en: {
     signupT: 'Create account', loginT: 'Sign in', email: 'Email', pass: 'Password',
-    name: 'First name', namePh: 'Jerry', lastName: 'Last name', lastNamePh: 'Smith', errName: 'Enter your first and last name.',
+    name: 'First name', namePh: 'Your first name', lastName: 'Last name', lastNamePh: 'Your last name', errName: 'Enter your first and last name.',
     haveAcc: 'Already have an account?', noAcc: 'No account yet?', goLogin: 'Sign in', goSignup: 'Create one',
     back: '← Back to home', loading: 'Loading…',
     errBad: 'Wrong email or password.',

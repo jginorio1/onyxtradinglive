@@ -42,7 +42,7 @@ export default function MentoresPage() {
   const feeRange = _fees.length ? `${Math.min(..._fees)}–${Math.max(..._fees)}%` : '3–10%';
   const feeForCalc = _fees.length ? Math.max(..._fees) : 10; // para la calculadora (escenario conservador)
 
-  const grad: any = { background: 'linear-gradient(90deg,var(--brand),#7a5cff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' };
+  const grad: any = { background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 46%,#ff5e4d)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' };
 
   const steps = [
     { ic: 'card', es: 'Elige tu plan', en: 'Choose your plan', de: 'Crear tu academia va desde Pro. Ese plan ya te da todas las herramientas.', den: 'Creating an academy starts at Pro. That plan gives you all the tools.' },
