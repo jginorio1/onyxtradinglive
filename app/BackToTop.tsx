@@ -44,7 +44,7 @@ export default function BackToTop() {
         borderRadius: '50%',
         border: 'none',
         cursor: 'pointer',
-        background: 'linear-gradient(135deg,#4b3ff0,#7c8cff)',
+        background: '#25D366',
         color: '#fff',
         display: 'flex',
         alignItems: 'center',
