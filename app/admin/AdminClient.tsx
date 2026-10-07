@@ -2240,8 +2240,11 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
   const [saving, setSaving] = useState(false);
   const [touched, setTouched] = useState(false);  // hay cambios sin guardar
   const [okMsg, setOkMsg] = useState(false);       // guardado hace un momento
-  const set = (k: keyof Plan, v: any) => { setP({ ...p, [k]: v }); setTouched(true); setOkMsg(false); };
-  const setCap = (k: string, v: any) => { setP({ ...p, capabilities: { ...p.capabilities, [k]: v } }); setTouched(true); setOkMsg(false); };
+  // Actualización FUNCIONAL: usamos el estado más reciente, no el de la closure.
+  // Así, si cambias varios campos/interruptores seguidos, ninguno pisa al otro
+  // (antes el segundo cambio podía borrar el primero y "no se reflejaba").
+  const set = (k: keyof Plan, v: any) => { setP((prev) => ({ ...prev, [k]: v })); setTouched(true); setOkMsg(false); };
+  const setCap = (k: string, v: any) => { setP((prev) => ({ ...prev, capabilities: { ...(prev.capabilities || {}), [k]: v } })); setTouched(true); setOkMsg(false); };
   const norm = (f: any) => (Array.isArray(f) ? f : String(f || '').split('\n')).map((s: any) => String(s).trim()).filter(Boolean);
 
   async function save() {
