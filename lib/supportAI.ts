@@ -3,7 +3,7 @@ import { ARTICLES, searchArticles, type Article, type Lang } from '@/lib/guide';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { listPublished } from '@/lib/blog';
 import { sendEmail } from '@/lib/mail';
-import { getSetting, aiPromptSettings } from '@/lib/settings';
+import { getSetting, aiPromptSettings, addonSettings } from '@/lib/settings';
 import { planFacts } from '@/lib/planFacts';
 import { botLabSettings, clampPct } from '@/lib/botlab';
 import { academyFeeSettings } from '@/lib/settings';
@@ -206,6 +206,22 @@ export async function supportChatReply(question: string, lang: Lang, history: an
       if (f.annualPct > 0) {
         prices += en ? `\nANNUAL SAVING: paying yearly saves about ${f.annualPct}% vs monthly. Use this exact figure; do not invent a discount.` : `\nAHORRO ANUAL: pagar al año ahorra alrededor de un ${f.annualPct}% frente a mensual. Usa esta cifra exacta; no inventes un descuento.`;
       }
+    }
+  } catch {}
+
+  // ADD-ONS reales (precios y on/off editables en Admin → Planes). En vivo, fuera
+  // de la caché. Solo se listan los que están activados; precios mensuales en USD.
+  try {
+    const a = await addonSettings();
+    const lines: string[] = [];
+    if (a.extra_account_enabled) lines.push(en ? `extra connected account: $${a.extra_account_price}/mo each` : `cuenta conectada extra: $${a.extra_account_price}/mes cada una`);
+    if (a.extra_master_enabled) lines.push(en ? `extra copy master account: $${a.extra_master_price}/mo` : `cuenta maestra extra de copy: $${a.extra_master_price}/mes`);
+    if (a.extra_slave_enabled) lines.push(en ? `extra copy slave account: $${a.extra_slave_price}/mo` : `cuenta esclava extra de copy: $${a.extra_slave_price}/mes`);
+    if (a.algo_enabled) lines.push(en ? `robots/algo module add-on: $${a.algo_price}/mo` : `módulo de robots/algo (add-on): $${a.algo_price}/mes`);
+    if (lines.length) {
+      prices += en
+        ? `\n\n=== ADD-ONS (current, monthly, do not invent prices) ===\n${lines.map((l) => '- ' + l).join('\n')}\nAdd-ons are extras on top of the plan, managed from My account → Subscription.`
+        : `\n\n=== ADD-ONS (actuales, mensuales, no inventes precios) ===\n${lines.map((l) => '- ' + l).join('\n')}\nLos add-ons son extras que se suman al plan; se gestionan desde Mi cuenta → Suscripción.`;
     }
   } catch {}
 
