@@ -5,8 +5,10 @@ import { listPublished } from '@/lib/blog';
 import { sendEmail } from '@/lib/mail';
 import { getSetting, aiPromptSettings, addonSettings } from '@/lib/settings';
 import { planFacts } from '@/lib/planFacts';
-import { botLabSettings, clampPct } from '@/lib/botlab';
+import { botLabSettings, clampPct, listMarketplace } from '@/lib/botlab';
 import { academyFeeSettings } from '@/lib/settings';
+import { pickActiveBar, type PromoQueue } from '@/lib/promo';
+import { catalogKey, CATALOG_DEFAULTS, type CatalogItem } from '@/lib/catalogDefaults';
 
 // ============================================================
 // Cerebro de soporte con IA: clasifica los tickets (triage) y, cuando es
@@ -222,6 +224,55 @@ export async function supportChatReply(question: string, lang: Lang, history: an
       prices += en
         ? `\n\n=== ADD-ONS (current, monthly, do not invent prices) ===\n${lines.map((l) => '- ' + l).join('\n')}\nAdd-ons are extras on top of the plan, managed from My account → Subscription.`
         : `\n\n=== ADD-ONS (actuales, mensuales, no inventes precios) ===\n${lines.map((l) => '- ' + l).join('\n')}\nLos add-ons son extras que se suman al plan; se gestionan desde Mi cuenta → Suscripción.`;
+    }
+  } catch {}
+
+  // PROMO / DESCUENTO ACTIVO (barra del landing, en vivo). Solo si hay una barra
+  // encendida ahora mismo; el AI la menciona cuando pregunten por ofertas.
+  try {
+    const q = await getSetting<PromoQueue | null>('promo_queue', null as any);
+    const bars = (q && Array.isArray((q as any).bars)) ? (q as any).bars : [];
+    const bar = pickActiveBar(bars, Date.now(), { lang: en ? 'en' : 'es', isLanding: true, isPricing: true, loggedIn: false, plan: 'free' });
+    if (bar) {
+      const txt = (en ? ((bar as any).text_en || (bar as any).text_es) : ((bar as any).text_es || (bar as any).text_en)) || '';
+      const code = String((bar as any).coupon || '').trim();
+      if (txt) {
+        prices += en
+          ? `\n\n=== ACTIVE PROMO (live — mention only while active) ===\n${txt}${code ? ` — coupon code: ${code}` : ''}. Mention it only if the person asks about discounts/offers or it clearly helps; do not invent other discounts.`
+          : `\n\n=== PROMO ACTIVA (en vivo — menciónala solo mientras esté activa) ===\n${txt}${code ? ` — cupón: ${code}` : ''}. Menciónala solo si preguntan por descuentos/ofertas o si claramente ayuda; no inventes otros descuentos.`;
+      }
+    }
+  } catch {}
+
+  // PLATAFORMAS Y PROP FIRMS (catálogo editable en Admin → Catálogos, en vivo).
+  try {
+    const plats = await getSetting<CatalogItem[]>(catalogKey('platform'), CATALOG_DEFAULTS.platform);
+    const firms = await getSetting<CatalogItem[]>(catalogKey('firm'), CATALOG_DEFAULTS.firm);
+    const pl = (plats || []).map((x) => (en ? (x.en || x.es) : (x.es || x.en))).filter(Boolean);
+    const fl = (firms || []).map((x) => (en ? (x.en || x.es) : (x.es || x.en))).filter(Boolean);
+    if (pl.length || fl.length) {
+      prices += en
+        ? `\n\n=== SUPPORTED PLATFORMS & FIRMS (live catalog) ===\n${pl.length ? `Platforms: ${pl.join(', ')}.` : ''}${fl.length ? `\nProp firms / brokers: ${fl.join(', ')}. Any broker/firm that uses one of these platforms works; the exact platforms and account sizes per firm can change, so suggest confirming on the firm's site.` : ''}`
+        : `\n\n=== PLATAFORMAS Y PROP FIRMS COMPATIBLES (catálogo en vivo) ===\n${pl.length ? `Plataformas: ${pl.join(', ')}.` : ''}${fl.length ? `\nProp firms / brókers: ${fl.join(', ')}. Cualquier bróker/firma que use una de esas plataformas funciona; las plataformas y tamaños por firma pueden cambiar, así que sugiere confirmarlo en el sitio de la firma.` : ''}`;
+    }
+  } catch {}
+
+  // BOT LAB: precio "desde" del marketplace + métodos de pago activos (en vivo).
+  try {
+    const s2 = await botLabSettings();
+    const fromCfg = Math.max(0, Math.round(Number((s2 as any).stat_price_from) || 0));
+    let low = 0;
+    try {
+      const mk: any[] = await listMarketplace({ limit: 50 });
+      const ps = (mk || []).map((p: any) => Number(p.price_cents) || 0).filter((n: number) => n > 0);
+      if (ps.length) low = Math.round(Math.min(...ps) / 100);
+    } catch {}
+    const fromUsd = low || fromCfg;
+    const methods = [((s2 as any).pay_card ? (en ? 'card (Stripe)' : 'tarjeta (Stripe)') : ''), (((s2 as any).pay_trc20 || (s2 as any).pay_erc20) ? 'USDT' : '')].filter(Boolean);
+    if (fromUsd > 0 || methods.length) {
+      prices += en
+        ? `\n\n=== BOT LAB (live) ===\n${fromUsd > 0 ? `Robots on the marketplace start from about $${fromUsd}. ` : ''}${methods.length ? `Bot Lab payment methods active right now: ${methods.join(', ')}.` : ''} Do not invent prices or payment methods.`
+        : `\n\n=== BOT LAB (en vivo) ===\n${fromUsd > 0 ? `Los robots del marketplace empiezan desde ~$${fromUsd}. ` : ''}${methods.length ? `Métodos de pago de Bot Lab activos ahora: ${methods.join(', ')}.` : ''} No inventes precios ni métodos de pago.`;
     }
   } catch {}
 
