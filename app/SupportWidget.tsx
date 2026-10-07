@@ -354,6 +354,8 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const panelStyle: any = { ...panelBase, position: 'fixed', [sideC]: ox, bottom: oy, width: 380, maxWidth: 'calc(100vw - 24px)', height: 600, maxHeight: 'calc(100vh - 40px)' };
   // Móvil con teclado abierto: alto y desplazamiento reales del viewport visible.
   // La media query de abajo lee estas variables (con respaldo a 100dvh).
+  // kbOpen = el viewport visible se encogió bastante → el teclado está arriba.
+  const kbOpen = !!(isMobile && vv && typeof window !== 'undefined' && (window.innerHeight - vv.h) > 120);
   if (isMobile && vv) { panelStyle['--onyx-h'] = vv.h + 'px'; panelStyle['--onyx-top'] = vv.top + 'px'; }
 
   // Botón de icono en la cabecera (expandir / anclar), en línea moderna.
@@ -489,7 +491,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
           </div>
 
           {!sent && (
-            <div style={{ padding: '10px 10px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
+            <div style={{ padding: kbOpen ? '10px' : '10px 10px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
               {/* Nueva conversación: botón fijo arriba del campo (reemplaza al menú). Siempre visible. */}
               {(
                 <button onClick={() => clearChat()} style={{ width: '100%', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '9px', borderRadius: 10, border: '1px solid rgba(255,157,61,.5)', background: 'rgba(255,122,26,.08)', color: '#ffb15e', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>

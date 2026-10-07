@@ -84,7 +84,7 @@ export default function NativeInit() {
       try {
         let vp = document.querySelector('meta[name="viewport"]') as HTMLMetaElement | null;
         if (!vp) { vp = document.createElement('meta'); vp.name = 'viewport'; document.head.appendChild(vp); }
-        vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+        vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content');
       } catch {}
 
       try {
