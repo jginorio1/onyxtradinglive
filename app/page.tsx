@@ -403,8 +403,8 @@ const dict = {
 const FIRMS = [
   { name: 'FTMO', mono: 'F', color: '#2f6bff', logo: '/logos/ftmo.png', plats: ['MT4', 'MT5', 'cTrader', 'DXtrade'], sizes: ['10K', '25K', '50K', '100K', '200K'],
     es: 'El estándar de la industria. Evaluación en dos fases y cuentas de hasta $200K.', en: 'The industry standard. Two-step evaluation and accounts up to $200K.' },
-  { name: 'FundedNext', mono: 'N', color: '#16c98d', logo: '/logos/fundednext.png', plats: ['MT4', 'MT5'], sizes: ['6K', '15K', '25K', '50K', '100K', '200K'],
-    es: 'Reparto de hasta 95% y modelos flexibles. Cuentas MT4 y MT5.', en: 'Up to 95% profit split and flexible models. MT4 and MT5 accounts.' },
+  { name: 'FundedNext', mono: 'N', color: '#16c98d', logo: '/logos/fundednext.png', plats: ['MT4', 'MT5', 'cTrader', 'MatchTrader'], sizes: ['6K', '15K', '25K', '50K', '100K', '200K'],
+    es: 'Reparto de hasta 95% y modelos flexibles. Cuentas MT4, MT5, cTrader y MatchTrader.', en: 'Up to 95% profit split and flexible models. MT4, MT5, cTrader and MatchTrader accounts.' },
   { name: 'The5ers', mono: '5', color: '#ff8a3d', logo: '/logos/the5ers.png', plats: ['MT5', 'cTrader'], sizes: ['5K', '20K', '60K', '100K'],
     es: 'Programas de bajo drawdown y escalado rápido de capital.', en: 'Low-drawdown programs with fast capital scaling.' },
   { name: 'FundingPips', mono: 'P', color: '#9b82ff', logo: '/logos/fundingpips.png', plats: ['MT5', 'cTrader', 'MatchTrader'], sizes: ['5K', '10K', '25K', '50K', '100K', '200K'],
@@ -849,6 +849,12 @@ export default function Home() {
             <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
               {f.sizes.map((s, j) => <span key={j} style={{ padding: '5px 11px', borderRadius: 8, fontSize: 13, background: 'var(--bg2)', border: '1px solid var(--line)' }}>${s}</span>)}
             </div>
+            <p className="muted" style={{ fontSize: 11.5, marginTop: 14, marginBottom: 0, lineHeight: 1.45, display: 'flex', gap: 6 }}>
+              <span aria-hidden>ⓘ</span>
+              <span>{lang === 'es'
+                ? 'Plataformas y tamaños pueden cambiar según la firma y el momento. Confírmalo en el sitio oficial de la firma antes de contratar.'
+                : 'Platforms and account sizes may change by firm and over time. Please confirm on the firm’s official site before purchasing.'}</span>
+            </p>
           </div>
 
           {/* tracker en vivo */}
