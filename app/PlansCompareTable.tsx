@@ -85,6 +85,17 @@ export default function PlansCompareTable({
       ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'var(--green)', color: '#04120b' }}><OnyxIcon name="check" size={14} glow={false} /></span>
       : <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, background: 'var(--card2)', color: 'var(--mut)' }}><OnyxIcon name="lock" size={13} glow={false} /></span>;
 
+  // Columnas destacadas, a juego con sus tarjetas: Guardian Pro ("popular" →
+  // dorado) y Black Onyx (tope de gama → violeta/obsidiana). Tinte MUY suave en
+  // toda la columna para no romper la lectura de la tabla.
+  const isBlackCol = (id: string) => ['black', 'black_onyx', 'blackonyx'].includes(String(id).toLowerCase());
+  const isPopCol = (id: string) => /popular/i.test((lang === 'es' ? byId(id)?.badge : byId(id)?.badge_en) || '');
+  const colBg = (id: string): any => isBlackCol(id)
+    ? { background: 'color-mix(in srgb, #7a5cff 9%, transparent)' }
+    : isPopCol(id)
+      ? { background: 'color-mix(in srgb, var(--gold, #e8b923) 8%, transparent)' }
+      : {};
+
   return (
     <div style={{ marginTop: 46 }}>
       <h2 style={{ textAlign: 'center', marginBottom: 18 }}>{lang === 'es' ? 'Compara los planes' : 'Compare plans'}</h2>
@@ -104,9 +115,12 @@ export default function PlansCompareTable({
                 const pm = p ? Number(p.price_month) : 0;
                 const savePct = (annual && price != null && price > 0 && pm > 0 && pm * 12 > price)
                   ? Math.round((1 - price / (pm * 12)) * 100) : 0;
+                const black = isBlackCol(id); const pop = isPopCol(id);
+                const nameColor = black ? '#e9e2ff' : pop ? 'var(--gold, #e8b923)' : isPro(p) ? 'var(--brand)' : 'var(--tx)';
                 return (
-                  <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: isPro(p) ? 'var(--brand)' : 'var(--tx)', fontSize: 15 }}>
-                    <div>{name(p, id)}</div>
+                  <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: nameColor, fontSize: 15, position: 'relative', ...colBg(id), ...((black || pop) ? { borderTop: `2px solid ${black ? '#e8b923' : 'var(--gold, #e8b923)'}` } : {}) }}>
+                    {(black || pop) && <span style={{ position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)', background: black ? 'linear-gradient(100deg,#ffe08a,#e8b923)' : 'var(--gold, #e8b923)', color: '#2a1e02', fontSize: 9, fontWeight: 800, padding: '1px 9px', borderRadius: '0 0 8px 8px', letterSpacing: '.03em', whiteSpace: 'nowrap' }}>{black ? (lang === 'es' ? '◆ EL DEFINITIVO' : '◆ ULTIMATE') : (lang === 'es' ? '★ POPULAR' : '★ POPULAR')}</span>}
+                    <div style={{ marginTop: (black || pop) ? 8 : 0, ...(black ? { background: 'linear-gradient(90deg,#fff,#d8c9ff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', display: 'inline-block' } : {}) }}>{name(p, id)}</div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{priceLabel}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 500 }}>{showPer ? per : ''}</span></div>
                     {savePct > 0 && <div style={{ marginTop: 3 }}><span style={{ fontSize: 10, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>{lang === 'es' ? `Ahorra ${savePct}%` : `Save ${savePct}%`}</span></div>}
                   </th>
@@ -117,7 +131,7 @@ export default function PlansCompareTable({
           <tbody>
             <tr>
               <td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? 'Cuentas conectadas' : 'Connected accounts'}</td>
-              {cols.map((id) => <td key={id} style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700 }}>{acc(id)}</td>)}
+              {cols.map((id) => <td key={id} style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700, ...colBg(id) }}>{acc(id)}</td>)}
             </tr>
 
             {/* Prueba gratis por plan (días configurables en Admin → Planes). Solo se
@@ -127,7 +141,7 @@ export default function PlansCompareTable({
                 <td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? 'Prueba gratis' : 'Free trial'}</td>
                 {cols.map((id) => {
                   const td = trialDaysOf(byId(id) as any);
-                  return <td key={id} style={{ textAlign: 'center', padding: '12px 16px' }}>
+                  return <td key={id} style={{ textAlign: 'center', padding: '12px 16px', ...colBg(id) }}>
                     {td > 0
                       ? <span style={{ fontSize: 12, fontWeight: 800, color: '#3a2a06', background: 'var(--gold, #ffd45e)', borderRadius: 20, padding: '2px 9px' }}>{td} {lang === 'es' ? 'días' : 'days'}</span>
                       : <span style={{ color: 'var(--mut)' }}>—</span>}
@@ -145,7 +159,7 @@ export default function PlansCompareTable({
                   if (isFee) { const pct = (byId(id) as any)?.capabilities?.academy_fee_pct; if (pct != null && !isNaN(Number(pct))) cell = `${Number(pct)}%`; }
                   // Traduce los textos de celda (p. ej. History "30 días / Ilimitado") al idioma activo.
                   if (typeof cell === 'string' && lang !== 'es') cell = cell.replace(/Ilimitado/g, 'Unlimited').replace(/d[ií]as/g, 'days').replace(/D[ií]as/g, 'Days');
-                  return <td key={id} style={{ textAlign: 'center', padding: '12px 16px' }}>{chk(cell)}</td>;
+                  return <td key={id} style={{ textAlign: 'center', padding: '12px 16px', ...colBg(id) }}>{chk(cell)}</td>;
                 })}</tr>))}
 
             {/* Botones de compra al final, alineados con cada columna */}
@@ -161,10 +175,16 @@ export default function PlansCompareTable({
                 const isFree = id === 'free';
                 const label = isFree ? (lang === 'es' ? 'Empezar gratis' : 'Start free')
                   : (lang === 'es' ? 'Elegir ' : 'Choose ') + name(p, id);
+                const black = isBlackCol(id); const pop = isPopCol(id);
+                const btnStyle: any = black
+                  ? { fontSize: 13, padding: '8px 14px', whiteSpace: 'nowrap', background: 'linear-gradient(100deg,#ffe08a,#e8b923 50%,#ff9d3d)', color: '#2a1e02', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -5px rgba(232,185,35,.5)' }
+                  : pop
+                    ? { fontSize: 13, padding: '8px 14px', whiteSpace: 'nowrap', background: 'linear-gradient(100deg,#ffcf5c,#ff6a2b)', color: '#241002', border: 'none', fontWeight: 800 }
+                    : { fontSize: 13, padding: '8px 14px', whiteSpace: 'nowrap' };
                 return (
-                  <td key={id} style={{ textAlign: 'center', padding: '18px 12px 16px' }}>
-                    <button className={'btn ' + (isPro(p) ? 'btn-primary' : 'btn-ghost')}
-                      style={{ fontSize: 13, padding: '8px 14px', whiteSpace: 'nowrap' }}
+                  <td key={id} style={{ textAlign: 'center', padding: '18px 12px 16px', ...colBg(id) }}>
+                    <button className={'btn ' + (black || pop ? '' : isPro(p) ? 'btn-primary' : 'btn-ghost')}
+                      style={btnStyle}
                       onClick={() => onChoose(id, price ?? 0)} disabled={loadingId === id || (!isFree && price == null)}>
                       {loadingId === id ? '...' : label}
                     </button>
