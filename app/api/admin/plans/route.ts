@@ -12,12 +12,13 @@ export async function GET() {
     let q = supabaseAdmin.from('plans').select('*').order('sort', { ascending: true });
     if (!isAdmin) q = q.eq('active', true) as any;
     const { data } = await q;
-    // Los planes casi nunca cambian: para NO-admin (la lista pública de /pricing) permitimos
-    // caché corta en navegador/CDN, así las aperturas repetidas no vuelven a pegarle a la BD.
-    // Para admin siempre datos frescos.
+    // Los planes casi nunca cambian, pero cuando el admin edita uno (cuentas,
+    // interruptores, precio) el cambio debe verse YA. Caché pública muy corta:
+    // el CDN revalida a los ~15 s y sirve la versión vieja solo ese instante.
+    // Para admin, siempre datos frescos (no-store).
     const headers = isAdmin
       ? { 'Cache-Control': 'no-store' }
-      : { 'Cache-Control': 'public, max-age=30, s-maxage=300, stale-while-revalidate=600' };
+      : { 'Cache-Control': 'public, max-age=0, s-maxage=15, stale-while-revalidate=30' };
     return NextResponse.json({ plans: data || [] }, { headers });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', code: 'generic' }, { status: 500 });

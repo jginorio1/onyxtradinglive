@@ -622,7 +622,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
     return () => window.removeEventListener('keydown', onKey);
   }, []);
   async function loadUsers() { const r = await fetch('/api/admin/users'); const j = await r.json(); setUsers(j.users || []); setClosures(j.closures || 0); setClosuresList(j.closuresList || []); }
-  async function loadPlans() { const r = await fetch('/api/admin/plans'); const j = await r.json(); setPlans(j.plans || []); }
+  async function loadPlans() { const r = await fetch('/api/admin/plans?t=' + Date.now(), { cache: 'no-store' }); const j = await r.json(); setPlans(j.plans || []); }
   async function loadTeam() { const r = await fetch('/api/admin/team'); const j = await r.json(); setTeam(j.team || []); const mine = (j.team || []).find((t: Team) => t.email === meEmail); if (mine) setAvailable(!!mine.available); }
   useEffect(() => { loadUsers(); loadPlans(); loadTeam(); }, []);
   // Datos para el bloque "Necesita tu atención" del Resumen (silencioso si no hay permiso)
