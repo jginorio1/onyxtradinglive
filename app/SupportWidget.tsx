@@ -98,6 +98,31 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     calc(); window.addEventListener('resize', calc); return () => window.removeEventListener('resize', calc);
   }, []);
 
+  // En móvil, cuando se abre el teclado, el "visual viewport" se encoge. Seguimos
+  // su alto y su desplazamiento para que el panel quede FIJO justo encima del
+  // teclado (sin que el chat se mueva ni se esconda el campo de escribir).
+  const [vv, setVv] = useState<{ h: number; top: number } | null>(null);
+  useEffect(() => {
+    if (!open || device !== 'mobile') { setVv(null); return; }
+    const vp: any = (typeof window !== 'undefined') ? (window as any).visualViewport : null;
+    if (!vp) return;
+    const on = () => setVv({ h: Math.round(vp.height), top: Math.round(vp.offsetTop) });
+    on();
+    vp.addEventListener('resize', on);
+    vp.addEventListener('scroll', on);
+    return () => { vp.removeEventListener('resize', on); vp.removeEventListener('scroll', on); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, device]);
+
+  // Con el panel abierto en móvil, bloquear el scroll del fondo para que la
+  // página de atrás no se mueva mientras escribes en el chat.
+  useEffect(() => {
+    if (!open || device !== 'mobile') return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open, device]);
+
   // Auto-esconder el botón al bajar (deja ver todo el contenido); reaparece al
   // subir o al parar de hacer scroll. Solo cuando el panel está cerrado.
   const [hideLauncher, setHideLauncher] = useState(false);
@@ -327,6 +352,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // Tamaño FIJO mediano en escritorio (sin estirar ni expandir). En móvil, la
   // media query de abajo lo lleva a pantalla completa.
   const panelStyle: any = { ...panelBase, position: 'fixed', [sideC]: ox, bottom: oy, width: 380, maxWidth: 'calc(100vw - 24px)', height: 600, maxHeight: 'calc(100vh - 40px)' };
+  // Móvil con teclado abierto: alto y desplazamiento reales del viewport visible.
+  // La media query de abajo lee estas variables (con respaldo a 100dvh).
+  if (isMobile && vv) { panelStyle['--onyx-h'] = vv.h + 'px'; panelStyle['--onyx-top'] = vv.top + 'px'; }
 
   // Botón de icono en la cabecera (expandir / anclar), en línea moderna.
   const HBtn = ({ onClick, label, children }: any) => (
@@ -345,7 +373,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
         @keyframes onyxTease{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         .onyx-pulse{animation:onyxPulse 1.4s ease-in-out infinite}
         .onyx-d1{animation:onyxType 1.2s infinite}.onyx-d2{animation:onyxType 1.2s .2s infinite}.onyx-d3{animation:onyxType 1.2s .4s infinite}
-        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:0!important;transform:none!important;width:100%!important;max-width:100%!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important;z-index:2147483000!important}
+        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:auto!important;transform:translateY(var(--onyx-top,0px))!important;width:100%!important;max-width:100%!important;height:var(--onyx-h,100dvh)!important;max-height:var(--onyx-h,100dvh)!important;border-radius:0!important;z-index:2147483000!important}
         .onyx-panel input,.onyx-panel textarea{font-size:16px!important}
         .onyx-resize{display:none!important}}
       `}</style>
