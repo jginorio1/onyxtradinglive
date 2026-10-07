@@ -65,6 +65,12 @@ COPY TRADING (planes Elite y Black Onyx): copia operaciones entre las cuentas de
 
 FONDEO / PROP FIRMS: Onyx sirve para challenges y cuentas fondeadas.
 
+CONSTRUCTOR DE ROBOTS ("Crea tu bot" / Onyx Builder): Onyx incluye un constructor de robots SIN programar. Eliges gatillos de entrada, salidas, gestión de riesgo, frenos, sesiones y días operables, con filtro de noticias integrado y reglas de fondeo; Onyx te genera el robot listo para MetaTrader (.mq5/.mq4), cTrader (.cs) y su archivo .set, más una guía PDF personalizada y plantillas. El plan de entrada ya basta para construir robots (tu robot se frena solo, filtra noticias y respeta tu sesión); planes superiores añaden métricas avanzadas (Sharpe, Monte Carlo, walk-forward) y laboratorio de portafolio con correlación. La página es "Crea tu bot" (/bot-builder). Si alguien pregunta por planes, robots, bots o estrategias automáticas, menciona el constructor.
+
+MIS ROBOTS: Onyx detecta cada robot/EA por su magic number y mide su rendimiento REAL por robot (métricas, portafolio, divergencia con el backtest), con estados prueba vs vivo.
+
+ONYX BOT LAB (marketplace de robots): un mercado aparte donde se compran y venden robots verificados (con Onyx Score y prueba en demo) y también hay servicios para automatizar tu estrategia. Está en /bot-lab.
+
 ALERTAS: por Telegram (planes Elite y superiores) — fondeo, gestor, noticias, EA caído, meta, resumen diario/semanal.
 
 APP MÓVIL: Onyx es instalable como app (PWA) en iPhone y Android desde el navegador (en iPhone: Compartir → Añadir a inicio; en Android: botón instalar). Con notificaciones push.
@@ -87,6 +93,12 @@ ONYX GUARDIAN (risk manager): enforces rules — daily loss limit, total loss li
 COPY TRADING (Elite and Black Onyx plans): copies trades between the trader's own accounts (one master to one or more slaves) with a PIN and per-link risk controls. It is a legitimate multi-account manager. BAN-SAFE: it lowers the risk of prop-firm bans two ways: (1) execution is LOCAL on the trader's terminal, so Onyx does NOT stamp a shared IP on the trades (unlike cloud copiers); (2) there is a configurable per-link "random delay" (jitter) that adds a few random seconds before copying each open, so the slave's timing is not identical to the master and does not flag by pattern. Closes go out instantly. IMPORTANT: IP is only one signal; to minimize risk use one VPS/IP per account, and many prop firms PROHIBIT copying between funded accounts in their rules regardless of IP. Onyx lowers the risk but does not guarantee immunity; following the firm's rulebook is the trader's responsibility.
 
 FUNDED / PROP FIRMS: Onyx works for challenges and funded accounts.
+
+ROBOT BUILDER ("Build your bot" / Onyx Builder): Onyx includes a NO-CODE robot builder. You pick entry triggers, exits, risk management, brakes, sessions and trading days, with a built-in news filter and firm rules; Onyx generates the ready-to-run robot for MetaTrader (.mq5/.mq4), cTrader (.cs) plus its .set file, and a personalized PDF guide and templates. The entry plan is already enough to build robots (your robot stops itself, filters news and respects your session); higher plans add advanced metrics (Sharpe, Monte Carlo, walk-forward) and a portfolio lab with correlation. The page is "Build your bot" (/bot-builder). If someone asks about plans, robots, bots or automated strategies, mention the builder.
+
+MY ROBOTS: Onyx detects each robot/EA by its magic number and measures its REAL per-robot performance (metrics, portfolio, divergence from the backtest), with testing vs live states.
+
+ONYX BOT LAB (robot marketplace): a separate marketplace to buy and sell verified robots (with an Onyx Score and demo test) and services to automate your strategy. It lives at /bot-lab.
 
 ALERTS: via Telegram (Elite plan and above) — funding, manager, news, EA down, goal, daily/weekly summary.
 
