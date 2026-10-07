@@ -2154,7 +2154,8 @@ function PlansTab({ plans, reload }: { plans: Plan[]; reload: () => void }) {
       {creating && <PlanCard plan={{ id: '', name: '', name_en: '', desc_es: '', desc_en: '', price_month: 0, price_year: 0, stripe_price_id: '', stripe_price_id_year: '', max_accounts: 1, features: [], features_en: [], badge: '', badge_en: '', active: true, sort: plans.length, capabilities: {} } as any} isNew reload={() => { setCreating(false); reload(); }} onCancel={() => setCreating(false)} />}
       <div className="grid g3">{plans.map((p) => <PlanCard key={p.id} plan={p} reload={reload} />)}</div>
       <Addons />
-      <BotPlanMatrixEditor />
+      {/* Tabla "Crea tu bot" retirada: ahora /bot-builder se arma sola desde las
+          CAPABILITIES reales de cada plan, así que este editor quedó obsoleto. */}
     </>
   );
 }
