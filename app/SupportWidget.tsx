@@ -108,9 +108,19 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     if (!vp) return;
     const on = () => setVv({ h: Math.round(vp.height), top: Math.round(vp.offsetTop) });
     on();
+    // iOS Safari reporta el alto del teclado con retraso: re-medimos varias veces
+    // tras enfocar y al enfocar/desenfocar cualquier campo del panel.
+    const bump = () => { on(); [120, 320, 600].forEach((ms) => setTimeout(on, ms)); };
     vp.addEventListener('resize', on);
     vp.addEventListener('scroll', on);
-    return () => { vp.removeEventListener('resize', on); vp.removeEventListener('scroll', on); };
+    window.addEventListener('focusin', bump);
+    window.addEventListener('focusout', bump);
+    window.addEventListener('orientationchange', bump);
+    return () => {
+      vp.removeEventListener('resize', on); vp.removeEventListener('scroll', on);
+      window.removeEventListener('focusin', bump); window.removeEventListener('focusout', bump);
+      window.removeEventListener('orientationchange', bump);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, device]);
 
