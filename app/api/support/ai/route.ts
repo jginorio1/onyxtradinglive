@@ -61,19 +61,24 @@ export async function POST(req: Request) {
     // Fase 1: roles (trader/embajador/mentor) + estados, sin cifras ni datos de terceros.
     let acctContext = '';
     let actions: Array<{ label: string; url: string }> = [];
+    // Config del chat una sola vez (sirve para usuarios y visitantes).
+    const cfg = await chatWidgetSettings().catch(() => null as any);
+    const wantProactive = cfg?.aiProactive !== false;
+    // Nivel comercial: 'off' | 'suggest' | 'active'. Compat con aiUpsell antiguo.
+    const sellLevel: 'off' | 'suggest' | 'active' = (cfg?.aiSell as any) || (cfg?.aiUpsell !== false ? 'suggest' : 'off');
+    const wantUpsell = sellLevel !== 'off';
     if (user) {
-      const cfg = await chatWidgetSettings().catch(() => null as any);
-      const wantProactive = cfg?.aiProactive !== false;
-      const wantUpsell = cfg?.aiUpsell !== false;
       const ctx = await getSupportContext(user.id);
       acctContext = contextToPrompt(ctx, lang === 'en');
-      if (wantProactive) acctContext += `\n\n${proactiveRules(lang === 'en', wantUpsell)}`;
+      if (wantProactive) acctContext += `\n\n${proactiveRules(lang === 'en', wantUpsell, sellLevel)}`;
       // Botones de acción (deep-links) según estado + intención de la pregunta.
       try { actions = suggestActions(ctx, question, lang === 'en', wantUpsell); } catch { actions = []; }
     } else {
       acctContext = lang === 'en'
         ? `=== CONTEXT ===\nThis is a VISITOR without an account. If it fits, naturally invite them to create a free account or leave their email so we can reply. Do not be pushy.`
         : `=== CONTEXTO ===\nEs un VISITANTE sin cuenta. Si encaja, invítale de forma natural a crear su cuenta gratis o a dejar su correo para responderle. No seas insistente.`;
+      // El visitante es el mejor momento para convertir: aplica el tono comercial.
+      if (wantProactive && sellLevel !== 'off') acctContext += `\n\n${proactiveRules(lang === 'en', wantUpsell, sellLevel)}`;
     }
 
     // VPS recomendado (afiliado, editable en Admin → Bot Lab). Si hay enlace,

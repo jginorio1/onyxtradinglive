@@ -170,6 +170,29 @@ export default function ChatWidgetEditor() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card2)', borderRadius: 8, padding: '8px 11px' }}>
                 <span style={{ fontSize: 13 }}>{L('Permitir sugerir subir de plan (medido, solo si es relevante)', 'Allow plan-upgrade nudges (measured, only when relevant)')}</span><Tog on={c.aiUpsell !== false} set={(v) => u('aiUpsell', v)} />
               </div>
+              <div style={{ background: 'var(--card2)', borderRadius: 8, padding: '10px 11px' }}>
+                <div style={{ fontSize: 13, marginBottom: 7 }}>{L('Tono comercial del asistente', 'Assistant selling tone')}</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {([
+                    ['off', L('Solo resolver', 'Resolve only')],
+                    ['suggest', L('Resolver + sugerir', 'Resolve + suggest')],
+                    ['active', L('Vendedor activo', 'Active seller')],
+                  ] as [string, string][]).map(([val, lab]) => {
+                    const cur = (c.aiSell || 'suggest') === val;
+                    return (
+                      <button key={val} type="button" onClick={() => u('aiSell', val)}
+                        style={{ flex: '1 1 30%', padding: '7px 8px', fontSize: 12.5, fontWeight: 700, borderRadius: 8, cursor: 'pointer',
+                          border: cur ? '1px solid var(--brand,#7c8cff)' : '1px solid var(--line)',
+                          background: cur ? 'color-mix(in srgb, var(--brand,#7c8cff) 14%, transparent)' : 'var(--card)',
+                          color: cur ? 'var(--brand,#7c8cff)' : 'var(--tx)' }}>{lab}{val === 'suggest' ? ' ★' : ''}</button>
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--mut)', marginTop: 6, lineHeight: 1.5 }}>
+                  {L('“Resolver + sugerir” es lo recomendado. “Vendedor activo” añade un gancho de venta y un botón tras responder, siempre honesto y sin presionar.',
+                     '“Resolve + suggest” is recommended. “Active seller” adds a sales hook and a button after answering, always honest and never pushy.')}
+                </div>
+              </div>
             </div>
           </Sec>
 

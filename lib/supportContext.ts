@@ -117,18 +117,28 @@ export function contextToPrompt(ctx: SupportContext, en: boolean): string {
 }
 
 // Reglas de comportamiento proactivo (se añaden al contexto cuando el admin lo activa).
-// Primero resolver; el upsell solo si es directamente relevante, una vez y al final.
-export function proactiveRules(en: boolean, upsell: boolean): string {
+// Primero resolver; el upsell según el nivel comercial ('off' | 'suggest' | 'active').
+// `upsell` se mantiene por compatibilidad: si no se pasa `sell`, se deriva de él.
+export function proactiveRules(en: boolean, upsell: boolean, sell?: 'off' | 'suggest' | 'active'): string {
+  const level: 'off' | 'suggest' | 'active' = sell || (upsell ? 'suggest' : 'off');
   const base = en
     ? `PROACTIVE MODE: use the state signals to guess the REAL blocker behind the question and, after answering, suggest the single most useful next step in one short line (e.g. reconnect the connector, turn on Guardian, connect Stripe). Only suggest steps that fit the user's real state. Never invent a problem that the signals do not show.`
     : `MODO PROACTIVO: usa las señales de estado para adivinar el bloqueo REAL detrás de la pregunta y, después de responder, sugiere el único siguiente paso más útil en una línea corta (p. ej. reconectar el conector, encender Guardian, conectar Stripe). Solo sugiere pasos que encajen con el estado real del usuario. Nunca inventes un problema que las señales no muestren.`;
-  const up = upsell
-    ? (en
-      ? ` If — and only if — the question is directly about a feature their current plan does not include, you may mention the plan that unlocks it, briefly, ONCE, and only after fully answering. Never lead with it and never repeat it.`
-      : ` Si — y solo si — la pregunta es directamente sobre una función que su plan actual no incluye, puedes mencionar el plan que la desbloquea, brevemente, UNA vez, y solo después de responder del todo. Nunca empieces con eso ni lo repitas.`)
-    : (en
+  let up = '';
+  if (level === 'off') {
+    up = en
       ? ` Do NOT suggest upgrading the plan or mention pricing unless the user explicitly asks about plans or prices.`
-      : ` NO sugieras subir de plan ni menciones precios salvo que el usuario pregunte explícitamente por planes o precios.`);
+      : ` NO sugieras subir de plan ni menciones precios salvo que el usuario pregunte explícitamente por planes o precios.`;
+  } else if (level === 'suggest') {
+    up = en
+      ? ` If — and only if — the question is directly about a feature their current plan does not include, you may mention the plan that unlocks it, briefly, ONCE, and only after fully answering. Never lead with it and never repeat it.`
+      : ` Si — y solo si — la pregunta es directamente sobre una función que su plan actual no incluye, puedes mencionar el plan que la desbloquea, brevemente, UNA vez, y solo después de responder del todo. Nunca empieces con eso ni lo repitas.`;
+  } else {
+    // active: consultor que vende. Resuelve primero y luego vende con un gancho claro.
+    up = en
+      ? ` SELLING MODE (consultative): first fully solve the question. Then, when it fits, add ONE short, honest sales line that connects the benefit to what they want (building robots, passing a prop firm, copying, saving time) and point to the exact next step or plan that unlocks it — e.g. the Build-a-bot page, Bot Lab, or the plan with Copy. Prefer the free trial or the free plan as the low-friction first step. Be warm and confident, never pushy, never repeat it, never invent prices or features, and never promise profits.`
+      : ` MODO VENTA (consultor): primero resuelve del todo la pregunta. Luego, cuando encaje, añade UNA línea de venta corta y honesta que conecte el beneficio con lo que la persona quiere (crear robots, pasar un fondeo, copiar, ahorrar tiempo) y señala el siguiente paso o plan exacto que lo desbloquea — p. ej. la página Crea tu bot, Bot Lab o el plan con Copy. Prioriza la prueba gratis o el plan Free como primer paso sin fricción. Con calidez y seguridad, nunca insistas, no lo repitas, no inventes precios ni funciones y nunca prometas ganancias.`;
+  }
   return base + up;
 }
 

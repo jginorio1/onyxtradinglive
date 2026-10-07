@@ -310,6 +310,45 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     ? `${es ? '¡Hola' : 'Hi'} ${roleInfo.name}! ` + x.hi.replace(/^\s*(¡?\s*hola\s*!?|hi\s*!?|hello\s*!?|hey\s*!?)[,\s]*/i, '')
     : x.hi;
 
+  // Convierte enlaces dentro de una respuesta de la IA en BOTONES clickeables.
+  // Reconoce markdown [texto](url), URLs http(s) y rutas internas conocidas (/bot-builder,
+  // /pricing, /bot-lab, …). Los internos abren dentro de la app; los externos en otra pestaña.
+  const LINKABLE = '(?:bot-builder|bot-lab|pricing|copy|dashboard|guia|guide|embajadores|ambassadors|academia|academy|login|contacto|contact|analiza|unete-ventas|carreras|blog)';
+  const linkLabel = (href: string): string => {
+    const base = href.split('?')[0].replace(/\/+$/, '');
+    const M: Record<string, [string, string]> = {
+      '/bot-builder': ['Crea tu bot', 'Build a bot'], '/bot-lab': ['Bot Lab', 'Bot Lab'],
+      '/pricing': ['Ver precios', 'See pricing'], '/copy': ['Copy trading', 'Copy trading'],
+      '/guia': ['Abrir la Guía', 'Open the Guide'], '/guide': ['Abrir la Guía', 'Open the Guide'],
+      '/embajadores': ['Embajadores', 'Ambassadors'], '/ambassadors': ['Embajadores', 'Ambassadors'],
+      '/academia': ['Academia', 'Academy'], '/academy': ['Academia', 'Academy'],
+      '/login': ['Crear cuenta', 'Create account'], '/contacto': ['Contacto', 'Contact'], '/contact': ['Contacto', 'Contact'],
+      '/analiza': ['Analiza tu reporte', 'Analyze your report'],
+    };
+    const hit = M[base]; if (hit) return es ? hit[0] : hit[1];
+    try { if (href.startsWith('http')) return new URL(href).hostname.replace(/^www\./, ''); } catch {}
+    return es ? 'Abrir enlace' : 'Open link';
+  };
+  const linkBtn = (href: string, label: string, k: number) => {
+    const st: any = { display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 60%,#06b6d4)', color: '#042f2e', fontWeight: 700, fontSize: 13, padding: '3px 10px', borderRadius: 8, textDecoration: 'none', margin: '3px 3px 0 0', whiteSpace: 'nowrap' };
+    const inner = <>{label} <span aria-hidden>→</span></>;
+    if (href.startsWith('/')) return <Link key={'lk' + k} href={href} onClick={() => setOpen(false)} style={st}>{inner}</Link>;
+    return <a key={'lk' + k} href={href} target="_blank" rel="noopener noreferrer" style={st}>{inner}</a>;
+  };
+  const linkify = (text: string): any[] => {
+    if (!text) return [text];
+    const re = new RegExp('\\[([^\\]]+)\\]\\(((?:https?:\\/\\/|\\/)[^)]+)\\)|(https?:\\/\\/[^\\s<>()]+)|(\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)', 'g');
+    const out: any[] = []; let last = 0; let m: RegExpExecArray | null; let k = 0;
+    while ((m = re.exec(text))) {
+      if (m.index > last) out.push(text.slice(last, m.index));
+      if (m[1] && m[2]) out.push(linkBtn(m[2].replace(/[.,;:]+$/, ''), m[1], k++));
+      else { const href = (m[3] || m[4] || '').replace(/[.,;:]+$/, ''); out.push(linkBtn(href, linkLabel(href), k++)); }
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) out.push(text.slice(last));
+    return out;
+  };
+
   // Separa un emoji inicial de la etiqueta y lo pinta como icono de línea.
   const iconLabel = (label: string, size = 14) => {
     const m = (label || '').match(/^([\p{Extended_Pictographic}\uFE0F\u200D]+)\s*([\s\S]*)$/u);
@@ -417,8 +456,8 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
         <div className="onyx-panel" style={panelStyle}>
           <div style={{ background: 'var(--grad)', color: CHINK, padding: `calc(12px + env(safe-area-inset-top)) 14px 12px 14px`, display: 'flex', alignItems: 'center', gap: 9, flex: 'none' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? x.humanTitle : x.title}</div>
-              <div style={{ fontSize: 11, opacity: .85, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+              <div style={{ fontWeight: 800, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? x.humanTitle : x.title}</div>
+              <div style={{ fontSize: 12, opacity: .85, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden' }}>
                 {cfg.showPulse && <span className="onyx-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: '#128a4f', flex: 'none' }} />}
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.online}</span>
               </div>
@@ -428,7 +467,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
-            <div style={{ maxWidth: '86%', padding: '8px 11px', fontSize: 13, lineHeight: 1.5, ...bubble('assistant') }}>{greet}</div>
+            <div style={{ maxWidth: '86%', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, ...bubble('assistant') }}>{linkify(greet)}</div>
             {!started && cfg.showTopics && topics.length > 0 && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--mut)', margin: '2px 0 6px' }}>{x.topicsT}</div>
@@ -441,7 +480,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
               </div>
             )}
             {chat.map((m, i) => (
-              <div key={i} style={{ maxWidth: '86%', padding: '8px 11px', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap', ...bubble(m.role) }}>{m.content}</div>
+              <div key={i} style={{ maxWidth: '86%', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap', ...bubble(m.role) }}>{m.role === 'assistant' ? linkify(m.content) : m.content}</div>
             ))}
             {busy && (
               <div style={{ padding: '9px 12px', ...bubble('assistant') }}>

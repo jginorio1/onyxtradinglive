@@ -272,6 +272,9 @@ export type ChatWidget = {
   // IA consciente del estado (solo usuarios logueados)
   aiProactive: boolean;   // sugiere el siguiente paso según el estado real del usuario
   aiUpsell: boolean;      // permite sugerir subir de plan cuando es directamente relevante
+  // Tono comercial de la IA: 'off' solo resuelve · 'suggest' resuelve y sugiere (recomendado)
+  // · 'active' resuelve y vende con un gancho claro + botón. Siempre honesto, sin presionar.
+  aiSell?: 'off' | 'suggest' | 'active';
   // Por dispositivo
   side: 'right' | 'left';
   hideDesktop: boolean; hideTablet: boolean; hideMobile: boolean;
@@ -294,19 +297,23 @@ const CW: ChatWidget = {
   showTopics: true, showHuman: true, showTicket: true, showPulse: true,
   topicsGuest: [
     { q_es: '¿Cuáles son los precios y planes?', q_en: 'What are the prices and plans?', label_es: '💳 Precios', label_en: '💳 Pricing' },
-    { q_es: '¿Cómo me hago embajador?', q_en: 'How do I become an ambassador?', label_es: '🎁 Embajador', label_en: '🎁 Ambassador' },
+    { q_es: '¿Cómo creo un robot sin programar?', q_en: 'How do I build a robot with no code?', label_es: '🤖 Crea tu bot', label_en: '🤖 Build a bot' },
+    { q_es: '¿Qué es Onyx Bot Lab (comprar/vender robots)?', q_en: 'What is Onyx Bot Lab (buy/sell robots)?', label_es: '🏪 Bot Lab', label_en: '🏪 Bot Lab' },
+    { q_es: '¿Hay prueba gratis para empezar?', q_en: 'Is there a free trial to start?', label_es: '🎁 Prueba gratis', label_en: '🎁 Free trial' },
     { q_es: '¿Cómo conecto mi cuenta (MetaTrader/cTrader)?', q_en: 'How do I connect my account (MetaTrader/cTrader)?', label_es: '🔌 Conectar', label_en: '🔌 Connect' },
+    { q_es: '¿Cómo funciona el copy trading?', q_en: 'How does copy trading work?', label_es: '📑 Copy trading', label_en: '📑 Copy trading' },
     { q_es: '¿Qué hace Onyx Guardian?', q_en: 'What does Onyx Guardian do?', label_es: '🛡️ Guardian', label_en: '🛡️ Guardian' },
-    { q_es: '¿Sirve para cuentas de fondeo?', q_en: 'Does it work for funded accounts?', label_es: '🏆 Fondeo', label_en: '🏆 Funded' },
   ],
   topicsUser: [
+    { q_es: '¿Cómo creo un robot sin programar?', q_en: 'How do I build a robot with no code?', label_es: '🤖 Crea tu bot', label_en: '🤖 Build a bot' },
     { q_es: '¿Cómo conecto mi cuenta (MetaTrader/cTrader)?', q_en: 'How do I connect my account (MetaTrader/cTrader)?', label_es: '🔌 Conectar', label_en: '🔌 Connect' },
+    { q_es: '¿Cómo funciona el copy trading?', q_en: 'How does copy trading work?', label_es: '📑 Copy trading', label_en: '📑 Copy trading' },
     { q_es: '¿Qué hace Onyx Guardian?', q_en: 'What does Onyx Guardian do?', label_es: '🛡️ Guardian', label_en: '🛡️ Guardian' },
     { q_es: '¿Sirve para cuentas de fondeo?', q_en: 'Does it work for funded accounts?', label_es: '🏆 Fondeo', label_en: '🏆 Funded' },
     { q_es: '¿Cómo cambio de plan?', q_en: 'How do I change my plan?', label_es: '💳 Mi plan', label_en: '💳 My plan' },
   ],
   proactiveOn: false, proactiveDelay: 12, proactive_es: '¿Tienes dudas? Pregúntame lo que sea 👋', proactive_en: 'Any questions? Ask me anything 👋',
-  aiProactive: true, aiUpsell: true,
+  aiProactive: true, aiUpsell: true, aiSell: 'suggest',
   side: 'right', hideDesktop: false, hideTablet: false, hideMobile: false,
   launcherSize: 54, offsetX: 18, offsetY: 18,
 };
