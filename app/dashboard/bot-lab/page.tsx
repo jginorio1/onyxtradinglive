@@ -7,6 +7,7 @@ import { payRedirect } from '@/lib/nativePay';
 import { nativePlatform } from '@/lib/native';
 import VpsCallout from '@/app/components/VpsCallout';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { OnyxGlyph } from '@/app/bot-lab/OnyxMark';
 
 type View = 'market' | 'licencias' | 'vender' | 'ganancias' | 'referidos';
 const GOLD = 'var(--gold, #ffd45e)';
@@ -185,7 +186,7 @@ export default function BotLabDashboard() {
                     </div>
                     {/* Sello de verificación con track record REAL medido por Onyx */}
                     {p.verified && (
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 800, color: GOLD, background: `color-mix(in srgb,${GOLD} 12%,transparent)`, border: `1px solid color-mix(in srgb,${GOLD} 45%,transparent)`, padding: '3px 9px', borderRadius: 99, marginBottom: 8 }}>◆ {es ? 'Verificado por Onyx' : 'Verified by Onyx'}{p.perf?.score != null ? ` · ${p.perf.score}` : ''}</div>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 800, color: GOLD, background: `color-mix(in srgb,${GOLD} 12%,transparent)`, border: `1px solid color-mix(in srgb,${GOLD} 45%,transparent)`, padding: '3px 9px', borderRadius: 99, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}><OnyxGlyph size={11} /> {es ? 'Verificado por Onyx' : 'Verified by Onyx'}{p.perf?.score != null ? ` · ${p.perf.score}` : ''}</div>
                     )}
                     {p.tagline && <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 8px' }}>{p.tagline}</p>}
                     {/* Mini track record real (si está ligado a un robot con operaciones) */}
@@ -210,7 +211,7 @@ export default function BotLabDashboard() {
                     </div>
                     {/* Sellos de garantía (auto-detectados + declarados) */}
                     <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10 }}>
-                      {p.spec_propfirm && <span style={{ fontSize: 9.5, fontWeight: 700, color: GOLD, background: `color-mix(in srgb,${GOLD} 12%,transparent)`, border: `1px solid color-mix(in srgb,${GOLD} 45%,transparent)`, borderRadius: 99, padding: '2px 7px' }}>◆ {es ? 'Apto prop firm' : 'Prop firm ready'}</span>}
+                      {p.spec_propfirm && <span style={{ fontSize: 9.5, fontWeight: 700, color: GOLD, background: `color-mix(in srgb,${GOLD} 12%,transparent)`, border: `1px solid color-mix(in srgb,${GOLD} 45%,transparent)`, borderRadius: 99, padding: '2px 7px', display: 'inline-flex', alignItems: 'center', gap: 4 }}><OnyxGlyph size={9} /> {es ? 'Apto prop firm' : 'Prop firm ready'}</span>}
                       {[[!p.perf?.martingale, es ? 'Sin martingala' : 'No martingale'], [!p.perf?.hft, es ? 'Sin alta frecuencia' : 'No HFT'], [p.spec_sl || p.perf?.hasSL, es ? 'Con Stop Loss' : 'Stop Loss'], [p.spec_news, es ? 'Filtro noticias' : 'News filter']].filter(([ok]: any) => ok).map(([, l]: any, k) => (
                         <span key={k} style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--green)', background: 'color-mix(in srgb,var(--green) 10%,transparent)', border: '1px solid color-mix(in srgb,var(--green) 30%,transparent)', borderRadius: 99, padding: '2px 7px' }}>✓ {l}</span>
                       ))}
@@ -228,7 +229,7 @@ export default function BotLabDashboard() {
                           {es ? 'Pagar con USDT' : 'Pay with USDT'}
                         </button>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 5 }}>
-                          <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.04em', color: 'var(--green)', border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 99, padding: '1px 7px' }}>◆ TRON · ETHEREUM</span>
+                          <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.04em', color: 'var(--green)', border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', borderRadius: 99, padding: '1px 7px', display: 'inline-flex', alignItems: 'center', gap: 4 }}><OnyxGlyph size={9} /> TRON · ETHEREUM</span>
                           <span className="muted" style={{ fontSize: 10 }}>{es ? 'sin contracargos' : 'no chargebacks'}</span>
                         </div>
                         {pay.card && <button onClick={() => buy(p, 'card')} className="muted ios-pay-hide" style={{ width: '100%', marginTop: 6, padding: '6px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 11.5, border: 'none', background: 'transparent' }}>{es ? 'o pagar con tarjeta' : 'or pay by card'}</button>}
@@ -237,7 +238,7 @@ export default function BotLabDashboard() {
                     {/* Referido: si el vendedor ofrece %, cualquiera puede compartir su enlace y ganar (menos el propio creador). */}
                     {Number(p.affiliate_pct) > 0 && me && p.seller_id !== me && (
                       <button onClick={() => shareRef(p)} style={{ width: '100%', marginTop: 8, padding: '8px', borderRadius: 9, cursor: 'pointer', fontWeight: 800, fontSize: 12, border: `1px solid color-mix(in srgb,${GOLD} 45%,transparent)`, background: `color-mix(in srgb,${GOLD} 10%,transparent)`, color: GOLD, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                        ◆ {es ? `Compartir y ganar ${Math.round(Number(p.affiliate_pct))}%` : `Share & earn ${Math.round(Number(p.affiliate_pct))}%`}
+                        <OnyxGlyph size={12} /> {es ? `Compartir y ganar ${Math.round(Number(p.affiliate_pct))}%` : `Share & earn ${Math.round(Number(p.affiliate_pct))}%`}
                       </button>
                     )}
                     <VpsCallout variant="inline" gold />
@@ -513,7 +514,7 @@ function EarningsPanel({ es, sell, reload, goReferrals }: any) {
         if (!(rf.count > 0 || (rf.earnedCents || 0) > 0 || (rf.paidCents || 0) > 0)) return null;
         return (
           <button onClick={goReferrals} style={{ ...card, textAlign: 'left', cursor: 'pointer', width: '100%', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ color: GOLD, fontSize: 18 }}>◆</span>
+            <span style={{ color: GOLD, display: 'inline-flex' }}><OnyxGlyph size={18} /></span>
             <div style={{ flex: 1, minWidth: 140 }}>
               <b>{es ? 'Ganancias por referir' : 'Referral earnings'}</b>
               <div className="muted" style={{ fontSize: 12.5 }}>{es ? 'Lo que ganas compartiendo robots de otros creadores.' : 'What you earn sharing other creators\' robots.'}</div>

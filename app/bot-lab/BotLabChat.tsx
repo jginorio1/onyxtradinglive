@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useLang } from '@/lib/lang';
+import { OnyxMark } from './OnyxMark';
 
 // Chat flotante de Onyx Bot Lab. El cliente escribe en su idioma; el equipo lo
 // ve en español y responde en español; el cliente recibe la respuesta en su idioma.
@@ -58,7 +59,7 @@ export default function BotLabChat() {
       {open && (
         <div style={{ position: 'fixed', right: 20, bottom: 20, zIndex: 96, width: 'min(360px, calc(100vw - 32px))', height: 'min(520px, calc(100vh - 40px))', display: 'flex', flexDirection: 'column', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 18, overflow: 'hidden', boxShadow: '0 24px 60px -20px rgba(0,0,0,.7)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 15px', borderBottom: '1px solid var(--line)', background: 'var(--bg2)' }}>
-            <span style={{ width: 30, height: 30, borderRadius: 8, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>◆</span>
+            <OnyxMark size={30} radius={8} />
             <div style={{ flex: 1 }}><div style={{ fontWeight: 800, fontSize: 14 }}>Onyx Bot Lab</div><div className="muted" style={{ fontSize: 11 }}>{es ? 'Escríbenos en tu idioma' : 'Write in your language'}</div></div>
             <button onClick={() => setOpen(false)} aria-label="Cerrar" style={{ background: 'transparent', border: 'none', color: 'var(--mut)', cursor: 'pointer', fontSize: 20 }}>×</button>
           </div>

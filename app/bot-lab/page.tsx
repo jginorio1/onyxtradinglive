@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import BotLabLead from './BotLabLead';
 import BotLabMarket from './BotLabMarket';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { OnyxGlyph } from './OnyxMark';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,13 +127,13 @@ export default async function BotLabLanding() {
       <section style={{ ...wrap, paddingTop: 56, paddingBottom: 30 }}>
         <div style={{ display: 'grid', gap: 36, alignItems: 'center' }} className="g2">
           <div>
-            <span style={kicker}>◆ {L.kicker}</span>
+            <span style={{ ...kicker, display: 'inline-flex', alignItems: 'center', gap: 7 }}><OnyxGlyph size={13} /> {L.kicker}</span>
             <h1 style={{ fontSize: 'clamp(30px,7.5vw,46px)', lineHeight: 1.08, fontWeight: 800, letterSpacing: '-.02em', margin: '14px 0 0' }}>
               {L.h1a}<span style={{ background: 'linear-gradient(120deg,var(--brand),var(--brand2,#a06bff))', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>{L.h1b}</span>{L.h1c}
             </h1>
             <p className="muted" style={{ fontSize: 17, marginTop: 16, maxWidth: 540 }}>{L.sub}</p>
             <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
-              <a href="#servicio" style={{ padding: '13px 22px', borderRadius: 12, fontWeight: 800, fontSize: 15, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}>◆ {L.ctaMain}</a>
+              <a href="#servicio" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 22px', borderRadius: 12, fontWeight: 800, fontSize: 15, background: `linear-gradient(120deg,${GOLD},#ffb020)`, color: '#3a2a06' }}><OnyxGlyph size={15} /> {L.ctaMain}</a>
               <a href="/bot-builder" className="btn btn-ghost" style={{ padding: '13px 20px', borderRadius: 12, border: '1px solid var(--line)', fontWeight: 700 }}>{L.ctaBuild} →</a>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 24, flexWrap: 'wrap' }}>
@@ -183,7 +184,7 @@ export default async function BotLabLanding() {
             <div style={{ position: 'relative', borderRadius: 18, padding: '30px 20px', textAlign: 'center', background: 'linear-gradient(135deg,#3a2f7a 0%,#211a45 55%,#141428 100%)', border: '1px solid rgba(139,147,255,.5)', boxShadow: '0 24px 60px rgba(30,20,80,.35)' }}>
               <div style={{ fontSize: 12.5, letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: 700, color: '#c8ccff' }}>{es ? 'Robots a la venta ahora' : 'Robots on sale now'}</div>
               <div style={{ marginTop: 6, fontSize: 'clamp(42px,8vw,64px)', fontWeight: 800, letterSpacing: '-1px', display: 'inline-flex', alignItems: 'center', gap: 12, color: '#fff', textShadow: '0 0 26px rgba(139,147,255,.55)' }}>
-                <span style={{ fontSize: 40, lineHeight: 1 }}>◆</span><span>{nf(robots)}</span>
+                <span style={{ display: 'inline-flex', lineHeight: 1, color: '#fff' }}><OnyxGlyph size={40} dot="#b89bff" /></span><span>{nf(robots)}</span>
               </div>
               <div style={{ fontSize: 12.5, marginTop: 4, display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center', color: '#8ff0cf' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: '#5fe0aa', boxShadow: '0 0 9px #5fe0aa', display: 'inline-block' }} />{es ? 'subiendo en vivo' : 'growing live'}</div>
               <div style={{ fontSize: 13.5, marginTop: 10, color: '#c8ccff' }}>{es ? `Verificados, con Onyx Score y prueba en demo. Desde $${priceFrom}${monthly ? '/mes' : ''}.` : `Verified, with Onyx Score and demo test. From $${priceFrom}${monthly ? '/mo' : ''}.`}</div>

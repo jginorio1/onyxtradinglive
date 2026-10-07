@@ -402,7 +402,11 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
           <button onClick={launch} aria-label={x.help || (es ? 'Abrir el chat de ayuda' : 'Open help chat')}
             style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', cursor: 'pointer', flexDirection: side === 'left' ? 'row-reverse' : 'row' }}>
             {x.help && <span style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 20, padding: '7px 13px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 6px 18px rgba(0,0,0,.3)' }}>{x.help}</span>}
-            <span style={{ position: 'relative', width: lsz, height: lsz, borderRadius: '50%', background: 'var(--grad)', color: '#241002', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 22px rgba(0,0,0,.35)' }}><OnyxIcon emoji={cfg.launcher || '💬'} size={Math.round(lsz * 0.5)} glow={false} />
+            <span style={{ position: 'relative', width: lsz, height: lsz, borderRadius: '50%', background: 'var(--grad)', color: '#241002', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 22px rgba(0,0,0,.35)' }}>{(cfg.launcher && cfg.launcher !== '💬')
+                ? <OnyxIcon emoji={cfg.launcher} size={Math.round(lsz * 0.5)} glow={false} />
+                : (() => { const s = Math.round(lsz * 0.52); return (
+                  <svg width={s} height={s} viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M4 3.5h16a2.5 2.5 0 0 1 2.5 2.5v9A2.5 2.5 0 0 1 20 17.5H9.6L4.4 21.6A.7.7 0 0 1 3.3 21v-3.5H4A2.5 2.5 0 0 1 1.5 15V6A2.5 2.5 0 0 1 4 3.5z" transform="translate(0.5 0)"/><circle cx="8" cy="10.5" r="1.5" fill="#ff7a1a"/><circle cx="12.5" cy="10.5" r="1.5" fill="#ff7a1a"/><circle cx="17" cy="10.5" r="1.5" fill="#ff7a1a"/></svg>
+                ); })()}
               {cfg.showPulse && <span className="onyx-pulse" style={{ position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: '50%', background: 'var(--green)', border: '2px solid var(--bg)' }} />}
             </span>
           </button>

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { OnyxMark } from './OnyxMark';
 
 // Pie DEDICADO de Onyx Bot Lab. Mismo esqueleto que el pie global (marca + CTA,
 // columnas por categoría, aviso de riesgo, barra inferior) pero con la identidad
@@ -58,7 +59,7 @@ export default function BotLabFooter() {
         <div className="blf-brand" style={{ display: 'flex', flexWrap: 'wrap', gap: 18, justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(255,255,255,.08)', paddingBottom: 18 }}>
           <div style={{ maxWidth: 320 }}>
             <Link href="/bot-lab" className="logo" style={{ fontSize: 16, gap: 9 }}>
-              <span style={{ width: 26, height: 26, borderRadius: 8, background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>◆</span>
+              <OnyxMark size={26} radius={8} />
               Onyx Bot Lab
             </Link>
             <div className="muted" style={{ fontSize: 13, lineHeight: 1.6, marginTop: 8 }}>

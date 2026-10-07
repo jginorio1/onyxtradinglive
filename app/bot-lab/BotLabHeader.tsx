@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useLang } from '@/lib/lang';
 import LangToggle from '@/app/LangToggle';
 import ThemeToggle from '@/app/ThemeToggle';
+import { OnyxMark } from './OnyxMark';
 
 // ============================================================
 // Barra DEDICADA de Onyx Bot Lab. El layout la usa en lugar de la barra global
@@ -57,7 +58,7 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
       <div className="topbar botlab-topbar">
         <div className="wrap-wide" style={{ display: 'flex', alignItems: 'center', gap: 18, position: 'relative' }}>
           <Link href="/bot-lab" className="logo botlab-logo" aria-label="Onyx Bot Lab" style={{ gap: 13 }}>
-            <span style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 800, boxShadow: '0 6px 18px rgba(255,212,94,.4)' }}>◆</span>
+            <OnyxMark size={32} radius={9} />
             <span className="botlab-logo-text" style={{ lineHeight: 1.05, whiteSpace: 'nowrap' }}>
               <span style={{ fontWeight: 800, fontSize: 17, whiteSpace: 'nowrap' }}>Onyx Bot Lab</span>
               <small style={{ display: 'block', fontSize: 9.5, fontWeight: 700, letterSpacing: '.14em', color: 'var(--mut)', textTransform: 'uppercase', marginTop: -2 }}>{es ? 'Marketplace de robots' : 'Robot marketplace'}</small>
