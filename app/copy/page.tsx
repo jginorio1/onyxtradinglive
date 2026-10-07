@@ -131,7 +131,7 @@ export default async function CopyLanding() {
     <div className="wrap section" style={{ maxWidth: 1000 }}>
 
       {/* Hero */}
-      <div style={{ textAlign: 'center', marginBottom: 34 }}>
+      <div style={{ textAlign: 'center', marginBottom: 34, paddingTop: 'clamp(20px,6vw,40px)' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 999, background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', border: '1px solid rgba(255,106,43,.55)', color: '#241002', fontSize: 13, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 14, boxShadow: '0 6px 18px -6px rgba(255,106,43,.55)' }}>{L.kicker}</div>
         <h1 style={{ fontSize: 34, lineHeight: 1.15, maxWidth: 780, marginInline: 'auto' }}>{L.h1}</h1>
         <p className="muted" style={{ fontSize: 17, marginTop: 12, maxWidth: 660, marginInline: 'auto' }}>{L.sub}</p>
@@ -146,12 +146,12 @@ export default async function CopyLanding() {
         <h2 style={{ fontSize: 24 }}>{L.howT}</h2>
         <p className="muted" style={{ fontSize: 15, marginTop: 6, maxWidth: 640, marginInline: 'auto' }}>{L.howSub}</p>
       </div>
-      <div className="grid g4" style={{ gap: 14, marginBottom: 36 }}>
+      <div className="grid g4" style={{ gap: 18, marginBottom: 44 }}>
         {([[L.p1, L.p1d, L.p1w], [L.p2, L.p2d, L.p2w], [L.p3, L.p3d, L.p3w], [L.p4, L.p4d, L.p4w]] as const).map(([tt, dd, ww], i) => (
-          <div key={i} className="card" style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--brand)' }}>{ww}</div>
-            <div style={{ fontWeight: 700, marginTop: 4 }}>{tt}</div>
-            <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>{dd}</div>
+          <div key={i} className="card" style={{ textAlign: 'center', padding: '28px 20px' }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--brand)' }}>{ww}</div>
+            <div style={{ fontWeight: 700, marginTop: 10, fontSize: 15 }}>{tt}</div>
+            <div className="muted" style={{ fontSize: 13.5, marginTop: 10, lineHeight: 1.55 }}>{dd}</div>
           </div>
         ))}
       </div>

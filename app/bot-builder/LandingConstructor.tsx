@@ -331,42 +331,51 @@ export default function LandingConstructor() {
               if (['black', 'black_onyx', 'blackonyx'].includes(k)) return prc(['black', 'black_onyx', 'blackonyx'], annual ? 390 : 39);
               return prc([id], 0);
             };
-            // Matriz desde Admin (con fallback a los defaults estáticos bilingües).
-            const mtx: any = stats?.botPlanMatrix;
-            const meta: any[] = Array.isArray(stats?.botCapMeta) ? stats.botCapMeta : [];
-            const DEF_TIERS = [
-              { id: 'free', es: 'Gratis', en: 'Free' },
-              { id: 'trader', es: 'Trader', en: 'Trader' },
-              { id: 'black', es: 'Black Onyx', en: 'Black Onyx' },
+            // CONGRUENCIA: la tabla se arma SOLA desde los planes reales (con sus
+            // CAPABILITIES de Admin → Planes). Columnas: Free, Onyx Builder (trader)
+            // y Black Onyx. Si un plan aún no cargó, cae a un respaldo por banda.
+            const findPlan = (ids: string[]) => plans.find((p: any) => ids.includes(String(p.id).toLowerCase()));
+            const TIER_DEFS = [
+              { id: 'free', ids: ['free'], name: es ? 'Gratis' : 'Free' },
+              { id: 'trader', ids: ['trader'], name: 'Onyx Builder' },
+              { id: 'black', ids: ['black', 'black_onyx', 'blackonyx'], name: 'Black Onyx' },
             ];
-            const mtxTiers: any[] = (mtx?.tiers && Array.isArray(mtx.tiers) && mtx.tiers.length) ? mtx.tiers : DEF_TIERS;
-            // El tier del medio (índice 1) se resalta como "popular".
-            const hiId = mtxTiers[1]?.id;
-            const tiers = mtxTiers.slice(0, 3).map((t: any) => ({ id: t.id, name: es ? t.es : (t.en || t.es), price: priceFor(t.id), hi: t.id === hiId }));
+            const tiers = TIER_DEFS.map((t) => { const p: any = findPlan(t.ids); return { id: t.id, plan: p, name: p ? (es ? p.name : (p.name_en || p.name)) : t.name, price: priceFor(t.id), hi: t.id === 'trader' }; });
             const CH = <OnyxIcon name="check" size={13} glow={false} />;
-            // Filas: desde botCapMeta si viene; si no, las estáticas de respaldo.
-            const DEF_ROWS: { es: string; en: string; vals: any[] }[] = [
-              { es: 'Robots que creas', en: 'Robots you create', vals: ['1', '∞', '∞'] },
-              { es: 'Cuentas conectadas', en: 'Connected accounts', vals: ['1', '3', '∞'] },
-              { es: 'Plataformas MT4 · MT5 · cTrader', en: 'Platforms MT4 · MT5 · cTrader', vals: [true, true, true] },
-              { es: 'Gatillos, salidas, riesgo y frenos', en: 'Triggers, exits, risk & brakes', vals: [true, true, true] },
-              { es: 'Reglas de fondeo + candado de activación', en: 'Firm rules + activation lock', vals: [true, true, true] },
-              { es: 'Múltiples sesiones y días operables', en: 'Multiple sessions & trading days', vals: [true, true, true] },
-              { es: 'Filtro de noticias integrado', en: 'Built-in news filter', vals: [true, true, true] },
-              { es: 'Guía PDF personalizada + plantillas', en: 'Personalized PDF guide + templates', vals: [true, true, true] },
-              { es: 'Descarga del EA (.mq5/.mq4/.cs) + .set', en: 'EA download (.mq5/.mq4/.cs) + .set', vals: [true, true, true] },
-              { es: 'Mis robots: KPIs, pruebas vs vivo, graduación', en: 'My robots: KPIs, testing vs live, graduation', vals: [true, true, true] },
-              { es: 'Registro automático de operaciones', en: 'Automatic trade logging', vals: [true, true, true] },
-              { es: 'Historial de operaciones', en: 'Trade history', vals: [es ? '30 días' : '30 days', es ? 'completo' : 'full', es ? 'completo' : 'full'] },
-              { es: 'Métricas avanzadas (Sharpe, Monte Carlo, walk-forward)', en: 'Advanced metrics (Sharpe, Monte Carlo, walk-forward)', vals: [false, true, true] },
-              { es: 'Laboratorio de portafolio + correlación + sugerencias', en: 'Portfolio lab + correlation + suggestions', vals: [false, true, true] },
-              { es: 'Copy trading incluido', en: 'Copy trading included', vals: [false, false, true] },
-              { es: 'Soporte prioritario', en: 'Priority support', vals: [false, false, true] },
+            const LK = <OnyxIcon name="lock" size={13} glow={false} />;
+            // Cada fila dice cómo sacar su valor REAL del plan:
+            //  acc = cuentas conectadas (max_accounts) · hist = historial (history_days)
+            //  cap = interruptor real (capabilities[cap]) · v = estático por banda
+            //  (las features propias del constructor van siempre incluidas).
+            type BR = { es: string; en: string; k: 'acc' | 'hist' | 'cap' | 'v'; cap?: string; v?: any[] };
+            const BOT_ROWS: BR[] = [
+              { es: 'Robots que creas', en: 'Robots you create', k: 'v', v: ['1', '∞', '∞'] },
+              { es: 'Cuentas conectadas', en: 'Connected accounts', k: 'acc' },
+              { es: 'Plataformas MT4 · MT5 · cTrader', en: 'Platforms MT4 · MT5 · cTrader', k: 'v', v: [true, true, true] },
+              { es: 'Gatillos, salidas, riesgo y frenos', en: 'Triggers, exits, risk & brakes', k: 'v', v: [true, true, true] },
+              { es: 'Reglas de fondeo + candado de activación', en: 'Firm rules + activation lock', k: 'v', v: [true, true, true] },
+              { es: 'Múltiples sesiones y días operables', en: 'Multiple sessions & trading days', k: 'v', v: [true, true, true] },
+              { es: 'Filtro de noticias integrado', en: 'Built-in news filter', k: 'v', v: [true, true, true] },
+              { es: 'Guía PDF personalizada + plantillas', en: 'Personalized PDF guide + templates', k: 'v', v: [true, true, true] },
+              { es: 'Descarga del EA (.mq5/.mq4/.cs) + .set', en: 'EA download (.mq5/.mq4/.cs) + .set', k: 'v', v: [true, true, true] },
+              { es: 'Mis robots: KPIs, pruebas vs vivo, graduación', en: 'My robots: KPIs, testing vs live, graduation', k: 'cap', cap: 'bots' },
+              { es: 'Registro automático de operaciones', en: 'Automatic trade logging', k: 'v', v: [true, true, true] },
+              { es: 'Historial de operaciones', en: 'Trade history', k: 'hist' },
+              { es: 'Métricas avanzadas (Sharpe, Monte Carlo, walk-forward)', en: 'Advanced metrics (Sharpe, Monte Carlo, walk-forward)', k: 'cap', cap: 'bots' },
+              { es: 'Laboratorio de portafolio + correlación + sugerencias', en: 'Portfolio lab + correlation + suggestions', k: 'cap', cap: 'bots' },
+              { es: 'Copy trading incluido', en: 'Copy trading included', k: 'cap', cap: 'copy' },
+              { es: 'Soporte prioritario', en: 'Priority support', k: 'v', v: [false, false, true] },
             ];
-            const rows: { label: string; vals: any[] }[] = (meta.length && mtx?.caps)
-              ? meta.map((m: any) => ({ label: es ? m.es : (m.en || m.es), vals: tiers.map((tr: any) => mtx.caps?.[m.key]?.[tr.id]) }))
-              : DEF_ROWS.map((r) => ({ label: es ? r.es : r.en, vals: r.vals }));
-            const cell = (v: any) => v === true ? CH : (v === false || v == null || v === '') ? <span style={{ color: 'var(--mut)' }}>—</span> : <span style={{ fontSize: 12.5 }}>{String(v)}</span>;
+            const resolveCell = (r: BR, tr: any, ci: number): any => {
+              const caps: any = tr.plan?.capabilities || {};
+              if (r.k === 'acc') { if (!tr.plan) return ['1', '3', '∞'][ci]; const n = Number(tr.plan.max_accounts); if (isNaN(n)) return '—'; return n >= 999 ? '∞' : String(n); }
+              if (r.k === 'hist') { if (!tr.plan) return [es ? '30 días' : '30 days', es ? 'completo' : 'full', es ? 'completo' : 'full'][ci]; const d = Number(caps.history_days) || 0; return d <= 0 ? (es ? 'completo' : 'full') : `${d} ${es ? 'días' : 'days'}`; }
+              if (r.k === 'cap') { if (!tr.plan) return false; return !!caps[r.cap!]; }
+              return r.v ? r.v[ci] : '';
+            };
+            const rows = BOT_ROWS.map((r) => ({ label: es ? r.es : r.en, vals: tiers.map((tr: any, ci: number) => resolveCell(r, tr, ci)) }));
+            // Lo no incluido → candado (igual que la tabla principal). ✓ = incluido.
+            const cell = (v: any) => v === true ? CH : (v === false || v == null || v === '') ? <span style={{ color: 'var(--mut)' }}>{LK}</span> : <span style={{ fontSize: 12.5 }}>{String(v)}</span>;
             const go = (id: string, price: number) => { window.location.href = (price > 0 && id !== 'free') ? `/login?mode=signup&plan=${id}${annual ? '&annual=1' : ''}` : '/login?mode=signup'; };
             return (
               <div style={{ maxWidth: 760, margin: '26px auto 0', border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden', background: 'var(--card)' }}>
