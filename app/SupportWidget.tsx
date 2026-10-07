@@ -462,8 +462,8 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
 
           {!sent && (
             <div style={{ padding: '10px 10px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
-              {/* Nueva conversación: botón fijo arriba del campo (reemplaza al menú). */}
-              {started && (
+              {/* Nueva conversación: botón fijo arriba del campo (reemplaza al menú). Siempre visible. */}
+              {(
                 <button onClick={() => clearChat()} style={{ width: '100%', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '9px', borderRadius: 10, border: '1px solid rgba(255,157,61,.5)', background: 'rgba(255,122,26,.08)', color: '#ffb15e', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
                   <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 6h10M6.5 6V4.5h3V6M5 6l.6 7h4.8L11 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   {es ? 'Nueva conversación' : 'New conversation'}
