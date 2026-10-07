@@ -148,9 +148,14 @@ export async function botCapsForUser(userId: string): Promise<{ tier: string; ad
   const mtx = await botPlanMatrixSettings();
   const ids = (mtx.tiers || []).map((t) => String(t.id));
   let planId = 'free';
+  let planCaps: any = {};
   try {
     const { data: prof } = await supabaseAdmin.from('profiles').select('plan,addon_algo').eq('id', userId).maybeSingle();
     planId = String((prof as any)?.plan || 'free').toLowerCase();
+    // Capacidades REALES del plan (Admin → Planes). Si el dueño activó ahí
+    // 'advMetrics'/'portfolioLab', eso manda; si no, caemos a la matriz de abajo.
+    const { data: planRow } = await supabaseAdmin.from('plans').select('capabilities').eq('id', planId).maybeSingle();
+    planCaps = (planRow as any)?.capabilities || {};
   } catch { /* fallback free */ }
   // Resolver tier: match exacto, alias black, o heurística por add-on/plan pago.
   let tier = ids.includes(planId) ? planId : '';
@@ -162,7 +167,11 @@ export async function botCapsForUser(userId: string): Promise<{ tier: string; ad
     tier = hasBots ? (ids[1] || ids[ids.length - 1] || 'trader') : (ids[0] || 'free');
   }
   const caps = mtx.caps || {};
-  return { tier, advMetrics: !!caps.advMetrics?.[tier], portfolioLab: !!caps.portfolioLab?.[tier] };
+  // Toggle real del plan manda; si el dueño aún no lo activó (undefined), caemos
+  // al valor por defecto de la matriz para ese tier (free apagado · pago encendido).
+  const advMetrics = planCaps.advMetrics !== undefined ? !!planCaps.advMetrics : !!caps.advMetrics?.[tier];
+  const portfolioLab = planCaps.portfolioLab !== undefined ? !!planCaps.portfolioLab : !!caps.portfolioLab?.[tier];
+  return { tier, advMetrics, portfolioLab };
 }
 
 export const retentionSettings = () => getSetting<Retention>('retention', R);

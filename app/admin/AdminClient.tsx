@@ -75,8 +75,17 @@ type User = { id: string; email: string; full_name?: string | null; plan: string
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
 type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'nomina' | 'carreras' | 'formacion' | 'embajadores' | 'ventas' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'mtbrokers' | 'tlservers' | 'dxservers' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'copytraders' | 'botlab' | 'factory' | 'pagos' | 'antifraude' | 'trackrecord' | 'monitor' | 'ads' | 'ajustes';
 
-const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'expenses', 'coach', 'academy', 'challenge', 'habits', 'edge', 'copymkt', 'share', 'push', 'platforms'];
+const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'advMetrics', 'portfolioLab', 'expenses', 'coach', 'academy', 'challenge', 'habits', 'edge', 'copymkt', 'share', 'push', 'platforms'];
 const CAP_FALLBACK: Record<string, string> = { tv: 'TradingView (señales → EA)' };
+// Capacidades agrupadas por tema para que el editor de planes sea fácil de leer.
+// Cada grupo lleva su encabezado bilingüe; dentro van los interruptores reales.
+const CAP_GROUPS: { es: string; en: string; keys: string[] }[] = [
+  { es: 'Panel y análisis', en: 'Dashboard & analytics', keys: ['journal', 'compare', 'funding', 'costs', 'export', 'edge', 'challenge', 'habits', 'expenses', 'coach', 'share', 'push', 'platforms'] },
+  { es: 'Onyx Guardian (trading manual)', en: 'Onyx Guardian (manual trading)', keys: ['manager', 'manager_advanced', 'manager_news', 'telegram', 'reports'] },
+  { es: 'Robots / Bots', en: 'Robots / Bots', keys: ['algo', 'advMetrics', 'portfolioLab', 'tv'] },
+  { es: 'Copy trading', en: 'Copy trading', keys: ['copy', 'copymkt'] },
+  { es: 'Onyx Academy', en: 'Onyx Academy', keys: ['academy'] },
+];
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <span className="toggle" onClick={onClick} style={{ background: on ? 'var(--green)' : '#556080', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}><span className="knob" style={{ left: on ? 21 : 3 }} /></span>;
@@ -2316,10 +2325,15 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
         <span style={{ fontSize: 13, flex: 1 }}>{lang === 'en' ? 'Free trial days' : 'Días de prueba'} <span className="muted">{lang === 'en' ? '(0 = no trial · card required)' : '(0 = sin prueba · pide tarjeta)'}</span></span>
         <input type="number" min={0} max={90} value={p.capabilities?.trial_days ?? 0} onChange={(e) => setCap('trial_days', Number(e.target.value) || 0)} style={{ margin: 0, width: 80, padding: '6px 8px' }} />
       </div>
-      {CAPS.map((k) => (
-        <div key={k} className="row" style={{ justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
-          <span style={{ fontSize: 13 }}>{(t as any)['cap_' + k] || CAP_FALLBACK[k] || k}</span>
-          <Toggle on={!!p.capabilities?.[k]} onClick={() => setCap(k, !p.capabilities?.[k])} />
+      {CAP_GROUPS.map((g) => (
+        <div key={g.es}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--mut)', margin: '12px 0 2px', borderTop: '1px solid var(--line)', paddingTop: 9 }}>{lang === 'en' ? g.en : g.es}</div>
+          {g.keys.map((k) => (
+            <div key={k} className="row" style={{ justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
+              <span style={{ fontSize: 13 }}>{(t as any)['cap_' + k] || CAP_FALLBACK[k] || k}</span>
+              <Toggle on={!!p.capabilities?.[k]} onClick={() => setCap(k, !p.capabilities?.[k])} />
+            </div>
+          ))}
         </div>
       ))}
       {p.capabilities?.copy && (

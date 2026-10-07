@@ -347,7 +347,12 @@ export default function LandingConstructor() {
             //  acc = cuentas conectadas (max_accounts) · hist = historial (history_days)
             //  cap = interruptor real (capabilities[cap]) · v = estático por banda
             //  (las features propias del constructor van siempre incluidas).
-            type BR = { es: string; en: string; k: 'acc' | 'hist' | 'cap' | 'v'; cap?: string; v?: any[] };
+            //  cap  = interruptor REAL del plan (capabilities[cap]); la clave del
+            //         módulo de robots es 'algo', copy es 'copy'.
+            //  mtx  = gate del módulo de robots que vive en bot_plan_matrix
+            //         (métricas avanzadas y laboratorio): es lo que de verdad
+            //         gatea esas funciones adentro de "Mis robots".
+            type BR = { es: string; en: string; k: 'acc' | 'hist' | 'cap' | 'mtx' | 'v'; cap?: string; mkey?: string; v?: any[] };
             const BOT_ROWS: BR[] = [
               { es: 'Robots que creas', en: 'Robots you create', k: 'v', v: ['1', '∞', '∞'] },
               { es: 'Cuentas conectadas', en: 'Connected accounts', k: 'acc' },
@@ -358,19 +363,21 @@ export default function LandingConstructor() {
               { es: 'Filtro de noticias integrado', en: 'Built-in news filter', k: 'v', v: [true, true, true] },
               { es: 'Guía PDF personalizada + plantillas', en: 'Personalized PDF guide + templates', k: 'v', v: [true, true, true] },
               { es: 'Descarga del EA (.mq5/.mq4/.cs) + .set', en: 'EA download (.mq5/.mq4/.cs) + .set', k: 'v', v: [true, true, true] },
-              { es: 'Mis robots: KPIs, pruebas vs vivo, graduación', en: 'My robots: KPIs, testing vs live, graduation', k: 'cap', cap: 'bots' },
+              { es: 'Mis robots: KPIs, pruebas vs vivo, graduación', en: 'My robots: KPIs, testing vs live, graduation', k: 'mtx', mkey: 'myrobots', v: [true, true, true] },
               { es: 'Registro automático de operaciones', en: 'Automatic trade logging', k: 'v', v: [true, true, true] },
               { es: 'Historial de operaciones', en: 'Trade history', k: 'hist' },
-              { es: 'Métricas avanzadas (Sharpe, Monte Carlo, walk-forward)', en: 'Advanced metrics (Sharpe, Monte Carlo, walk-forward)', k: 'cap', cap: 'bots' },
-              { es: 'Laboratorio de portafolio + correlación + sugerencias', en: 'Portfolio lab + correlation + suggestions', k: 'cap', cap: 'bots' },
-              { es: 'Copy trading incluido', en: 'Copy trading included', k: 'cap', cap: 'copy' },
+              { es: 'Métricas avanzadas (Sharpe, Monte Carlo, walk-forward)', en: 'Advanced metrics (Sharpe, Monte Carlo, walk-forward)', k: 'cap', cap: 'advMetrics', v: [false, true, true] },
+              { es: 'Laboratorio de portafolio + correlación + sugerencias', en: 'Portfolio lab + correlation + suggestions', k: 'cap', cap: 'portfolioLab', v: [false, true, true] },
+              { es: 'Copy trading incluido', en: 'Copy trading included', k: 'cap', cap: 'copy', v: [false, false, true] },
               { es: 'Soporte prioritario', en: 'Priority support', k: 'v', v: [false, false, true] },
             ];
+            const mtxCaps: any = stats?.botPlanMatrix?.caps || {};
             const resolveCell = (r: BR, tr: any, ci: number): any => {
               const caps: any = tr.plan?.capabilities || {};
               if (r.k === 'acc') { if (!tr.plan) return ['1', '3', '∞'][ci]; const n = Number(tr.plan.max_accounts); if (isNaN(n)) return '—'; return n >= 999 ? '∞' : String(n); }
               if (r.k === 'hist') { if (!tr.plan) return [es ? '30 días' : '30 days', es ? 'completo' : 'full', es ? 'completo' : 'full'][ci]; const d = Number(caps.history_days) || 0; return d <= 0 ? (es ? 'completo' : 'full') : `${d} ${es ? 'días' : 'days'}`; }
-              if (r.k === 'cap') { if (!tr.plan) return false; return !!caps[r.cap!]; }
+              if (r.k === 'cap') { if (!tr.plan) return r.v ? r.v[ci] : false; const val = caps[r.cap!]; if (val === undefined || val === null) return r.v ? r.v[ci] : false; return !!val; }
+              if (r.k === 'mtx') { const m = mtxCaps?.[r.mkey!]?.[tr.id]; if (m === undefined || m === null) return r.v ? r.v[ci] : false; return !!m; }
               return r.v ? r.v[ci] : '';
             };
             const rows = BOT_ROWS.map((r) => ({ label: es ? r.es : r.en, vals: tiers.map((tr: any, ci: number) => resolveCell(r, tr, ci)) }));
