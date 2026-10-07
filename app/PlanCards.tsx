@@ -67,21 +67,25 @@ export default function PlanCards({
         const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
         const isFree = p.id === 'free' || price === 0;
         const botTag = !!botTagId && p.id === botTagId;
-        const goldHi = isPopular || botTag;   // recomendado en DORADO: "popular" en /pricing, "Para bots" en el constructor
+        // El plan "Para bots" (solo en el constructor /bot-builder) tiene identidad
+        // propia en CIAN/teal con ícono de robot, para no competir en oro con el
+        // "Más popular". El oro (goldHi) queda solo para "popular" en /pricing.
+        const botCyan = botTag;
+        const goldHi = isPopular;   // recomendado en DORADO: solo "popular" en /pricing
         // Black Onyx = tope de gama: tarjeta "obsidiana" (negro→violeta) con borde
         // oro→violeta y doble glow. Palomitas y botón en oro. Solo este plan.
         const isBlack = ['black', 'black_onyx', 'blackonyx'].includes(String(p.id).toLowerCase());
-        const checkBg = isBlack ? 'linear-gradient(135deg,#ffe08a,#e8b923)' : 'var(--green)';
-        const checkFg = isBlack ? '#2a1e02' : '#04120b';
+        const checkBg = isBlack ? 'linear-gradient(135deg,#ffe08a,#e8b923)' : botCyan ? 'linear-gradient(135deg,#22d3ee,#2dd4bf)' : 'var(--green)';
+        const checkFg = isBlack ? '#2a1e02' : botCyan ? '#042f2e' : '#04120b';
         return (
-          <div key={p.id} className="card" style={{ flex: '1 1 240px', minWidth: 230, maxWidth: 320, display: 'flex', flexDirection: 'column', ...(isBlack ? { position: 'relative', border: '2px solid transparent', background: 'radial-gradient(120% 80% at 50% 0%, #241a3a 0%, #120d1f 45%, #07060d 100%) padding-box, linear-gradient(160deg,#ffe08a,#e8b923 20%,#7a5cff 60%,#2a1a4d) border-box', boxShadow: '0 0 34px rgba(232,185,35,.3), 0 0 60px -10px rgba(124,92,255,.28)' } : goldHi ? { border: `2px solid ${gold}`, boxShadow: '0 0 30px rgba(232,185,35,.28)', position: 'relative' } : hasBadge ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }) }}>
+          <div key={p.id} className="card" style={{ flex: '1 1 240px', minWidth: 230, maxWidth: 320, display: 'flex', flexDirection: 'column', ...(isBlack ? { position: 'relative', border: '2px solid transparent', background: 'radial-gradient(120% 80% at 50% 0%, #241a3a 0%, #120d1f 45%, #07060d 100%) padding-box, linear-gradient(160deg,#ffe08a,#e8b923 20%,#7a5cff 60%,#2a1a4d) border-box', boxShadow: '0 0 34px rgba(232,185,35,.3), 0 0 60px -10px rgba(124,92,255,.28)' } : botCyan ? { position: 'relative', border: '2px solid transparent', background: 'linear-gradient(180deg, color-mix(in srgb, #22d3ee 9%, var(--card)) 0%, var(--card) 58%) padding-box, linear-gradient(160deg,#22d3ee,#2dd4bf 55%,#0891b2) border-box', boxShadow: '0 0 30px rgba(34,211,238,.24)' } : goldHi ? { border: `2px solid ${gold}`, boxShadow: '0 0 30px rgba(232,185,35,.28)', position: 'relative' } : hasBadge ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }) }}>
             {hasBadge && (isPopular
               ? <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: gold, color: goldDark, fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badgeText}</span>
               : isBlack
                 ? <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(100deg,#ffe08a,#e8b923)', color: '#2a1e02', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap', letterSpacing: '.03em', boxShadow: '0 4px 14px -4px rgba(232,185,35,.6)' }}>◆ {badgeText}</span>
                 : <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>◆ {badgeText}</span>)}
-            {botTag && <span style={{ position: 'absolute', top: 12, right: 12, background: 'color-mix(in srgb, var(--gold, #e8b923) 20%, transparent)', color: 'var(--gold, #e8b923)', fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, border: '1px solid color-mix(in srgb, var(--gold, #e8b923) 45%, transparent)', whiteSpace: 'nowrap' }}>★ {lang === 'es' ? 'Para bots' : 'For bots'}</span>}
-            <h3 style={{ marginTop: hasBadge ? 6 : 0, ...(isBlack ? { background: 'linear-gradient(90deg,#fff,#d8c9ff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' } : {}) }}>{name}</h3>
+            {botTag && <span style={{ position: 'absolute', top: 12, right: 12, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'color-mix(in srgb, #22d3ee 18%, transparent)', color: '#22d3ee', fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, border: '1px solid color-mix(in srgb, #22d3ee 50%, transparent)', whiteSpace: 'nowrap' }}><OnyxIcon emoji="🤖" size={11} glow={false} /> {lang === 'es' ? 'Para bots' : 'For bots'}</span>}
+            <h3 style={{ marginTop: hasBadge ? 6 : 0, ...(isBlack ? { background: 'linear-gradient(90deg,#fff,#d8c9ff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' } : botCyan ? { background: 'linear-gradient(90deg, var(--tx), #22d3ee)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' } : {}) }}>{name}</h3>
             {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>{desc}</p>}
             <div style={{ fontSize: 40, fontWeight: 800, margin: '10px 0 4px' }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>/{annual ? t.yr : t.mo}</span></div>
             {(() => {
@@ -115,7 +119,7 @@ export default function PlanCards({
               const label = isFree ? (freeLabel || t.free)
                 : (trialLabel || (ctas?.[p.id] ? (lang === 'es' ? ctas[p.id].es : ctas[p.id].en) : t.choose + ' ' + name));
               return (
-                <button className={'btn ' + (goldHi || isBlack ? '' : hasBadge ? 'btn-primary' : 'btn-ghost')} style={isBlack ? { width: '100%', background: 'linear-gradient(100deg,#ffe08a,#e8b923 45%,#ff9d3d)', color: '#2a1e02', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -4px rgba(232,185,35,.5)' } : goldHi ? { width: '100%', background: gold, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%' }} onClick={() => onChoose(p.id, price)} disabled={loadingId === p.id}>
+                <button className={'btn ' + (goldHi || isBlack || botCyan ? '' : hasBadge ? 'btn-primary' : 'btn-ghost')} style={isBlack ? { width: '100%', background: 'linear-gradient(100deg,#ffe08a,#e8b923 45%,#ff9d3d)', color: '#2a1e02', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -4px rgba(232,185,35,.5)' } : botCyan ? { width: '100%', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 55%,#06b6d4)', color: '#042f2e', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -4px rgba(34,211,238,.45)' } : goldHi ? { width: '100%', background: gold, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%' }} onClick={() => onChoose(p.id, price)} disabled={loadingId === p.id}>
                   {loadingId === p.id ? '...' : label}
                 </button>
               );
