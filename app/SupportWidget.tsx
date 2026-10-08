@@ -314,7 +314,14 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // Reconoce markdown [texto](url), URLs http(s) y rutas internas conocidas (/bot-builder,
   // /pricing, /bot-lab, …). Los internos abren dentro de la app; los externos en otra pestaña.
   const LINKABLE = '(?:bot-builder|bot-lab|pricing|copy|dashboard|guia|guide|embajadores|ambassadors|academia|academy|login|contacto|contact|analiza|unete-ventas|carreras|blog)';
-  const linkLabel = (href: string): string => {
+  // Detecta si un texto está en español (para que las etiquetas de botón sigan
+  // el idioma de LA RESPUESTA, no el del sitio: la IA contesta en el idioma del usuario).
+  const looksSpanish = (text: string): boolean => {
+    const s = (text || '').toLowerCase();
+    if (/[¿¡ñ]|ción\b|á|é|í|ó|ú/.test(s)) return true;
+    return /\b(el|la|los|las|tu|tus|qué|cómo|para|robot|cuenta|planes|gratis|puedes|crear)\b/.test(s);
+  };
+  const linkLabel = (href: string, esArg = es): string => {
     const base = href.split('?')[0].replace(/\/+$/, '');
     const M: Record<string, [string, string]> = {
       '/bot-builder': ['Crea tu bot', 'Build a bot'], '/bot-lab': ['Bot Lab', 'Bot Lab'],
@@ -325,9 +332,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       '/login': ['Crear cuenta', 'Create account'], '/contacto': ['Contacto', 'Contact'], '/contact': ['Contacto', 'Contact'],
       '/analiza': ['Analiza tu reporte', 'Analyze your report'],
     };
-    const hit = M[base]; if (hit) return es ? hit[0] : hit[1];
+    const hit = M[base]; if (hit) return esArg ? hit[0] : hit[1];
     try { if (href.startsWith('http')) return new URL(href).hostname.replace(/^www\./, ''); } catch {}
-    return es ? 'Abrir enlace' : 'Open link';
+    return esArg ? 'Abrir enlace' : 'Open link';
   };
   const linkBtn = (href: string, label: string, k: number) => {
     const st: any = { display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 60%,#06b6d4)', color: '#042f2e', fontWeight: 700, fontSize: 13, padding: '3px 10px', borderRadius: 8, textDecoration: 'none', margin: '3px 3px 0 0', whiteSpace: 'nowrap' };
@@ -337,12 +344,14 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   };
   const linkify = (text: string): any[] => {
     if (!text) return [text];
+    // El idioma de las etiquetas de botón sigue al TEXTO (la IA responde en el idioma del usuario).
+    const esTxt = looksSpanish(text) || es;
     const re = new RegExp('\\[([^\\]]+)\\]\\(((?:https?:\\/\\/|\\/)[^)]+)\\)|(https?:\\/\\/[^\\s<>()]+)|(\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)', 'g');
     const out: any[] = []; let last = 0; let m: RegExpExecArray | null; let k = 0;
     while ((m = re.exec(text))) {
       if (m.index > last) out.push(text.slice(last, m.index));
       if (m[1] && m[2]) out.push(linkBtn(m[2].replace(/[.,;:]+$/, ''), m[1], k++));
-      else { const href = (m[3] || m[4] || '').replace(/[.,;:]+$/, ''); out.push(linkBtn(href, linkLabel(href), k++)); }
+      else { const href = (m[3] || m[4] || '').replace(/[.,;:]+$/, ''); out.push(linkBtn(href, linkLabel(href, esTxt), k++)); }
       last = m.index + m[0].length;
     }
     if (last < text.length) out.push(text.slice(last));
