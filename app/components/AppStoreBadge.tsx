@@ -13,9 +13,11 @@ export const APPSTORE_URL = 'https://apps.apple.com/app/id6813729962';
 const BADGE_SRC = '/appstore-badge.png';
 
 export default function AppStoreBadge({ size = 'md' }: { size?: 'xs' | 'sm' | 'md' }) {
-  // Alturas alineadas con GooglePlayBadge para que se vean parejos uno al lado del
-  // otro. 'xs' es para banners y filas compactas (dashboard, chat, barra inferior).
-  const h = size === 'xs' ? 44 : size === 'sm' ? 62 : 78;
+  // El badge de Google Play (PNG oficial) trae margen transparente arriba/abajo, así
+  // que su botón visible es más bajo que su caja. El de Apple no tiene margen. Para
+  // que se vean del MISMO alto uno al lado del otro, usamos ~72% de la altura de la
+  // caja de Google Play (sm 62→44, md 78→56, xs 44→32).
+  const h = size === 'xs' ? 32 : size === 'sm' ? 44 : 56;
   return (
     <a
       href={APPSTORE_URL}

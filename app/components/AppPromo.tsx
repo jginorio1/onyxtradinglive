@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { isNativeApp } from '@/lib/native';
 import GooglePlayBadge from './GooglePlayBadge';
+import AppStoreBadge from './AppStoreBadge';
 
 // ---- Banner del dashboard (una vez) --------------------------------------
 export function GetAppBanner() {
@@ -38,7 +39,7 @@ export function GetAppBanner() {
           {es ? 'Tu Guardian, tus robots y tus cuentas en el bolsillo.' : 'Your Guardian, robots and accounts in your pocket.'}
         </div>
       </div>
-      <span style={{ flex: 'none' }}><GooglePlayBadge size="xs" /></span>
+      <span style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}><GooglePlayBadge size="xs" /><AppStoreBadge size="xs" /></span>
       <button aria-label={es ? 'Cerrar' : 'Close'} onClick={close}
         style={{ background: 'none', border: 'none', color: 'var(--mut,#8a90a2)', fontSize: 16, cursor: 'pointer', flex: 'none' }}>✕</button>
     </div>
@@ -76,7 +77,7 @@ export function AppSmartBanner() {
         <b style={{ fontSize: 12.5 }}>Onyx Trading Live</b>
         <div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Gratis · en Google Play' : 'Free · on Google Play'}</div>
       </div>
-      <span style={{ flex: 'none' }}><GooglePlayBadge size="xs" /></span>
+      <span style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}><GooglePlayBadge size="xs" /><AppStoreBadge size="xs" /></span>
       <button aria-label={es ? 'Cerrar' : 'Close'} onClick={close}
         style={{ background: 'none', border: 'none', color: 'var(--mut,#8a90a2)', fontSize: 15, cursor: 'pointer', flex: 'none' }}>✕</button>
     </div>

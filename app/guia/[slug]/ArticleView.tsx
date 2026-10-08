@@ -6,6 +6,7 @@ import { useLang } from '@/lib/lang';
 import { Article, CATEGORIES, ARTICLES } from '@/lib/guide';
 import GuideBody from '../GuideBody';
 import GooglePlayBadge from '@/app/components/GooglePlayBadge';
+import AppStoreBadge from '@/app/components/AppStoreBadge';
 import { isNativeApp } from '@/lib/native';
 
 const T: any = {
@@ -84,7 +85,7 @@ export default function ArticleView({ slug }: { slug: string }) {
       {a.cta && (
         <div style={{ marginTop: 24, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
           {/^https?:\/\/play\.google\.com\//i.test(a.cta.href)
-            ? (!isNative && <GooglePlayBadge size="sm" />)        /* app en Google Play: badge oficial clicable */
+            ? (!isNative && <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><GooglePlayBadge size="sm" /><AppStoreBadge size="sm" /></div>)   /* app en las dos tiendas: badges oficiales clicables */
             : authed === false
               ? <Link className="btn btn-primary" href="/login?mode=signup">{t.signup}</Link>
               : <Link className="btn btn-primary" href={a.cta.href}>{a.cta.label[lang]}</Link>}
