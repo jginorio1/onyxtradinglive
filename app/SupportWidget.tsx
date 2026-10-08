@@ -330,7 +330,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       '/embajadores': ['Embajadores', 'Ambassadors'], '/ambassadors': ['Embajadores', 'Ambassadors'],
       '/academia': ['Academia', 'Academy'], '/academy': ['Academia', 'Academy'],
       '/login': ['Crear cuenta', 'Create account'], '/contacto': ['Contacto', 'Contact'], '/contact': ['Contacto', 'Contact'],
-      '/analiza': ['Analiza tu reporte', 'Analyze your report'],
+      '/analiza': ['Analiza tu reporte', 'Analyze your report'], '/dashboard': ['Mi panel', 'My dashboard'],
     };
     const hit = M[base]; if (hit) return esArg ? hit[0] : hit[1];
     try { if (href.startsWith('http')) return new URL(href).hostname.replace(/^www\./, ''); } catch {}
@@ -346,6 +346,11 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     if (!text) return [text];
     // El idioma de las etiquetas de botón sigue al TEXTO (la IA responde en el idioma del usuario).
     const esTxt = looksSpanish(text) || es;
+    // La IA suele poner la ruta entre paréntesis: "el Guardian (/dashboard)". Como la ruta
+    // se vuelve botón, quitamos los paréntesis que solo envuelven un enlace para que no queden sueltos.
+    text = text
+      .replace(/\(\s*(\[[^\]]+\]\((?:https?:\/\/|\/)[^)]+\))\s*\)/g, '$1')
+      .replace(new RegExp('(?<!\\])\\(\\s*(\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)\\s*\\)', 'g'), '$1');
     const re = new RegExp('\\[([^\\]]+)\\]\\(((?:https?:\\/\\/|\\/)[^)]+)\\)|(https?:\\/\\/[^\\s<>()]+)|(\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)', 'g');
     const out: any[] = []; let last = 0; let m: RegExpExecArray | null; let k = 0;
     while ((m = re.exec(text))) {
