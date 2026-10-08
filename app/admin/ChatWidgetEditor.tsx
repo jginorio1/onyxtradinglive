@@ -27,11 +27,12 @@ export default function ChatWidgetEditor() {
   useEffect(() => { fetch('/api/admin/chat-widget').then((r) => r.json()).then((d) => { if (!d.error) setC(d); }).catch(() => {}); }, []);
   const u = (k: string, v: any) => setC((p: any) => ({ ...p, [k]: v }));
 
-  async function save() {
-    if (!c) return;
+  async function save(override?: Cfg) {
+    const payload = override || c;
+    if (!payload) return;
     setBusy(true); setMsg('');
     try {
-      const r = await fetch('/api/admin/chat-widget', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(c) });
+      const r = await fetch('/api/admin/chat-widget', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       const d = await r.json();
       if (!r.ok) setMsg(d.error || 'Error'); else { setC(d); setMsg(L('Guardado ✓', 'Saved ✓')); }
     } finally { setBusy(false); }
@@ -72,9 +73,9 @@ export default function ChatWidgetEditor() {
     const upd = (i: number, k: keyof Topic, val: string) => setList(list.map((t, j) => (j === i ? { ...t, [k]: val } : t)));
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <button className="btn btn-primary" style={{ fontSize: 12.5, alignSelf: 'flex-start', padding: '6px 11px' }}
-          onClick={() => setList(RECO[field].map((t) => ({ ...t })))}>
-          ★ {L('Usar temas recomendados', 'Use recommended topics')}
+        <button className="btn btn-primary" style={{ fontSize: 12.5, alignSelf: 'flex-start', padding: '6px 11px' }} disabled={busy}
+          onClick={() => { const next = { ...(c as any), [field]: RECO[field].map((t) => ({ ...t })) }; setC(next); save(next); }}>
+          ★ {busy ? '…' : L('Usar temas recomendados', 'Use recommended topics')}
         </button>
         {list.map((t, i) => (
           <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10 }}>
