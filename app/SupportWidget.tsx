@@ -579,7 +579,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             {actions.length > 0 && (
               <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
                 {actions.map((a) => (
-                  <Link key={a.url} href={a.url} onClick={() => setOpen(false)} className="btn btn-primary" style={{ padding: '7px 12px', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Link key={a.url} href={canonHref(a.url)} onClick={() => setOpen(false)} className="btn btn-primary" style={{ padding: '7px 12px', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     {a.label} <OnyxIcon name="send" size={13} glow={false} />
                   </Link>
                 ))}
@@ -587,7 +587,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             )}
             {refs.length > 0 && (
               <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {refs.map((a) => <Link key={a.slug} href={`/guia/${a.slug}`} onClick={() => setOpen(false)} className="pill" style={{ color: 'var(--brand)', background: 'rgba(124,140,255,.12)' }}>{t.seeArt}: {a.title}</Link>)}
+                {refs.map((a) => <Link key={a.slug} href={canonHref(`/guia/${a.slug}`)} onClick={() => setOpen(false)} className="pill" style={{ color: 'var(--brand)', background: 'rgba(124,140,255,.12)' }}>{t.seeArt}: {a.title}</Link>)}
               </div>
             )}
             {showEmail && !sent && (
