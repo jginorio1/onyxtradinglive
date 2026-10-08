@@ -55,11 +55,17 @@ export const EMAIL_DESTINATIONS: Dest[] = [
   { id: 'verif_cert', es: 'Verificar certificado', en: 'Verify certificate', path: '/verificar-certificado', group: 'web', when: 'verificar un folio de certificado' },
   { id: 'privacy', es: 'Privacidad', en: 'Privacy', path: '/privacy', group: 'web', when: 'política de privacidad' },
   { id: 'terms', es: 'Términos', en: 'Terms', path: '/terms', group: 'web', when: 'términos y condiciones' },
+  // --- Destinos externos oficiales (enlaces completos, no se les antepone el dominio) ---
+  { id: 'google_play', es: 'App en Google Play', en: 'App on Google Play', path: 'https://play.google.com/store/apps/details?id=com.onyxtradinglive.app', group: 'web', when: 'descargar la app Android' },
+  { id: 'app_store', es: 'App en App Store', en: 'App on App Store', path: 'https://apps.apple.com/app/onyx-trading-live', group: 'web', when: 'descargar la app iOS (cuando esté publicada)' },
 ];
 
-// URL completa de un destino (base + ruta).
+// URL completa de un destino (base + ruta). Si ya es una URL absoluta
+// (http/https) la devuelve tal cual: así funcionan Google Play, App Store,
+// enlaces de VPS/afiliado y cualquier promoción externa.
 export function destUrl(path: string): string {
   const p = String(path || '').trim();
+  if (/^https?:\/\//i.test(p)) return p;
   return ONYX_BASE + (p.startsWith('/') ? p : '/' + p);
 }
 
@@ -82,8 +88,11 @@ export function isAllowedLink(u: string): boolean {
   if (isTemplateVar(s)) return true;
   if (/^mailto:/i.test(s)) return true;
   if (s.startsWith('/')) return true;                          // ruta interna de Onyx
-  if (!/^https?:\/\//i.test(s)) return false;
-  try { return hostIsOnyx(new URL(s).hostname); } catch { return false; }
+  // Cualquier enlace externo bien formado (http/https) es válido: así el dueño
+  // puede enlazar la app en Google Play / App Store, su VPS de afiliado o
+  // promociones externas desde sus propios correos. Los enlaces internos de
+  // Onyx y los dominios-typo se siguen corrigiendo con fixLink().
+  try { const url = new URL(s); return url.protocol === 'http:' || url.protocol === 'https:'; } catch { return false; }
 }
 
 // Normaliza/corrige un enlace a algo seguro de Onyx cuando es claramente erróneo.
