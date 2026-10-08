@@ -368,6 +368,10 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     if (/^(?:https?:\/\/)?play\.google\.com\//i.test(href)) {
       return <span key={'gp' + k} style={{ display: 'inline-flex', verticalAlign: 'middle', margin: '4px 4px 0 0' }}><GooglePlayBadge size="xs" /></span>;
     }
+    // Lo mismo para la App Store: badge OFICIAL clicable en vez de pastilla.
+    if (/^(?:https?:\/\/)?apps\.apple\.com\//i.test(href)) {
+      return <span key={'as' + k} style={{ display: 'inline-flex', verticalAlign: 'middle', margin: '4px 4px 0 0' }}><AppStoreBadge size="xs" /></span>;
+    }
     const st: any = { display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 60%,#06b6d4)', color: '#042f2e', fontWeight: 700, fontSize: 13, padding: '3px 10px', borderRadius: 8, textDecoration: 'none', margin: '3px 3px 0 0', whiteSpace: 'nowrap' };
     const inner = <>{label} <span aria-hidden>→</span></>;
     const dest = canonHref(href);   // ruta real, sin dominio, sin idioma, con alias resuelto

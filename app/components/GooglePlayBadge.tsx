@@ -1,19 +1,16 @@
 'use client';
-// Badge OFICIAL de Google Play. La imagen vive en /public (Next.js la sirve en
-// la raíz del sitio). Enlace único a la ficha de la app. La imagen oficial ya
-// trae el botón negro con su borde y el texto "GET IT ON · Google Play", por eso
-// aquí NO envolvemos en ninguna caja: solo el enlace + la imagen.
+// Badge de Google Play (imagen en /public, fondo transparente). Mismo alto y misma
+// caja que AppStoreBadge → al ponerlos lado a lado se ven idénticos.
 
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.onyxtradinglive.app';
 
-// Archivo tal cual lo subiste a /public. Si lo renombras, cambia solo esta línea.
-const BADGE_SRC = '/googleplay-badge-01-getit.width-375.png';
+// Imagen con fondo transparente subida a /public. Si la renombras, cambia esta línea.
+const BADGE_SRC = '/googleplay-badge.png';
 
 export default function GooglePlayBadge({ size = 'md' }: { size?: 'xs' | 'sm' | 'md' }) {
-  // Alto del badge. La imagen oficial trae margen transparente, por eso usamos
-  // alturas generosas para que el logo se vea bien grande. 'xs' es para banners
-  // y filas compactas (dashboard, barra inferior).
-  const h = size === 'xs' ? 44 : size === 'sm' ? 62 : 78; // el ancho se ajusta solo
+  // Mismo alto que AppStoreBadge (ambas imágenes tienen la misma caja 135×40 sin
+  // margen blanco), por eso quedan iguales.
+  const h = size === 'xs' ? 30 : size === 'sm' ? 38 : 46;
   return (
     <a
       href={PLAY_URL}
