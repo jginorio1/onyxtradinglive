@@ -10,7 +10,9 @@ export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.onyxt
 const BADGE_SRC = '/googleplay-badge-01-getit.width-375.png';
 
 export default function GooglePlayBadge({ size = 'md' }: { size?: 'sm' | 'md' }) {
-  const h = size === 'sm' ? 46 : 56; // alto del badge; el ancho se ajusta solo
+  // Alto del badge. La imagen oficial trae margen transparente, por eso usamos
+  // alturas generosas para que el logo se vea bien grande.
+  const h = size === 'sm' ? 62 : 78; // el ancho se ajusta solo
   return (
     <a
       href={PLAY_URL}

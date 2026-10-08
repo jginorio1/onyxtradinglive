@@ -49,6 +49,46 @@ export const CATEGORIES = [
 ];
 
 export const ARTICLES: Article[] = [
+  // ---------- APP MÓVIL (Android) ----------
+  {
+    slug: 'app-movil',
+    cat: 'start', icon: '📱', updated: true,
+    title: { es: 'Descarga la app de Onyx (Android)', en: 'Download the Onyx app (Android)' },
+    summary: { es: 'Instala Onyx en tu teléfono Android desde Google Play y lleva tus cuentas, robots y el Guardian en el bolsillo.', en: 'Install Onyx on your Android phone from Google Play and carry your accounts, robots and the Guardian in your pocket.' },
+    cta: { href: 'https://play.google.com/store/apps/details?id=com.onyxtradinglive.app', label: { es: 'Abrir en Google Play', en: 'Open on Google Play' } },
+    seo: {
+      title: { es: 'Descarga la app de Onyx Trading Live para Android · Guía', en: 'Download the Onyx Trading Live app for Android · Guide' },
+      desc: { es: 'Cómo instalar la app de Onyx Trading Live en Android desde Google Play, iniciar sesión y usarla igual que la web.', en: 'How to install the Onyx Trading Live app on Android from Google Play, sign in and use it just like the web.' },
+      keywords: { es: ['app onyx', 'onyx android', 'descargar app', 'google play', 'app trading'], en: ['onyx app', 'onyx android', 'download app', 'google play', 'trading app'] },
+    },
+    body: {
+      es: [
+        { p: 'Onyx Trading Live ya está disponible como app para Android en Google Play. Es la misma plataforma que usas en la web, pero en tu teléfono: revisas tus cuentas, tus robots, tu Guardian y tus estadísticas donde estés, sin abrir el navegador.' },
+        { h: 'Cómo la instalas' },
+        { steps: ['Abre Google Play en tu teléfono Android.', 'Busca “Onyx Trading Live” o abre el enlace directo play.google.com/store/apps/details?id=com.onyxtradinglive.app.', 'Pulsa Instalar y espera a que se descargue.', 'Ábrela e inicia sesión con tu misma cuenta de Onyx (el mismo correo y contraseña de la web).'] },
+        { h: 'Qué puedes hacer desde la app' },
+        { list: ['Ver tus cuentas, tu portafolio y tu ganancia neta en vivo.', 'Seguir tus robots y el estado de cada uno.', 'Tener a Onyx Guardian protegiendo tu riesgo y recibir avisos.', 'Entrar a Onyx Copy, Bot Lab, la Academia y tu reto de fondeo.'] },
+        { note: 'Tu cuenta es la misma en la web y en la app: lo que configuras en una se ve en la otra. No hace falta crear otra cuenta.', title: 'Una sola cuenta' },
+        { h: '¿También hay app web?' },
+        { p: 'Sí. Si no quieres instalar nada, puedes usar Onyx desde el navegador del teléfono igual que en la computadora: el panel se adapta a móvil, tablet y pantallas grandes.' },
+        { h: '¿Y para iPhone (iOS)?' },
+        { p: 'Por ahora la app nativa está en Android. En iPhone puedes usar Onyx desde el navegador (Safari) con todas las funciones.' },
+      ],
+      en: [
+        { p: 'Onyx Trading Live is now available as an Android app on Google Play. It is the same platform you use on the web, but on your phone: check your accounts, robots, Guardian and stats wherever you are, without opening a browser.' },
+        { h: 'How to install it' },
+        { steps: ['Open Google Play on your Android phone.', 'Search for “Onyx Trading Live” or open the direct link play.google.com/store/apps/details?id=com.onyxtradinglive.app.', 'Tap Install and wait for it to download.', 'Open it and sign in with your same Onyx account (the same email and password as the web).'] },
+        { h: 'What you can do from the app' },
+        { list: ['See your accounts, portfolio and net profit live.', 'Follow your robots and each one’s status.', 'Keep Onyx Guardian protecting your risk and get alerts.', 'Access Onyx Copy, Bot Lab, the Academy and your funding challenge.'] },
+        { note: 'Your account is the same on the web and in the app: whatever you set in one shows in the other. No need to create another account.', title: 'One single account' },
+        { h: 'Is there also a web app?' },
+        { p: 'Yes. If you’d rather not install anything, you can use Onyx from your phone’s browser just like on a computer: the dashboard adapts to phone, tablet and large screens.' },
+        { h: 'What about iPhone (iOS)?' },
+        { p: 'For now the native app is on Android. On iPhone you can use Onyx from the browser (Safari) with all features.' },
+      ],
+    },
+  },
+
   // ---------- ONYX COPY (marketplace) ----------
   {
     slug: 'onyx-copy',
