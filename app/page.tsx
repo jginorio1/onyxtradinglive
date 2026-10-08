@@ -1045,12 +1045,12 @@ export default function Home() {
                     : 'Monitor your accounts, robots and risk wherever you are.'}
                 </p>
                 {([
-                  ['🛡️', lang === 'es' ? 'Guardian 24/7' : 'Guardian 24/7', lang === 'es' ? 'Tu riesgo protegido sin abrir el PC' : 'Your risk protected without opening the PC'],
-                  ['🔔', lang === 'es' ? 'Alertas al instante' : 'Instant alerts', lang === 'es' ? 'Operaciones, metas y avisos en tiempo real' : 'Trades, goals and alerts in real time'],
-                  ['📊', lang === 'es' ? 'Tu ganancia real' : 'Your real profit', lang === 'es' ? 'Estadísticas y curva siempre a mano' : 'Stats and equity curve always at hand'],
+                  ['guardian', lang === 'es' ? 'Guardian 24/7' : 'Guardian 24/7', lang === 'es' ? 'Tu riesgo protegido sin abrir el PC' : 'Your risk protected without opening the PC'],
+                  ['bell', lang === 'es' ? 'Alertas al instante' : 'Instant alerts', lang === 'es' ? 'Operaciones, metas y avisos en tiempo real' : 'Trades, goals and alerts in real time'],
+                  ['performance', lang === 'es' ? 'Tu ganancia real' : 'Your real profit', lang === 'es' ? 'Estadísticas y curva siempre a mano' : 'Stats and equity curve always at hand'],
                 ] as [string, string, string][]).map(([ic, h, d], i) => (
                   <div key={i} style={{ display: 'flex', gap: 11, alignItems: 'flex-start', marginBottom: 12 }}>
-                    <span style={{ fontSize: 17, flex: 'none', marginTop: 1 }}>{ic}</span>
+                    <span style={{ flex: 'none', width: 34, height: 34, borderRadius: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'color-mix(in srgb, var(--brand) 14%, transparent)', color: 'var(--brand)' }}><OnyxIcon name={ic} size={20} glow={false} /></span>
                     <div><b>{h}</b><div className="muted" style={{ fontSize: 13 }}>{d}</div></div>
                   </div>
                 ))}
