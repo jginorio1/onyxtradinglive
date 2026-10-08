@@ -8,14 +8,14 @@
   /* Violeta de marca (tema oscuro): subido en brillo/saturación para que resalte
      sobre el fondo oscuro y no se vea apagado. Los botones usan texto oscuro
      sobre este color, así que aclararlo mejora el contraste (no lo rompe). */
-  --brand:#8f9dff; --brand2:#b27dff;
+  --brand:#ff9d3d; --brand2:#ffcf5c;
   --green:#34e2a0; --green2:#12b981; --red:#ff6b7d; --red2:#e23b55; --amber:#ffc04d; --cyan:#3ad0ff; --gold:#ffd45e; --purple:#c49bff;
-  --grad:linear-gradient(120deg,#8f9dff,#b27dff);
+  --grad:linear-gradient(100deg,#ffcf5c,#ff9d3d 46%,#ff5e4d);
   --grad-green:linear-gradient(120deg,#34e2a0,#12b981);
   --grad-red:linear-gradient(120deg,#ff6b7d,#e23b55);
   /* Tonos "suaves" (texto claro sobre oscuro). Valor oscuro = el actual, para
      que el modo oscuro NO cambie; en claro pasan a un tono legible. */
-  --soft-brand:#c3ccff; --soft-brand2:#a9b4ff; --soft-green:#7fe9c0; --soft-purple:#c9a9ff;
+  --soft-brand:#ffd79a; --soft-brand2:#ffcf5c; --soft-green:#7fe9c0; --soft-purple:#c9a9ff;
 }
 /* ============ TEMA CLARO ============
    Redefine las mismas variables. Se aplica de dos formas:
@@ -32,20 +32,20 @@ html[data-theme="light"]{
   /* --brand de tema claro oscurecido de #5b6cff a #5261e6: el botón primario usa
      texto blanco sobre var(--brand) y #5b6cff solo daba 4.17:1 (WCAG pide 4.5).
      #5261e6 da 4.72:1 y es visualmente casi idéntico. El modo oscuro no cambia. */
-  --brand:#5261e6; --brand2:#8b5cff;
+  --brand:#c2410c; --brand2:#e0781f;
   --green:#0e9268; --green2:#0b7c58; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
-  --grad:linear-gradient(120deg,#5261e6,#8b5cff);
-  --soft-brand:#4a57c9; --soft-brand2:#4550b0; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
+  --grad:linear-gradient(100deg,#e0781f,#c2410c);
+  --soft-brand:#b84a12; --soft-brand2:#a8440f; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]):not([data-theme="light"]){
     color-scheme: light;
     --bg:#e7ebf3; --bg2:#eff2f8; --card:#ffffff; --card2:#e9eef6; --line:#d2d9e6;
     --tx:#101725; --mut:#56617a;
-    --brand:#5261e6; --brand2:#8b5cff;  /* mismo fix de contraste que arriba (btn primario) */
+    --brand:#c2410c; --brand2:#e0781f;  /* naranja chinita oscurecido: texto blanco sobre var(--brand) pasa WCAG */
     --green:#0e9268; --green2:#0b7c58; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
-    --grad:linear-gradient(120deg,#5261e6,#8b5cff);
-    --soft-brand:#4a57c9; --soft-brand2:#4550b0; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
+    --grad:linear-gradient(100deg,#e0781f,#c2410c);
+    --soft-brand:#b84a12; --soft-brand2:#a8440f; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
   }
 }
 
