@@ -358,6 +358,57 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     return out;
   };
 
+  // Texto enriquecido en línea: **negrita** + enlaces→botón.
+  const inlineRich = (text: string, kb: string): any[] => {
+    const out: any[] = []; let i = 0; let k = 0;
+    const re = /\*\*([^*]+)\*\*/g; let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      if (m.index > i) out.push(...linkify(text.slice(i, m.index)));
+      out.push(<strong key={kb + 'b' + k++}>{m[1]}</strong>);
+      i = m.index + m[0].length;
+    }
+    if (i < text.length) out.push(...linkify(text.slice(i)));
+    return out;
+  };
+
+  // Renderiza la respuesta: convierte tablas markdown en tarjetas apiladas (el chat
+  // es angosto y las tablas se ven mal), y respeta negritas, viñetas y enlaces.
+  const renderRich = (text: string): any[] => {
+    if (!text || (!text.includes('|') && !text.includes('**'))) return linkify(text);
+    const lines = text.split('\n');
+    const blocks: any[] = []; let i = 0; let bk = 0;
+    const isSep = (l: string) => /^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/.test(l) && l.includes('-');
+    const cells = (l: string) => l.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((c) => c.trim());
+    while (i < lines.length) {
+      const l = lines[i];
+      // ¿Inicio de tabla? fila con | seguida de separador ---.
+      if (l.includes('|') && i + 1 < lines.length && isSep(lines[i + 1])) {
+        const header = cells(l); i += 2; const rows: string[][] = [];
+        while (i < lines.length && lines[i].includes('|')) { rows.push(cells(lines[i])); i++; }
+        blocks.push(
+          <div key={'tb' + bk++} style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '6px 0' }}>
+            {rows.map((r, ri) => (
+              <div key={ri} style={{ border: '1px solid var(--line,rgba(255,255,255,.1))', borderRadius: 10, padding: '8px 10px', background: 'rgba(34,211,238,.06)' }}>
+                <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 4 }}>{inlineRich(r[0] || '', 'tt' + ri)}</div>
+                {r.slice(1).map((c, ci) => (c ? (
+                  <div key={ci} style={{ fontSize: 12.5, lineHeight: 1.5, display: 'flex', gap: 6 }}>
+                    <span style={{ opacity: .6, minWidth: 54, flex: 'none' }}>{header[ci + 1] || ''}</span>
+                    <span>{inlineRich(c, 't' + ri + '_' + ci)}</span>
+                  </div>
+                ) : null))}
+              </div>
+            ))}
+          </div>
+        );
+        continue;
+      }
+      // Línea normal (incluye viñetas y párrafos).
+      blocks.push(<div key={'ln' + bk++} style={{ minHeight: l.trim() ? undefined : 6 }}>{inlineRich(l, 'l' + bk)}</div>);
+      i++;
+    }
+    return blocks;
+  };
+
   // Separa un emoji inicial de la etiqueta y lo pinta como icono de línea.
   const iconLabel = (label: string, size = 14) => {
     const m = (label || '').match(/^([\p{Extended_Pictographic}\uFE0F\u200D]+)\s*([\s\S]*)$/u);
@@ -489,7 +540,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
               </div>
             )}
             {chat.map((m, i) => (
-              <div key={i} style={{ maxWidth: '86%', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap', ...bubble(m.role) }}>{m.role === 'assistant' ? linkify(m.content) : m.content}</div>
+              <div key={i} style={{ maxWidth: '86%', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, whiteSpace: m.role === 'assistant' ? 'normal' : 'pre-wrap', ...bubble(m.role) }}>{m.role === 'assistant' ? renderRich(m.content) : m.content}</div>
             ))}
             {busy && (
               <div style={{ padding: '9px 12px', ...bubble('assistant') }}>
