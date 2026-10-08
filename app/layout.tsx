@@ -26,6 +26,7 @@ import ScrollTopOnNav from './components/ScrollTopOnNav';
 import MonitorBeacon from './MonitorBeacon';
 import { serverBeta } from '@/lib/betaServer';
 import PromoBar from './PromoBar';
+import { AppSmartBanner } from './components/AppPromo';
 import OnlineNow from './OnlineNow';
 import VisitorBeacon from './VisitorBeacon';
 import StickyAd from './components/StickyAd';
@@ -293,6 +294,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               ? (botlabCfg && <SupportWidget loggedIn={loggedIn} cfg={botlabCfg} variant="botlab" />)
               : <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />)}
             <BackToTop />
+            {/* Smart banner de la app Android, solo en web móvil (nunca en la app nativa) */}
+            {!path.startsWith('/admin') && <AppSmartBanner />}
             {online && online.enabled && (
               <OnlineNow min={online.min} max={online.max} speed={online.speed} color={online.color} hideMobile={online.hideMobile} label={lang === 'es' ? online.label_es : online.label_en} />
             )}

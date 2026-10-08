@@ -11,6 +11,7 @@ import MarketHours from './MarketHours';
 import HubVitals, { StatCard, type Vital, type Tile } from './HubVitals';
 import SetupGuide from './SetupGuide';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { GetAppBanner } from '@/app/components/AppPromo';
 import { openAuthedFile } from '@/lib/nativeShare';
 import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 import Achievements from './Achievements';
@@ -951,6 +952,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             que el trader nuevo lo vea prominente. Con cuentas, el lanzador compacto,
             el reloj de mercado, el neto y el Coach viven en el riel derecho (abajo). */}
         {!hasAccounts && <SetupGuide />}
+
+        {/* Aviso "descarga la app" para usuarios nuevos: se muestra una vez y se cierra. */}
+        <GetAppBanner />
 
         <div className="cockpit">
           {/* Riel derecho = panel personal de vistazo (cuentas · mercado · neto · coach).
