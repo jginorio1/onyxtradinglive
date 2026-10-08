@@ -52,6 +52,34 @@ export default function GuideBody({ article, lang }: { article: Any; lang: 'es' 
   );
 }
 
+// Convierte enlaces dentro de un texto en <a> clicables. Reconoce URLs con
+// https:// y también dominios "pelados" (p. ej. play.google.com/...) para que
+// los pasos de la guía se puedan pulsar en vez de solo copiar/pegar.
+const URL_RE = /((?:https?:\/\/)?(?:[a-z0-9-]+\.)+(?:com|net|org|io|app|co|me|gg|ai|dev|es|mx|gl)(?:\/[^\s)]*)?)/gi;
+function linkifyStr(s: string): Any[] {
+  const out: Any[] = []; let last = 0; let k = 0; let m: RegExpExecArray | null;
+  URL_RE.lastIndex = 0;
+  while ((m = URL_RE.exec(s))) {
+    const raw = m[0];
+    if (m.index > last) out.push(s.slice(last, m.index));
+    const trail = (raw.match(/[.,;:)]+$/) || [''])[0];
+    const clean = raw.slice(0, raw.length - trail.length);
+    const href = /^https?:\/\//i.test(clean) ? clean : 'https://' + clean;
+    out.push(<a key={'l' + (k++)} href={href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', textDecoration: 'underline', wordBreak: 'break-word' }}>{clean}</a>);
+    if (trail) out.push(trail);
+    last = m.index + raw.length;
+  }
+  if (last < s.length) out.push(s.slice(last));
+  return out;
+}
+// Aplica linkify tanto a un texto plano como a la salida de renderVps (que puede
+// ser un array con nodos: deja los nodos y solo linkifica los trozos de texto).
+function lk(node: Any): Any {
+  if (typeof node === 'string') return linkifyStr(node);
+  if (Array.isArray(node)) return node.map((n, i) => (typeof n === 'string' ? <span key={'t' + i}>{linkifyStr(n)}</span> : n));
+  return node;
+}
+
 export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: string) => void }) {
   const any = b as Any;
   const vps = useVpsInfo();   // convierte el token [[VPS]] en el enlace del VPS recomendado
@@ -61,11 +89,11 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
   // Aplica los dos motores de tokens (dinero + prueba) a un texto plano.
   const dyn = (s: string) => applyMoney(applyTrial(s, trial, lang), terms);
   if (any.h) return <h2 style={{ fontSize: 18, margin: '26px 0 10px' }}>{any.h}</h2>;
-  if (any.p) return <p style={{ fontSize: 15, lineHeight: 1.85, color: 'var(--tx)', marginBottom: 14 }}>{renderVps(dyn(any.p), vps)}</p>;
+  if (any.p) return <p style={{ fontSize: 15, lineHeight: 1.85, color: 'var(--tx)', marginBottom: 14 }}>{lk(renderVps(dyn(any.p), vps))}</p>;
   if (any.note) return (
     <div style={{ background: 'var(--bg2)', borderLeft: '3px solid var(--amber)', padding: '13px 15px', marginBottom: 16, borderRadius: 0 }}>
       {any.title && <div style={{ color: 'var(--amber)', fontSize: 12, marginBottom: 5 }}>{any.title}</div>}
-      <div className="muted" style={{ fontSize: 14, lineHeight: 1.75, whiteSpace: 'pre-line' }}>{dyn(any.note)}</div>
+      <div className="muted" style={{ fontSize: 14, lineHeight: 1.75, whiteSpace: 'pre-line' }}>{lk(dyn(any.note))}</div>
     </div>
   );
   if (any.warn) return (
@@ -90,7 +118,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
   );
   if (any.list) return (
     <ul style={{ margin: '0 0 16px 20px', padding: 0 }}>
-      {any.list.map((x: string, i: number) => <li key={i} style={{ fontSize: 15, lineHeight: 1.8, color: 'var(--tx)', marginBottom: 7 }}>{x}</li>)}
+      {any.list.map((x: string, i: number) => <li key={i} style={{ fontSize: 15, lineHeight: 1.8, color: 'var(--tx)', marginBottom: 7 }}>{lk(dyn(x))}</li>)}
     </ul>
   );
   if (any.walk) return (
@@ -116,7 +144,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
       {any.steps.map((x: string, i: number) => (
         <div key={i} className="row" style={{ gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
           <span style={{ width: 22, height: 22, borderRadius: '50%', flex: 'none', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card2)', color: 'var(--mut)' }}>{i + 1}</span>
-          <span style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--tx)' }}>{dyn(x)}</span>
+          <span style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--tx)' }}>{lk(dyn(x))}</span>
         </div>
       ))}
     </div>

@@ -354,20 +354,23 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       '/analiza': ['Analiza tu reporte', 'Analyze your report'], '/dashboard': ['Mi panel', 'My dashboard'],
     };
     const hit = M[base]; if (hit) return esArg ? hit[0] : hit[1];
-    try { if (href.startsWith('http')) return new URL(href).hostname.replace(/^www\./, ''); } catch {}
+    try { const u = /^https?:\/\//i.test(href) ? href : 'https://' + href; return new URL(u).hostname.replace(/^www\./, ''); } catch {}
     return esArg ? 'Abrir enlace' : 'Open link';
   };
   const linkBtn = (href: string, label: string, k: number) => {
-    // Si el enlace es la app en Google Play, mostramos el badge OFICIAL clicable
-    // (congruente con la guía, el landing y los banners), no una píldora genérica.
-    if (/^https?:\/\/play\.google\.com\//i.test(href)) {
+    // Si el enlace es la app en Google Play (con o sin https://), mostramos el badge
+    // OFICIAL clicable (congruente con la guía, el landing y los banners).
+    if (/^(?:https?:\/\/)?play\.google\.com\//i.test(href)) {
       return <span key={'gp' + k} style={{ display: 'inline-flex', verticalAlign: 'middle', margin: '4px 4px 0 0' }}><GooglePlayBadge size="xs" /></span>;
     }
     const st: any = { display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 60%,#06b6d4)', color: '#042f2e', fontWeight: 700, fontSize: 13, padding: '3px 10px', borderRadius: 8, textDecoration: 'none', margin: '3px 3px 0 0', whiteSpace: 'nowrap' };
     const inner = <>{label} <span aria-hidden>→</span></>;
     const dest = canonHref(href);   // ruta real, sin dominio, sin idioma, con alias resuelto
     if (dest.startsWith('/')) return <Link key={'lk' + k} href={dest} onClick={() => setOpen(false)} style={st}>{inner}</Link>;
-    return <a key={'lk' + k} href={dest} target="_blank" rel="noopener noreferrer" style={st}>{inner}</a>;
+    // Externo: si viene sin esquema (dominio pelado como play.google.com/…), le
+    // anteponemos https:// para que el enlace sea clicable y no relativo.
+    const ext = /^https?:\/\//i.test(dest) ? dest : 'https://' + dest;
+    return <a key={'lk' + k} href={ext} target="_blank" rel="noopener noreferrer" style={st}>{inner}</a>;
   };
   const linkify = (text: string): any[] => {
     if (!text) return [text];
@@ -379,12 +382,16 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       .replace(/\(\s*(\[[^\]]+\]\((?:https?:\/\/|\/)[^)]+\))\s*\)/g, '$1')
       .replace(new RegExp('(?<!\\])\\(\\s*((?:\\/(?:en|es|pt|zh|ja|vi))?\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)\\s*\\)', 'g'), '$1');
     // Capturamos también rutas con prefijo de idioma (/en/embajadores) para normalizarlas.
-    const re = new RegExp('\\[([^\\]]+)\\]\\(((?:https?:\\/\\/|\\/)[^)]+)\\)|(https?:\\/\\/[^\\s<>()]+)|((?:\\/(?:en|es|pt|zh|ja|vi))?\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)', 'g');
+    // Grupos: [1][2] markdown · [3] URL http(s) · [4] ruta interna · [5] dominio
+    // "pelado" sin https:// (play.google.com/…, apps.apple.com/…, dominio.com/ruta)
+    // para que los enlaces de copiar/pegar también se vuelvan clicables.
+    const BARE = '((?:play\\.google\\.com|apps\\.apple\\.com|(?:[a-z0-9-]+\\.)+(?:com|net|org|io|app|co|me|gg|ai|dev|es|mx))\\/[^\\s<>()]+)';
+    const re = new RegExp('\\[([^\\]]+)\\]\\(((?:https?:\\/\\/|\\/)[^)]+)\\)|(https?:\\/\\/[^\\s<>()]+)|((?:\\/(?:en|es|pt|zh|ja|vi))?\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)|' + BARE, 'gi');
     const out: any[] = []; let last = 0; let m: RegExpExecArray | null; let k = 0;
     while ((m = re.exec(text))) {
       if (m.index > last) out.push(text.slice(last, m.index));
       if (m[1] && m[2]) out.push(linkBtn(m[2].replace(/[.,;:]+$/, ''), m[1], k++));
-      else { const href = (m[3] || m[4] || '').replace(/[.,;:]+$/, ''); out.push(linkBtn(href, linkLabel(href, esTxt), k++)); }
+      else { const href = (m[3] || m[4] || m[5] || '').replace(/[.,;:]+$/, ''); out.push(linkBtn(href, linkLabel(href, esTxt), k++)); }
       last = m.index + m[0].length;
     }
     if (last < text.length) out.push(text.slice(last));
