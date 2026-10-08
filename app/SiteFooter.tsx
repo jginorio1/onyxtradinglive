@@ -127,7 +127,7 @@ export default function SiteFooter() {
           </div>
           <div className="footer-cta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 9 }}>
             <Link className="btn btn-primary" href="/login?mode=signup">{L('Empieza gratis', 'Start free')}</Link>
-            {email && <a href={`mailto:${email}`} className="muted" style={{ fontSize: 12.5, textDecoration: 'none' }}><OnyxIcon emoji="✉" size={15} /> {email}</a>}
+            {email && <a href={`mailto:${email}`} className="muted" style={{ fontSize: 12.5, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="✉" size={15} /> {email}</a>}
           </div>
         </div>
 
