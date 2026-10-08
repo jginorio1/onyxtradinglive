@@ -44,12 +44,37 @@ export default function ChatWidgetEditor() {
   const tg = (es ? c.name_es : c.name_en) || 'Onyx AI';
 
   // Editor de una lista de temas rápidos.
+  // Temas recomendados (los mismos que trae la app por defecto). Un clic los aplica
+  // aunque ya tengas una config guardada con los temas viejos.
+  const RECO: Record<'topicsGuest' | 'topicsUser', Topic[]> = {
+    topicsGuest: [
+      { q_es: '¿Cuáles son los precios y planes?', q_en: 'What are the prices and plans?', label_es: '💳 Precios', label_en: '💳 Pricing' },
+      { q_es: '¿Cómo creo un robot sin programar?', q_en: 'How do I build a robot with no code?', label_es: '🤖 Crea tu bot', label_en: '🤖 Build a bot' },
+      { q_es: '¿Qué es Onyx Bot Lab (comprar/vender robots)?', q_en: 'What is Onyx Bot Lab (buy/sell robots)?', label_es: '🏪 Bot Lab', label_en: '🏪 Bot Lab' },
+      { q_es: '¿Hay prueba gratis para empezar?', q_en: 'Is there a free trial to start?', label_es: '🎁 Prueba gratis', label_en: '🎁 Free trial' },
+      { q_es: '¿Cómo conecto mi cuenta (MetaTrader/cTrader)?', q_en: 'How do I connect my account (MetaTrader/cTrader)?', label_es: '🔌 Conectar', label_en: '🔌 Connect' },
+      { q_es: '¿Cómo funciona el copy trading?', q_en: 'How does copy trading work?', label_es: '📑 Copy trading', label_en: '📑 Copy trading' },
+      { q_es: '¿Qué hace Onyx Guardian?', q_en: 'What does Onyx Guardian do?', label_es: '🛡️ Guardian', label_en: '🛡️ Guardian' },
+    ],
+    topicsUser: [
+      { q_es: '¿Cómo creo un robot sin programar?', q_en: 'How do I build a robot with no code?', label_es: '🤖 Crea tu bot', label_en: '🤖 Build a bot' },
+      { q_es: '¿Cómo conecto mi cuenta (MetaTrader/cTrader)?', q_en: 'How do I connect my account (MetaTrader/cTrader)?', label_es: '🔌 Conectar', label_en: '🔌 Connect' },
+      { q_es: '¿Cómo funciona el copy trading?', q_en: 'How does copy trading work?', label_es: '📑 Copy trading', label_en: '📑 Copy trading' },
+      { q_es: '¿Qué hace Onyx Guardian?', q_en: 'What does Onyx Guardian do?', label_es: '🛡️ Guardian', label_en: '🛡️ Guardian' },
+      { q_es: '¿Sirve para cuentas de fondeo?', q_en: 'Does it work for funded accounts?', label_es: '🏆 Fondeo', label_en: '🏆 Funded' },
+      { q_es: '¿Cómo cambio de plan?', q_en: 'How do I change my plan?', label_es: '💳 Mi plan', label_en: '💳 My plan' },
+    ],
+  };
   const TopicList = ({ field }: { field: 'topicsGuest' | 'topicsUser' }) => {
     const list: Topic[] = c[field] || [];
     const setList = (v: Topic[]) => u(field, v);
     const upd = (i: number, k: keyof Topic, val: string) => setList(list.map((t, j) => (j === i ? { ...t, [k]: val } : t)));
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <button className="btn btn-primary" style={{ fontSize: 12.5, alignSelf: 'flex-start', padding: '6px 11px' }}
+          onClick={() => setList(RECO[field].map((t) => ({ ...t })))}>
+          ★ {L('Usar temas recomendados', 'Use recommended topics')}
+        </button>
         {list.map((t, i) => (
           <div key={i} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 10 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>

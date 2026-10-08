@@ -56,6 +56,10 @@ export async function PATCH(req: Request) {
     proactiveOn: b(x.proactiveOn, prev.proactiveOn),
     proactiveDelay: clampInt(x.proactiveDelay, 2, 120, prev.proactiveDelay),
     proactive_es: s(x.proactive_es, prev.proactive_es, 160), proactive_en: s(x.proactive_en, prev.proactive_en, 160),
+    // IA: proactiva, upsell y tono comercial (faltaban en la lista blanca; por eso no se guardaban).
+    aiProactive: b(x.aiProactive, prev.aiProactive !== false),
+    aiUpsell: b(x.aiUpsell, prev.aiUpsell !== false),
+    aiSell: oneOf(x.aiSell, ['off', 'suggest', 'active'], (prev.aiSell as any) || 'suggest'),
     side: oneOf(x.side, ['right', 'left'], prev.side),
     hideDesktop: b(x.hideDesktop, prev.hideDesktop), hideTablet: b(x.hideTablet, prev.hideTablet), hideMobile: b(x.hideMobile, prev.hideMobile),
     launcherSize: clampInt(x.launcherSize, 40, 80, prev.launcherSize),
