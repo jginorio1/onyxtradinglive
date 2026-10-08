@@ -314,6 +314,26 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // Reconoce markdown [texto](url), URLs http(s) y rutas internas conocidas (/bot-builder,
   // /pricing, /bot-lab, …). Los internos abren dentro de la app; los externos en otra pestaña.
   const LINKABLE = '(?:bot-builder|bot-lab|pricing|copy|dashboard|guia|guide|embajadores|ambassadors|academia|academy|login|contacto|contact|analiza|unete-ventas|carreras|blog)';
+  // Rutas REALES de la app (slugs en español). Algunos slugs en inglés que la IA
+  // suele inventar NO existen como página → los mapeamos a la ruta real.
+  const ROUTE_ALIAS: Record<string, string> = {
+    '/ambassadors': '/embajadores', '/guide': '/guia', '/academy': '/academia', '/contact': '/contacto',
+  };
+  // Normaliza CUALQUIER href a la ruta canónica real, a prueba de fallos:
+  // 1) quita el dominio propio (URL completa → ruta), 2) quita el prefijo de idioma
+  // (/en /es /pt /zh /ja /vi) porque la página correcta vive sin prefijo y el idioma
+  // lo decide la cookie, 3) mapea alias de slug inglés al real. Deja intactas las
+  // URLs externas y las rutas no reconocidas (no inventa destinos).
+  const canonHref = (href: string): string => {
+    let h = (href || '').trim().replace(/^https?:\/\/(www\.)?onyxtradinglive\.com/i, '');
+    if (!h.startsWith('/')) return href;                 // externo: tal cual
+    h = h.replace(/^\/(en|es|pt|zh|ja|vi)(?=\/|$)/i, ''); // quita idioma
+    if (!h || h === '') h = '/';
+    const m = h.match(/^([^?#]*)([?#].*)?$/);
+    const base = (m?.[1] || '/').replace(/\/+$/, '') || '/';
+    const rest = m?.[2] || '';
+    return (ROUTE_ALIAS[base] || base) + rest;
+  };
   // Detecta si un texto está en español (para que las etiquetas de botón sigan
   // el idioma de LA RESPUESTA, no el del sitio: la IA contesta en el idioma del usuario).
   const looksSpanish = (text: string): boolean => {
@@ -322,7 +342,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     return /\b(el|la|los|las|tu|tus|qué|cómo|para|robot|cuenta|planes|gratis|puedes|crear)\b/.test(s);
   };
   const linkLabel = (href: string, esArg = es): string => {
-    const base = href.split('?')[0].replace(/\/+$/, '');
+    const base = canonHref(href).split(/[?#]/)[0].replace(/\/+$/, '');
     const M: Record<string, [string, string]> = {
       '/bot-builder': ['Crea tu bot', 'Build a bot'], '/bot-lab': ['Bot Lab', 'Bot Lab'],
       '/pricing': ['Ver precios', 'See pricing'], '/copy': ['Copy trading', 'Copy trading'],
@@ -339,8 +359,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const linkBtn = (href: string, label: string, k: number) => {
     const st: any = { display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 60%,#06b6d4)', color: '#042f2e', fontWeight: 700, fontSize: 13, padding: '3px 10px', borderRadius: 8, textDecoration: 'none', margin: '3px 3px 0 0', whiteSpace: 'nowrap' };
     const inner = <>{label} <span aria-hidden>→</span></>;
-    if (href.startsWith('/')) return <Link key={'lk' + k} href={href} onClick={() => setOpen(false)} style={st}>{inner}</Link>;
-    return <a key={'lk' + k} href={href} target="_blank" rel="noopener noreferrer" style={st}>{inner}</a>;
+    const dest = canonHref(href);   // ruta real, sin dominio, sin idioma, con alias resuelto
+    if (dest.startsWith('/')) return <Link key={'lk' + k} href={dest} onClick={() => setOpen(false)} style={st}>{inner}</Link>;
+    return <a key={'lk' + k} href={dest} target="_blank" rel="noopener noreferrer" style={st}>{inner}</a>;
   };
   const linkify = (text: string): any[] => {
     if (!text) return [text];
@@ -350,8 +371,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     // se vuelve botón, quitamos los paréntesis que solo envuelven un enlace para que no queden sueltos.
     text = text
       .replace(/\(\s*(\[[^\]]+\]\((?:https?:\/\/|\/)[^)]+\))\s*\)/g, '$1')
-      .replace(new RegExp('(?<!\\])\\(\\s*(\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)\\s*\\)', 'g'), '$1');
-    const re = new RegExp('\\[([^\\]]+)\\]\\(((?:https?:\\/\\/|\\/)[^)]+)\\)|(https?:\\/\\/[^\\s<>()]+)|(\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)', 'g');
+      .replace(new RegExp('(?<!\\])\\(\\s*((?:\\/(?:en|es|pt|zh|ja|vi))?\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)\\s*\\)', 'g'), '$1');
+    // Capturamos también rutas con prefijo de idioma (/en/embajadores) para normalizarlas.
+    const re = new RegExp('\\[([^\\]]+)\\]\\(((?:https?:\\/\\/|\\/)[^)]+)\\)|(https?:\\/\\/[^\\s<>()]+)|((?:\\/(?:en|es|pt|zh|ja|vi))?\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)', 'g');
     const out: any[] = []; let last = 0; let m: RegExpExecArray | null; let k = 0;
     while ((m = re.exec(text))) {
       if (m.index > last) out.push(text.slice(last, m.index));
