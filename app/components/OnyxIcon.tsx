@@ -106,7 +106,7 @@ const EMOJI: Record<string, string> = {
   '📋': 'trades', '💸': 'costs', '🗂': 'accounts', '🏁': 'challenge', '🛡': 'guardian',
   '🤖': 'ai', '✨': 'ai', '🧮': 'balance', '🧠': 'coach', '🔥': 'streak', '🌍': 'sessions',
   '📰': 'news', '💰': 'money', '⚖': 'scale', '📐': 'ruler', '🟢': 'up', '🔻': 'down',
-  '🔁': 'swap', '⏱': 'duration', '📊': 'bars', '🏆': 'trophy', '💀': 'skull', '⚪': 'circle',
+  '🔁': 'swap', '🔄': 'swap', '🌐': 'sessions', '⏱': 'duration', '📊': 'bars', '🏆': 'trophy', '💀': 'skull', '⚪': 'circle',
   '📦': 'lots', '💱': 'pair', '💳': 'card', '🧩': 'modules', '🏛': 'firms', '📣': 'megaphone',
   '🎁': 'gift', '🛟': 'retention', '🩺': 'diag', '🗄': 'backups', '🚀': 'optim', '🧪': 'tests',
   '⚙': 'settings', '👥': 'users', '✉': 'mail', '🎫': 'ticket', '💬': 'chat', '🔔': 'bell',
