@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import GooglePlayBadge from '@/app/components/GooglePlayBadge';
+import { isNativeApp } from '@/lib/native';
 import type { ChatWidget } from '@/lib/settings';
 
 // Textos fijos del flujo (captura de correo/ticket). El resto (marca, saludo,
@@ -39,6 +40,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const inAuth = /^(\/en)?\/(login|reset-password|confirmado)(\/|$)/.test(pathname);
 
   const [open, setOpen] = useState(false);
+  // ¿Dentro de la app nativa? Si es así, no mostramos el badge de descarga en el chat.
+  const [isNative, setIsNative] = useState(false);
+  useEffect(() => { try { setIsNative(isNativeApp()); } catch {} }, []);
   const [human, setHuman] = useState(false);
   const [chat, setChat] = useState<any[]>([]);
   const [ask, setAsk] = useState('');
@@ -644,6 +648,16 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             )}
             <div ref={end} />
           </div>
+
+          {/* Pie fijo: descarga la app en Google Play. Siempre visible encima del
+              campo de escribir. Se oculta dentro de la app nativa (ya la tienen).
+              El badge ya es un enlace propio, por eso la tira es un div, no otro <a>. */}
+          {!isNative && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, borderTop: '1px solid var(--line)', background: 'var(--bg2)', padding: '7px 10px' }}>
+              <GooglePlayBadge size="xs" />
+              <span style={{ fontSize: 11.5, color: 'var(--mut)' }}>{es ? 'Gratis · Android' : 'Free · Android'}</span>
+            </div>
+          )}
 
           {!sent && (
             <div style={{ padding: kbOpen ? '10px' : '10px 10px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
