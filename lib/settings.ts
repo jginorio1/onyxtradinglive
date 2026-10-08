@@ -340,15 +340,19 @@ export const botlabChatWidget = async (): Promise<ChatWidget> => {
     c1: '#ffd45e', c2: '#ffb020', gradient: true, fg: '#3a2a06', accent: '#f5b500',
     showTicket: false,
     topicsGuest: [
-      { q_es: '¿Cómo compro un robot?', q_en: 'How do I buy a robot?', label_es: '🛒 Comprar', label_en: '🛒 Buy' },
+      { q_es: '¿Cómo compro un robot en el marketplace?', q_en: 'How do I buy a robot on the marketplace?', label_es: '🛒 Comprar', label_en: '🛒 Buy' },
       { q_es: '¿Puedo pagar con USDT?', q_en: 'Can I pay with USDT?', label_es: '💵 USDT', label_en: '💵 USDT' },
       { q_es: '¿Sirve para cuentas de fondeo?', q_en: 'Does it work for funded accounts?', label_es: '🏆 Fondeo', label_en: '🏆 Funded' },
       { q_es: '¿Cómo vendo mi robot?', q_en: 'How do I sell my robot?', label_es: '🏷️ Vender', label_en: '🏷️ Sell' },
+      { q_es: '¿Cómo funciona el enlace de referidos y la comisión?', q_en: 'How does the referral link and commission work?', label_es: '🔗 Mi enlace', label_en: '🔗 My link' },
     ],
     topicsUser: [
+      { q_es: '¿Cómo compro un robot en el marketplace?', q_en: 'How do I buy a robot on the marketplace?', label_es: '🛒 Comprar', label_en: '🛒 Buy' },
       { q_es: '¿Cómo descargo mi robot y lo instalo?', q_en: 'How do I download and install my robot?', label_es: '⬇️ Descargar', label_en: '⬇️ Download' },
+      { q_es: '¿Dónde veo mis licencias y robots comprados?', q_en: 'Where do I see my licenses and purchased robots?', label_es: '🔑 Mis licencias', label_en: '🔑 My licenses' },
       { q_es: '¿Cómo vendo mi robot en Bot Lab?', q_en: 'How do I sell my robot on Bot Lab?', label_es: '🏷️ Vender', label_en: '🏷️ Sell' },
       { q_es: '¿Puedo pedir un robot a medida?', q_en: 'Can I request a custom robot?', label_es: '🛠️ A medida', label_en: '🛠️ Custom' },
+      { q_es: '¿Cómo funciona el enlace de referidos y la comisión?', q_en: 'How does the referral link and commission work?', label_es: '🔗 Mi enlace', label_en: '🔗 My link' },
     ],
   };
 };
