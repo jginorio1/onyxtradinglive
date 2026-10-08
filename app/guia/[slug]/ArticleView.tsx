@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { Article, CATEGORIES, ARTICLES } from '@/lib/guide';
 import GuideBody from '../GuideBody';
+import GuideAppBadges from '../GuideAppBadges';
 import GooglePlayBadge from '@/app/components/GooglePlayBadge';
 import AppStoreBadge from '@/app/components/AppStoreBadge';
 import { isNativeApp } from '@/lib/native';
@@ -138,6 +139,8 @@ export default function ArticleView({ slug }: { slug: string }) {
           </>
         )}
       </div>
+
+      <GuideAppBadges />
     </div>
   );
 }

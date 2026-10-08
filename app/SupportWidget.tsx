@@ -144,6 +144,13 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const [hideLauncher, setHideLauncher] = useState(false);
   useEffect(() => {
     if (open) { setHideLauncher(false); return; }
+    // Auto-esconder SOLO en móvil web + apps nativas (Android/iPhone), donde el
+    // botón tapa controles al fondo. En PC hay espacio de sobra: se queda fijo.
+    let smallOrNative = false;
+    try {
+      smallOrNative = isNativeApp() || (typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
+    } catch {}
+    if (!smallOrNative) { setHideLauncher(false); return; }
     let lastY = -1;
     let lastTarget: any = null;
     let stopTimer: any;

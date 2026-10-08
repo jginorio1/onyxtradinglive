@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import { ARTICLES, CATEGORIES, searchArticles, byCat } from '@/lib/guide';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import GuideAppBadges from './GuideAppBadges';
 
 const T: any = {
   es: {
@@ -219,6 +220,7 @@ export default function GuideHome() {
           </div>
         </>
       )}
+      <GuideAppBadges />
     </div>
   );
 }
