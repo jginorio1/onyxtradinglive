@@ -8,6 +8,8 @@ import PlansCompareTable from './PlansCompareTable';
 import PlanCards from './PlanCards';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import AdSlot from '@/app/components/AdSlot';
+import GooglePlayBadge, { PLAY_URL } from '@/app/components/GooglePlayBadge';
+import { isNativeApp } from '@/lib/native';
 import { planFacts, trialLine } from '@/lib/planFacts';
 
 type Lang = 'es' | 'en';
@@ -451,7 +453,11 @@ export default function Home() {
   const [amb, setAmb] = useState({ rate: 30, coupon: 20 });
   // Contenido editable del Landing Builder (hero + FAQ). Vacío = usa el del código.
   const [lc, setLc] = useState<any>(null);
+  // ¿Estamos dentro de la app nativa? Si sí, no ofrecemos "descargar la app".
+  const [isNative, setIsNative] = useState(false);
   const t = dictFor(dict, lang);
+
+  useEffect(() => { try { setIsNative(isNativeApp()); } catch {} }, []);
 
   useEffect(() => {
     fetch('/api/admin/plans', { cache: 'no-store' }).then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
@@ -599,6 +605,14 @@ export default function Home() {
           <Link className="btn btn-primary" href="/login?mode=signup" style={{ padding: '14px 28px', fontSize: 16 }}>{t.hero.cta1}</Link>
           <Link className="btn btn-ghost" href="#pricing" style={{ padding: '14px 28px', fontSize: 16 }}>{t.hero.cta2}</Link>
         </div>
+        {/* App Android: badge de Google Play en el hero. Se oculta dentro de la app
+            nativa (no tiene sentido ofrecer descargar la app estando en ella). */}
+        {!isNative && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginTop: 18 }}>
+            <GooglePlayBadge size="sm" />
+            <span style={{ fontSize: 12, color: 'var(--green)', fontWeight: 700 }}>{lang === 'es' ? 'Nuevo: ya disponible en Android' : 'New: now available on Android'}</span>
+          </div>
+        )}
         <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>{t.hero.note}</p>
 
         {/* vista previa moderna del dashboard (cabina) */}
@@ -1011,6 +1025,73 @@ export default function Home() {
           </details>
         ))}
       </div>
+
+      {/* SECCIÓN APP ANDROID — "llévalo en el bolsillo". Oculta dentro de la app nativa. */}
+      {!isNative && (
+        <div className="wrap section" id="app">
+          <div className="card fixed-dark appdl" style={{ background: 'linear-gradient(120deg,#151a28,#0c0f18)', padding: 0, overflow: 'hidden' }}>
+            <div className="appdl-grid" style={{ display: 'grid', gridTemplateColumns: '1.1fr .9fr', gap: 0, alignItems: 'center' }}>
+              {/* Texto + ventajas */}
+              <div style={{ padding: '34px 30px' }}>
+                <div style={{ fontSize: 11.5, letterSpacing: '.14em', color: 'var(--gold,#ffce5a)', fontWeight: 700 }}>
+                  {lang === 'es' ? 'LLÉVALO EN EL BOLSILLO' : 'CARRY IT IN YOUR POCKET'}
+                </div>
+                <h2 style={{ margin: '8px 0 6px', fontSize: 27 }}>
+                  {lang === 'es' ? 'Onyx, ahora en tu teléfono' : 'Onyx, now on your phone'}
+                </h2>
+                <p className="muted" style={{ fontSize: 15, margin: '0 0 20px', maxWidth: 440 }}>
+                  {lang === 'es'
+                    ? 'Monitorea tus cuentas, tus robots y tu riesgo estés donde estés.'
+                    : 'Monitor your accounts, robots and risk wherever you are.'}
+                </p>
+                {([
+                  ['🛡️', lang === 'es' ? 'Guardian 24/7' : 'Guardian 24/7', lang === 'es' ? 'Tu riesgo protegido sin abrir el PC' : 'Your risk protected without opening the PC'],
+                  ['🔔', lang === 'es' ? 'Alertas al instante' : 'Instant alerts', lang === 'es' ? 'Operaciones, metas y avisos en tiempo real' : 'Trades, goals and alerts in real time'],
+                  ['📊', lang === 'es' ? 'Tu ganancia real' : 'Your real profit', lang === 'es' ? 'Estadísticas y curva siempre a mano' : 'Stats and equity curve always at hand'],
+                ] as [string, string, string][]).map(([ic, h, d], i) => (
+                  <div key={i} style={{ display: 'flex', gap: 11, alignItems: 'flex-start', marginBottom: 12 }}>
+                    <span style={{ fontSize: 17, flex: 'none', marginTop: 1 }}>{ic}</span>
+                    <div><b>{h}</b><div className="muted" style={{ fontSize: 13 }}>{d}</div></div>
+                  </div>
+                ))}
+                <div style={{ marginTop: 18 }}><GooglePlayBadge /></div>
+                <div className="muted" style={{ fontSize: 12, marginTop: 9 }}>
+                  {lang === 'es' ? 'Gratis · Android · También como app web' : 'Free · Android · Also as a web app'}
+                </div>
+              </div>
+              {/* Mockup del teléfono */}
+              <div className="appdl-phone" style={{ display: 'flex', justifyContent: 'center', padding: '30px 20px', background: 'rgba(255,255,255,.02)' }}>
+                <div style={{ width: 196, background: '#05060c', border: '3px solid #272c40', borderRadius: 30, padding: 11, boxShadow: '0 16px 50px rgba(0,0,0,.45)' }}>
+                  <div style={{ width: 56, height: 5, background: '#272c40', borderRadius: 3, margin: '2px auto 9px' }} />
+                  <div style={{ background: 'linear-gradient(160deg,#0f1326,#0a0c16)', borderRadius: 18, padding: '16px 13px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ alignSelf: 'flex-start', fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>Onyx <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--green)', display: 'inline-block' }} /></div>
+                    <div style={{ width: 128, height: 128, borderRadius: '50%', margin: '18px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'conic-gradient(#ffce5a 0 62%,#242a40 62% 100%)', position: 'relative' }}>
+                      <div style={{ position: 'absolute', inset: 12, borderRadius: '50%', background: '#0b0e1c' }} />
+                      <div style={{ position: 'relative', fontSize: 23, fontWeight: 800 }}>+2.4%</div>
+                      <div style={{ position: 'relative', fontSize: 11, color: 'var(--mut)' }}>{lang === 'es' ? 'hoy' : 'today'}</div>
+                    </div>
+                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 7 }}>
+                      {([['Guardian', 'OK', 'var(--green)'], [lang === 'es' ? 'Robots' : 'Robots', '5 ●', 'inherit'], [lang === 'es' ? 'Neto' : 'Net', '$1,280', 'var(--green)']] as [string, string, string][]).map(([a, b, c], i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#141931', border: '1px solid #222842', borderRadius: 9, padding: '7px 11px', fontSize: 12 }}>
+                          <span className="muted">{a}</span><b style={{ color: c }}>{b}</b>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Datos estructurados: la app como MobileApplication (SEO en búsquedas de Google). */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        '@context': 'https://schema.org', '@type': 'MobileApplication',
+        name: 'Onyx Trading Live', operatingSystem: 'ANDROID', applicationCategory: 'FinanceApplication',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        installUrl: PLAY_URL, downloadUrl: PLAY_URL,
+      }) }} />
 
       {/* FINAL CTA */}
       <div className="wrap section">

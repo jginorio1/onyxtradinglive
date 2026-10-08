@@ -5,6 +5,8 @@ import { useLang } from '@/lib/lang';
 import BrandIcon from '@/app/components/BrandIcon';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import AdSlot from '@/app/components/AdSlot';
+import GooglePlayBadge from '@/app/components/GooglePlayBadge';
+import { isNativeApp } from '@/lib/native';
 
 // Footer multi-columna para TODAS las páginas: fila de marca + CTA, columnas de
 // enlaces por categoría, contacto (QR + email + redes), aviso legal de riesgo y
@@ -15,8 +17,10 @@ export default function SiteFooter() {
   const es = lang === 'es';
   const [ver, setVer] = useState('');
   const [fx, setFx] = useState<any>(null);
+  const [isNative, setIsNative] = useState(false);
 
   useEffect(() => {
+    try { setIsNative(isNativeApp()); } catch {}
     fetch('/api/version', { cache: 'no-store' }).then((r) => r.json()).then((j) => setVer(j.version || '')).catch(() => {});
     fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((c) => setFx(c?.footer || null)).catch(() => {});
   }, []);
@@ -127,6 +131,7 @@ export default function SiteFooter() {
           </div>
           <div className="footer-cta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 9 }}>
             <Link className="btn btn-primary" href="/login?mode=signup">{L('Empieza gratis', 'Start free')}</Link>
+            {!isNative && <GooglePlayBadge size="sm" />}
             {email && <a href={`mailto:${email}`} className="muted" style={{ fontSize: 12.5, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="✉" size={15} /> {email}</a>}
           </div>
         </div>

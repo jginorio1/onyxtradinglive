@@ -1360,3 +1360,9 @@ html:not(.is-auth) body.onyx-vivid > *:not(.promobar):not(.topbar):not(.secnav):
 :root:not([data-theme="dark"]) html:not(.is-auth) body.onyx-vivid::before{
   background-image:
     radial-gradient(62% 60% at 50% 72%, rgba(255,140,50,.09), rgba(255,100,40,.03) 48%, transparent 74%);}
+
+/* Sección "descarga la app" (landing): en móvil apila y el teléfono va arriba */
+@media(max-width:720px){
+  .appdl .appdl-grid{ grid-template-columns:1fr !important; }
+  .appdl .appdl-phone{ order:-1; }
+}
