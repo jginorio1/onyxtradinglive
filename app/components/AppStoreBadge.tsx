@@ -10,7 +10,7 @@ export const APPSTORE_URL = 'https://apps.apple.com/app/id6813729962';
 // Archivo oficial de Apple subido a /public. Descárgalo de los lineamientos de
 // marketing de Apple ("Download on the App Store" badge). Si lo renombras, cambia
 // solo esta línea.
-const BADGE_SRC = '/images.png';
+const BADGE_SRC = '/appstore-badge.png';
 
 export default function AppStoreBadge({ size = 'md' }: { size?: 'xs' | 'sm' | 'md' }) {
   // Alturas alineadas con GooglePlayBadge para que se vean parejos uno al lado del
