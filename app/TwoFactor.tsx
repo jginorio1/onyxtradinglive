@@ -1,6 +1,6 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
@@ -29,7 +29,7 @@ const T: any = {
   },
 };
 
-export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'challenge'; lang: Lang; onDone: () => void }) {
+export default function TwoFactor({ mode, lang, onDone, bare = false }: { mode: 'enroll' | 'challenge'; lang: Lang; onDone: () => void; bare?: boolean }) {
   const L = dictFor(T, lang);
   const sb = supabaseBrowser();
   const [qr, setQr] = useState('');
@@ -84,6 +84,19 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
       onDone();
     } catch { setMsg(L.err); } finally { setBusy(false); }
   }
+
+  // Auto-envío: al completar los 6 dígitos verificamos solos (como la mayoría de apps
+  // de 2FA). Así no hace falta pulsar el botón — eso elimina el "tengo que presionarlo
+  // de nuevo". Guardamos el último código enviado para no reintentar el mismo en bucle.
+  const lastTried = useRef('');
+  useEffect(() => {
+    if (useBackup) return;
+    if (code.length === 6 && factorId && !busy && lastTried.current !== code) {
+      lastTried.current = code;
+      submit();
+    }
+    if (code.length < 6) lastTried.current = '';
+  }, [code, factorId, busy, useBackup]); // eslint-disable-line
 
   // Entrar con un código de respaldo (cuando no tienes el teléfono a mano).
   async function submitBackup() {
@@ -158,10 +171,10 @@ export default function TwoFactor({ mode, lang, onDone }: { mode: 'enroll' | 'ch
 
   return (
     <div style={box}>
-      <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🔐" size={15} /> {L.challT}</h3>
+      {!bare && <h3 style={{ marginBottom: 4, textAlign: 'center' }}><OnyxIcon emoji="🔐" size={15} /> {L.challT}</h3>}
       {!useBackup ? (
         <>
-          <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{L.challH}</p>
+          {!bare && <p className="muted" style={{ fontSize: 13, marginBottom: 14, textAlign: 'center' }}>{L.challH}</p>}
           <span className="muted" style={{ fontSize: 12 }}>{L.code}</span>{input}
           {msg && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>{msg}</div>}
           <button className="btn btn-primary" style={{ width: '100%', marginTop: 14 }} disabled={busy || code.length !== 6} onClick={submit}>{busy ? L.loading : L.confirm}</button>
