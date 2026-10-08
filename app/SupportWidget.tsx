@@ -581,11 +581,13 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                     <button onClick={() => setAttach(null)} aria-label="remove" style={{ background: 'none', border: 'none', color: 'var(--mut)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
                   </div>
                 )}
-                {/* Botón adjuntar captura */}
-                <button className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: 12, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={pickFile} type="button">
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M12 7l-4.5 4.5a2.5 2.5 0 0 1-3.5-3.5L8.5 3.5a1.6 1.6 0 0 1 2.3 2.3L6.3 10.3a.8.8 0 0 1-1.1-1.1L9 5.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  {attach ? (es ? 'Cambiar captura' : 'Change screenshot') : (es ? 'Adjuntar captura' : 'Attach screenshot')}
-                </button>
+                {/* Botón adjuntar captura: solo para usuarios logueados. */}
+                {loggedIn && (
+                  <button className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: 12, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={pickFile} type="button">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M12 7l-4.5 4.5a2.5 2.5 0 0 1-3.5-3.5L8.5 3.5a1.6 1.6 0 0 1 2.3 2.3L6.3 10.3a.8.8 0 0 1-1.1-1.1L9 5.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    {attach ? (es ? 'Cambiar captura' : 'Change screenshot') : (es ? 'Adjuntar captura' : 'Attach screenshot')}
+                  </button>
+                )}
 
                 {!loggedIn && <>
                   <div style={{ fontSize: 12, color: 'var(--tx)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📧" size={14} glow={false} /> {t.emailT}</div>
@@ -624,10 +626,13 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                 </div>
               )}
               <div className="row" style={{ gap: 6 }}>
-                <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
-                <button className="btn btn-ghost" style={{ padding: '9px 11px', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }} onClick={() => { openEmail(); pickFile(); }} disabled={busy} aria-label={es ? 'Adjuntar captura' : 'Attach screenshot'} title={es ? 'Adjuntar captura' : 'Attach screenshot'} type="button">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 7l-4.5 4.5a2.5 2.5 0 0 1-3.5-3.5L8.5 3.5a1.6 1.6 0 0 1 2.3 2.3L6.3 10.3a.8.8 0 0 1-1.1-1.1L9 5.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </button>
+                {/* Adjuntar captura: solo para usuarios logueados (en visitante/lead no aplica). */}
+                {loggedIn && <>
+                  <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
+                  <button className="btn btn-ghost" style={{ padding: '9px 11px', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }} onClick={() => { openEmail(); pickFile(); }} disabled={busy} aria-label={es ? 'Adjuntar captura' : 'Attach screenshot'} title={es ? 'Adjuntar captura' : 'Attach screenshot'} type="button">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 7l-4.5 4.5a2.5 2.5 0 0 1-3.5-3.5L8.5 3.5a1.6 1.6 0 0 1 2.3 2.3L6.3 10.3a.8.8 0 0 1-1.1-1.1L9 5.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </button>
+                </>}
                 <input value={ask} onChange={(e) => setAsk(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendAI(); }} placeholder={x.ph} style={{ flex: 1, margin: 0, fontSize: 13 }} />
                 <button className="btn btn-primary" style={{ padding: '9px 13px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', color: '#241002', border: 'none' }} onClick={() => sendAI()} disabled={busy || !ask.trim()} aria-label={t.send}><OnyxIcon name="send" size={16} glow={false} /></button>
               </div>
