@@ -6,6 +6,7 @@ import BrandIcon from '@/app/components/BrandIcon';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import AdSlot from '@/app/components/AdSlot';
 import GooglePlayBadge from '@/app/components/GooglePlayBadge';
+import AppStoreBadge from '@/app/components/AppStoreBadge';
 import { isNativeApp } from '@/lib/native';
 
 // Footer multi-columna para TODAS las páginas: fila de marca + CTA, columnas de
@@ -131,7 +132,7 @@ export default function SiteFooter() {
           </div>
           <div className="footer-cta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 9 }}>
             <Link className="btn btn-primary" href="/login?mode=signup">{L('Empieza gratis', 'Start free')}</Link>
-            {!isNative && <GooglePlayBadge size="sm" />}
+            {!isNative && <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}><GooglePlayBadge size="sm" /><AppStoreBadge size="sm" /></div>}
             {email && <a href={`mailto:${email}`} className="muted" style={{ fontSize: 12.5, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="✉" size={15} /> {email}</a>}
           </div>
         </div>

@@ -9,6 +9,7 @@ import PlanCards from './PlanCards';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import AdSlot from '@/app/components/AdSlot';
 import GooglePlayBadge, { PLAY_URL } from '@/app/components/GooglePlayBadge';
+import AppStoreBadge from '@/app/components/AppStoreBadge';
 import { isNativeApp } from '@/lib/native';
 import { planFacts, trialLine } from '@/lib/planFacts';
 
@@ -609,8 +610,11 @@ export default function Home() {
             nativa (no tiene sentido ofrecer descargar la app estando en ella). */}
         {!isNative && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginTop: 18 }}>
-            <GooglePlayBadge size="sm" />
-            <span style={{ fontSize: 12, color: 'var(--green)', fontWeight: 700 }}>{lang === 'es' ? 'Nuevo: ya disponible en Android' : 'New: now available on Android'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <GooglePlayBadge size="sm" />
+              <AppStoreBadge size="sm" />
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--green)', fontWeight: 700 }}>{lang === 'es' ? 'Nuevo: ya disponible en Android e iPhone' : 'New: now available on Android and iPhone'}</span>
           </div>
         )}
         <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>{t.hero.note}</p>
@@ -1054,7 +1058,7 @@ export default function Home() {
                     <div><b>{h}</b><div className="muted" style={{ fontSize: 13 }}>{d}</div></div>
                   </div>
                 ))}
-                <div style={{ marginTop: 18 }}><GooglePlayBadge /></div>
+                <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><GooglePlayBadge /><AppStoreBadge /></div>
                 <div className="muted" style={{ fontSize: 12, marginTop: 9 }}>
                   {lang === 'es' ? 'Gratis · Android · También como app web' : 'Free · Android · Also as a web app'}
                 </div>

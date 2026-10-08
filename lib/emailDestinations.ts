@@ -57,7 +57,7 @@ export const EMAIL_DESTINATIONS: Dest[] = [
   { id: 'terms', es: 'Términos', en: 'Terms', path: '/terms', group: 'web', when: 'términos y condiciones' },
   // --- Destinos externos oficiales (enlaces completos, no se les antepone el dominio) ---
   { id: 'google_play', es: 'App en Google Play', en: 'App on Google Play', path: 'https://play.google.com/store/apps/details?id=com.onyxtradinglive.app', group: 'web', when: 'descargar la app Android' },
-  { id: 'app_store', es: 'App en App Store', en: 'App on App Store', path: 'https://apps.apple.com/app/onyx-trading-live', group: 'web', when: 'descargar la app iOS (cuando esté publicada)' },
+  { id: 'app_store', es: 'App en App Store', en: 'App on App Store', path: 'https://apps.apple.com/app/id6813729962', group: 'web', when: 'descargar la app iOS (iPhone/iPad)' },
 ];
 
 // URL completa de un destino (base + ruta). Si ya es una URL absoluta
