@@ -81,6 +81,14 @@ export async function POST(req: Request) {
       if (wantProactive && sellLevel !== 'off') acctContext += `\n\n${proactiveRules(lang === 'en', wantUpsell, sellLevel)}`;
     }
 
+    // Regla INCONDICIONAL de VPS: nunca nombrar ni recomendar proveedores de VPS
+    // de terceros (ForexVPS, Cloudzy, FXVM, Vultr, DigitalOcean, AWS, etc.), haya
+    // o no enlace de afiliado configurado. Si no hay enlace propio, hablar del VPS
+    // SOLO en términos genéricos (un VPS con Windows, siempre encendido) sin marcas.
+    acctContext += lang === 'en'
+      ? `\n\nVPS BRAND RULE (always): never name or recommend any third-party VPS provider (e.g. ForexVPS, Cloudzy, FXVM, Vultr, DigitalOcean, AWS, Contabo, Google Cloud). If there is no recommended VPS link below, talk about a VPS only in generic terms (a Windows VPS that stays on 24/7) without naming any brand or provider.`
+      : `\n\nREGLA DE MARCAS DE VPS (siempre): nunca nombres ni recomiendes ningún proveedor de VPS de terceros (p. ej. ForexVPS, Cloudzy, FXVM, Vultr, DigitalOcean, AWS, Contabo, Google Cloud). Si abajo no hay un enlace de VPS recomendado, habla del VPS SOLO en términos genéricos (un VPS con Windows, encendido 24/7) sin nombrar ninguna marca ni proveedor.`;
+
     // VPS recomendado (afiliado, editable en Admin → Bot Lab). Si hay enlace,
     // se lo damos a la IA para que lo recomiende de forma natural y, si la pregunta
     // encaja, mostramos un botón de acción con nuestro enlace.

@@ -1870,9 +1870,9 @@ export const ARTICLES: Article[] = [
         ] },
         { h: 'Tipos de VPS' },
         { walk: [
-          { t: 'VPS Forex (especializado)', d: 'Pensado para trading: viene con Windows, baja latencia hacia los brókers y a veces MetaTrader preinstalado. Es el más fácil para empezar. Ejemplos: ForexVPS, Cloudzy, FXVM.' },
+          { t: 'VPS Forex (especializado)', d: 'Pensado para trading: viene con Windows, baja latencia hacia los brókers y a veces MetaTrader preinstalado. Es el más fácil para empezar. Si tienes dudas de cuál elegir, pregúntale a Onyx AI y te recomendamos el nuestro.' },
           { t: 'VPS del bróker (a veces gratis)', d: 'Muchos brókers regalan un VPS si operas cierto volumen o mantienes un saldo. Cómodo, pero atado a ese bróker. Pregunta a tu bróker si lo ofrece.' },
-          { t: 'VPS en la nube general', d: 'Proveedores como Vultr, DigitalOcean, AWS o Contabo. Más barato y flexible, pero lo configuras tú. Elige uno con Windows si quieres MetaTrader con su ventana de siempre.' },
+          { t: 'VPS en la nube general', d: 'Hay proveedores de nube general: más baratos y flexibles, pero los configuras tú. Elige uno con Windows si quieres MetaTrader con su ventana de siempre.' },
           { t: 'Windows vs Linux', d: 'Para MetaTrader lo normal es un VPS con Windows (la plataforma es un programa de Windows). En Linux también se puede, pero con un envoltorio, y es más técnico.' },
         ] },
         { tip: 'Para MetaTrader/cTrader con Onyx, un VPS Windows pequeño (1–2 núcleos, 2 GB de RAM) suele bastar. No necesitas uno caro.', title: 'Cuánto VPS necesitas' },
@@ -1895,9 +1895,9 @@ export const ARTICLES: Article[] = [
         ] },
         { h: 'Types of VPS' },
         { walk: [
-          { t: 'Forex VPS (specialized)', d: 'Built for trading: comes with Windows, low latency to brokers and sometimes MetaTrader preinstalled. Easiest to start. Examples: ForexVPS, Cloudzy, FXVM.' },
+          { t: 'Forex VPS (specialized)', d: 'Built for trading: comes with Windows, low latency to brokers and sometimes MetaTrader preinstalled. Easiest to start. Not sure which to pick? Ask Onyx AI and we will recommend ours.' },
           { t: 'Broker VPS (sometimes free)', d: 'Many brokers give you a VPS if you trade a certain volume or keep a balance. Convenient, but tied to that broker. Ask your broker if they offer one.' },
-          { t: 'General cloud VPS', d: 'Providers like Vultr, DigitalOcean, AWS or Contabo. Cheaper and flexible, but you configure it. Pick one with Windows if you want MetaTrader with its usual window.' },
+          { t: 'General cloud VPS', d: 'There are general cloud providers: cheaper and flexible, but you configure it yourself. Pick one with Windows if you want MetaTrader with its usual window.' },
           { t: 'Windows vs Linux', d: 'For MetaTrader you normally use a Windows VPS (the platform is a Windows program). Linux works too, but via a wrapper, and it is more technical.' },
         ] },
         { tip: 'For MetaTrader/cTrader with Onyx, a small Windows VPS (1–2 cores, 2 GB RAM) is usually enough. You do not need an expensive one.', title: 'How much VPS you need' },
