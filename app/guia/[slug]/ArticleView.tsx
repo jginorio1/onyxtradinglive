@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { Article, CATEGORIES, ARTICLES } from '@/lib/guide';
 import GuideBody from '../GuideBody';
+import GooglePlayBadge from '@/app/components/GooglePlayBadge';
+import { isNativeApp } from '@/lib/native';
 
 const T: any = {
   es: {
@@ -52,6 +54,11 @@ export default function ArticleView({ slug }: { slug: string }) {
     fetch('/api/install/status').then((r) => setAuthed(r.status !== 401)).catch(() => setAuthed(false));
   }, []);
 
+  // ¿Estamos dentro de la app nativa? Si es así, no mostramos el badge de
+  // Google Play (ya está en la app).
+  const [isNative, setIsNative] = useState(false);
+  useEffect(() => { try { setIsNative(isNativeApp()); } catch {} }, []);
+
   const a = arts.find((x) => x.slug === slug);
   if (!a) return null;
 
@@ -76,9 +83,11 @@ export default function ArticleView({ slug }: { slug: string }) {
 
       {a.cta && (
         <div style={{ marginTop: 24, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
-          {authed === false
-            ? <Link className="btn btn-primary" href="/login?mode=signup">{t.signup}</Link>
-            : <Link className="btn btn-primary" href={a.cta.href}>{a.cta.label[lang]}</Link>}
+          {/^https?:\/\/play\.google\.com\//i.test(a.cta.href)
+            ? (!isNative && <GooglePlayBadge size="sm" />)        /* app en Google Play: badge oficial clicable */
+            : authed === false
+              ? <Link className="btn btn-primary" href="/login?mode=signup">{t.signup}</Link>
+              : <Link className="btn btn-primary" href={a.cta.href}>{a.cta.label[lang]}</Link>}
         </div>
       )}
 

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import GooglePlayBadge from '@/app/components/GooglePlayBadge';
 import type { ChatWidget } from '@/lib/settings';
 
 // Textos fijos del flujo (captura de correo/ticket). El resto (marca, saludo,
@@ -357,6 +358,11 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     return esArg ? 'Abrir enlace' : 'Open link';
   };
   const linkBtn = (href: string, label: string, k: number) => {
+    // Si el enlace es la app en Google Play, mostramos el badge OFICIAL clicable
+    // (congruente con la guía, el landing y los banners), no una píldora genérica.
+    if (/^https?:\/\/play\.google\.com\//i.test(href)) {
+      return <span key={'gp' + k} style={{ display: 'inline-flex', verticalAlign: 'middle', margin: '4px 4px 0 0' }}><GooglePlayBadge size="xs" /></span>;
+    }
     const st: any = { display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 60%,#06b6d4)', color: '#042f2e', fontWeight: 700, fontSize: 13, padding: '3px 10px', borderRadius: 8, textDecoration: 'none', margin: '3px 3px 0 0', whiteSpace: 'nowrap' };
     const inner = <>{label} <span aria-hidden>→</span></>;
     const dest = canonHref(href);   // ruta real, sin dominio, sin idioma, con alias resuelto
