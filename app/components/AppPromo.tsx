@@ -75,7 +75,7 @@ export function AppSmartBanner() {
       <img src="/onyx-symbol.png" alt="" style={{ width: 30, height: 30, borderRadius: 8, flex: 'none' }} />
       <div style={{ flex: 1, lineHeight: 1.2 }}>
         <b style={{ fontSize: 12.5 }}>Onyx Trading Live</b>
-        <div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Gratis · en Google Play' : 'Free · on Google Play'}</div>
+        <div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Gratis · Android e iPhone' : 'Free · Android & iPhone'}</div>
       </div>
       <span style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}><GooglePlayBadge size="xs" /><AppStoreBadge size="xs" /></span>
       <button aria-label={es ? 'Cerrar' : 'Close'} onClick={close}

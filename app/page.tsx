@@ -9,7 +9,7 @@ import PlanCards from './PlanCards';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import AdSlot from '@/app/components/AdSlot';
 import GooglePlayBadge, { PLAY_URL } from '@/app/components/GooglePlayBadge';
-import AppStoreBadge from '@/app/components/AppStoreBadge';
+import AppStoreBadge, { APPSTORE_URL } from '@/app/components/AppStoreBadge';
 import { isNativeApp } from '@/lib/native';
 import { planFacts, trialLine } from '@/lib/planFacts';
 
@@ -1060,7 +1060,7 @@ export default function Home() {
                 ))}
                 <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><GooglePlayBadge /><AppStoreBadge /></div>
                 <div className="muted" style={{ fontSize: 12, marginTop: 9 }}>
-                  {lang === 'es' ? 'Gratis · Android · También como app web' : 'Free · Android · Also as a web app'}
+                  {lang === 'es' ? 'Gratis · Android e iPhone · También como app web' : 'Free · Android & iPhone · Also as a web app'}
                 </div>
               </div>
               {/* Mockup del teléfono */}
@@ -1089,13 +1089,23 @@ export default function Home() {
         </div>
       )}
 
-      {/* Datos estructurados: la app como MobileApplication (SEO en búsquedas de Google). */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-        '@context': 'https://schema.org', '@type': 'MobileApplication',
-        name: 'Onyx Trading Live', operatingSystem: 'ANDROID', applicationCategory: 'FinanceApplication',
-        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-        installUrl: PLAY_URL, downloadUrl: PLAY_URL,
-      }) }} />
+      {/* Datos estructurados: la app como MobileApplication (SEO en búsquedas de Google).
+          Una entrada por tienda — Android (Google Play) e iOS (App Store) — para que
+          Google indexe ambas versiones de la app. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify([
+        {
+          '@context': 'https://schema.org', '@type': 'MobileApplication',
+          name: 'Onyx Trading Live', operatingSystem: 'ANDROID', applicationCategory: 'FinanceApplication',
+          offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+          installUrl: PLAY_URL, downloadUrl: PLAY_URL,
+        },
+        {
+          '@context': 'https://schema.org', '@type': 'MobileApplication',
+          name: 'Onyx Trading Live', operatingSystem: 'IOS', applicationCategory: 'FinanceApplication',
+          offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+          installUrl: APPSTORE_URL, downloadUrl: APPSTORE_URL,
+        },
+      ]) }} />
 
       {/* FINAL CTA */}
       <div className="wrap section">
