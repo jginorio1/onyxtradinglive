@@ -316,15 +316,19 @@ function LoginInner() {
         <LoginParticles />
         <div className="card login-box" style={{ width: '100%', maxWidth: 440, position: 'relative' }}>
           <div className="login-lang"><LangToggle compact /></div>
-          <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit', marginBottom: 18 }}>
-            <img className="login-logo" src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 54, height: 54, borderRadius: 15 }} />
-            <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '.01em' }}>Onyx Trading Live</span>
-          </Link>
-          <div style={{ textAlign: 'center', marginBottom: 18 }}>
-            <h2 style={{ margin: 0 }}>{lang === 'en' ? 'Two-step verification' : 'Verificación en dos pasos'}</h2>
-            <p className="muted" style={{ fontSize: 13, marginTop: 5 }}>{lang === 'en' ? 'Enter the 6-digit code from your authenticator app' : 'Escribe el código de 6 dígitos de tu app de autenticación'}</p>
+          <div className="lb-left">
+            <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit', marginBottom: 18 }}>
+              <img className="login-logo" src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 54, height: 54, borderRadius: 15 }} />
+              <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '.01em' }}>Onyx Trading Live</span>
+            </Link>
+            <div style={{ textAlign: 'center', marginBottom: 18 }}>
+              <h2 style={{ margin: 0 }}>{lang === 'en' ? 'Two-step verification' : 'Verificación en dos pasos'}</h2>
+              <p className="muted" style={{ fontSize: 13, marginTop: 5 }}>{lang === 'en' ? 'Enter the 6-digit code from your authenticator app' : 'Escribe el código de 6 dígitos de tu app de autenticación'}</p>
+            </div>
           </div>
-          <TwoFactor mode="challenge" lang={lang} bare onDone={() => { router.push(nextDest); router.refresh(); }} />
+          <div className="lb-right">
+            <TwoFactor mode="challenge" lang={lang} bare onDone={() => { router.push(nextDest); router.refresh(); }} />
+          </div>
         </div>
       </div>
     );

@@ -21,15 +21,19 @@ export default function TwoFactorGate({ mode, lang }: { mode: 'enroll' | 'challe
     <div className="center auth-center">
       <LoginParticles />
       <div className="card login-box" style={{ width: '100%', maxWidth: 460, position: 'relative' }}>
-        <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit', marginBottom: 18 }}>
-          <img className="login-logo" src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 54, height: 54, borderRadius: 15 }} />
-          <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '.01em' }}>Onyx Trading Live</span>
-        </Link>
-        <div style={{ textAlign: 'center', marginBottom: 18 }}>
-          <h2 style={{ margin: 0 }}>{title}</h2>
-          <p className="muted" style={{ fontSize: 13, marginTop: 5 }}>{sub}</p>
+        <div className="lb-left">
+          <Link href="/" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9, textDecoration: 'none', color: 'inherit', marginBottom: 18 }}>
+            <img className="login-logo" src="/onyx-symbol.png" alt="Onyx Trading Live" style={{ width: 54, height: 54, borderRadius: 15 }} />
+            <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '.01em' }}>Onyx Trading Live</span>
+          </Link>
+          <div style={{ textAlign: 'center', marginBottom: 18 }}>
+            <h2 style={{ margin: 0 }}>{title}</h2>
+            <p className="muted" style={{ fontSize: 13, marginTop: 5 }}>{sub}</p>
+          </div>
         </div>
-        <TwoFactor mode={mode} lang={lang} bare={mode === 'challenge'} onDone={() => router.refresh()} />
+        <div className="lb-right">
+          <TwoFactor mode={mode} lang={lang} bare={mode === 'challenge'} onDone={() => router.refresh()} />
+        </div>
       </div>
     </div>
   );
