@@ -651,12 +651,15 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
 
           {/* Pie fijo: descarga la app en Google Play. Siempre visible encima del
               campo de escribir. Se oculta dentro de la app nativa (ya la tienen).
-              El badge ya es un enlace propio, por eso la tira es un div, no otro <a>. */}
+              TODA la tira es el enlace (área de clic grande, cómoda en móvil): por eso
+              aquí ponemos el logo como <img> y no el componente (que es otro <a>). */}
           {!isNative && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, borderTop: '1px solid var(--line)', background: 'var(--bg2)', padding: '7px 10px' }}>
-              <GooglePlayBadge size="xs" />
+            <a href="https://play.google.com/store/apps/details?id=com.onyxtradinglive.app" target="_blank" rel="noopener noreferrer"
+               aria-label={es ? 'Descargar la app de Onyx en Google Play' : 'Download the Onyx app on Google Play'}
+               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, textDecoration: 'none', borderTop: '1px solid var(--line)', background: 'var(--bg2)', padding: '9px 10px', cursor: 'pointer' }}>
+              <img src="/googleplay-badge-01-getit.width-375.png" alt="" style={{ height: 40, width: 'auto', display: 'block', pointerEvents: 'none' }} />
               <span style={{ fontSize: 11.5, color: 'var(--mut)' }}>{es ? 'Gratis · Android' : 'Free · Android'}</span>
-            </div>
+            </a>
           )}
 
           {!sent && (
