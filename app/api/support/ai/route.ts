@@ -88,9 +88,9 @@ export async function POST(req: Request) {
       const vps = await vpsInfo();
       if (vps.on && vps.url) {
         acctContext += lang === 'en'
-          ? `\n\nRECOMMENDED VPS: if the user asks about keeping the robot/EA running 24/7, turning off the PC, always-on, latency or hosting, recommend a VPS and share this exact link: ${vps.url}${vps.name ? ` (${vps.name})` : ''}. Do not invent other providers.`
-          : `\n\nVPS RECOMENDADO: si el usuario pregunta por mantener el robot/EA operando 24/7, apagar el PC, tenerlo siempre encendido, latencia u hosting, recomienda un VPS y comparte este enlace exacto: ${vps.url}${vps.name ? ` (${vps.name})` : ''}. No inventes otros proveedores.`;
-        if (/\bvps\b|24\/?7|apag|siempre encendid|always[- ]?on|hosting|latenc/i.test(question)) {
+          ? `\n\nRECOMMENDED VPS (proactive): whenever the conversation involves running a robot/EA/cBot or copy trading — building, buying, downloading or installing a robot, connecting an account, keeping it running 24/7, turning off the PC, always-on, latency, hosting, internet drops or electricity — proactively suggest hosting it on a VPS (so it keeps trading even with the PC off) and share this exact link: ${vps.url}${vps.name ? ` (${vps.name})` : ''}. Add it as one short, natural line after answering; never lead with it, never repeat it, and only recommend THIS provider — do not invent or name other VPS providers.`
+          : `\n\nVPS RECOMENDADO (proactivo): siempre que la conversación tenga que ver con correr un robot/EA/cBot o copy trading — construir, comprar, descargar o instalar un robot, conectar la cuenta, mantenerlo 24/7, apagar el PC, tenerlo siempre encendido, latencia, hosting, cortes de internet o de luz — sugiere de forma proactiva alojarlo en un VPS (para que siga operando aunque apagues la PC) y comparte este enlace exacto: ${vps.url}${vps.name ? ` (${vps.name})` : ''}. Agrégalo como UNA línea corta y natural después de responder; nunca empieces con eso, no lo repitas, y recomienda SOLO este proveedor — no inventes ni nombres otros VPS.`;
+        if (/\bvps\b|24\/?7|apag|siempre encendid|always[- ]?on|hosting|latenc|robot|\bbot\b|\bea\b|cbot|expert advisor|copy|instal|descarg|conect|connect|install|download|pc apagad|siempre prendid|internet|electric|luz/i.test(question)) {
           actions.push({ label: lang === 'en' ? 'Get a VPS' : 'Conseguir un VPS', url: vps.url });
         }
       }

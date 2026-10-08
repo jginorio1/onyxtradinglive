@@ -69,7 +69,7 @@ export default function BotLabFooter() {
           </div>
           <div className="blf-cta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 9 }}>
             <Link href="/bot-lab" className="btn btn-primary" style={{ background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', border: 'none' }}>{L('Explorar marketplace', 'Browse marketplace')}</Link>
-            <a href={`mailto:${email}`} className="muted" style={{ fontSize: 12.5, textDecoration: 'none' }}><OnyxIcon emoji="✉" size={15} /> {email}</a>
+            <a href={`mailto:${email}`} className="muted" style={{ fontSize: 12.5, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="✉" size={15} /> {email}</a>
           </div>
         </div>
 
