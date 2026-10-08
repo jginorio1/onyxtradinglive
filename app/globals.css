@@ -1,4 +1,8 @@
 :root{
+  /* color-scheme: le dice al navegador que el sitio YA maneja su propio tema.
+     Sin esto, el "modo oscuro forzado" de Chrome/Samsung en Android recolorea
+     la página (degradados en rojo, fondos raros). En iOS Safari no pasa. */
+  color-scheme: dark;
   --bg:#080a10; --bg2:#121829; --card:#1a2133; --card2:#232c42; --line:#38455f;
   --tx:#f2f5fb; --mut:#9aa6bd;
   /* Violeta de marca (tema oscuro): subido en brillo/saturación para que resalte
@@ -18,7 +22,9 @@
    1) html[data-theme="light"]  → cuando el usuario lo elige (cookie).
    2) prefers-color-scheme:light → cuando NO ha elegido (sigue el sistema).
    Así no hace falta JavaScript y no hay parpadeo al cargar. */
+html[data-theme="dark"]{ color-scheme: dark; }
 html[data-theme="light"]{
+  color-scheme: light;
   /* Lienzo gris claro (no casi-blanco) para que las tarjetas blancas resalten,
      borde visible y texto secundario un punto más oscuro → más contraste. */
   --bg:#e7ebf3; --bg2:#eff2f8; --card:#ffffff; --card2:#e9eef6; --line:#d2d9e6;
@@ -33,6 +39,7 @@ html[data-theme="light"]{
 }
 @media (prefers-color-scheme: light){
   :root:not([data-theme="dark"]):not([data-theme="light"]){
+    color-scheme: light;
     --bg:#e7ebf3; --bg2:#eff2f8; --card:#ffffff; --card2:#e9eef6; --line:#d2d9e6;
     --tx:#101725; --mut:#56617a;
     --brand:#5261e6; --brand2:#8b5cff;  /* mismo fix de contraste que arriba (btn primario) */

@@ -499,7 +499,7 @@ export default function Home() {
   const lossPct = pnl < 0 ? Math.min(100, (-pnl / maxLoss) * 100) : 0;
   const st = pnl <= -maxLoss ? t.prop.st.broke : pnl >= target ? t.prop.st.passed : (pnl < 0 && -pnl > maxLoss * 0.7) ? t.prop.st.near : t.prop.st.ok;
   const stColor = pnl <= -maxLoss ? 'var(--red)' : pnl >= target ? 'var(--green)' : (pnl < 0 && -pnl > maxLoss * 0.7) ? '#ffcf5c' : 'var(--brand)';
-  const grad = { background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' } as any;
+  const grad = { background: 'var(--grad)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent' } as any;
 
   // Overrides del Landing Builder (si un campo está vacío → texto del código).
   const heroH1a = lc?.hero?.[`h1a_${lang}`] || t.hero.h1a;
