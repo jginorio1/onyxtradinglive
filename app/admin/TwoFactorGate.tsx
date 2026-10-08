@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import TwoFactor from '@/app/TwoFactor';
 import LoginParticles from '@/app/login/LoginParticles';
+import { supabaseBrowser } from '@/lib/supabaseBrowser';
 
 // Portón de 2FA del panel de administración: obligatorio.
 // enroll = aún no lo activó · challenge = lo tiene, pedimos el código.
@@ -33,6 +34,11 @@ export default function TwoFactorGate({ mode, lang }: { mode: 'enroll' | 'challe
         </div>
         <div className="lb-right">
           <TwoFactor mode={mode} lang={lang} bare={mode === 'challenge'} onDone={() => router.refresh()} />
+          {/* Volver a entrar: cierra la sesión (aún sin pasar 2FA) y regresa al login. */}
+          <button className="btn btn-ghost" style={{ width: '100%', marginTop: 8, fontSize: 12.5 }}
+            onClick={async () => { try { await supabaseBrowser().auth.signOut(); } catch {} router.push('/login'); router.refresh(); }}>
+            {es ? '← Volver a entrar' : '← Back to sign in'}
+          </button>
         </div>
       </div>
     </div>

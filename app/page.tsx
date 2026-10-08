@@ -949,7 +949,7 @@ export default function Home() {
             </span>
           ))}
         </div>
-        <p className="muted" style={{ fontSize: 12.5, textAlign: 'center', margin: '0 auto 22px', maxWidth: 560 }}><OnyxIcon name="shield" size={13} glow={false} /> {lang === 'es' ? 'Compatible con FTMO, The5ers, FundedNext y +100 prop firms' : 'Works with FTMO, The5ers, FundedNext and 100+ prop firms'}</p>
+        <p className="muted" style={{ fontSize: 12.5, textAlign: 'center', margin: '0 auto 22px', maxWidth: 560 }}>{lang === 'es' ? 'Compatible con FTMO, The5ers, FundedNext y +100 prop firms' : 'Works with FTMO, The5ers, FundedNext and 100+ prop firms'}</p>
 
         <PlanCards plans={shownPlans} lang={lang} annual={annual} trust
           anchors={{ free: { es: 'Para empezar con 1 cuenta.', en: 'To start with 1 account.' }, pro: { es: 'Para el que va por el fondeo.', en: 'For the funded-account trader.' }, elite: { es: 'Para varias cuentas y copy.', en: 'For multiple accounts and copy.' }, black: { es: 'Para gestores y salas.', en: 'For managers and trading rooms.' } }}

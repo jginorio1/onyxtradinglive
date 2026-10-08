@@ -328,6 +328,11 @@ function LoginInner() {
           </div>
           <div className="lb-right">
             <TwoFactor mode="challenge" lang={lang} bare onDone={() => { router.push(nextDest); router.refresh(); }} />
+            {/* Volver a entrar: cierra la sesión parcial (aún sin pasar 2FA) y regresa al login. */}
+            <button className="btn btn-ghost" style={{ width: '100%', marginTop: 8, fontSize: 12.5 }}
+              onClick={async () => { try { await sb.auth.signOut(); } catch {} setMfa(false); setPass(''); setMsg(''); }}>
+              {lang === 'en' ? '← Back to sign in' : '← Volver a entrar'}
+            </button>
           </div>
         </div>
       </div>
