@@ -51,6 +51,10 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const [refs, setRefs] = useState<any[]>([]);
   const [actions, setActions] = useState<Array<{ label: string; url: string }>>([]);
   const [plans, setPlans] = useState<Array<{ name: string; price_month: number; price_year: number; accounts: string; summary: string; trial_days: number; popular: boolean }>>([]);
+  // Bróker y VPS recomendados (afiliado), para pintar un badge con logo cuando la IA
+  // menciona su enlace. Se carga una vez; si falla, el chat sigue normal.
+  const [reco, setReco] = useState<{ broker: { enabled: boolean; name: string; url: string }; vps: { enabled: boolean; name: string; url: string } } | null>(null);
+  useEffect(() => { fetch('/api/reco', { cache: 'no-store' }).then((r) => r.json()).then(setReco).catch(() => {}); }, []);
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState('');
   const [leadMsg, setLeadMsg] = useState('');
@@ -90,7 +94,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       else localStorage.removeItem('onyx_chat_log');
     } catch {}
   }, [chat]);
-  function clearChat() { setChat([]); setRefs([]); setActions([]); setShowEmail(false); setSent(false); setAttach(null); try { localStorage.removeItem('onyx_chat_log'); } catch {} }
+  function clearChat() { setChat([]); setRefs([]); setActions([]); setPlans([]); setShowEmail(false); setSent(false); setAttach(null); try { localStorage.removeItem('onyx_chat_log'); } catch {} }
   // Cerrar el menú "⋯" al hacer clic fuera (se engancha tras el clic que lo abrió).
   useEffect(() => {
     if (!menu) return;
@@ -380,6 +384,27 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     // Lo mismo para la App Store: badge OFICIAL clicable en vez de pastilla.
     if (/^(?:https?:\/\/)?apps\.apple\.com\//i.test(href)) {
       return <span key={'as' + k} style={{ display: 'inline-flex', verticalAlign: 'middle', margin: '4px 4px 0 0' }}><AppStoreBadge size="xs" /></span>;
+    }
+    // Bróker / VPS recomendado: si el enlace coincide (por dominio) con el que el
+    // admin configuró, mostramos un BADGE con su logo (/logos/broker.png o
+    // /logos/vps.png) en vez de una pastilla. El logo lo sube el dueño; si falta,
+    // cae a solo el nombre. Futuro-proof: compara el dominio del enlace guardado.
+    const hostOf = (u: string) => { try { return new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+    const hrefHost = hostOf(href);
+    const provBadge = (logo: string, name: string, k2: number) => {
+      const ext = /^https?:\/\//i.test(href) ? href : 'https://' + href;
+      return (
+        <a key={'pb' + k2} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, verticalAlign: 'middle', background: 'var(--card2, rgba(255,255,255,.06))', border: '1px solid var(--line)', borderRadius: 10, padding: '5px 11px', margin: '4px 4px 0 0', textDecoration: 'none', color: 'var(--tx)', fontWeight: 700, fontSize: 12.5, whiteSpace: 'nowrap' }}>
+          <img src={logo} alt={name} style={{ height: 18, width: 'auto', maxWidth: 70, objectFit: 'contain', display: 'block' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+          <span>{name}</span><span aria-hidden style={{ color: 'var(--brand)' }}>↗</span>
+        </a>
+      );
+    };
+    if (reco?.broker?.enabled && reco.broker.url && hrefHost && hrefHost === hostOf(reco.broker.url)) {
+      return provBadge('/logos/broker.png', reco.broker.name || (es ? 'Bróker recomendado' : 'Recommended broker'), k);
+    }
+    if (reco?.vps?.enabled && reco.vps.url && hrefHost && hrefHost === hostOf(reco.vps.url)) {
+      return provBadge('/logos/vps.png', reco.vps.name || 'VPS', k);
     }
     const st: any = { display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 60%,#06b6d4)', color: '#042f2e', fontWeight: 700, fontSize: 13, padding: '3px 10px', borderRadius: 8, textDecoration: 'none', margin: '3px 3px 0 0', whiteSpace: 'nowrap' };
     const inner = <>{label} <span aria-hidden>→</span></>;
