@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { ARTICLES, searchArticles, type Lang } from '@/lib/guide';
-import { supportChatReply } from '@/lib/supportAI';
+import { supportChatReply, isPricingQuestion, plansForChat } from '@/lib/supportAI';
 import { getSupportContext, contextToPrompt, proactiveRules, suggestActions } from '@/lib/supportContext';
 import { chatWidgetSettings } from '@/lib/settings';
 import { vpsInfo } from '@/lib/botlab';
@@ -121,7 +121,10 @@ export async function POST(req: Request) {
         : `El asistente está ocupado ahora. Mientras tanto, este artículo debería ayudarte: "${top.title.es}". También puedes abrir un ticket.`;
       return NextResponse.json({ answer, articles: refs, escalate: true, mode: 'fallback' });
     }
-    return NextResponse.json({ answer: r.answer, articles: refs, actions, escalate: false, mode: 'ai' });
+    // Si la pregunta es de precios/planes, adjuntamos los planes para que el
+    // widget los pinte como tarjetas (en vez de un párrafo largo). Datos reales.
+    const plans = isPricingQuestion(question) ? await plansForChat(lang) : [];
+    return NextResponse.json({ answer: r.answer, articles: refs, actions, plans, escalate: false, mode: 'ai' });
   } catch (e: any) {
     await logError('support_ai', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

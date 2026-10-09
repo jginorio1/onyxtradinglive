@@ -50,6 +50,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const [busy, setBusy] = useState(false);
   const [refs, setRefs] = useState<any[]>([]);
   const [actions, setActions] = useState<Array<{ label: string; url: string }>>([]);
+  const [plans, setPlans] = useState<Array<{ name: string; price_month: number; price_year: number; accounts: string; summary: string; trial_days: number; popular: boolean }>>([]);
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState('');
   const [leadMsg, setLeadMsg] = useState('');
@@ -220,13 +221,14 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   async function sendAI(q?: string) {
     const question = (q ?? ask).trim(); if (!question || busy) return;
     const next = [...chat, { role: 'user', content: question }];
-    setChat(next); setAsk(''); setBusy(true); setRefs([]); setActions([]);
+    setChat(next); setAsk(''); setBusy(true); setRefs([]); setActions([]); setPlans([]);
     try {
       const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question, history: chat, lang }) });
       const j = await r.json();
       setChat([...next, { role: 'assistant', content: j.answer || '…' }]);
       setRefs(j.articles || []);
       setActions(Array.isArray(j.actions) ? j.actions : []);
+      setPlans(Array.isArray(j.plans) ? j.plans : []);
       if (!loggedIn && j.escalate) openEmail();
     } catch { setChat([...next, { role: 'assistant', content: '…' }]); }
     setBusy(false);
@@ -603,6 +605,27 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                 <span className="onyx-d1" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
                 <span className="onyx-d2" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
                 <span className="onyx-d3" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
+              </div>
+            )}
+            {plans.length > 0 && (
+              <div style={{ alignSelf: 'flex-start', width: '100%', marginTop: 2 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(135px,1fr))', gap: 8 }}>
+                  {plans.map((p) => (
+                    <div key={p.name} style={{ position: 'relative', background: 'var(--card2, rgba(255,255,255,.04))', border: p.popular ? '1.5px solid var(--brand)' : '1px solid var(--line)', borderRadius: 11, padding: '10px 11px' }}>
+                      {p.trial_days > 0 && (
+                        <span style={{ position: 'absolute', top: -8, left: 10, background: 'var(--brand)', color: '#0b1020', fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 6 }}>{p.trial_days} {es ? 'días gratis' : 'days free'}</span>
+                      )}
+                      <div style={{ fontSize: 13, fontWeight: 800, marginTop: p.trial_days > 0 ? 4 : 0 }}>{p.name}</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, margin: '2px 0' }}>${p.price_month}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 600 }}>/{es ? 'mes' : 'mo'}</span>{p.price_year > 0 && <span style={{ fontSize: 10.5, color: 'var(--mut)', fontWeight: 600 }}> · ${p.price_year}/{es ? 'año' : 'yr'}</span>}</div>
+                      <div style={{ fontSize: 11, color: 'var(--brand)', fontWeight: 700 }}>{p.accounts}</div>
+                      {p.summary && <div className="muted" style={{ fontSize: 11, lineHeight: 1.5, marginTop: 4 }}>{p.summary}</div>}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                  <Link href={canonHref('/pricing')} onClick={() => setOpen(false)} className="btn btn-primary" style={{ padding: '7px 12px', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}>{es ? 'Ver todos los planes' : 'See all plans'} <OnyxIcon name="send" size={13} glow={false} /></Link>
+                  <Link href={canonHref('/login?mode=signup')} onClick={() => setOpen(false)} className="btn btn-ghost" style={{ padding: '7px 12px', fontSize: 12.5 }}>{es ? 'Empezar gratis' : 'Start free'}</Link>
+                </div>
               </div>
             )}
             {actions.length > 0 && (

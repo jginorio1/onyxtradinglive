@@ -442,3 +442,37 @@ export async function autoHandleTicket(opts: { ticketId: string; question: strin
     return { answered: false };
   } catch { return { answered: false }; }
 }
+
+// ===== Planes para el chat (tarjetas en vez de texto) =====
+// Cuando la persona pregunta por precios/planes, el widget pinta tarjetas en vez
+// de un párrafo largo. Estos datos salen de la tabla `plans` real (precios, cuentas
+// y días de prueba), así que se mantienen solos desde Admin → Planes.
+export type ChatPlan = { name: string; price_month: number; price_year: number; accounts: string; summary: string; trial_days: number; popular: boolean };
+
+// ¿La pregunta es de precios/planes? (ES + EN). Determinista, sin IA.
+export function isPricingQuestion(q: string): boolean {
+  const s = (q || '').toLowerCase();
+  return /\bprecios?\b|\bplanes?\b|\bplan\b|cu[aá]nto\s+(cuesta|vale|es)|\btarifa|mensualidad|\bcost(e|o)s?\b|\bpricing\b|how much|\bprice\b|what.*plans|which plan/.test(s);
+}
+
+export async function plansForChat(lang: Lang): Promise<ChatPlan[]> {
+  try {
+    const { data: plans } = await supabaseAdmin.from('plans')
+      .select('name,name_en,price_month,price_year,max_accounts,features,features_en,capabilities,active,sort')
+      .eq('active', true).order('sort', { ascending: true });
+    if (!plans?.length) return [];
+    const en = enBase(lang);
+    return (plans as any[]).map((p) => {
+      const td = Math.max(0, Math.round(Number(p?.capabilities?.trial_days) || 0));
+      return {
+        name: en ? (p.name_en || p.name) : p.name,
+        price_month: Math.round(Number(p.price_month) || 0),
+        price_year: Math.round(Number(p.price_year) || 0),
+        accounts: p.max_accounts >= 999 ? (en ? 'Unlimited accounts' : 'Cuentas ilimitadas') : `${p.max_accounts} ${en ? 'accounts' : 'cuentas'}`,
+        summary: ((en ? p.features_en : p.features) || []).slice(0, 3).join(' · '),
+        trial_days: td,
+        popular: td > 0,
+      } as ChatPlan;
+    });
+  } catch { return []; }
+}
