@@ -238,6 +238,8 @@ export default function CopyClient() {
   const [confirmLink, setConfirmLink] = useState<any>(null);
   const [showRisk, setShowRisk] = useState(false);
   const [showHow, setShowHow] = useState(false);
+  const [showInstall, setShowInstall] = useState(false);   // panel de instalación (EA + claves) plegado por defecto
+  const [showLog, setShowLog] = useState(false);            // registro en vivo plegado por defecto
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState<any>(null);
   const [wizard, setWizard] = useState<any>(null);
@@ -432,8 +434,18 @@ export default function CopyClient() {
   const Hint = ({ id }: { id: string }) => HELP[id] ? <HintPop text={HELP[id][lang === 'en' ? 1 : 0]} glyph="?" /> : null;
 
   return (
-    <div className="wrap" style={{ maxWidth: 1180, margin: '0 auto', padding: '22px 26px 60px', fontSize: 15 }} onClick={() => helpFor && setHelpFor('')}>{head}
+    <div className="wrap" style={{ width: '100%', maxWidth: 1600, margin: '0 auto', padding: '22px clamp(14px,3vw,34px) 60px', fontSize: 15 }} onClick={() => helpFor && setHelpFor('')}>
       <CopyGuide open={guideOpen} onClose={() => setGuideOpen(false)} lang={lang} />
+
+      {/* Cabecera compacta: título + accesos (Guía / Instalar) a la derecha */}
+      <div className="row between" style={{ alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+        <div style={{ minWidth: 0 }}>{head}</div>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5 }} onClick={() => setGuideOpen(true)}><OnyxIcon emoji="📘" size={15} /> {lang === 'es' ? 'Guía' : 'Guide'}</button>
+          <button className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5 }} onClick={() => setShowInstall((v) => !v)}><OnyxIcon emoji="⬇" size={15} /> {lang === 'es' ? 'Instalar EA / claves' : 'Install EA / keys'}</button>
+        </div>
+      </div>
+
       <div className="card" style={{ marginBottom: 12, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
         <span style={{ fontSize: 12.5, color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={16} /> {t.warn}</span>
       </div>
@@ -454,6 +466,7 @@ export default function CopyClient() {
             <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
               {steps.map((x) => <div key={x.n} style={{ flex: 1, height: 6, borderRadius: 20, background: x.done ? 'var(--green)' : 'var(--line)' }} />)}
             </div>
+            {showHow && (
             <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
               {steps.map((x) => (
                 <button key={x.n} onClick={() => go(x.to)} style={{ textAlign: 'left', cursor: 'pointer', borderRadius: 12, padding: 13, background: x.bg, border: `1px solid ${x.bd}` }}>
@@ -466,12 +479,17 @@ export default function CopyClient() {
                 </button>
               ))}
             </div>
-            <div className="muted" style={{ fontSize: 11.5, marginTop: 8, textAlign: 'center' }}>{doneCount}/4 {lang === 'en' ? 'steps ready' : 'pasos listos'}</div>
+            )}
+            <div className="row" style={{ justifyContent: 'center', gap: 8, marginTop: 8 }}>
+              <span className="muted" style={{ fontSize: 11.5 }}>{doneCount}/4 {lang === 'en' ? 'steps ready' : 'pasos listos'}</span>
+              <button className="btn btn-ghost" style={{ padding: '2px 10px', fontSize: 11.5 }} onClick={() => setShowHow((v) => !v)}>{showHow ? (lang === 'es' ? 'Ocultar pasos' : 'Hide steps') : (lang === 'es' ? '¿Cómo funciona?' : 'How it works')}</button>
+            </div>
           </div>
         );
       })()}
 
-      {/* CÓMO ACTIVAR / GUÍA DE INSTALACIÓN */}
+      {/* CÓMO ACTIVAR / GUÍA DE INSTALACIÓN · solo cuando el usuario abre los pasos */}
+      {showHow && (
       <div id="copy-how" className="card" style={{ marginBottom: 12, border: '1px solid var(--accent,#6c7bff)', background: 'linear-gradient(180deg,rgba(108,123,255,.08),transparent)' }}>
         <div className="row between" style={{ alignItems: 'center', gap: 8 }}>
           <b style={{ fontSize: 14 }}><OnyxIcon emoji="🚀" size={16} /> {t.howTitle}</b>
@@ -486,6 +504,7 @@ export default function CopyClient() {
           </div>
         )}
       </div>
+      )}
 
       {/* COCKPIT · 3 columnas que llenan la pantalla y se apilan solas en móvil */}
       <div className="copy-cockpit" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 12, alignItems: 'start', marginTop: 4 }}>
@@ -585,7 +604,8 @@ export default function CopyClient() {
 
       {accs.length < 2 && <div className="card" style={{ marginBottom: 12 }}><p className="muted" style={{ fontSize: 13, margin: 0 }}>{t.noAcc}</p></div>}
 
-      {/* DESCARGAR LA EA (siempre visible) */}
+      {showInstall && (<>
+      {/* INSTALACIÓN · descargar EA + claves (plegado; se abre con el botón «Instalar EA / claves») */}
       <div id="copy-dl" className="card" style={{ marginBottom: 12 }}>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}><span style={{ fontSize: 15 }}><OnyxIcon emoji="⬇" size={16} /></span><b style={{ fontSize: 14 }}>{t.dlTitle}</b></div>
         <p className="muted" style={{ fontSize: 12, marginTop: 2, marginBottom: 10 }}>{t.dlSub}</p>
@@ -653,6 +673,7 @@ export default function CopyClient() {
           )}
         </div>
       )}
+      </>)}
 
       </div>
 
@@ -748,7 +769,9 @@ export default function CopyClient() {
               </div>
             );
           })()}
+          <button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 11.5 }} onClick={() => setShowLog((v) => !v)}>{showLog ? (lang === 'es' ? 'Ocultar' : 'Hide') : (lang === 'es' ? 'Ver registro' : 'View log')} <span style={{ fontSize: 10 }}>{showLog ? '▴' : '▾'}</span></button>
         </div>
+        {showLog && (<>
         {log.length > 0 && (
           <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
             <div className="row" style={{ gap: 6, alignItems: 'center', border: '1px solid var(--line)', borderRadius: 8, padding: '0 9px', height: 30, flex: '1 1 140px' }}>
@@ -785,6 +808,7 @@ export default function CopyClient() {
             </>
           );
         })()}
+        </>)}
       </div>
 
       </div>
