@@ -13,6 +13,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { normalizeSymbol, aliasesOf } from '@/lib/copySymbols';
 import { copyGuardForSlave } from '@/lib/copyGuard';
+import { alertOncePerDay, accName } from '@/lib/telegram';
 
 function mapStr(m: any): string { if (!m || typeof m !== 'object') return ''; return Object.keys(m).map((k) => k + '=' + m[k]).join(';'); }
 
@@ -77,9 +78,10 @@ export async function relayMasterSnapshot(opts: {
 
   // Pausa de cada esclava.
   const slaveIds = Array.from(new Set(links.map((l) => l.slave_account_id)));
-  const { data: slaves } = await supabaseAdmin.from('trading_accounts').select('id,copy_paused').in('id', slaveIds);
+  const { data: slaves } = await supabaseAdmin.from('trading_accounts').select('id,copy_paused,nickname,broker,login').in('id', slaveIds);
   const pausedSlave: Record<string, boolean> = {};
-  (slaves || []).forEach((s: any) => { pausedSlave[s.id] = !!s.copy_paused; });
+  const slaveById: Record<string, any> = {};
+  (slaves || []).forEach((s: any) => { pausedSlave[s.id] = !!s.copy_paused; slaveById[s.id] = s; });
 
   // Guardián de reglas de prop firm (por copia, apagado salvo que el trader lo
   // active). Solo bloquea APERTURAS nuevas cuando la esclava rompe su regla
@@ -91,6 +93,12 @@ export async function relayMasterSnapshot(opts: {
     await Promise.all(guarded.map(async (l: any) => {
       const r = await copyGuardForSlave(userId, l.slave_account_id, { strict: !!l.guard_strict });
       guardBlockOpen[l.id] = !!r.pause;
+      // Aviso por Telegram (1 vez al día por esclava) cuando el Guardián frena.
+      if (r.pause) {
+        const nm = accName(slaveById[l.slave_account_id] || {});
+        await alertOncePerDay(userId, 'copy_paused', `guard:${l.id}`,
+          `🛡️ Guardián de prop firm · ${nm}\nSe pausaron las copias NUEVAS en esta cuenta: ${r.reasonEs || 'límite de prop firm'}. Los cierres siguen activos. Se reanudará solo cuando la cuenta vuelva dentro de su regla.`);
+      }
     }));
   } catch {}
 

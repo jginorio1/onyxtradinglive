@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { addonSettings } from '@/lib/settings';
+import { copyGuardForSlave } from '@/lib/copyGuard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -46,6 +47,19 @@ export async function GET() {
   const { data: links } = await supabaseAdmin.from('copy_links')
     .select('*').eq('owner_id', user.id).order('created_at', { ascending: false });
   const usedMasters = new Set((links || []).map((l: any) => l.master_account_id)).size;
+
+  // Veredicto del Guardián en vivo, solo para las copias que lo tienen activo.
+  // (verdict: on_track | watch | breach | na · pause = true cuando frena aperturas)
+  const guarded = (links || []).filter((l: any) => l.guard_prop_rules);
+  if (guarded.length) {
+    await Promise.all(guarded.map(async (l: any) => {
+      try {
+        const r = await copyGuardForSlave(user.id, l.slave_account_id, { strict: !!l.guard_strict });
+        l.guard = { verdict: r.verdict, pause: r.pause, firm: r.firm, reasonEs: r.reasonEs, reasonEn: r.reasonEn };
+      } catch { l.guard = { verdict: 'na', pause: false }; }
+    }));
+  }
+
   return NextResponse.json({
     inPlan: !!pc.caps.copy,
     maxSlaves: pc.max, baseSlaves: pc.base, extraSlaves: pc.extra, unlimitedSlaves: pc.unlimitedSlaves,
@@ -98,6 +112,10 @@ export async function POST(req: Request) {
     per_symbol_lot_cap: Math.max(0, Number(b.per_symbol_lot_cap ?? 0)),
     // Retraso aleatorio anti-patrón (0…N s) antes de copiar cada apertura. 0 = off. Tope 120s.
     jitter_max_s: Math.max(0, Math.min(120, Math.floor(Number(b.jitter_max_s ?? 0)))),
+    // Guardián de reglas de prop firm (apagado por defecto). Si la esclava rompe
+    // su límite de reto, se pausan las aperturas nuevas (strict = también al acercarse).
+    guard_prop_rules: b.guard_prop_rules === true,
+    guard_strict: b.guard_strict === true,
   };
 
   if (b.id) {
