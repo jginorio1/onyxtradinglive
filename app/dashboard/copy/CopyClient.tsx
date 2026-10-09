@@ -446,8 +446,8 @@ export default function CopyClient() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 12, border: '1px solid var(--amber)', background: 'rgba(255,192,77,.06)' }}>
-        <span style={{ fontSize: 12.5, color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={16} /> {t.warn}</span>
+      <div className="card" style={{ marginBottom: 12, border: '1px solid var(--brand)', background: 'rgba(255,157,61,.06)' }}>
+        <span style={{ fontSize: 12.5, color: 'var(--brand)' }}><OnyxIcon emoji="⚠" size={16} /> {t.warn}</span>
       </div>
 
       {/* PASO A PASO · barra de progreso + 4 tarjetas de color (como el constructor) */}
@@ -456,7 +456,7 @@ export default function CopyClient() {
         const steps = [
           { n: 1, t: lang === 'en' ? 'Connect accounts' : 'Conecta cuentas', s: lang === 'en' ? `${accs.length} connected` : `${accs.length} conectadas`, done: s1, to: 'copy-how', bg: 'rgba(55,138,221,.16)', bd: 'rgba(55,138,221,.45)', fg: '#6fb0ff' },
           { n: 2, t: lang === 'en' ? 'Install slave' : 'Instala esclava', s: lang === 'en' ? 'EA + key' : 'EA + clave', done: s2, to: 'copy-dl', bg: 'rgba(124,140,255,.16)', bd: 'rgba(124,140,255,.45)', fg: '#a99cff' },
-          { n: 3, t: lang === 'en' ? 'Create copy' : 'Crea la copia', s: 'Master → ' + (lang === 'en' ? 'Slave' : 'Esclava'), done: s3, to: 'newlink', bg: 'rgba(255,159,10,.16)', bd: 'rgba(255,159,10,.45)', fg: '#ffb454' },
+          { n: 3, t: lang === 'en' ? 'Create copy' : 'Crea la copia', s: 'Master → ' + (lang === 'en' ? 'Slave' : 'Esclava'), done: s3, to: 'newlink', bg: 'rgba(255,157,61,.16)', bd: 'rgba(255,157,61,.45)', fg: 'var(--brand)' },
           { n: 4, t: lang === 'en' ? 'Control' : 'Controla', s: lang === 'en' ? 'Pause · PIN · live' : 'Pausa · PIN · en vivo', done: s4, to: 'copy-ctrl', bg: 'rgba(52,199,120,.16)', bd: 'rgba(52,199,120,.45)', fg: '#4ade9a' },
         ];
         const doneCount = steps.filter((x) => x.done).length;
@@ -500,7 +500,7 @@ export default function CopyClient() {
             <HowStep n={1} title={t.how1} body={t.how1b} accs={accs.length} extra={<Link href="/dashboard/keys" style={{ fontSize: 12, color: 'var(--accent,#8a97ff)' }}>{t.how1link}</Link>} />
             <HowStep n={2} title={t.how2} body={t.how2b} />
             <HowStep n={3} title={t.how3} body={t.how3b} />
-            {accs.length === 1 && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={16} /> {t.needMore}</div>}
+            {accs.length === 1 && <div style={{ marginTop: 6, fontSize: 12, color: 'var(--brand)' }}><OnyxIcon emoji="⚠" size={16} /> {t.needMore}</div>}
           </div>
         )}
       </div>
@@ -598,7 +598,7 @@ export default function CopyClient() {
           )}
         </div>
         {((!d.unlimitedSlaves && d.addon?.enabled) || (!d.unlimitedMasters && d.masterAddon?.enabled)) && accs.length < 2 && (
-          <div className="muted" style={{ fontSize: 11.5, marginTop: 8, color: 'var(--amber)' }}><OnyxIcon emoji="🔒" size={16} /> {t.addonNeed2}</div>
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 8, color: 'var(--brand)' }}><OnyxIcon emoji="🔒" size={16} /> {t.addonNeed2}</div>
         )}
       </div>
 
@@ -652,7 +652,7 @@ export default function CopyClient() {
                   {r && <span className="pill" style={{ fontSize: 9.5, color: roleColor(r), background: roleColor(r) + '22' }}>{roleLabel(r)}</span>}
                   <b style={{ fontSize: 13 }}>{a.nickname || a.login}</b>
                   {k
-                    ? <span className="row" style={{ gap: 5, alignItems: 'center', fontSize: 11.5, color: live ? 'var(--green)' : 'var(--amber)' }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: live ? 'var(--green)' : 'var(--amber)' }} />{live ? t.liveOn : t.keyReady}</span>
+                    ? <span className="row" style={{ gap: 5, alignItems: 'center', fontSize: 11.5, color: live ? 'var(--green)' : 'var(--brand)' }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: live ? 'var(--green)' : 'var(--brand)' }} />{live ? t.liveOn : t.keyReady}</span>
                     : <span className="muted" style={{ fontSize: 11.5 }}>{t.noKey}</span>}
                 </span>
                 <div className="row" style={{ gap: 8 }}>
@@ -798,7 +798,7 @@ export default function CopyClient() {
             return (
               <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
                 <span className="pill" style={{ fontSize: 10.5, color: 'var(--green)', background: 'rgba(52,199,120,.16)' }}>{cc} {t.kcopied}</span>
-                <span className="pill" style={{ fontSize: 10.5, color: 'var(--amber)', background: 'rgba(255,159,10,.16)' }}>{sc} {t.kskipped}</span>
+                <span className="pill" style={{ fontSize: 10.5, color: 'var(--brand)', background: 'rgba(255,157,61,.16)' }}>{sc} {t.kskipped}</span>
                 <span className="pill" style={{ fontSize: 10.5, color: 'var(--red)', background: 'rgba(255,69,58,.16)' }}>{ec} {t.kerror}</span>
               </div>
             );
@@ -827,7 +827,7 @@ export default function CopyClient() {
           return (
             <>
               {filtered.slice(0, logShown).map((e, i) => {
-                const c = e.kind === 'copied' ? 'var(--green)' : e.kind === 'skipped' ? 'var(--amber)' : 'var(--red)';
+                const c = e.kind === 'copied' ? 'var(--green)' : e.kind === 'skipped' ? 'var(--brand)' : 'var(--red)';
                 const k = e.kind === 'copied' ? t.kcopied : e.kind === 'skipped' ? t.kskipped : t.kerror;
                 return (
                   <div key={i} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '8px 0', fontSize: 12.5, gap: 8, flexWrap: 'wrap' }}>
@@ -851,18 +851,18 @@ export default function CopyClient() {
       {/* MODALES */}
       {dupWarn && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1600, padding: 16 }} onClick={() => setDupWarn(null)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420, width: '100%', background: 'var(--card,#12151d)', border: '2px solid var(--amber,#fbbf24)', borderRadius: 16, padding: 22, boxShadow: '0 0 0 4px rgba(251,191,36,.18), 0 20px 60px rgba(0,0,0,.5)' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420, width: '100%', background: 'var(--card,#12151d)', border: '2px solid var(--brand)', borderRadius: 16, padding: 22, boxShadow: '0 0 0 4px rgba(255,157,61,.18), 0 20px 60px rgba(0,0,0,.5)' }}>
             <div className="row" style={{ gap: 10, alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(251,191,36,.15)', fontSize: 20 }}><OnyxIcon emoji="⚠" size={15} /></span>
+              <span style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,157,61,.15)', fontSize: 20 }}><OnyxIcon emoji="⚠" size={15} /></span>
               <b style={{ fontSize: 16 }}>{t.dupTitle}</b>
             </div>
             <p style={{ fontSize: 14, color: 'var(--muted,#9aa6b8)', margin: '0 0 10px', lineHeight: 1.6 }}>
               {t.dupBodyA} <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 20, background: dupWarn.role === 'master' ? 'rgba(138,125,255,.18)' : 'rgba(52,226,160,.18)', color: dupWarn.role === 'master' ? C_MASTER : C_SLAVE }}>{dupWarn.role === 'master' ? t.dupRoleM : t.dupRoleS}</span> {t.dupBodyB}.
             </p>
-            <div style={{ background: 'rgba(251,191,36,.10)', borderRadius: 8, padding: '9px 12px', fontSize: 12.5, color: 'var(--amber,#fbbf24)', marginBottom: 16 }}><OnyxIcon emoji="⚠" size={15} /> {t.dupWarn}</div>
+            <div style={{ background: 'rgba(255,157,61,.10)', borderRadius: 8, padding: '9px 12px', fontSize: 12.5, color: 'var(--brand)', marginBottom: 16 }}><OnyxIcon emoji="⚠" size={15} /> {t.dupWarn}</div>
             <div className="row" style={{ gap: 10 }}>
               <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setDupWarn(null)}>{t.dupCancel}</button>
-              <button className="btn" style={{ flex: 1, background: 'rgba(251,191,36,.15)', color: 'var(--amber,#fbbf24)', borderColor: 'var(--amber,#fbbf24)' }} onClick={() => dupWarn.apply && dupWarn.apply()}>{t.dupGo}</button>
+              <button className="btn" style={{ flex: 1, background: 'rgba(255,157,61,.15)', color: 'var(--brand)', borderColor: 'var(--brand)' }} onClick={() => dupWarn.apply && dupWarn.apply()}>{t.dupGo}</button>
             </div>
           </div>
         </div>
@@ -878,7 +878,7 @@ export default function CopyClient() {
             <li>{t.clP2}</li>
             <li>{t.clP3}</li>
           </ul>
-          <div style={{ background: 'rgba(255,192,77,.08)', border: '1px solid var(--amber)', borderRadius: 8, padding: 10, fontSize: 12, color: 'var(--amber)', marginBottom: 14 }}><OnyxIcon emoji="⚠" size={16} /> {t.clWarn}</div>
+          <div style={{ background: 'rgba(255,157,61,.08)', border: '1px solid var(--brand)', borderRadius: 8, padding: 10, fontSize: 12, color: 'var(--brand)', marginBottom: 14 }}><OnyxIcon emoji="⚠" size={16} /> {t.clWarn}</div>
           <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setConfirmLink(null)}>{t.clNo}</button>
             <button className="btn btn-primary" disabled={busy} onClick={() => { const p = confirmLink; setConfirmLink(null); save(p); }}>{t.clGo}</button>
@@ -889,7 +889,7 @@ export default function CopyClient() {
         <Modal onClose={() => setMasterPopup(null)}>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6, color: C_MASTER }}>● {t.mpTitle}</div>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, margin: '0 0 10px' }}>{t.mpBody}</p>
-          <div style={{ background: 'rgba(255,192,77,.08)', border: '1px solid var(--amber)', borderRadius: 8, padding: 10, fontSize: 12, color: 'var(--amber)', marginBottom: 14 }}><OnyxIcon emoji="⚠" size={16} /> {t.mpWarn}</div>
+          <div style={{ background: 'rgba(255,157,61,.08)', border: '1px solid var(--brand)', borderRadius: 8, padding: 10, fontSize: 12, color: 'var(--brand)', marginBottom: 14 }}><OnyxIcon emoji="⚠" size={16} /> {t.mpWarn}</div>
           <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setMasterPopup(null)}>{t.mpNo}</button>
             <button className="btn btn-primary" onClick={masterPopup.onConfirm}>{t.mpOk}</button>
@@ -905,7 +905,7 @@ export default function CopyClient() {
               : 'La cuenta Esclava es la que RECIBE: repite las operaciones de la master automáticamente. No operas tú en ella.'}
             {' '}<b style={{ color: C_SLAVE }}>{label(slavePopup.value)}</b>.
           </p>
-          <div style={{ background: 'rgba(255,192,77,.08)', border: '1px solid var(--amber)', borderRadius: 8, padding: 10, fontSize: 12, color: 'var(--amber)', marginBottom: 14 }}><OnyxIcon emoji="⚠" size={16} /> {t.mpWarn}</div>
+          <div style={{ background: 'rgba(255,157,61,.08)', border: '1px solid var(--brand)', borderRadius: 8, padding: 10, fontSize: 12, color: 'var(--brand)', marginBottom: 14 }}><OnyxIcon emoji="⚠" size={16} /> {t.mpWarn}</div>
           <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
             <button className="btn btn-ghost" onClick={() => setSlavePopup(null)}>{t.mpNo}</button>
             <button className="btn btn-primary" style={{ background: C_SLAVE }} onClick={slavePopup.onConfirm}>{lang === 'en' ? 'Confirm slave' : 'Confirmar esclava'}</button>
@@ -1211,16 +1211,16 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
       )}
 
       {/* Confirmación en vivo */}
-      <div style={{ marginTop: 12, borderRadius: 10, padding: 12, textAlign: 'center', background: live ? 'rgba(52,226,160,.1)' : 'rgba(255,192,77,.07)', border: `1px solid ${live ? 'var(--green)' : 'var(--amber)'}` }}>
+      <div style={{ marginTop: 12, borderRadius: 10, padding: 12, textAlign: 'center', background: live ? 'rgba(52,226,160,.1)' : 'rgba(255,157,61,.07)', border: `1px solid ${live ? 'var(--green)' : 'var(--brand)'}` }}>
         {live
           ? <span style={{ color: 'var(--green)', fontSize: 13.5, fontWeight: 600 }}>✓ {t.wizOk}</span>
-          : <span style={{ color: 'var(--amber)', fontSize: 13 }}>◔ {t.wizWait} · {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</span>}
+          : <span style={{ color: 'var(--brand)', fontSize: 13 }}>◔ {t.wizWait} · {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</span>}
       </div>
 
       {/* Ayuda cuando no llega nada */}
       {stuck && (
-        <div style={{ marginTop: 12, padding: '13px 15px', background: 'rgba(245,158,11,.06)', border: '1px solid var(--amber)', borderRadius: 10 }}>
-          <div style={{ color: 'var(--amber)', fontWeight: 600, marginBottom: 3, fontSize: 13.5 }}>{t.wzStuckT}</div>
+        <div style={{ marginTop: 12, padding: '13px 15px', background: 'rgba(255,157,61,.06)', border: '1px solid var(--brand)', borderRadius: 10 }}>
+          <div style={{ color: 'var(--brand)', fontWeight: 600, marginBottom: 3, fontSize: 13.5 }}>{t.wzStuckT}</div>
           <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{t.wzStuckD}</div>
           {stuckList.map((x: any, i: number) => (
             <div key={i} className="row" style={{ gap: 10, alignItems: 'flex-start', borderTop: '1px solid var(--line)', padding: '8px 0' }}>
