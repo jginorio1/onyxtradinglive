@@ -1399,3 +1399,9 @@ html:not(.is-auth) body.onyx-vivid > *:not(.promobar):not(.topbar):not(.secnav):
 .copy-cockpit .copy-row + .copy-row{ border-top:1px solid var(--line); }
 /* Cabecera de tarjeta homogénea. */
 .copy-cockpit .card > b:first-child{ display:block; margin-bottom:10px; }
+/* Fila de una copia: al envolver (info arriba, acciones abajo) se alinea al inicio,
+   así las acciones nunca empujan ni se salen de la tarjeta. */
+.copy-cockpit .copy-row{ align-items:flex-start; flex-wrap:wrap; }
+/* Bloque de acciones de la copia: nunca más ancho que la tarjeta; se ajusta solo. */
+.copy-actions{ flex:1 1 auto; max-width:100%; }
+.copy-actions .btn{ white-space:nowrap; }

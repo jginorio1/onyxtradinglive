@@ -478,6 +478,10 @@ export default function CopyClient() {
     maxPos: ['Máximo de operaciones abiertas a la vez en la esclava.', 'Max simultaneous open trades on the slave.'],
     symCap: ['Tope de lote acumulado por símbolo en la esclava.', 'Max total lot per symbol on the slave.'],
     dev: ['Desviación máxima de precio permitida al ejecutar (puntos). Si el precio se movió más, no entra.', 'Max allowed price deviation on execution (points). If price moved more, it skips.'],
+    preview: ['Abre una vista previa de ESTA copia: con las últimas señales de la master, te muestra cuántas se habrían copiado, cuántas se saltan y por qué, el multiplicador efectivo, el colchón del reto y la latencia/slippage recientes. Sirve para revisar que la copia hará lo que esperas ANTES de dejarla corriendo. No ejecuta nada real.', 'Opens a preview of THIS copy: using the master\'s latest signals, it shows how many would have been copied, how many are skipped and why, the effective multiplier, the challenge headroom and recent latency/slippage. Use it to check the copy will do what you expect BEFORE leaving it running. It executes nothing real.'],
+    closeAll: ['Envía la orden de CERRAR de inmediato todas las posiciones que esta copia abrió en la cuenta esclava. Úsalo para una salida de emergencia (p. ej. una noticia o un cierre de sesión). No elimina la copia: puedes seguir copiando después. No se puede deshacer una vez cerradas.', 'Sends the order to immediately CLOSE every position this copy opened on the slave account. Use it for an emergency exit (e.g. news or end of session). It does NOT delete the copy: you can keep copying afterwards. It cannot be undone once positions are closed.'],
+    removeCopy: ['Elimina esta copia por completo: la esclava deja de recibir las operaciones de la master. NO cierra las posiciones que ya estén abiertas (para eso usa "Cerrar todo" primero). Es permanente; tendrías que crear la copia de nuevo para volver a enlazarlas.', 'Removes this copy entirely: the slave stops receiving the master\'s trades. It does NOT close positions that are already open (use "Close all" first for that). It is permanent; you would have to create the copy again to re-link them.'],
+    liveLog: ['Registro en vivo de la replicación: cada señal de la master y qué pasó en la esclava — copiada, saltada (con el motivo) o con error — además de la hora y la latencia. Usa el buscador y los filtros para revisar un par o ver solo los errores. Es tu caja negra para auditar por qué una operación se copió o no.', 'Live replication log: each master signal and what happened on the slave — copied, skipped (with the reason) or failed — plus the time and latency. Use the search and filters to inspect a pair or see only errors. It is your black box to audit why a trade was or was not copied.'],
   };
   // Popup robusto compartido (cierra al tocar fuera / X / Escape, no se corta).
   const Hint = ({ id }: { id: string }) => HELP[id] ? <HintPop text={HELP[id][lang === 'en' ? 1 : 0]} glyph="?" /> : null;
@@ -643,6 +647,62 @@ export default function CopyClient() {
         </div>
       </div>
       )}
+
+      {/* Replicación en vivo · movido aquí, bajo Control y PIN (antes quedaba al fondo) */}
+      <div className="card">
+        <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <b style={{ fontSize: 14 }}>{t.log}<Hint id="liveLog" /></b>
+          {log.length > 0 && (() => {
+            const cc = log.filter((e) => e.kind === 'copied').length, sc = log.filter((e) => e.kind === 'skipped').length, ec = log.filter((e) => e.kind !== 'copied' && e.kind !== 'skipped').length;
+            return (
+              <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                <span className="pill" style={{ fontSize: 10.5, color: 'var(--green)', background: 'rgba(52,199,120,.16)' }}>{cc} {t.kcopied}</span>
+                <span className="pill" style={{ fontSize: 10.5, color: 'var(--brand)', background: 'rgba(255,157,61,.16)' }}>{sc} {t.kskipped}</span>
+                <span className="pill" style={{ fontSize: 10.5, color: 'var(--red)', background: 'rgba(255,69,58,.16)' }}>{ec} {t.kerror}</span>
+              </div>
+            );
+          })()}
+          <button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 11.5 }} onClick={() => setShowLog((v) => !v)}>{showLog ? (lang === 'es' ? 'Ocultar' : 'Hide') : (lang === 'es' ? 'Ver registro' : 'View log')} <span style={{ fontSize: 10 }}>{showLog ? '▴' : '▾'}</span></button>
+        </div>
+        {showLog && (<>
+        {log.length > 0 && (
+          <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+            <div className="row" style={{ gap: 6, alignItems: 'center', border: '1px solid var(--line)', borderRadius: 8, padding: '0 9px', height: 30, flex: '1 1 140px' }}>
+              <OnyxIcon name="search" size={14} />
+              <input placeholder={lang === 'en' ? 'Search pair…' : 'Buscar par…'} value={logQ} onChange={(e) => { setLogQ(e.target.value); setLogShown(6); }} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 12.5, width: '100%', color: 'var(--tx)' }} />
+            </div>
+            {([['all', lang === 'en' ? 'All' : 'Todos'], ['copied', t.kcopied], ['skipped', t.kskipped], ['error', t.kerror]] as const).map(([k, lab]) => (
+              <button key={k} className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 11.5, ...(logKind === k ? { borderColor: 'var(--accent,#6c7bff)', color: 'var(--accent,#8a97ff)' } : {}) }} onClick={() => { setLogKind(k as any); setLogShown(6); }}>{lab}</button>
+            ))}
+          </div>
+        )}
+        {(() => {
+          const filtered = log.filter((e) => {
+            const kindOk = logKind === 'all' || (logKind === 'error' ? (e.kind !== 'copied' && e.kind !== 'skipped') : e.kind === logKind);
+            const qOk = !logQ.trim() || String(e.symbol || '').toLowerCase().includes(logQ.trim().toLowerCase());
+            return kindOk && qOk;
+          });
+          if (!filtered.length) return <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>{log.length ? (lang === 'en' ? 'No matches.' : 'Sin coincidencias.') : t.noLog}</p>;
+          return (
+            <>
+              {filtered.slice(0, logShown).map((e, i) => {
+                const c = e.kind === 'copied' ? 'var(--green)' : e.kind === 'skipped' ? 'var(--brand)' : 'var(--red)';
+                const k = e.kind === 'copied' ? t.kcopied : e.kind === 'skipped' ? t.kskipped : t.kerror;
+                return (
+                  <div key={i} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '8px 0', fontSize: 12.5, gap: 8, flexWrap: 'wrap' }}>
+                    <span className="row" style={{ gap: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: c }} /><b>{e.symbol || '—'}</b> <span style={{ color: c }}>{k}</span>{e.reason ? <span className="muted" style={{ fontSize: 11.5 }}>· {e.reason}</span> : null}</span>
+                    <span className="muted">{e.latency_ms ? e.latency_ms + ' ms · ' : ''}{new Date(e.created_at).toLocaleTimeString()}</span>
+                  </div>
+                );
+              })}
+              {filtered.length > logShown && (
+                <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 12.5 }} onClick={() => setLogShown((n) => n + 10)}>▾ {lang === 'en' ? 'Load more' : 'Cargar más'} ({filtered.length - logShown})</button>
+              )}
+            </>
+          );
+        })()}
+        </>)}
+      </div>
       </div>
       )}
 
@@ -802,16 +862,26 @@ export default function CopyClient() {
                       </div>;
                     })()}
                   </div>
-                  <div className="row" style={{ gap: 8 }}>
-                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => save({ ...linkPayload(l), enabled: !l.enabled })}>
-                      {l.enabled ? '⏸ ' + t.off : '▶ ' + t.on}
-                    </button>
-                    <span className="pill" style={l.enabled ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{l.enabled ? t.on : t.off}</span>
-                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => openPreview(l)}>🔍 {t.preview}</button>
-                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setEdit({ ...blankLink(), ...l, symbol_whitelist: l.symbol_whitelist || [], session_from: l.session_from || '', session_to: l.session_to || '', symbol_rows: objToRows(l.symbol_map) })}>{t.edit}</button>
-                    <button className="btn btn-ghost" title={t.closeAll} style={{ padding: '4px 10px', fontSize: 12, color: 'var(--red)', borderColor: 'var(--red)' }}
-                      onClick={async () => { if (!confirm(t.closeAllAsk)) return; const ok = await control('close_all_account', { accountId: l.slave_account_id }); if (ok) toast(t.closeAllDone); }}>🧯 {t.closeAll}</button>
-                    <button className="btn btn-danger" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => del(l.id)}>{t.del}</button>
+                  {/* Acciones de la copia · dos niveles para que no se desborde */}
+                  <div className="copy-actions" style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+                    {/* Fila principal · uso diario */}
+                    <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => save({ ...linkPayload(l), enabled: !l.enabled })}>
+                        {l.enabled ? '⏸ ' + t.off : '▶ ' + t.on}
+                      </button>
+                      <span className="pill" style={l.enabled ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{l.enabled ? t.on : t.off}</span>
+                      <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => openPreview(l)}>🔍 {t.preview}</button>
+                      <Hint id="preview" />
+                      <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setEdit({ ...blankLink(), ...l, symbol_whitelist: l.symbol_whitelist || [], session_from: l.session_from || '', session_to: l.session_to || '', symbol_rows: objToRows(l.symbol_map) })}>{t.edit}</button>
+                    </div>
+                    {/* Fila secundaria · acciones fuertes, separadas para que no se toquen por error */}
+                    <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', borderTop: '1px solid var(--line)', paddingTop: 6 }}>
+                      <button className="btn btn-ghost" title={t.closeAll} style={{ padding: '4px 10px', fontSize: 12, color: 'var(--red)', borderColor: 'var(--red)' }}
+                        onClick={async () => { if (!confirm(t.closeAllAsk)) return; const ok = await control('close_all_account', { accountId: l.slave_account_id }); if (ok) toast(t.closeAllDone); }}>🧯 {t.closeAll}</button>
+                      <Hint id="closeAll" />
+                      <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12, color: 'var(--mut)' }} onClick={() => del(l.id)}>🗑 {t.del}</button>
+                      <Hint id="removeCopy" />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -910,61 +980,6 @@ export default function CopyClient() {
         </div>
       )}
 
-      {/* Log en vivo · compacto con filtros y "cargar más" */}
-      <div className="card">
-        <div className="row between" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <b style={{ fontSize: 14 }}>{t.log}</b>
-          {log.length > 0 && (() => {
-            const cc = log.filter((e) => e.kind === 'copied').length, sc = log.filter((e) => e.kind === 'skipped').length, ec = log.filter((e) => e.kind !== 'copied' && e.kind !== 'skipped').length;
-            return (
-              <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                <span className="pill" style={{ fontSize: 10.5, color: 'var(--green)', background: 'rgba(52,199,120,.16)' }}>{cc} {t.kcopied}</span>
-                <span className="pill" style={{ fontSize: 10.5, color: 'var(--brand)', background: 'rgba(255,157,61,.16)' }}>{sc} {t.kskipped}</span>
-                <span className="pill" style={{ fontSize: 10.5, color: 'var(--red)', background: 'rgba(255,69,58,.16)' }}>{ec} {t.kerror}</span>
-              </div>
-            );
-          })()}
-          <button className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 11.5 }} onClick={() => setShowLog((v) => !v)}>{showLog ? (lang === 'es' ? 'Ocultar' : 'Hide') : (lang === 'es' ? 'Ver registro' : 'View log')} <span style={{ fontSize: 10 }}>{showLog ? '▴' : '▾'}</span></button>
-        </div>
-        {showLog && (<>
-        {log.length > 0 && (
-          <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-            <div className="row" style={{ gap: 6, alignItems: 'center', border: '1px solid var(--line)', borderRadius: 8, padding: '0 9px', height: 30, flex: '1 1 140px' }}>
-              <OnyxIcon name="search" size={14} />
-              <input placeholder={lang === 'en' ? 'Search pair…' : 'Buscar par…'} value={logQ} onChange={(e) => { setLogQ(e.target.value); setLogShown(6); }} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 12.5, width: '100%', color: 'var(--tx)' }} />
-            </div>
-            {([['all', lang === 'en' ? 'All' : 'Todos'], ['copied', t.kcopied], ['skipped', t.kskipped], ['error', t.kerror]] as const).map(([k, lab]) => (
-              <button key={k} className="btn btn-ghost" style={{ padding: '3px 10px', fontSize: 11.5, ...(logKind === k ? { borderColor: 'var(--accent,#6c7bff)', color: 'var(--accent,#8a97ff)' } : {}) }} onClick={() => { setLogKind(k as any); setLogShown(6); }}>{lab}</button>
-            ))}
-          </div>
-        )}
-        {(() => {
-          const filtered = log.filter((e) => {
-            const kindOk = logKind === 'all' || (logKind === 'error' ? (e.kind !== 'copied' && e.kind !== 'skipped') : e.kind === logKind);
-            const qOk = !logQ.trim() || String(e.symbol || '').toLowerCase().includes(logQ.trim().toLowerCase());
-            return kindOk && qOk;
-          });
-          if (!filtered.length) return <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>{log.length ? (lang === 'en' ? 'No matches.' : 'Sin coincidencias.') : t.noLog}</p>;
-          return (
-            <>
-              {filtered.slice(0, logShown).map((e, i) => {
-                const c = e.kind === 'copied' ? 'var(--green)' : e.kind === 'skipped' ? 'var(--brand)' : 'var(--red)';
-                const k = e.kind === 'copied' ? t.kcopied : e.kind === 'skipped' ? t.kskipped : t.kerror;
-                return (
-                  <div key={i} className="row between" style={{ borderTop: '1px solid var(--line)', padding: '8px 0', fontSize: 12.5, gap: 8, flexWrap: 'wrap' }}>
-                    <span className="row" style={{ gap: 8 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: c }} /><b>{e.symbol || '—'}</b> <span style={{ color: c }}>{k}</span>{e.reason ? <span className="muted" style={{ fontSize: 11.5 }}>· {e.reason}</span> : null}</span>
-                    <span className="muted">{e.latency_ms ? e.latency_ms + ' ms · ' : ''}{new Date(e.created_at).toLocaleTimeString()}</span>
-                  </div>
-                );
-              })}
-              {filtered.length > logShown && (
-                <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 12.5 }} onClick={() => setLogShown((n) => n + 10)}>▾ {lang === 'en' ? 'Load more' : 'Cargar más'} ({filtered.length - logShown})</button>
-              )}
-            </>
-          );
-        })()}
-        </>)}
-      </div>
 
       </div>
       </div>
