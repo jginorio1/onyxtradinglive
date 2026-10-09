@@ -55,8 +55,17 @@ export const recoBrokerSettings = () => getSetting<RecoBroker>('reco_broker', RE
 
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
   try {
-    const { data } = await supabaseAdmin.from('app_settings').select('value').eq('key', key).maybeSingle();
-    const v: any = data?.value;
+    // A prueba de filas duplicadas: si por un upsert sin constraint único quedaron
+    // dos filas con la misma key, .maybeSingle() fallaba y devolvía el valor por
+    // defecto (p. ej. VPS con url vacía aunque la BD la tuviera). Pedimos la más
+    // reciente con order+limit(1) para que siempre leamos el valor real.
+    const { data: rows } = await supabaseAdmin
+      .from('app_settings')
+      .select('value, updated_at')
+      .eq('key', key)
+      .order('updated_at', { ascending: false, nullsFirst: false })
+      .limit(1);
+    const v: any = Array.isArray(rows) && rows.length ? rows[0].value : undefined;
     if (v === undefined || v === null) return fallback;
     // Solo hacemos "merge" cuando AMBOS son objetos planos (settings tipo config).
     // Para escalares (número/string/bool) y arrays, devolvemos el valor tal cual —
