@@ -25,10 +25,10 @@ const T: any = {
     how1: 'Conecta al menos 2 cuentas', how1b: 'Una será la Master (manda) y las otras Esclavas (reciben). Se conectan en Cuentas (MetaTrader, cTrader, MatchTrader, TradeLocker o DXtrade).',
     how1link: 'Ir a Cuentas →',
     how2: 'Prepara las cuentas', how2b: 'La Master ya va integrada en Onyx Connect (no instalas nada aparte). En cada Esclava pulsa «Instalar» en «Claves Copy»: te abre el asistente con la EA Esclava, la URL y tu clave, y confirma en vivo cuando conecta.',
-    how3: 'Crea el enlace Master → Esclava', how3b: 'En «Nuevo enlace» eliges la master, la esclava y el modo. Al confirmar empieza a copiar operaciones reales, así que pruébalo primero en DEMO. Puedes pausar/reanudar arriba o por Telegram.',
-    needMore: 'Solo tienes 1 cuenta conectada. Conecta otra para poder crear un enlace de copia.',
+    how3: 'Crea la copia Master → Esclava', how3b: 'En «Nueva copia» eliges la master, la esclava y el modo. Al confirmar empieza a copiar operaciones reales, así que pruébalo primero en DEMO. Puedes pausar/reanudar arriba o por Telegram.',
+    needMore: 'Solo tienes 1 cuenta conectada. Conecta otra para poder crear una copia.',
     control: 'Control de copia', ctrlActive: 'Copia activa', ctrlPaused: 'Copia pausada',
-    ctrlActiveSub: 'enlaces activos', ctrlPausedSub: 'nada se está replicando',
+    ctrlActiveSub: 'copias activas', ctrlPausedSub: 'nada se está replicando',
     pauseAll: 'Pausar todo', resumeAll: 'Reanudar', byAccount: 'Por cuenta',
     accActive: 'activa', accPaused: 'pausada', role_master: 'MASTER', role_slave: 'ESCLAVA', role_both: 'MASTER + ESCLAVA',
     remoteHint: 'Puedes pausar y reanudar desde el móvil o por Telegram (/copyoff · /copyon). Pausar es instantáneo; reanudar pide tu PIN.',
@@ -89,10 +89,10 @@ const T: any = {
       { t: 'La clave se pegó mal', d: 'Pega tu clave Copy en el campo “Copy API key”.' },
     ],
     wzRetry: 'Comprobar ahora', wzChecking: 'Comprobando cada pocos segundos',
-    links: 'Tus enlaces', newLink: 'Nuevo enlace', master: 'Master', slave: 'Esclava', mode: 'Modo',
+    links: 'Tus copias', newLink: 'Nueva copia · paso a paso', master: 'Master', slave: 'Esclava', mode: 'Modo',
     m_balance: 'Balance %', m_risk: 'Riesgo % (RR)', m_pips: 'Pips', m_fixed: 'Lote fijo ×',
     mult: 'Multiplicador', risk: 'Riesgo %', pip: 'Pips SL', maxLot: 'Lote máx', reverse: 'Invertir',
-    add: 'Crear enlace', save: 'Guardar', del: 'Quitar', edit: 'Editar', on: 'Activo', off: 'Pausado', pick: 'Elige…',
+    add: 'Empezar a copiar', save: 'Guardar', del: 'Quitar', edit: 'Editar', on: 'Activo', off: 'Pausado', pick: 'Elige…',
     noAcc: 'Necesitas al menos 2 cuentas conectadas para copiar.',
     log: 'Replicación en vivo', noLog: 'Sin actividad todavía.',
     kcopied: 'copiado', kskipped: 'saltado (símbolo)', kerror: 'error',
@@ -103,18 +103,18 @@ const T: any = {
     dev: 'Desvío máx entrada (pts)', sigAge: 'Antigüedad máx señal (s)', maxPos: 'Máx posiciones', symCap: 'Tope lote por símbolo', requireSL: 'Exigir Stop Loss',
     jitter: 'Retraso aleatorio (s)', jitterNote: 'Añade un retraso al azar (0…N s) antes de copiar cada apertura, para que el timing NO sea idéntico al de la master. Reduce el riesgo de que una prop firm detecte copia por patrón. Los cierres siempre salen al instante. 0 = sin retraso.',
     symMap: 'Tabla de símbolos (una por línea: MASTER=ESCLAVA)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
-    dupTitle: 'Esta cuenta ya está en copia', dupBodyA: 'ya está activa como', dupBodyB: 'del enlace', dupRoleM: 'MASTER', dupRoleS: 'ESCLAVA',
-    dupWarn: 'Usarla en dos enlaces puede duplicar operaciones y romper tu gestión de riesgo.', dupCancel: 'Elegir otra', dupGo: 'Continuar de todos modos',
-    addSlave: 'Añadir otra esclava a esta master', colMaster: 'En la master', colSlave: 'En la esclava', addRow: 'Añadir fila', saveTable: 'Guardar tabla', savedOk: 'Guardado', anyHour: '— (24 h)',
+    dupTitle: 'Esta cuenta ya está en copia', dupBodyA: 'ya está activa como', dupBodyB: 'de la copia', dupRoleM: 'MASTER', dupRoleS: 'ESCLAVA',
+    dupWarn: 'Usarla en dos copias puede duplicar operaciones y romper tu gestión de riesgo.', dupCancel: 'Elegir otra', dupGo: 'Continuar de todos modos',
+    addSlave: 'Copiar esta cuenta a otra esclava', colMaster: 'En la master', colSlave: 'En la esclava', addRow: 'Añadir fila', saveTable: 'Guardar tabla', savedOk: 'Guardado', anyHour: '— (24 h)',
     mpTitle: 'Vas a elegir la cuenta Master', mpBody: 'La cuenta Master es la que MANDA: sus operaciones se copian a las esclavas. Elige la cuenta desde la que operas tú. Puedes tener varias masters (cada master extra es un add-on), cada una con sus propias esclavas.',
     mpWarn: 'Si tus esclavas son de prop firm, copiar entre cuentas puede violar sus reglas. Eres responsable de cumplirlas.',
     clTitle: 'Vas a empezar a copiar en real',
     clBody1: 'Desde ahora, cada operación que abras o cierres en', clBody2: 'se copiará automáticamente en',
     clP1: 'Se copian operaciones reales: si el master pierde, la esclava también.',
     clP2: 'Pruébalo primero en cuenta DEMO (master y esclava en demo) antes de usar dinero real.',
-    clP3: 'Puedes pausar o borrar el enlace cuando quieras desde esta pantalla o por Telegram.',
+    clP3: 'Puedes pausar o borrar la copia cuando quieras desde esta pantalla o por Telegram.',
     clWarn: 'Si alguna cuenta es de prop firm, copiar entre cuentas puede romper sus reglas. Tú eres responsable.',
-    clNo: 'Cancelar', clGo: 'Entiendo, crear enlace',
+    clNo: 'Cancelar', clGo: 'Entiendo, empezar a copiar',
     mpOk: 'Sí, es mi Master', mpNo: 'Cancelar',
   },
   en: {
@@ -126,10 +126,10 @@ const T: any = {
     how1: 'Connect at least 2 accounts', how1b: 'One is the Master (sends), the others Slaves (receive). Connect them under Accounts.',
     how1link: 'Go to Accounts →',
     how2: 'Set up the accounts', how2b: 'The Master is built into Onyx Connect (nothing extra to install). On each Slave click “Install” in “Copy keys”: it opens the wizard with the Slave EA, the URL and your key, and confirms live when it connects.',
-    how3: 'Create the Master → Slave link', how3b: 'In “New link” pick the master, the slave and the mode. Confirming starts copying real trades, so test it on DEMO first. Pause/resume from the top or via Telegram.',
-    needMore: 'You only have 1 connected account. Connect another to create a copy link.',
+    how3: 'Create the Master → Slave copy', how3b: 'In “New copy” pick the master, the slave and the mode. Confirming starts copying real trades, so test it on DEMO first. Pause/resume from the top or via Telegram.',
+    needMore: 'You only have 1 connected account. Connect another to create a copy.',
     control: 'Copy control', ctrlActive: 'Copy active', ctrlPaused: 'Copy paused',
-    ctrlActiveSub: 'active links', ctrlPausedSub: 'nothing is replicating',
+    ctrlActiveSub: 'active copies', ctrlPausedSub: 'nothing is replicating',
     pauseAll: 'Pause all', resumeAll: 'Resume', byAccount: 'By account',
     accActive: 'active', accPaused: 'paused', role_master: 'MASTER', role_slave: 'SLAVE', role_both: 'MASTER + SLAVE',
     remoteHint: 'Pause and resume from your phone or via Telegram (/copyoff · /copyon). Pausing is instant; resuming asks your PIN.',
@@ -190,10 +190,10 @@ const T: any = {
       { t: 'The key was pasted wrong', d: 'Paste your Copy key into the “Copy API key” field.' },
     ],
     wzRetry: 'Check now', wzChecking: 'Checking every few seconds',
-    links: 'Your links', newLink: 'New link', master: 'Master', slave: 'Slave', mode: 'Mode',
+    links: 'Your copies', newLink: 'New copy · step by step', master: 'Master', slave: 'Slave', mode: 'Mode',
     m_balance: 'Balance %', m_risk: 'Risk % (RR)', m_pips: 'Pips', m_fixed: 'Fixed lot ×',
     mult: 'Multiplier', risk: 'Risk %', pip: 'SL pips', maxLot: 'Max lot', reverse: 'Reverse',
-    add: 'Create link', save: 'Save', del: 'Remove', edit: 'Edit', on: 'On', off: 'Paused', pick: 'Choose…',
+    add: 'Start copying', save: 'Save', del: 'Remove', edit: 'Edit', on: 'On', off: 'Paused', pick: 'Choose…',
     noAcc: 'You need at least 2 connected accounts to copy.',
     log: 'Live replication', noLog: 'No activity yet.',
     kcopied: 'copied', kskipped: 'skipped (symbol)', kerror: 'error',
@@ -205,17 +205,17 @@ const T: any = {
     jitter: 'Random delay (s)', jitterNote: 'Adds a random delay (0…N s) before copying each open, so the timing is NOT identical to the master. Lowers the chance a prop firm flags copying by pattern. Closes always go out instantly. 0 = no delay.',
     symMap: 'Symbol table (one per line: MASTER=SLAVE)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
     dupTitle: 'This account is already copying', dupBodyA: 'is already active as', dupBodyB: 'of link', dupRoleM: 'MASTER', dupRoleS: 'SLAVE',
-    dupWarn: 'Using it in two links can duplicate trades and break your risk management.', dupCancel: 'Pick another', dupGo: 'Continue anyway',
-    addSlave: 'Add another slave to this master', colMaster: 'On the master', colSlave: 'On the slave', addRow: 'Add row', saveTable: 'Save table', savedOk: 'Saved', anyHour: '— (24 h)',
+    dupWarn: 'Using it in two copies can duplicate trades and break your risk management.', dupCancel: 'Pick another', dupGo: 'Continue anyway',
+    addSlave: 'Copy this account to another slave', colMaster: 'On the master', colSlave: 'On the slave', addRow: 'Add row', saveTable: 'Save table', savedOk: 'Saved', anyHour: '— (24 h)',
     mpTitle: 'You are choosing the Master account', mpBody: 'The Master account SENDS: its trades are copied to the slaves. Pick the account you trade from. You can run several masters (each extra master is an add-on), each with its own slaves.',
     mpWarn: 'If your slaves are prop-firm accounts, copying between accounts may break their rules. You are responsible for compliance.',
     clTitle: 'You are about to copy for real',
     clBody1: 'From now on, every trade you open or close on', clBody2: 'will be copied automatically to',
     clP1: 'Real trades are copied: if the master loses, the slave loses too.',
     clP2: 'Test it first on a DEMO account (master and slave in demo) before using real money.',
-    clP3: 'You can pause or delete the link anytime from this screen or via Telegram.',
+    clP3: 'You can pause or delete the copy anytime from this screen or via Telegram.',
     clWarn: 'If any account is a prop firm, copying between accounts may break their rules. You are responsible.',
-    clNo: 'Cancel', clGo: 'I understand, create link',
+    clNo: 'Cancel', clGo: 'I understand, start copying',
     mpOk: 'Yes, it’s my Master', mpNo: 'Cancel',
   },
 };
@@ -456,7 +456,7 @@ export default function CopyClient() {
         const steps = [
           { n: 1, t: lang === 'en' ? 'Connect accounts' : 'Conecta cuentas', s: lang === 'en' ? `${accs.length} connected` : `${accs.length} conectadas`, done: s1, to: 'copy-how', bg: 'rgba(55,138,221,.16)', bd: 'rgba(55,138,221,.45)', fg: '#6fb0ff' },
           { n: 2, t: lang === 'en' ? 'Install slave' : 'Instala esclava', s: lang === 'en' ? 'EA + key' : 'EA + clave', done: s2, to: 'copy-dl', bg: 'rgba(124,140,255,.16)', bd: 'rgba(124,140,255,.45)', fg: '#a99cff' },
-          { n: 3, t: lang === 'en' ? 'Create link' : 'Crea el enlace', s: 'Master → ' + (lang === 'en' ? 'Slave' : 'Esclava'), done: s3, to: 'newlink', bg: 'rgba(255,159,10,.16)', bd: 'rgba(255,159,10,.45)', fg: '#ffb454' },
+          { n: 3, t: lang === 'en' ? 'Create copy' : 'Crea la copia', s: 'Master → ' + (lang === 'en' ? 'Slave' : 'Esclava'), done: s3, to: 'newlink', bg: 'rgba(255,159,10,.16)', bd: 'rgba(255,159,10,.45)', fg: '#ffb454' },
           { n: 4, t: lang === 'en' ? 'Control' : 'Controla', s: lang === 'en' ? 'Pause · PIN · live' : 'Pausa · PIN · en vivo', done: s4, to: 'copy-ctrl', bg: 'rgba(52,199,120,.16)', bd: 'rgba(52,199,120,.45)', fg: '#4ade9a' },
         ];
         const doneCount = steps.filter((x) => x.done).length;
@@ -727,28 +727,62 @@ export default function CopyClient() {
       {accs.length >= 2 && (
         <div className="card" id="newlink" style={{ marginBottom: 12 }}>
           <b style={{ fontSize: 14 }}>{t.newLink}</b>
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginTop: 10, alignItems: 'end' }}>
-            <label className="muted" style={{ fontSize: 12 }}><span style={{ color: C_MASTER }}>● </span>{t.master}<Hint id="master" />
-              <select value={nl.master_account_id}
-                onChange={(e) => { const v = e.target.value; const r = usedRole(v); if (v && r === 'slave') { setDupWarn({ role: r, apply: () => { setNl({ ...nl, master_account_id: v }); setDupWarn(null); } }); return; } if (v && v !== nl.master_account_id) setMasterPopup({ value: v, onConfirm: () => { setNl({ ...nl, master_account_id: v }); setMasterPopup(null); } }); else setNl({ ...nl, master_account_id: v }); }}
-                style={{ marginTop: 3, borderColor: nl.master_account_id ? C_MASTER : undefined }}>
-                <option value="">{t.pick}</option>{accs.map((a) => <option key={a.id} value={a.id}>{a.nickname || a.login}</option>)}
-              </select>
-            </label>
-            <label className="muted" style={{ fontSize: 12 }}><span style={{ color: C_SLAVE }}>● </span>{t.slave}<Hint id="slave" />
-              <select value={nl.slave_account_id} onChange={(e) => { const v = e.target.value; if (!v) { setNl({ ...nl, slave_account_id: '' }); return; } const r = usedRole(v); if (r) { setDupWarn({ role: r, apply: () => { setNl({ ...nl, slave_account_id: v }); setDupWarn(null); } }); return; } setSlavePopup({ value: v, onConfirm: () => { setNl({ ...nl, slave_account_id: v }); setSlavePopup(null); } }); }} style={{ marginTop: 3, borderColor: nl.slave_account_id ? C_SLAVE : undefined }}>
-                <option value="">{t.pick}</option>{accs.filter((a) => a.id !== nl.master_account_id && !slaveIds.has(a.id) && !masterIds.has(a.id)).map((a) => <option key={a.id} value={a.id}>{a.nickname || a.login}</option>)}
-              </select>
-            </label>
-            <label className="muted" style={{ fontSize: 12 }}>{t.mode}<Hint id="mode" />
-              <select value={nl.mode} onChange={(e) => setNl({ ...nl, mode: e.target.value })} style={{ marginTop: 3 }}>
-                <option value="balance">{t.m_balance}</option><option value="risk">{t.m_risk}</option><option value="pips">{t.m_pips}</option><option value="fixed">{t.m_fixed}</option>
-              </select>
-            </label>
-            {modeField(nl, (k, v) => setNl({ ...nl, [k]: v }))}
-            <label className="muted" style={{ fontSize: 12 }}>{t.maxLot}<Hint id="maxLot" /><input type="number" step="0.01" value={nl.max_lot} onChange={(e) => setNl({ ...nl, max_lot: Number(e.target.value) })} style={{ marginTop: 3 }} /></label>
-            <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', marginTop: 18 }}><input type="checkbox" checked={nl.reverse} onChange={(e) => setNl({ ...nl, reverse: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.reverse}<Hint id="reverse" /></label>
-          </div>
+
+          {(() => {
+            const StepHead = ({ n, color, q, sub, hint }: any) => (
+              <div style={{ marginBottom: 7 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: '50%', background: (color || 'var(--brand)') + '22', color: color || 'var(--brand)', display: 'grid', placeItems: 'center', fontSize: 12, fontWeight: 800, flex: 'none' }}>{n}</span>
+                  <b style={{ fontSize: 13 }}>{q}{hint ? <Hint id={hint} /> : null}</b>
+                </div>
+                {sub ? <div className="muted" style={{ fontSize: 11.5, marginTop: 3, marginLeft: 30 }}>{sub}</div> : null}
+              </div>
+            );
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
+
+                {/* Paso 1 · de qué cuenta copiar */}
+                <div>
+                  <StepHead n={1} color={C_MASTER} hint="master"
+                    q={lang === 'es' ? '¿Desde qué cuenta quieres copiar?' : 'Which account do you want to copy from?'}
+                    sub={lang === 'es' ? 'La cuenta donde operas tú (Master).' : 'The account you trade on (Master).'} />
+                  <select value={nl.master_account_id}
+                    onChange={(e) => { const v = e.target.value; const r = usedRole(v); if (v && r === 'slave') { setDupWarn({ role: r, apply: () => { setNl({ ...nl, master_account_id: v }); setDupWarn(null); } }); return; } if (v && v !== nl.master_account_id) setMasterPopup({ value: v, onConfirm: () => { setNl({ ...nl, master_account_id: v }); setMasterPopup(null); } }); else setNl({ ...nl, master_account_id: v }); }}
+                    style={{ borderColor: nl.master_account_id ? C_MASTER : undefined }}>
+                    <option value="">{t.pick}</option>{accs.map((a) => <option key={a.id} value={a.id}>{a.nickname || a.login}</option>)}
+                  </select>
+                </div>
+
+                {/* Paso 2 · a qué cuenta se copia */}
+                <div>
+                  <StepHead n={2} color={C_SLAVE} hint="slave"
+                    q={lang === 'es' ? '¿A qué cuenta se copia?' : 'Which account does it copy to?'}
+                    sub={lang === 'es' ? 'La cuenta que repite tus operaciones (Esclava).' : 'The account that repeats your trades (Slave).'} />
+                  <select value={nl.slave_account_id} onChange={(e) => { const v = e.target.value; if (!v) { setNl({ ...nl, slave_account_id: '' }); return; } const r = usedRole(v); if (r) { setDupWarn({ role: r, apply: () => { setNl({ ...nl, slave_account_id: v }); setDupWarn(null); } }); return; } setSlavePopup({ value: v, onConfirm: () => { setNl({ ...nl, slave_account_id: v }); setSlavePopup(null); } }); }} style={{ borderColor: nl.slave_account_id ? C_SLAVE : undefined }}>
+                    <option value="">{t.pick}</option>{accs.filter((a) => a.id !== nl.master_account_id && !slaveIds.has(a.id) && !masterIds.has(a.id)).map((a) => <option key={a.id} value={a.id}>{a.nickname || a.login}</option>)}
+                  </select>
+                </div>
+
+                {/* Paso 3 · cómo se copia el tamaño */}
+                <div>
+                  <StepHead n={3}
+                    q={lang === 'es' ? '¿Cómo se copia el tamaño?' : 'How is the size copied?'}
+                    sub={lang === 'es' ? 'Cómo se calcula el lote en la esclava.' : 'How the lot is sized on the slave.'} />
+                  <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, alignItems: 'end' }}>
+                    <label className="muted" style={{ fontSize: 12 }}>{t.mode}<Hint id="mode" />
+                      <select value={nl.mode} onChange={(e) => setNl({ ...nl, mode: e.target.value })} style={{ marginTop: 3 }}>
+                        <option value="balance">{t.m_balance}</option><option value="risk">{t.m_risk}</option><option value="pips">{t.m_pips}</option><option value="fixed">{t.m_fixed}</option>
+                      </select>
+                    </label>
+                    {modeField(nl, (k, v) => setNl({ ...nl, [k]: v }))}
+                    <label className="muted" style={{ fontSize: 12 }}>{t.maxLot}<Hint id="maxLot" /><input type="number" step="0.01" value={nl.max_lot} onChange={(e) => setNl({ ...nl, max_lot: Number(e.target.value) })} style={{ marginTop: 3 }} /></label>
+                    <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', marginTop: 18 }}><input type="checkbox" checked={nl.reverse} onChange={(e) => setNl({ ...nl, reverse: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.reverse}<Hint id="reverse" /></label>
+                  </div>
+                </div>
+
+              </div>
+            );
+          })()}
           <button className="btn btn-ghost" style={{ marginTop: 10, padding: '3px 10px', fontSize: 12 }} onClick={() => setShowRisk(!showRisk)}>{showRisk ? '▾ ' : '▸ '}{t.riskBlock}</button>
           {showRisk && riskFields(nl, (k, v) => setNl({ ...nl, [k]: v }))}
           <div><button className="btn btn-primary" style={{ marginTop: 12 }} disabled={busy || !nl.master_account_id || !nl.slave_account_id} onClick={() => setConfirmLink(nl)}>{t.add}</button></div>
