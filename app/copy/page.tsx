@@ -16,11 +16,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title, description, alternates: localeAlternates('/copy'), openGraph: { title, description, url: `${SITE}/copy`, type: 'website' } };
 }
 
-const TIER_STYLE: Record<Tier, { bg: string; br: string; tx: string }> = {
-  diamond: { bg: 'rgba(55,138,221,.16)', br: '#378ADD', tx: '#2f7fd0' },
-  gold: { bg: 'rgba(255,192,77,.16)', br: 'var(--gold)', tx: 'var(--gold)' },
-  silver: { bg: 'rgba(140,148,165,.18)', br: '#9aa0ac', tx: '#5b6474' },
-  none: { bg: 'var(--bg2)', br: 'var(--line)', tx: 'var(--mut)' },
+// Niveles con colores vivos (Opción A): chip SÓLIDO (solid) con texto oscuro (on),
+// tarjeta con tinte suave (bg) y borde del color (br). tx se conserva para usos de
+// texto sueltos. Funciona en claro y oscuro: colores vivos + tinte translúcido.
+const TIER_STYLE: Record<Tier, { bg: string; br: string; tx: string; solid: string; on: string }> = {
+  diamond: { bg: 'rgba(56,189,248,.14)', br: '#38bdf8', tx: '#1486b8', solid: '#38e0f8', on: '#05363f' },
+  gold: { bg: 'rgba(240,180,41,.14)', br: '#f0b429', tx: '#b4830a', solid: '#f6c343', on: '#4a3205' },
+  silver: { bg: 'rgba(148,163,184,.14)', br: '#9aa7b8', tx: '#5b6474', solid: '#cbd5e1', on: '#1e293b' },
+  none: { bg: 'var(--bg2)', br: 'var(--line)', tx: 'var(--mut)', solid: 'var(--line)', on: 'var(--tx)' },
 };
 
 function money(n: any) { const v = Number(n) || 0; return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 }); }
@@ -165,8 +168,8 @@ export default async function CopyLanding() {
         {([['silver', L.silverT, L.silverD], ['gold', L.goldT, L.goldD], ['diamond', L.diamondT, L.diamondD]] as const).map(([k, tt, dd]) => {
           const st = TIER_STYLE[k as Tier];
           return (
-            <div key={k} className="card" style={{ borderColor: st.br, boxShadow: `0 0 26px -14px ${st.br}` }}>
-              <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 999, fontSize: 13, fontWeight: 700, background: st.bg, border: '1px solid ' + st.br, color: st.tx }}>{tt}</span>
+            <div key={k} className="card" style={{ borderColor: st.br, background: st.bg, boxShadow: `0 0 30px -12px ${st.br}` }}>
+              <span style={{ display: 'inline-block', padding: '4px 13px', borderRadius: 999, fontSize: 13, fontWeight: 800, background: st.solid, color: st.on }}>{tt}</span>
               <p className="muted" style={{ fontSize: 13.5, marginTop: 10, lineHeight: 1.6 }}>{dd}</p>
             </div>
           );
@@ -194,7 +197,7 @@ export default async function CopyLanding() {
                 <div style={{ flex: '1 1 220px', minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <b>{p.display_name}</b>
-                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: st.bg, border: '1px solid ' + st.br, color: st.tx }}>{tierLabel(p.tier, es ? 'es' : 'en')}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 9px', borderRadius: 999, background: st.solid, color: st.on }}>{tierLabel(p.tier, es ? 'es' : 'en')}</span>
                     {p.verified && <span style={{ fontSize: 11, color: 'var(--green)' }}>✓ {L.verifiedTxt}</span>}
                   </div>
                   <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>Win {s.winRate ?? 0}% · PF {s.pf ?? 0} · maxDD {s.maxDDpct ?? 0}% · {s.trades ?? 0} ops · {s.tradingDays ?? 0} {es ? 'días' : 'days'}</div>
