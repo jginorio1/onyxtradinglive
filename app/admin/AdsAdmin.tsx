@@ -712,7 +712,14 @@ export default function AdsAdmin({ es }: { es: boolean }) {
                                                                                 'Axi tip: on each banner hit “Copy Html Code” and paste it here; I auto-extract the image and click link. (The “Copy Click URL” goes only in Affiliate link.)')}</div>
             {(() => {
               const b = (pForm.banner_url || '').trim();
-              const isImg = !b || b.startsWith('data:image/') || /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(b);
+              // Es un enlace de CLIC/seguimiento (no imagen) si tiene estos patrones.
+              const isClick = /\/(visit|click|go|aff|redirect|track)\b|[?&](bta|aff|ref|pid|cpid)=/i.test(b);
+              // Aceptamos como imagen: data:image, extensión de imagen, o cualquier
+              // http(s) que NO sea un enlace de clic (p. ej. CDNs que sirven la imagen
+              // por query: axiaffiliates.ck-cdn.com/tn/serve/?cid=…).
+              const isImg = !b || b.startsWith('data:image/')
+                || /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(b)
+                || (/^https?:\/\//i.test(b) && !isClick);
               if (b && !isImg) return (
                 <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--red,#ef6262)', background: 'rgba(239,98,98,.08)', border: '1px solid rgba(239,98,98,.3)', borderRadius: 8, padding: '7px 9px', lineHeight: 1.5 }}>
                   {L('⚠ Ese enlace no es una imagen (parece un enlace de clic/seguimiento, como “…/visit/?bta=…”). No se mostrará como banner. Opciones: 1) deja este campo vacío y se mostrará una tarjeta con logo, nombre y descripción; 2) sube la imagen del banner con “Subir”; 3) pega la URL directa de la imagen (termina en .jpg, .png, .gif…). El enlace de clic va en “Enlace afiliado”.',
