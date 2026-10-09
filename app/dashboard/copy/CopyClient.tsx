@@ -446,9 +446,34 @@ export default function CopyClient() {
         </div>
       </div>
 
-      <div className="card" style={{ marginBottom: 12, border: '1px solid var(--brand)', background: 'rgba(255,157,61,.06)' }}>
-        <span style={{ fontSize: 12.5, color: 'var(--brand)' }}><OnyxIcon emoji="⚠" size={16} /> {t.warn}</span>
-      </div>
+      {/* FASE 1 · Tira de salud (4 mosaicos iguales) + aviso fino de prop firm */}
+      {(() => {
+        const today = new Date().toDateString();
+        const todayLog = (log || []).filter((e: any) => { try { return new Date(e.created_at).toDateString() === today; } catch { return false; } });
+        const cc = todayLog.filter((e: any) => e.kind === 'copied').length;
+        const sc = todayLog.filter((e: any) => e.kind === 'skipped').length;
+        const last = log && log[0]?.created_at ? new Date(log[0].created_at) : null;
+        const lastTxt = last ? last.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+        const tiles = [
+          { k: lang === 'es' ? 'Estado' : 'Status', v: paused ? (lang === 'es' ? 'Pausado' : 'Paused') : (lang === 'es' ? 'Copiando' : 'Copying'), c: paused ? 'var(--red)' : 'var(--green)' },
+          { k: lang === 'es' ? 'Copias activas' : 'Active copies', v: String(linksActive), c: 'var(--tx)' },
+          { k: lang === 'es' ? 'Copiadas hoy' : 'Copied today', v: `${cc}${sc ? ` · ${sc} ${lang === 'es' ? 'omit.' : 'skip.'}` : ''}`, c: 'var(--tx)' },
+          { k: lang === 'es' ? 'Última' : 'Last', v: lastTxt, c: 'var(--tx)' },
+        ];
+        return (
+          <div style={{ marginBottom: 10 }}>
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10 }}>
+              {tiles.map((x, i) => (
+                <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
+                  <div className="muted" style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.04em' }}>{x.k}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4, color: x.c }}>{x.v}</div>
+                </div>
+              ))}
+            </div>
+            <div className="muted" style={{ fontSize: 11.5, color: 'var(--brand)', marginTop: 8, display: 'flex', gap: 6, alignItems: 'flex-start' }}><OnyxIcon emoji="⚠" size={14} /> <span>{t.warn}</span></div>
+          </div>
+        );
+      })()}
 
       {/* PASO A PASO · barra de progreso + 4 tarjetas de color (como el constructor) */}
       {(() => {
@@ -767,7 +792,27 @@ export default function CopyClient() {
                 <div>
                   <StepHead n={3}
                     q={lang === 'es' ? '¿Cómo se copia el tamaño?' : 'How is the size copied?'}
-                    sub={lang === 'es' ? 'Cómo se calcula el lote en la esclava.' : 'How the lot is sized on the slave.'} />
+                    sub={lang === 'es' ? 'Elige un preajuste o configúralo a mano abajo.' : 'Pick a preset or set it by hand below.'} />
+                  {(() => {
+                    const presets = [
+                      { k: 'cons', es: 'Conservador', en: 'Conservative', c: 'var(--green)', v: { mode: 'balance', multiplier: 0.5, max_lot: 1, daily_loss_pct: 3, max_drawdown_pct: 6, require_sl: true } },
+                      { k: 'bal', es: 'Equilibrado', en: 'Balanced', c: 'var(--brand)', v: { mode: 'balance', multiplier: 1, max_lot: 5, daily_loss_pct: 5, max_drawdown_pct: 10, require_sl: true } },
+                      { k: 'agr', es: 'Agresivo', en: 'Aggressive', c: 'var(--red)', v: { mode: 'balance', multiplier: 1.5, max_lot: 20, daily_loss_pct: 8, max_drawdown_pct: 15, require_sl: true } },
+                    ];
+                    const matches = (v: any) => nl.mode === v.mode && Number(nl.multiplier) === v.multiplier && Number(nl.max_lot) === v.max_lot && Number(nl.daily_loss_pct) === v.daily_loss_pct && Number(nl.max_drawdown_pct) === v.max_drawdown_pct;
+                    return (
+                      <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                        {presets.map((p) => {
+                          const on = matches(p.v);
+                          return (
+                            <button key={p.k} onClick={() => setNl({ ...nl, ...p.v })} style={{ cursor: 'pointer', flex: '1 1 110px', padding: '8px 10px', borderRadius: 10, fontSize: 12.5, fontWeight: 600, textAlign: 'center', color: on ? p.c : 'var(--tx)', background: on ? `color-mix(in srgb, ${p.c} 14%, transparent)` : 'var(--bg2)', border: `1px solid ${on ? p.c : 'var(--line)'}` }}>
+                              {lang === 'es' ? p.es : p.en}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                   <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, alignItems: 'end' }}>
                     <label className="muted" style={{ fontSize: 12 }}>{t.mode}<Hint id="mode" />
                       <select value={nl.mode} onChange={(e) => setNl({ ...nl, mode: e.target.value })} style={{ marginTop: 3 }}>
