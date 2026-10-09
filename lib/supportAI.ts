@@ -195,6 +195,12 @@ export async function supportChatReply(question: string, lang: Lang, history: an
         return `- ${n}: $${p.price_month}/${en ? 'mo' : 'mes'} · $${p.price_year}/${en ? 'yr' : 'año'} · ${acc}. ${feats}`;
       }).join('\n');
       prices = `\n\n=== ${en ? 'PRICES AND PLANS (current)' : 'PRECIOS Y PLANES (actuales)'} ===\n${rows}`;
+      // La app pinta los planes como TARJETAS debajo de tu respuesta, así que NO
+      // los repitas en texto. Responde la pregunta de precios/planes con UNA sola
+      // línea corta y deja que las tarjetas muestren el detalle.
+      prices += en
+        ? `\n\nIMPORTANT (pricing questions): when the person asks about prices or plans, DO NOT list the plans one by one in text — the app shows them as interactive CARDS right below your reply. Answer with ONE short line only (e.g. "These are Onyx's plans — yearly saves about ~17%."). Do not repeat prices, accounts or features in prose; the cards already show them.`
+        : `\n\nIMPORTANTE (preguntas de precios): cuando la persona pregunte por precios o planes, NO listes los planes uno por uno en texto — la app los muestra como TARJETAS justo debajo de tu respuesta. Responde con UNA sola línea corta (p. ej. "Estos son los planes de Onyx. El anual ahorra ~17%."). No repitas precios, cuentas ni funciones en el texto; las tarjetas ya lo muestran.`;
       // Prueba gratis y ahorro anual REALES (calculados de los planes; nada fijo).
       const f = planFacts(plans as any);
       if (f.hasTrial) {
