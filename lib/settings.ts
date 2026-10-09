@@ -36,6 +36,23 @@ export async function hasAlgo(userId: string): Promise<boolean> {
   return !!(plan?.capabilities as any)?.algo;
 }
 
+// ===== Bróker recomendado (afiliado) — lo recomienda la IA solo si preguntan =====
+export type RecoBroker = {
+  enabled: boolean;
+  name: string;
+  url: string;        // enlace de afiliado
+  blurb_es: string;   // frase corta (p. ej. "regulado, spreads bajos, MT4/MT5/cTrader")
+  blurb_en: string;
+};
+export const RECO_BROKER_DEFAULT: RecoBroker = {
+  enabled: true,
+  name: 'Axi',
+  url: 'https://records.axiaffiliates.com/visit/?bta=44173&brand=axitrader',
+  blurb_es: 'regulado, spreads bajos y compatible con MT4, MT5 y cTrader',
+  blurb_en: 'regulated, low spreads and works with MT4, MT5 and cTrader',
+};
+export const recoBrokerSettings = () => getSetting<RecoBroker>('reco_broker', RECO_BROKER_DEFAULT);
+
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
   try {
     const { data } = await supabaseAdmin.from('app_settings').select('value').eq('key', key).maybeSingle();

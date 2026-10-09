@@ -3,7 +3,7 @@ import { ARTICLES, searchArticles, type Article, type Lang } from '@/lib/guide';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { listPublished } from '@/lib/blog';
 import { sendEmail } from '@/lib/mail';
-import { getSetting, aiPromptSettings, addonSettings } from '@/lib/settings';
+import { getSetting, aiPromptSettings, addonSettings, RECO_BROKER_DEFAULT, type RecoBroker } from '@/lib/settings';
 import { planFacts } from '@/lib/planFacts';
 import { botLabSettings, clampPct, listMarketplace } from '@/lib/botlab';
 import { academyFeeSettings } from '@/lib/settings';
@@ -254,6 +254,19 @@ export async function supportChatReply(question: string, lang: Lang, history: an
       prices += en
         ? `\n\n=== SUPPORTED PLATFORMS & FIRMS (live catalog) ===\n${pl.length ? `Platforms: ${pl.join(', ')}.` : ''}${fl.length ? `\nProp firms / brokers: ${fl.join(', ')}. Any broker/firm that uses one of these platforms works; the exact platforms and account sizes per firm can change, so suggest confirming on the firm's site.` : ''}`
         : `\n\n=== PLATAFORMAS Y PROP FIRMS COMPATIBLES (catálogo en vivo) ===\n${pl.length ? `Plataformas: ${pl.join(', ')}.` : ''}${fl.length ? `\nProp firms / brókers: ${fl.join(', ')}. Cualquier bróker/firma que use una de esas plataformas funciona; las plataformas y tamaños por firma pueden cambiar, así que sugiere confirmarlo en el sitio de la firma.` : ''}`;
+    }
+  } catch {}
+
+  // BRÓKER RECOMENDADO (afiliado) — editable en Admin → Módulos, en vivo.
+  // Solo cuando está ACTIVADO. La IA lo recomienda SOLO si la persona pregunta por
+  // bróker / dónde abrir cuenta / con quién operar. Siempre indica que es un socio.
+  try {
+    const rb = await getSetting<RecoBroker>('reco_broker', RECO_BROKER_DEFAULT);
+    if (rb?.enabled && rb.name && rb.url) {
+      const blurb = (en ? (rb.blurb_en || rb.blurb_es) : (rb.blurb_es || rb.blurb_en)) || '';
+      prices += en
+        ? `\n\n=== RECOMMENDED BROKER (partner — recommend ONLY when asked) ===\nWhen the person asks which broker you recommend, where to open an account, or who to trade with, recommend ${rb.name}${blurb ? ` (${blurb})` : ''} and share this link: ${rb.url}\nAlways say that ${rb.name} is a partner of Onyx (affiliate link). Do NOT push it in other conversations, do NOT invent features, and if they already have a broker that works with our platforms, don't insist.`
+        : `\n\n=== BRÓKER RECOMENDADO (socio — recomiéndalo SOLO si preguntan) ===\nCuando la persona pregunte qué bróker recomiendas, dónde abrir cuenta, o con quién operar, recomienda ${rb.name}${blurb ? ` (${blurb})` : ''} y comparte este enlace: ${rb.url}\nDi siempre que ${rb.name} es un socio de Onyx (enlace de afiliado). NO lo empujes en otras conversaciones, NO inventes características, y si ya tiene un bróker que funciona con nuestras plataformas, no insistas.`;
     }
   } catch {}
 

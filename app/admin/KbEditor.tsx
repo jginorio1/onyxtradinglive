@@ -28,7 +28,7 @@ export default function KbEditor() {
   async function savePrompt() {
     setPfBusy(true);
     try {
-      const r = await fetch('/api/admin/ai-prompt', { method: 'POST', body: JSON.stringify({ brief_es: pf.brief_es || '', brief_en: pf.brief_en || '', extra_es: pf.extra_es || '', extra_en: pf.extra_en || '' }) });
+      const r = await fetch('/api/admin/ai-prompt', { method: 'POST', body: JSON.stringify({ brief_es: pf.brief_es || '', brief_en: pf.brief_en || '', extra_es: pf.extra_es || '', extra_en: pf.extra_en || '', broker: pf.broker || null }) });
       toast(r.ok ? (es ? 'Prompt guardado. La IA lo usa al instante.' : 'Prompt saved. The AI uses it right away.') : (es ? 'No se pudo guardar.' : 'Could not save.'));
     } finally { setPfBusy(false); }
   }
@@ -97,6 +97,23 @@ export default function KbEditor() {
             <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 300px' }}><span className="muted" style={{ fontSize: 12 }}>Español</span><textarea value={pf.brief_es || ''} onChange={(e) => setPf({ ...pf, brief_es: e.target.value })} rows={8} style={{ width: '100%', margin: '4px 0 0', fontSize: 12.5 }} placeholder={es ? '(vacío = usa el texto por defecto). Pulsa "Cargar el texto por defecto" para editarlo.' : ''} /></div>
               <div style={{ flex: '1 1 300px' }}><span className="muted" style={{ fontSize: 12 }}>English</span><textarea value={pf.brief_en || ''} onChange={(e) => setPf({ ...pf, brief_en: e.target.value })} rows={8} style={{ width: '100%', margin: '4px 0 0', fontSize: 12.5 }} placeholder="(empty = uses the default text). Click “Load the default text” to edit it." /></div>
+            </div>
+          </div>
+
+          {/* Bróker recomendado (afiliado): la IA lo recomienda SOLO si preguntan por bróker/abrir cuenta. */}
+          <div style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+            <label className="row" style={{ alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={!!pf.broker?.enabled} onChange={(e) => setPf({ ...pf, broker: { ...(pf.broker || {}), enabled: e.target.checked } })} />
+              <span style={{ fontWeight: 600, fontSize: 13.5 }}>{es ? 'Bróker recomendado (enlace de afiliado)' : 'Recommended broker (affiliate link)'}</span>
+            </label>
+            <div className="muted" style={{ fontSize: 12, margin: '4px 0 8px' }}>{es ? 'La IA lo recomienda SOLO cuando preguntan qué bróker usar o dónde abrir cuenta, e indica que es un socio.' : 'The AI recommends it ONLY when asked which broker to use or where to open an account, and says it is a partner.'}</div>
+            <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 160px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Nombre' : 'Name'}</span><input value={pf.broker?.name || ''} onChange={(e) => setPf({ ...pf, broker: { ...(pf.broker || {}), name: e.target.value } })} style={{ width: '100%', margin: '4px 0 0' }} placeholder="Axi" /></div>
+              <div style={{ flex: '2 1 320px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Enlace de afiliado' : 'Affiliate link'}</span><input value={pf.broker?.url || ''} onChange={(e) => setPf({ ...pf, broker: { ...(pf.broker || {}), url: e.target.value } })} style={{ width: '100%', margin: '4px 0 0', fontSize: 12 }} placeholder="https://records.axiaffiliates.com/visit/?bta=…" /></div>
+            </div>
+            <div className="row" style={{ gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+              <div style={{ flex: '1 1 300px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Frase corta · Español' : 'Short blurb · Spanish'}</span><input value={pf.broker?.blurb_es || ''} onChange={(e) => setPf({ ...pf, broker: { ...(pf.broker || {}), blurb_es: e.target.value } })} style={{ width: '100%', margin: '4px 0 0', fontSize: 12.5 }} placeholder={es ? 'regulado, spreads bajos, MT4/MT5/cTrader' : ''} /></div>
+              <div style={{ flex: '1 1 300px' }}><span className="muted" style={{ fontSize: 12 }}>{es ? 'Frase corta · English' : 'Short blurb · English'}</span><input value={pf.broker?.blurb_en || ''} onChange={(e) => setPf({ ...pf, broker: { ...(pf.broker || {}), blurb_en: e.target.value } })} style={{ width: '100%', margin: '4px 0 0', fontSize: 12.5 }} placeholder="regulated, low spreads, MT4/MT5/cTrader" /></div>
             </div>
           </div>
 
