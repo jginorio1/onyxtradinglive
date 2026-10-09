@@ -105,6 +105,9 @@ const T: any = {
     guardProp: '🛡️ Guardián de reglas de prop firm', guardStrict: 'Modo estricto (frenar también al acercarse)',
     guardOk: 'Dentro de las reglas', guardWatch: 'Cerca del límite', guardBreach: 'Copias nuevas en pausa', guardNa: 'Sin datos de reto',
     sizeByChallenge: '📏 Ajustar tamaño según el reto', closeAll: 'Cerrar todo', closeAllAsk: '¿Cerrar TODAS las posiciones copiadas en esta cuenta esclava? Esto no se puede deshacer.', closeAllDone: 'Orden de cierre enviada',
+    closeAllTitle: 'Cerrar todas las posiciones', delTitle: 'Quitar esta copia', delAsk: '¿Seguro que quieres QUITAR esta copia? La esclava dejará de recibir las operaciones de la master. NO cierra las posiciones que ya estén abiertas (usa “Cerrar todo” antes si quieres cerrarlas). Es permanente: tendrías que crear la copia de nuevo.',
+    removePinTitle: 'Quitar el PIN de copy', removePinAsk: '¿Quitar el PIN? Después, pausar o reanudar las copias ya NO pedirá PIN. Cualquiera con acceso a tu panel podrá hacerlo.',
+    cfYes: 'Sí, continuar', cfNo: 'Cancelar', cfDanger: 'Esta acción no se puede deshacer.',
     antiHdr: '🥷 Anti-detección', lotJit: 'Variar lote ±%', sltpJit: 'Variar SL/TP ±pts',
     preview: 'Vista previa', previewTitle: 'Vista previa de esta copia', previewClose: 'Cerrar',
     pvSample: 'Operaciones analizadas', pvCopyRate: 'Tasa de copia', pvCopied: 'Copiadas', pvSkipped: 'Filtradas', pvFailed: 'Fallidas',
@@ -215,6 +218,9 @@ const T: any = {
     guardProp: '🛡️ Prop-firm rules guard', guardStrict: 'Strict mode (also pause when getting close)',
     guardOk: 'Within the rules', guardWatch: 'Close to the limit', guardBreach: 'New copies paused', guardNa: 'No challenge data',
     sizeByChallenge: '📏 Size by challenge headroom', closeAll: 'Close all', closeAllAsk: 'Close ALL copied positions on this slave account? This cannot be undone.', closeAllDone: 'Close order sent',
+    closeAllTitle: 'Close all positions', delTitle: 'Remove this copy', delAsk: 'Are you sure you want to REMOVE this copy? The slave will stop receiving the master\'s trades. It does NOT close positions that are already open (use “Close all” first if you want to close them). It is permanent: you would have to create the copy again.',
+    removePinTitle: 'Remove the copy PIN', removePinAsk: 'Remove the PIN? After this, pausing or resuming copies will NO longer ask for a PIN. Anyone with access to your panel can do it.',
+    cfYes: 'Yes, continue', cfNo: 'Cancel', cfDanger: 'This action cannot be undone.',
     antiHdr: '🥷 Anti-detection', lotJit: 'Vary lot ±%', sltpJit: 'Vary SL/TP ±pts',
     preview: 'Preview', previewTitle: 'Preview of this copy', previewClose: 'Close',
     pvSample: 'Trades analyzed', pvCopyRate: 'Copy rate', pvCopied: 'Copied', pvSkipped: 'Filtered', pvFailed: 'Failed',
@@ -254,6 +260,7 @@ export default function CopyClient() {
   const [log, setLog] = useState<any[]>([]);
   const [nl, setNl] = useState<any>(blankLink());
   const [confirmLink, setConfirmLink] = useState<any>(null);
+  const [confirmAsk, setConfirmAsk] = useState<any>(null);  // popup de confirmación para decisiones importantes
   const [preview, setPreview] = useState<any>(null);        // #9 vista previa (modal)
   const [previewBusy, setPreviewBusy] = useState(false);
   async function openPreview(l: any) {
@@ -379,10 +386,13 @@ export default function CopyClient() {
 
   if (!d) return <div className="wrap" style={{ maxWidth: 880, margin: '0 auto', padding: '40px 22px' }}><div className="muted">…</div></div>;
 
+  const headDiv = <span aria-hidden className="copy-head-div" style={{ alignSelf: 'center', width: 1, height: 18, background: 'var(--line)', flex: '0 0 auto' }} />;
   const head = (
-    <div className="copy-head" style={{ marginBottom: 14, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 12, rowGap: 4 }}>
+    <div className="copy-head" style={{ marginBottom: 14, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 14, rowGap: 4 }}>
       <h1 style={{ fontSize: 22, margin: 0, whiteSpace: 'nowrap' }}><OnyxIcon emoji="🔁" size={16} /> {t.title}</h1>
+      {headDiv}
       <p className="muted" style={{ fontSize: 13.5, margin: 0 }}>{t.sub}</p>
+      {headDiv}
       <p className="muted" style={{ fontSize: 12, margin: 0, opacity: .85 }}><OnyxIcon emoji="ℹ" size={16} /> {t.relNote}</p>
     </div>
   );
@@ -642,7 +652,7 @@ export default function CopyClient() {
           </div>
           <div className="row" style={{ gap: 8 }}>
             <button className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: 12.5 }} onClick={() => setPinModal({ mode: 'set', has: ctrl?.hasPin })}>{ctrl?.hasPin ? t.changePin : t.setPin}</button>
-            {ctrl?.hasPin && <button className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: 12.5 }} onClick={() => setPinModal({ mode: 'set', has: true, clear: true })}>{t.removePin}</button>}
+            {ctrl?.hasPin && <button className="btn btn-ghost" style={{ padding: '4px 12px', fontSize: 12.5 }} onClick={() => setConfirmAsk({ title: t.removePinTitle, body: t.removePinAsk, yes: t.removePin, danger: true, run: () => setPinModal({ mode: 'set', has: true, clear: true }) })}>{t.removePin}</button>}
           </div>
         </div>
       </div>
@@ -810,11 +820,8 @@ export default function CopyClient() {
       )}
       </>)}
 
-      </div>
 
-      {/* COLUMNA · Enlaces + Nuevo enlace + Log (centro) */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, order: 2 }}>
-      {/* ENLACES */}
+      {/* Tus copias · movido a la izquierda para columnas parejas */}
       <div className="card" style={{ marginBottom: 12 }}>
         <b style={{ fontSize: 14 }}>{t.links}</b>
         {!links.length && <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>—</p>}
@@ -877,9 +884,10 @@ export default function CopyClient() {
                     {/* Fila secundaria · acciones fuertes, separadas para que no se toquen por error */}
                     <div className="row" style={{ gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end', borderTop: '1px solid var(--line)', paddingTop: 6 }}>
                       <button className="btn btn-ghost" title={t.closeAll} style={{ padding: '4px 10px', fontSize: 12, color: 'var(--red)', borderColor: 'var(--red)' }}
-                        onClick={async () => { if (!confirm(t.closeAllAsk)) return; const ok = await control('close_all_account', { accountId: l.slave_account_id }); if (ok) toast(t.closeAllDone); }}>🧯 {t.closeAll}</button>
+                        onClick={() => setConfirmAsk({ title: t.closeAllTitle, body: t.closeAllAsk, yes: t.closeAll, danger: true, run: async () => { const ok = await control('close_all_account', { accountId: l.slave_account_id }); if (ok) toast(t.closeAllDone); } })}>🧯 {t.closeAll}</button>
                       <Hint id="closeAll" />
-                      <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12, color: 'var(--mut)' }} onClick={() => del(l.id)}>🗑 {t.del}</button>
+                      <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12, color: 'var(--mut)' }}
+                        onClick={() => setConfirmAsk({ title: t.delTitle, body: t.delAsk, yes: t.del, danger: true, run: () => del(l.id) })}>🗑 {t.del}</button>
                       <Hint id="removeCopy" />
                     </div>
                   </div>
@@ -893,6 +901,11 @@ export default function CopyClient() {
           ));
         })()}
       </div>
+
+      </div>
+
+      {/* COLUMNA · Enlaces + Nuevo enlace + Log (centro) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, order: 2 }}>
 
       {/* Nuevo enlace */}
       {accs.length >= 2 && (
@@ -1052,6 +1065,19 @@ export default function CopyClient() {
             </div>
           </div>
         </div>
+      )}
+      {confirmAsk && (
+        <Modal onClose={() => setConfirmAsk(null)}>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: confirmAsk.danger ? 'var(--red)' : 'var(--tx)' }}><OnyxIcon emoji="⚠" size={18} /> {confirmAsk.title}</div>
+          <p style={{ fontSize: 13.5, lineHeight: 1.6, margin: '0 0 12px', color: 'var(--tx)' }}>{confirmAsk.body}</p>
+          {confirmAsk.danger && <div style={{ background: 'rgba(255,69,58,.08)', border: '1px solid var(--red)', borderRadius: 8, padding: 10, fontSize: 12, color: 'var(--red)', marginBottom: 14 }}><OnyxIcon emoji="⛔" size={16} /> {t.cfDanger}</div>}
+          <div className="row" style={{ gap: 8, justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost" onClick={() => setConfirmAsk(null)}>{t.cfNo}</button>
+            <button className="btn" disabled={busy}
+              style={confirmAsk.danger ? { background: 'rgba(255,69,58,.15)', color: 'var(--red)', borderColor: 'var(--red)' } : { background: 'rgba(255,157,61,.15)', color: 'var(--brand)', borderColor: 'var(--brand)' }}
+              onClick={async () => { const fn = confirmAsk.run; setConfirmAsk(null); if (fn) await fn(); }}>{confirmAsk.yes || t.cfYes}</button>
+          </div>
+        </Modal>
       )}
       {confirmLink && (
         <Modal onClose={() => setConfirmLink(null)}>

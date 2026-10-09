@@ -1405,3 +1405,11 @@ html:not(.is-auth) body.onyx-vivid > *:not(.promobar):not(.topbar):not(.secnav):
 /* Bloque de acciones de la copia: nunca más ancho que la tarjeta; se ajusta solo. */
 .copy-actions{ flex:1 1 auto; max-width:100%; }
 .copy-actions .btn{ white-space:nowrap; }
+/* DEFINITIVO · columnas parejas: la última tarjeta de cada columna crece para
+   llenar el espacio, así las 3 columnas terminan EXACTAMENTE a la misma altura
+   sin importar cuánto contenido tenga cada una. Solo en pantallas anchas. */
+@media (min-width: 900px){
+  .copy-cockpit > div > .card:last-child{ flex:1 1 auto; }
+}
+/* Divisores verticales del encabezado: se ocultan en móvil (cuando el texto se apila). */
+@media (max-width: 640px){ .copy-head-div{ display:none !important; } }
