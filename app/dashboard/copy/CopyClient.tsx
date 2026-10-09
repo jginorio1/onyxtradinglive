@@ -110,6 +110,7 @@ const T: any = {
     pvSample: 'Operaciones analizadas', pvCopyRate: 'Tasa de copia', pvCopied: 'Copiadas', pvSkipped: 'Filtradas', pvFailed: 'Fallidas',
     pvLatency: 'Latencia media', pvSlip: 'Slippage medio', pvEffMult: 'Multiplicador efectivo ahora', pvSizePct: 'Tamaño aplicado', pvNoData: 'Aún no hay operaciones para analizar en esta copia.',
     perfLat: 'Latencia', perfSlip: 'Slippage',
+    copilot: '🤖 Copiloto Onyx', copilotTitle: 'Copiloto de copia · Onyx AI', copilotSub: 'Revisa tus copias y te dice qué ajustar.', copilotEmpty: 'Sin sugerencias por ahora.',
     symMap: 'Tabla de símbolos (una por línea: MASTER=ESCLAVA)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
     dupTitle: 'Esta cuenta ya está en copia', dupBodyA: 'ya está activa como', dupBodyB: 'de la copia', dupRoleM: 'MASTER', dupRoleS: 'ESCLAVA',
     dupWarn: 'Usarla en dos copias puede duplicar operaciones y romper tu gestión de riesgo.', dupCancel: 'Elegir otra', dupGo: 'Continuar de todos modos',
@@ -219,6 +220,7 @@ const T: any = {
     pvSample: 'Trades analyzed', pvCopyRate: 'Copy rate', pvCopied: 'Copied', pvSkipped: 'Filtered', pvFailed: 'Failed',
     pvLatency: 'Avg latency', pvSlip: 'Avg slippage', pvEffMult: 'Effective multiplier now', pvSizePct: 'Size applied', pvNoData: 'No trades yet to analyze for this copy.',
     perfLat: 'Latency', perfSlip: 'Slippage',
+    copilot: '🤖 Onyx copilot', copilotTitle: 'Copy copilot · Onyx AI', copilotSub: 'Reviews your copies and tells you what to adjust.', copilotEmpty: 'No suggestions right now.',
     symMap: 'Symbol table (one per line: MASTER=SLAVE)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
     dupTitle: 'This account is already copying', dupBodyA: 'is already active as', dupBodyB: 'of link', dupRoleM: 'MASTER', dupRoleS: 'SLAVE',
     dupWarn: 'Using it in two copies can duplicate trades and break your risk management.', dupCancel: 'Pick another', dupGo: 'Continue anyway',
@@ -262,6 +264,12 @@ export default function CopyClient() {
       setPreview({ ...j, name: label(l.slave_account_id) });
     } catch { setPreview({ error: true, name: label(l.slave_account_id) }); }
     finally { setPreviewBusy(false); }
+  }
+  const [copilot, setCopilot] = useState<any>(null);       // #10 copiloto Onyx AI
+  async function openCopilot() {
+    setCopilot({ loading: true });
+    try { const r = await fetch('/api/copy/copilot'); const j = await r.json(); setCopilot(j); }
+    catch { setCopilot({ tips: [] }); }
   }
   const [showRisk, setShowRisk] = useState(false);
   const [showHow, setShowHow] = useState(false);
@@ -484,6 +492,7 @@ export default function CopyClient() {
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
           <button className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5 }} onClick={() => setGuideOpen(true)}><OnyxIcon emoji="📘" size={15} /> {lang === 'es' ? 'Guía' : 'Guide'}</button>
           <button className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5 }} onClick={() => setShowInstall((v) => !v)}><OnyxIcon emoji="⬇" size={15} /> {lang === 'es' ? 'Instalar EA / claves' : 'Install EA / keys'}</button>
+          <button className="btn btn-ghost" style={{ padding: '5px 12px', fontSize: 12.5, color: 'var(--brand)', borderColor: 'var(--brand)' }} onClick={openCopilot}>{t.copilot}</button>
         </div>
       </div>
 
@@ -961,6 +970,29 @@ export default function CopyClient() {
       </div>
 
       {/* MODALES */}
+      {copilot && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1600, padding: 16 }} onClick={() => setCopilot(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: '100%', maxHeight: '80vh', overflowY: 'auto', background: 'var(--card,#12151d)', border: '1px solid var(--brand)', borderRadius: 16, padding: 22, boxShadow: '0 0 0 4px rgba(255,157,61,.14), 0 20px 60px rgba(0,0,0,.5)' }}>
+            <div className="row between" style={{ alignItems: 'center', marginBottom: 4 }}>
+              <b style={{ fontSize: 15 }}>{t.copilotTitle}</b>
+              <button className="btn btn-ghost" style={{ padding: '2px 10px', fontSize: 12 }} onClick={() => setCopilot(null)}>✕</button>
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 14 }}>{t.copilotSub}</div>
+            {copilot.loading ? <p className="muted" style={{ fontSize: 13 }}>…</p>
+              : (!copilot.tips || !copilot.tips.length) ? <p className="muted" style={{ fontSize: 13 }}>{t.copilotEmpty}</p>
+              : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {copilot.tips.map((tip: any, i: number) => {
+                  const col = tip.level === 'alert' ? 'var(--red)' : tip.level === 'warn' ? 'var(--brand)' : tip.level === 'ok' ? 'var(--green)' : 'var(--cyan)';
+                  const ic = tip.level === 'alert' ? '⛔' : tip.level === 'warn' ? '⚠️' : tip.level === 'ok' ? '✅' : '💡';
+                  return <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--line)', borderLeft: `3px solid ${col}`, background: 'color-mix(in srgb, ' + col + ' 6%, transparent)' }}>
+                    <span style={{ fontSize: 15, lineHeight: 1.3 }}>{ic}</span>
+                    <span style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--tx)' }}>{lang === 'en' ? tip.en : tip.es}</span>
+                  </div>;
+                })}
+              </div>}
+          </div>
+        </div>
+      )}
       {preview && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1600, padding: 16 }} onClick={() => setPreview(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440, width: '100%', background: 'var(--card,#12151d)', border: '1px solid var(--line)', borderRadius: 16, padding: 22, boxShadow: '0 20px 60px rgba(0,0,0,.5)' }}>

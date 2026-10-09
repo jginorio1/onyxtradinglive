@@ -299,6 +299,10 @@ async function drainSlave(conn: any, token: string): Promise<number> {
           else await dxEdit(conn, token, { ticket: st, sl: c.sl || undefined, tp: c.tp || undefined });
         }
         await supabaseAdmin.from('copy_commands').update({ status: 'done', done_at: nowIso }).eq('id', c.id); done++;
+      } else if (c.action === 'close_all') {
+        const all = await dxGetPositions(conn, token);
+        for (const p of all) { try { await dxClose(conn, token, { ticket: p.ticket, symbol: p.symbol, side: p.side, volume: p.volume }); } catch {} }
+        await supabaseAdmin.from('copy_commands').update({ status: 'done', done_at: nowIso }).eq('id', c.id); done++;
       }
     } catch (e: any) {
       await supabaseAdmin.from('copy_commands').update({ status: 'failed', error: String(e?.message || 'exec').slice(0, 200), done_at: nowIso }).eq('id', c.id);

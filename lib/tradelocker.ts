@@ -347,6 +347,10 @@ async function drainSlave(conn: any, accessToken: string): Promise<number> {
           else await tlEdit(conn, accessToken, { ticket: st, sl: c.sl || undefined, tp: c.tp || undefined });
         }
         await supabaseAdmin.from('copy_commands').update({ status: 'done', done_at: nowIso }).eq('id', c.id); done++;
+      } else if (c.action === 'close_all') {
+        const all = await tlGetPositions(conn, accessToken);
+        for (const p of all) { try { await tlClose(conn, accessToken, { ticket: p.ticket }); } catch {} }
+        await supabaseAdmin.from('copy_commands').update({ status: 'done', done_at: nowIso }).eq('id', c.id); done++;
       }
     } catch (e: any) {
       await supabaseAdmin.from('copy_commands').update({ status: 'failed', error: String(e?.message || 'exec').slice(0, 200), done_at: nowIso }).eq('id', c.id);

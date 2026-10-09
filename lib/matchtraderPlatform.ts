@@ -322,6 +322,11 @@ async function drainSlave(conn: any, coToken: string): Promise<number> {
           else await mtpEdit(conn, coToken, { ticket: st, symbol: sym, side: sd, volume: Number(c.volume_hint) || 0, sl: c.sl || undefined, tp: c.tp || undefined });
         }
         await supabaseAdmin.from('copy_commands').update({ status: 'done', done_at: nowIso }).eq('id', c.id); done++;
+      } else if (c.action === 'close_all') {
+        // Botón de pánico: cierra todas las posiciones abiertas de esta esclava.
+        const all = await mtpGetPositions(conn, coToken);
+        for (const p of all) { try { await mtpClose(conn, coToken, { ticket: p.ticket, symbol: p.symbol, side: p.side, volume: p.volume }); } catch {} }
+        await supabaseAdmin.from('copy_commands').update({ status: 'done', done_at: nowIso }).eq('id', c.id); done++;
       }
     } catch (e: any) {
       await supabaseAdmin.from('copy_commands').update({ status: 'failed', error: String(e?.message || 'exec').slice(0, 200), done_at: nowIso }).eq('id', c.id);
