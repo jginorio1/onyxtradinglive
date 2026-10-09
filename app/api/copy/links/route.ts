@@ -118,6 +118,9 @@ export async function POST(req: Request) {
     guard_strict: b.guard_strict === true,
     // #2 Dimensionado según el reto (apagado por defecto).
     size_by_challenge: b.size_by_challenge === true,
+    // #4 Anti-detección: variación de lote (0–40%) y de SL/TP (0–N puntos).
+    lot_jitter_pct: Math.max(0, Math.min(40, Number(b.lot_jitter_pct ?? 0))),
+    sltp_jitter_pts: Math.max(0, Number(b.sltp_jitter_pts ?? 0)),
   };
 
   if (b.id) {

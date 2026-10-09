@@ -12,7 +12,7 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'no auth' }, { status: 401 });
 
   const { data } = await supabaseAdmin.from('copy_log')
-    .select('kind,symbol,detail,ok,latency_ms,created_at')
+    .select('link_id,kind,symbol,detail,ok,latency_ms,created_at')
     .eq('owner_id', user.id).order('created_at', { ascending: false }).limit(50);
   return NextResponse.json({ log: data || [] });
 }

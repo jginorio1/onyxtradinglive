@@ -105,6 +105,11 @@ const T: any = {
     guardProp: '🛡️ Guardián de reglas de prop firm', guardStrict: 'Modo estricto (frenar también al acercarse)',
     guardOk: 'Dentro de las reglas', guardWatch: 'Cerca del límite', guardBreach: 'Copias nuevas en pausa', guardNa: 'Sin datos de reto',
     sizeByChallenge: '📏 Ajustar tamaño según el reto', closeAll: 'Cerrar todo', closeAllAsk: '¿Cerrar TODAS las posiciones copiadas en esta cuenta esclava? Esto no se puede deshacer.', closeAllDone: 'Orden de cierre enviada',
+    antiHdr: '🥷 Anti-detección', lotJit: 'Variar lote ±%', sltpJit: 'Variar SL/TP ±pts',
+    preview: 'Vista previa', previewTitle: 'Vista previa de esta copia', previewClose: 'Cerrar',
+    pvSample: 'Operaciones analizadas', pvCopyRate: 'Tasa de copia', pvCopied: 'Copiadas', pvSkipped: 'Filtradas', pvFailed: 'Fallidas',
+    pvLatency: 'Latencia media', pvSlip: 'Slippage medio', pvEffMult: 'Multiplicador efectivo ahora', pvSizePct: 'Tamaño aplicado', pvNoData: 'Aún no hay operaciones para analizar en esta copia.',
+    perfLat: 'Latencia', perfSlip: 'Slippage',
     symMap: 'Tabla de símbolos (una por línea: MASTER=ESCLAVA)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
     dupTitle: 'Esta cuenta ya está en copia', dupBodyA: 'ya está activa como', dupBodyB: 'de la copia', dupRoleM: 'MASTER', dupRoleS: 'ESCLAVA',
     dupWarn: 'Usarla en dos copias puede duplicar operaciones y romper tu gestión de riesgo.', dupCancel: 'Elegir otra', dupGo: 'Continuar de todos modos',
@@ -209,6 +214,11 @@ const T: any = {
     guardProp: '🛡️ Prop-firm rules guard', guardStrict: 'Strict mode (also pause when getting close)',
     guardOk: 'Within the rules', guardWatch: 'Close to the limit', guardBreach: 'New copies paused', guardNa: 'No challenge data',
     sizeByChallenge: '📏 Size by challenge headroom', closeAll: 'Close all', closeAllAsk: 'Close ALL copied positions on this slave account? This cannot be undone.', closeAllDone: 'Close order sent',
+    antiHdr: '🥷 Anti-detection', lotJit: 'Vary lot ±%', sltpJit: 'Vary SL/TP ±pts',
+    preview: 'Preview', previewTitle: 'Preview of this copy', previewClose: 'Close',
+    pvSample: 'Trades analyzed', pvCopyRate: 'Copy rate', pvCopied: 'Copied', pvSkipped: 'Filtered', pvFailed: 'Failed',
+    pvLatency: 'Avg latency', pvSlip: 'Avg slippage', pvEffMult: 'Effective multiplier now', pvSizePct: 'Size applied', pvNoData: 'No trades yet to analyze for this copy.',
+    perfLat: 'Latency', perfSlip: 'Slippage',
     symMap: 'Symbol table (one per line: MASTER=SLAVE)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
     dupTitle: 'This account is already copying', dupBodyA: 'is already active as', dupBodyB: 'of link', dupRoleM: 'MASTER', dupRoleS: 'SLAVE',
     dupWarn: 'Using it in two copies can duplicate trades and break your risk management.', dupCancel: 'Pick another', dupGo: 'Continue anyway',
@@ -242,6 +252,17 @@ export default function CopyClient() {
   const [log, setLog] = useState<any[]>([]);
   const [nl, setNl] = useState<any>(blankLink());
   const [confirmLink, setConfirmLink] = useState<any>(null);
+  const [preview, setPreview] = useState<any>(null);        // #9 vista previa (modal)
+  const [previewBusy, setPreviewBusy] = useState(false);
+  async function openPreview(l: any) {
+    setPreview({ loading: true, name: label(l.slave_account_id) }); setPreviewBusy(true);
+    try {
+      const r = await fetch('/api/copy/preview?link=' + encodeURIComponent(l.id));
+      const j = await r.json();
+      setPreview({ ...j, name: label(l.slave_account_id) });
+    } catch { setPreview({ error: true, name: label(l.slave_account_id) }); }
+    finally { setPreviewBusy(false); }
+  }
   const [showRisk, setShowRisk] = useState(false);
   const [showHow, setShowHow] = useState(false);
   const [showInstall, setShowInstall] = useState(false);   // panel de instalación (EA + claves) plegado por defecto
@@ -392,6 +413,8 @@ export default function CopyClient() {
       <label className="muted" style={{ fontSize: 12 }}>{t.symCap}<Hint id="symCap" /><input type="number" step="0.01" value={o.per_symbol_lot_cap} onChange={(e) => set('per_symbol_lot_cap', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <label className="muted" style={{ fontSize: 12 }}>🎲 {t.jitter}<Hint id="jitter" /><input type="number" min={0} value={o.jitter_max_s ?? 0} onChange={(e) => set('jitter_max_s', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <div className="muted" style={{ fontSize: 11, gridColumn: '1 / -1', lineHeight: 1.4 }}>{t.jitterNote}</div>
+      <label className="muted" style={{ fontSize: 12 }}>🥷 {t.lotJit}<Hint id="lotJit" /><input type="number" min={0} max={40} value={o.lot_jitter_pct ?? 0} onChange={(e) => set('lot_jitter_pct', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
+      <label className="muted" style={{ fontSize: 12 }}>🥷 {t.sltpJit}<Hint id="sltpJit" /><input type="number" min={0} value={o.sltp_jitter_pts ?? 0} onChange={(e) => set('sltp_jitter_pts', Number(e.target.value))} style={{ marginTop: 3 }} /></label>
       <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', gridColumn: '1 / -1' }}><input type="checkbox" checked={o.require_sl !== false} onChange={(e) => set('require_sl', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {t.requireSL}<Hint id="requireSL" /></label>
       <div style={{ gridColumn: '1 / -1', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px', background: o.guard_prop_rules ? 'color-mix(in srgb, var(--brand) 8%, transparent)' : 'transparent', borderColor: o.guard_prop_rules ? 'var(--brand)' : 'var(--line)' }}>
         <label className="row" style={{ fontSize: 13, gap: 8, alignItems: 'center', fontWeight: 600, color: 'var(--tx)' }}><input type="checkbox" checked={!!o.guard_prop_rules} onChange={(e) => set('guard_prop_rules', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {t.guardProp}<Hint id="guardProp" /></label>
@@ -432,6 +455,8 @@ export default function CopyClient() {
     guardProp: ['Usa las reglas de tu reto (de "Mi reto") para proteger esta cuenta esclava. Si la esclava alcanza su límite de pérdida diaria o de drawdown total, el Guardián PAUSA las copias NUEVAS automáticamente. Los cierres siguen pasando, para no dejar posiciones huérfanas. Se reanuda solo cuando la cuenta vuelve dentro de su regla. Ninguna otra plataforma de copia respeta las reglas de prop firm así.', 'Uses your challenge rules (from "My challenge") to protect this slave account. If the slave hits its daily-loss or total-drawdown limit, the Guard automatically PAUSES NEW copies. Closes still pass, so no orphan positions. It resumes once the account is back within its rule. No other copy platform respects prop-firm rules like this.'],
     guardStrict: ['Frena las copias nuevas ya al ACERCARSE al límite (no solo al romperlo). Más seguro para el reto, pero copia menos.', 'Pauses new copies as soon as the account gets CLOSE to the limit (not only when it breaks it). Safer for the challenge, but copies less.'],
     sizeByChallenge: ['Reduce automáticamente el tamaño de la copia según cuánto colchón le queda a la esclava hasta su límite de pérdida. Con la cuenta holgada copia al 100%; a medida que se acerca al límite, copia más pequeño (hasta un piso de ~15%). Así proteges el reto sin tener que apagar la copia.', 'Automatically shrinks the copy size based on how much headroom the slave has left to its loss limit. With a comfortable account it copies at 100%; as it approaches the limit it copies smaller (down to a ~15% floor). Protects the challenge without turning copying off.'],
+    lotJit: ['Varía el tamaño del lote ±X % al azar en cada apertura (junto con el retraso aleatorio ya existente), para que el tamaño NO sea idéntico al de la master. Reduce el riesgo de que una prop firm detecte copia por patrón. 0 = sin variación.', 'Randomly varies the lot size ±X % on each open (together with the existing random delay), so the size is NOT identical to the master. Lowers the chance a prop firm flags copying by pattern. 0 = off.'],
+    sltpJit: ['Mueve el Stop Loss y el Take Profit ±N puntos al azar en cada apertura, para que no coincidan exactamente con los de la master. 0 = sin variación.', 'Randomly nudges the Stop Loss and Take Profit ±N points on each open, so they do not match the master exactly. 0 = off.'],
     symMap: ['Traduce el nombre del símbolo entre brókers distintos. Ej.: la master usa "US100" y tu esclava "NAS100". Añade la equivalencia y se copia bien.', 'Maps symbol names between different brokers. E.g. the master uses "US100" and your slave "NAS100". Add the pair and it copies correctly.'],
     maxLot: ['Tope de lote por operación en la esclava, pase lo que pase. Protege de una operación gigante.', 'Max lot per trade on the slave, no matter what. Protects from a huge trade.'],
     reverse: ['Copia al revés: si la master compra, la esclava vende. Para estrategias de cobertura.', 'Copy inverted: if the master buys, the slave sells. For hedging strategies.'],
@@ -755,12 +780,25 @@ export default function CopyClient() {
                         {l.guard?.firm && v !== 'na' && <span className="pill" style={{ fontSize: 10, color: 'var(--mut)', background: 'color-mix(in srgb, var(--mut) 12%, transparent)' }}>{l.guard.firm}</span>}
                       </div>;
                     })()}
+                    {(() => {
+                      // #7 Transparencia: latencia y slippage recientes de esta copia (del log).
+                      const mine = (log || []).filter((e: any) => e.link_id === l.id && e.ok);
+                      const lat = mine.map((e: any) => Number(e.latency_ms)).filter((n: number) => n > 0);
+                      const sl = mine.map((e: any) => Number(e.detail?.slippage_pts)).filter((n: number) => !isNaN(n) && n >= 0);
+                      if (!lat.length && !sl.length) return null;
+                      const avg = (a: number[]) => Math.round(a.reduce((s, n) => s + n, 0) / a.length);
+                      return <div style={{ marginLeft: 16, marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {lat.length ? <span className="pill" style={{ fontSize: 10, color: 'var(--cyan)', background: 'color-mix(in srgb, var(--cyan) 14%, transparent)' }}>⚡ {t.perfLat} {avg(lat)} ms</span> : null}
+                        {sl.length ? <span className="pill" style={{ fontSize: 10, color: 'var(--mut)', background: 'color-mix(in srgb, var(--mut) 12%, transparent)' }}>{t.perfSlip} {Math.round((sl.reduce((s, n) => s + n, 0) / sl.length) * 10) / 10} pts</span> : null}
+                      </div>;
+                    })()}
                   </div>
                   <div className="row" style={{ gap: 8 }}>
                     <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => save({ ...linkPayload(l), enabled: !l.enabled })}>
                       {l.enabled ? '⏸ ' + t.off : '▶ ' + t.on}
                     </button>
                     <span className="pill" style={l.enabled ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{l.enabled ? t.on : t.off}</span>
+                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => openPreview(l)}>🔍 {t.preview}</button>
                     <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setEdit({ ...blankLink(), ...l, symbol_whitelist: l.symbol_whitelist || [], session_from: l.session_from || '', session_to: l.session_to || '', symbol_rows: objToRows(l.symbol_map) })}>{t.edit}</button>
                     <button className="btn btn-ghost" title={t.closeAll} style={{ padding: '4px 10px', fontSize: 12, color: 'var(--red)', borderColor: 'var(--red)' }}
                       onClick={async () => { if (!confirm(t.closeAllAsk)) return; const ok = await control('close_all_account', { accountId: l.slave_account_id }); if (ok) toast(t.closeAllDone); }}>🧯 {t.closeAll}</button>
@@ -923,6 +961,33 @@ export default function CopyClient() {
       </div>
 
       {/* MODALES */}
+      {preview && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1600, padding: 16 }} onClick={() => setPreview(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440, width: '100%', background: 'var(--card,#12151d)', border: '1px solid var(--line)', borderRadius: 16, padding: 22, boxShadow: '0 20px 60px rgba(0,0,0,.5)' }}>
+            <div className="row between" style={{ alignItems: 'center', marginBottom: 12 }}>
+              <b style={{ fontSize: 15 }}>🔍 {t.previewTitle}</b>
+              <button className="btn btn-ghost" style={{ padding: '2px 10px', fontSize: 12 }} onClick={() => setPreview(null)}>✕</button>
+            </div>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{preview.name}</div>
+            {preview.loading || previewBusy ? <p className="muted" style={{ fontSize: 13 }}>…</p>
+              : preview.error ? <p style={{ fontSize: 13, color: 'var(--red)' }}>—</p>
+              : (!preview.sample ? <p className="muted" style={{ fontSize: 13 }}>{t.pvNoData}</p>
+              : (() => {
+                const Row = ({ k, v, c }: any) => <div className="row between" style={{ fontSize: 13, padding: '6px 0', borderBottom: '1px solid var(--line)' }}><span className="muted">{k}</span><b style={{ color: c || 'var(--tx)' }}>{v}</b></div>;
+                return <div>
+                  <Row k={t.pvSample} v={preview.sample} />
+                  <Row k={t.pvCopyRate} v={(preview.copyRate ?? '—') + '%'} c="var(--green)" />
+                  <Row k={`${t.pvCopied} · ${t.pvSkipped} · ${t.pvFailed}`} v={`${preview.copied} · ${preview.skipped} · ${preview.failed}`} />
+                  <Row k={t.pvLatency} v={preview.avgLatencyMs != null ? preview.avgLatencyMs + ' ms' : '—'} />
+                  <Row k={t.pvSlip} v={preview.avgSlippagePts != null ? preview.avgSlippagePts + ' pts' : '—'} />
+                  <Row k={t.pvEffMult} v={'×' + preview.effectiveMultiplier} c="var(--brand)" />
+                  <Row k={t.pvSizePct} v={preview.sizeScalePct + '%'} />
+                  {preview.wouldBlockOpens && <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--red)' }}>🛡️ {t.guardBreach}</div>}
+                </div>;
+              })())}
+          </div>
+        </div>
+      )}
       {dupWarn && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1600, padding: 16 }} onClick={() => setDupWarn(null)}>
           <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420, width: '100%', background: 'var(--card,#12151d)', border: '2px solid var(--brand)', borderRadius: 16, padding: 22, boxShadow: '0 0 0 4px rgba(255,157,61,.18), 0 20px 60px rgba(0,0,0,.5)' }}>
@@ -1045,6 +1110,7 @@ function linkPayload(l: any) {
     require_sl: l.require_sl !== false, max_positions: l.max_positions ?? 20, per_symbol_lot_cap: l.per_symbol_lot_cap ?? 0, jitter_max_s: l.jitter_max_s ?? 0,
     guard_prop_rules: !!l.guard_prop_rules, guard_strict: !!l.guard_strict,
     size_by_challenge: !!l.size_by_challenge,
+    lot_jitter_pct: Number(l.lot_jitter_pct) || 0, sltp_jitter_pts: Number(l.sltp_jitter_pts) || 0,
     symbol_map: l.symbol_rows ? rowsToObj(l.symbol_rows) : (l.symbol_map || {}),
   };
 }

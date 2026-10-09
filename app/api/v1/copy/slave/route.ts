@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     owner_id: a.userId, link_id: cmd.link_id,
     kind: ok ? 'copied' : (status === 'skipped' ? 'skipped' : 'error'),
     symbol: cmd.base_symbol, ok, latency_ms: Number(b.latency_ms) || null,
-    detail: { slave_ticket: b.slave_ticket || null, error: b.error || null },
+    detail: { slave_ticket: b.slave_ticket || null, error: b.error || null, slippage_pts: (b.slippage_pts != null ? Number(b.slippage_pts) : null) },
   });
 
   // Aviso por Telegram cuando falla una copia (una vez al día por tipo de error,

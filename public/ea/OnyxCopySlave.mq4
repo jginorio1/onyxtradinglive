@@ -133,10 +133,10 @@ string GetCommands()
 }
 
 // Confirma el resultado de un comando.
-void Ack(string commandId, bool ok, string err, int slaveTicket, int latencyMs)
+void Ack(string commandId, bool ok, string err, int slaveTicket, int latencyMs, double slippagePts = 0.0)
 {
-   string j = StringFormat("{\"command_id\":\"%s\",\"ok\":%s,\"error\":\"%s\",\"slave_ticket\":\"%d\",\"latency_ms\":%d}",
-      commandId, ok?"true":"false", err, slaveTicket, latencyMs);
+   string j = StringFormat("{\"command_id\":\"%s\",\"ok\":%s,\"error\":\"%s\",\"slave_ticket\":\"%d\",\"latency_ms\":%d,\"slippage_pts\":%.1f}",
+      commandId, ok?"true":"false", err, slaveTicket, latencyMs, slippagePts);
    char post[]; StringToCharArray(j, post, 0, StringLen(j));
    char result[]; string rh;
    string headers = "Content-Type: application/json\r\nx-onyx-key: " + CopyApiKey + "\r\n";
@@ -461,9 +461,20 @@ void OnTimer()
          }
          double lot = ApplyMaxLot(CalcLot(local, mode, vol, mBal, mult, riskPct, pip), maxLot);
          if(symCap > 0 && SumMyLots(local) + lot > symCap){ Ack(id, false, "symbol_cap", 0, 0); g_skipped++; continue; }
+         // Anti-detección (#4): mueve SL y TP ±N puntos al azar.
+         double sltpJit = JNum(lim, "sltp_jitter");
+         if(sltpJit > 0){
+            double ptj = MarketInfo(local, MODE_POINT);
+            if(sl > 0) sl += ((MathRand() % (int)(2*sltpJit+1)) - sltpJit) * ptj;
+            if(tp > 0) tp += ((MathRand() % (int)(2*sltpJit+1)) - sltpJit) * ptj;
+         }
          int tk = OrderSend(local, type, lot, px, Slippage, sl, tp, "OC" + mtk, ONYX_MAGIC, 0, clrNONE);
          int lat = GetTickCount() - t0;
-         if(tk > 0){ MapAdd(mt, tk); g_copied++; g_lat = lat; g_masterInfo = "#" + mtk; Ack(id, true, "", tk, lat); }
+         if(tk > 0){
+            // Slippage (#7): diferencia en puntos entre la master y nuestro fill.
+            double slip = 0.0; double ptf = MarketInfo(local, MODE_POINT);
+            if(OrderSelect(tk, SELECT_BY_TICKET) && mPrice > 0 && ptf > 0) slip = MathAbs(OrderOpenPrice() - mPrice) / ptf;
+            MapAdd(mt, tk); g_copied++; g_lat = lat; g_masterInfo = "#" + mtk; Ack(id, true, "", tk, lat, slip); }
          else      { g_skipped++; Ack(id, false, "open_fail", 0, lat); }
       }
       else if(action == "close"){

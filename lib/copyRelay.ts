@@ -64,7 +64,7 @@ export async function relayMasterSnapshot(opts: {
   if ((macc as any)?.copy_paused) return;
 
   const { data: links } = await supabaseAdmin.from('copy_links')
-    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist,max_deviation_pts,max_signal_age_s,require_sl,max_positions,per_symbol_lot_cap,jitter_max_s,guard_prop_rules,guard_strict,size_by_challenge')
+    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist,max_deviation_pts,max_signal_age_s,require_sl,max_positions,per_symbol_lot_cap,jitter_max_s,guard_prop_rules,guard_strict,size_by_challenge,lot_jitter_pct,sltp_jitter_pts')
     .eq('master_account_id', masterAccountId).eq('enabled', true);
   if (!links?.length) return;
 
@@ -109,8 +109,12 @@ export async function relayMasterSnapshot(opts: {
   const mkPayload = (l: any) => {
     // Dimensionado según el reto: escala el tamaño según el colchón de la esclava.
     const sc = l.size_by_challenge ? (sizeScale[l.id] ?? 1) : 1;
+    // Anti-detección (#4): variación aleatoria del lote ±X % en cada apertura, para
+    // que el tamaño NO sea idéntico al de la master. Se multiplica sobre el escalado.
+    const lj = Math.max(0, Math.min(40, Number(l.lot_jitter_pct) || 0));
+    const jf = lj > 0 ? (1 + (Math.random() * 2 - 1) * (lj / 100)) : 1;
     return {
-    mode: l.mode, multiplier: (Number(l.multiplier) || 1) * sc, risk_pct: (Number(l.risk_pct) || 0) * sc, pip_risk: l.pip_risk,
+    mode: l.mode, multiplier: (Number(l.multiplier) || 1) * sc * jf, risk_pct: (Number(l.risk_pct) || 0) * sc * jf, pip_risk: l.pip_risk,
     max_lot: l.max_lot, symbol_map: l.symbol_map || {}, masterBalance: Number(masterBalance) || 0,
     limits: {
       max_lot: Number(l.max_lot) || 0, max_spread: Number(l.max_spread) || 0,
@@ -118,6 +122,7 @@ export async function relayMasterSnapshot(opts: {
       max_deviation_pts: Number(l.max_deviation_pts) || 0, max_signal_age_s: Number(l.max_signal_age_s) || 0,
       require_sl: l.require_sl ? 1 : 0, max_positions: Number(l.max_positions) || 0,
       per_symbol_lot_cap: Number(l.per_symbol_lot_cap) || 0,
+      sltp_jitter: Math.max(0, Number(l.sltp_jitter_pts) || 0),
     },
     symbol_map_str: mapStr(l.symbol_map),
   };

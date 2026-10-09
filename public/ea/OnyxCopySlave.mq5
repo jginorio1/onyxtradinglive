@@ -142,10 +142,10 @@ string GetCommands()
 }
 
 //--- Confirma el resultado de un comando.
-void Ack(string commandId, bool ok, string err, ulong slaveTicket, int latencyMs)
+void Ack(string commandId, bool ok, string err, ulong slaveTicket, int latencyMs, double slippagePts = 0.0)
 {
-   string j = StringFormat("{\"command_id\":\"%s\",\"ok\":%s,\"error\":\"%s\",\"slave_ticket\":\"%I64u\",\"latency_ms\":%d}",
-      commandId, ok?"true":"false", err, slaveTicket, latencyMs);
+   string j = StringFormat("{\"command_id\":\"%s\",\"ok\":%s,\"error\":\"%s\",\"slave_ticket\":\"%I64u\",\"latency_ms\":%d,\"slippage_pts\":%.1f}",
+      commandId, ok?"true":"false", err, slaveTicket, latencyMs, slippagePts);
    char post[]; StringToCharArray(j, post, 0, StringLen(j));
    char result[]; string rh; string headers = "Content-Type: application/json\r\nx-onyx-key: " + CopyApiKey + "\r\n";
    WebRequest("POST", ApiBase + "/api/v1/copy/slave", headers, 5000, post, result, rh);
@@ -496,6 +496,13 @@ void OnTimer()
          }
          double lot = ApplyMaxLot(CalcLot(local, mode, vol, mBal, mult, riskPct, pip), maxLot);
          if(symCap > 0 && SumMyLots(local) + lot > symCap){ Ack(id, false, "symbol_cap", 0, 0); g_skipped++; continue; }
+         // Anti-detección (#4): mueve SL y TP ±N puntos al azar, para que no sean idénticos a la master.
+         double sltpJit = JNum(lim, "sltp_jitter");
+         if(sltpJit > 0){
+            double pt3 = SymbolInfoDouble(local, SYMBOL_POINT);
+            if(sl > 0) sl += ((MathRand() % (int)(2*sltpJit+1)) - sltpJit) * pt3;
+            if(tp > 0) tp += ((MathRand() % (int)(2*sltpJit+1)) - sltpJit) * pt3;
+         }
          trade.SetExpertMagicNumber(ONYX_MAGIC);
          trade.SetDeviationInPoints((int)(maxDev>0 ? maxDev : 20));
          // SL/TP llegan como precios de la master (validos para el mismo instrumento).
@@ -503,7 +510,11 @@ void OnTimer()
                                    : trade.Sell(lot, local, 0.0, sl, tp, "OC" + mtk);
          int lat = (int)(GetTickCount() - t0);
          if(ok){ ulong st = trade.ResultOrder(); if(st == 0) st = PositionLastTicket(local);
-                 MapAdd(mt, st); g_copied++; g_lat = lat; g_masterInfo = "#" + mtk; Ack(id, true, "", st, lat); }
+                 // Slippage (#7): diferencia en puntos entre el precio de la master y el nuestro de ejecución.
+                 double slip = 0.0; double fill = trade.ResultPrice();
+                 double pt4 = SymbolInfoDouble(local, SYMBOL_POINT);
+                 if(mPrice > 0 && fill > 0 && pt4 > 0) slip = MathAbs(fill - mPrice) / pt4;
+                 MapAdd(mt, st); g_copied++; g_lat = lat; g_masterInfo = "#" + mtk; Ack(id, true, "", st, lat, slip); }
          else  { g_skipped++; Ack(id, false, "open_fail", 0, lat); }
       }
       else if(action == "close"){
