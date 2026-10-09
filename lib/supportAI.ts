@@ -5,7 +5,7 @@ import { listPublished } from '@/lib/blog';
 import { sendEmail } from '@/lib/mail';
 import { getSetting, aiPromptSettings, addonSettings, RECO_BROKER_DEFAULT, type RecoBroker } from '@/lib/settings';
 import { planFacts } from '@/lib/planFacts';
-import { botLabSettings, clampPct, listMarketplace } from '@/lib/botlab';
+import { botLabSettings, clampPct, listMarketplace, vpsInfo } from '@/lib/botlab';
 import { academyFeeSettings } from '@/lib/settings';
 import { pickActiveBar, type PromoQueue } from '@/lib/promo';
 import { catalogKey, CATALOG_DEFAULTS, type CatalogItem } from '@/lib/catalogDefaults';
@@ -267,6 +267,19 @@ export async function supportChatReply(question: string, lang: Lang, history: an
       prices += en
         ? `\n\n=== RECOMMENDED BROKER (partner — recommend ONLY when asked) ===\nWhen the person asks which broker you recommend, where to open an account, or who to trade with, recommend ${rb.name}${blurb ? ` (${blurb})` : ''} and share this link: ${rb.url}\nAlways say that ${rb.name} is a partner of Onyx (affiliate link). Do NOT push it in other conversations, do NOT invent features, and if they already have a broker that works with our platforms, don't insist.`
         : `\n\n=== BRÓKER RECOMENDADO (socio — recomiéndalo SOLO si preguntan) ===\nCuando la persona pregunte qué bróker recomiendas, dónde abrir cuenta, o con quién operar, recomienda ${rb.name}${blurb ? ` (${blurb})` : ''} y comparte este enlace: ${rb.url}\nDi siempre que ${rb.name} es un socio de Onyx (enlace de afiliado). NO lo empujes en otras conversaciones, NO inventes características, y si ya tiene un bróker que funciona con nuestras plataformas, no insistas.`;
+    }
+  } catch {}
+
+  // VPS RECOMENDADO (afiliado) — mismo ajuste que las tarjetas/guía (Admin → Bot Lab).
+  // La IA lo recomienda SOLO si preguntan por VPS / dejarlo 24-7 / Mac+cTrader. Socio.
+  try {
+    const vi = await vpsInfo();
+    if (vi?.on && vi.url) {
+      const note = (en ? (vi.note_en || vi.note_es) : (vi.note_es || vi.note_en)) || '';
+      const nm = vi.name || (en ? 'our recommended VPS' : 'nuestro VPS recomendado');
+      prices += en
+        ? `\n\n=== RECOMMENDED VPS (partner — recommend ONLY when asked) ===\nWhen the person asks whether they need a VPS, how to keep the EA/bot running 24/7 without the PC on, or (on Mac/cTrader) where to run it, recommend ${nm}${note ? ` (${note})` : ''} and share this link: ${vi.url}\nSay it is a partner of Onyx (affiliate link). Do NOT push it in other conversations.`
+        : `\n\n=== VPS RECOMENDADO (socio — recomiéndalo SOLO si preguntan) ===\nCuando la persona pregunte si necesita un VPS, cómo dejar el EA/bot corriendo 24/7 sin el PC encendido, o (en Mac/cTrader) dónde ejecutarlo, recomienda ${nm}${note ? ` (${note})` : ''} y comparte este enlace: ${vi.url}\nDi que es un socio de Onyx (enlace de afiliado). NO lo empujes en otras conversaciones.`;
     }
   } catch {}
 

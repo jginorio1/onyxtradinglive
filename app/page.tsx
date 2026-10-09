@@ -11,6 +11,7 @@ import AdSlot from '@/app/components/AdSlot';
 import GooglePlayBadge, { PLAY_URL } from '@/app/components/GooglePlayBadge';
 import AppStoreBadge, { APPSTORE_URL } from '@/app/components/AppStoreBadge';
 import { isNativeApp } from '@/lib/native';
+import { useVpsInfo, renderVps } from '@/app/components/VpsCallout';
 import { planFacts, trialLine } from '@/lib/planFacts';
 
 type Lang = 'es' | 'en';
@@ -135,7 +136,7 @@ const dict = {
         { i: '📰', t: 'Bloqueo por noticias', d: 'Evita operar alrededor de datos de alto impacto, los minutos que tú marques. Disponible en Elite.' },
       ],
       honestT: 'Lo que no hace, dicho claro',
-      honestD: 'Onyx no puede impedir una orden antes de que la envíes: la cierra en cuanto aparece, en uno o dos segundos, y eso te cuesta el spread de esa entrada. No es un fallo: es la fricción. Y sin tu plataforma abierta no protege nada — para uso serio, un VPS.',
+      honestD: 'Onyx no puede impedir una orden antes de que la envíes: la cierra en cuanto aparece, en uno o dos segundos, y eso te cuesta el spread de esa entrada. No es un fallo: es la fricción. Y sin tu plataforma abierta no protege nada — para uso serio, un [[VPS]].',
     },
     nav: { features: 'Funciones', eco: 'Ecosistema', how: 'Cómo funciona', fondeo: 'Fondeo', gestor: 'Guardian', pricing: 'Precios', amb: 'Embajadores', faq: 'FAQ', login: 'Entrar', cta: 'Empieza gratis' },
     eco: {
@@ -275,7 +276,7 @@ const dict = {
         { i: '📰', t: 'News blackout', d: 'Avoids trading around high-impact releases, for the minutes you set. Available on Elite.' },
       ],
       honestT: 'What it does not do, said plainly',
-      honestD: 'Onyx cannot block an order before you send it: it closes it as soon as it appears, within a second or two, and that costs you the spread on that entry. Not a bug: that is the friction. And with your platform closed it protects nothing — for serious use, a VPS.',
+      honestD: 'Onyx cannot block an order before you send it: it closes it as soon as it appears, within a second or two, and that costs you the spread on that entry. Not a bug: that is the friction. And with your platform closed it protects nothing — for serious use, a [[VPS]].',
     },
     nav: { features: 'Features', eco: 'Ecosystem', how: 'How it works', fondeo: 'Prop firms', gestor: 'Guardian', pricing: 'Pricing', amb: 'Ambassadors', faq: 'FAQ', login: 'Log in', cta: 'Start free' },
     eco: {
@@ -417,6 +418,7 @@ const FIRMS = [
 
 export default function Home() {
   const { lang, setLang } = useLang();
+  const vps = useVpsInfo();   // VPS recomendado (afiliado) para el token [[VPS]]
   const [annual, setAnnual] = useState(false);
   const [firm, setFirm] = useState(0);
   const [pnl, setPnl] = useState(1800);
@@ -937,7 +939,7 @@ export default function Home() {
         {/* Lo que NO hace importa tanto como lo que hace */}
         <div className="card" style={{ border: '1px solid var(--amber)', maxWidth: 720, margin: '0 auto' }}>
           <h3 style={{ color: 'var(--amber)', marginBottom: 8, fontSize: 16 }}>{t.mgr.honestT}</h3>
-          <p className="muted" style={{ fontSize: 14, lineHeight: 1.8 }}>{t.mgr.honestD}</p>
+          <p className="muted" style={{ fontSize: 14, lineHeight: 1.8 }}>{renderVps(t.mgr.honestD, vps)}</p>
         </div>
       </div>
 
