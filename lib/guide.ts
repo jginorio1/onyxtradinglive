@@ -1896,7 +1896,7 @@ export const ARTICLES: Article[] = [
     },
     body: {
       es: [
-        { p: 'Onyx (y tu MetaTrader) solo funcionan mientras el ordenador está encendido y con internet. Si lo apagas, cierras la tapa del portátil o se te va la luz, el EA deja de reportar, el copy deja de copiar y el Guardian deja de proteger. Un VPS resuelve eso.' },
+        { p: 'Onyx (y tu MetaTrader) solo funcionan mientras el ordenador está encendido y con internet. Si lo apagas, cierras la tapa del portátil o se te va la luz, el EA deja de reportar, el copy deja de copiar y el Guardian deja de proteger. Un [[VPS]] resuelve eso.' },
         { img: '/guia/vps.svg', alt: 'Tu ordenador apagado mientras un VPS en la nube mantiene MetaTrader encendido y Onyx recibiendo', caption: 'Apagas tu ordenador; el VPS sigue con tu MetaTrader encendido y Onyx recibiendo.' },
         { h: 'Qué es' },
         { p: 'Un VPS (Servidor Virtual Privado) es un ordenador que vive en un centro de datos y está encendido siempre, con internet estable. Te conectas a él desde tu móvil u ordenador, instalas tu MetaTrader y el EA de Onyx dentro, y lo dejas corriendo. Aunque cierres tu equipo, el VPS sigue.' },
@@ -1910,7 +1910,7 @@ export const ARTICLES: Article[] = [
         ] },
         { h: 'Tipos de VPS' },
         { walk: [
-          { t: 'VPS Forex (especializado)', d: 'Pensado para trading: viene con Windows, baja latencia hacia los brókers y a veces MetaTrader preinstalado. Es el más fácil para empezar. Si tienes dudas de cuál elegir, pregúntale a Onyx AI y te recomendamos el nuestro.' },
+          { t: 'VPS Forex (especializado)', d: 'Pensado para trading: viene con Windows, baja latencia hacia los brókers y a veces MetaTrader preinstalado. Es el más fácil para empezar. Si tienes dudas de cuál elegir, usa el que recomendamos nosotros: [[VPS]].' },
           { t: 'VPS del bróker (a veces gratis)', d: 'Muchos brókers regalan un VPS si operas cierto volumen o mantienes un saldo. Cómodo, pero atado a ese bróker. Pregunta a tu bróker si lo ofrece.' },
           { t: 'VPS en la nube general', d: 'Hay proveedores de nube general: más baratos y flexibles, pero los configuras tú. Elige uno con Windows si quieres MetaTrader con su ventana de siempre.' },
           { t: 'Windows vs Linux', d: 'Para MetaTrader lo normal es un VPS con Windows (la plataforma es un programa de Windows). En Linux también se puede, pero con un envoltorio, y es más técnico.' },
@@ -1921,7 +1921,7 @@ export const ARTICLES: Article[] = [
         { warn: 'Un VPS es un ordenador de verdad: mantenlo actualizado y con una contraseña fuerte. Nunca compartas su acceso, igual que no compartes tu MetaTrader.' },
       ],
       en: [
-        { p: 'Onyx (and your MetaTrader) only work while the computer is on and online. If you turn it off, close the laptop lid or lose power, the EA stops reporting, copy stops copying and the Guardian stops protecting. A VPS fixes that.' },
+        { p: 'Onyx (and your MetaTrader) only work while the computer is on and online. If you turn it off, close the laptop lid or lose power, the EA stops reporting, copy stops copying and the Guardian stops protecting. A [[VPS]] fixes that.' },
         { img: '/guia/vps.svg', alt: 'Your computer off while a cloud VPS keeps MetaTrader on and Onyx receiving', caption: 'You turn your computer off; the VPS keeps your MetaTrader on and Onyx receiving.' },
         { h: 'What it is' },
         { p: 'A VPS (Virtual Private Server) is a computer living in a data center, always on, with stable internet. You connect to it from your phone or computer, install your MetaTrader and the Onyx EA inside, and leave it running. Even if you close your device, the VPS keeps going.' },
@@ -1935,7 +1935,7 @@ export const ARTICLES: Article[] = [
         ] },
         { h: 'Types of VPS' },
         { walk: [
-          { t: 'Forex VPS (specialized)', d: 'Built for trading: comes with Windows, low latency to brokers and sometimes MetaTrader preinstalled. Easiest to start. Not sure which to pick? Ask Onyx AI and we will recommend ours.' },
+          { t: 'Forex VPS (specialized)', d: 'Built for trading: comes with Windows, low latency to brokers and sometimes MetaTrader preinstalled. Easiest to start. Not sure which to pick? Use the one we recommend: [[VPS]].' },
           { t: 'Broker VPS (sometimes free)', d: 'Many brokers give you a VPS if you trade a certain volume or keep a balance. Convenient, but tied to that broker. Ask your broker if they offer one.' },
           { t: 'General cloud VPS', d: 'There are general cloud providers: cheaper and flexible, but you configure it yourself. Pick one with Windows if you want MetaTrader with its usual window.' },
           { t: 'Windows vs Linux', d: 'For MetaTrader you normally use a Windows VPS (the platform is a Windows program). Linux works too, but via a wrapper, and it is more technical.' },

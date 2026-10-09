@@ -93,7 +93,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
   if (any.note) return (
     <div style={{ background: 'var(--bg2)', borderLeft: '3px solid var(--amber)', padding: '13px 15px', marginBottom: 16, borderRadius: 0 }}>
       {any.title && <div style={{ color: 'var(--amber)', fontSize: 12, marginBottom: 5 }}>{any.title}</div>}
-      <div className="muted" style={{ fontSize: 14, lineHeight: 1.75, whiteSpace: 'pre-line' }}>{lk(dyn(any.note))}</div>
+      <div className="muted" style={{ fontSize: 14, lineHeight: 1.75, whiteSpace: 'pre-line' }}>{lk(renderVps(dyn(any.note), vps))}</div>
     </div>
   );
   if (any.warn) return (
@@ -105,7 +105,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
   if (any.tip) return (
     <div style={{ background: 'rgba(52,226,160,.08)', border: '1px solid var(--green)', padding: '13px 15px', marginBottom: 16, borderRadius: 10 }}>
       <div style={{ color: 'var(--green)', fontSize: 12, marginBottom: 5 }}><OnyxIcon emoji="💡" size={15} /> {any.title || 'Consejo'}</div>
-      <div style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--tx)' }}>{any.tip}</div>
+      <div style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--tx)' }}>{lk(renderVps(dyn(any.tip), vps))}</div>
     </div>
   );
   if (any.img) return (
@@ -118,7 +118,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
   );
   if (any.list) return (
     <ul style={{ margin: '0 0 16px 20px', padding: 0 }}>
-      {any.list.map((x: string, i: number) => <li key={i} style={{ fontSize: 15, lineHeight: 1.8, color: 'var(--tx)', marginBottom: 7 }}>{lk(dyn(x))}</li>)}
+      {any.list.map((x: string, i: number) => <li key={i} style={{ fontSize: 15, lineHeight: 1.8, color: 'var(--tx)', marginBottom: 7 }}>{lk(renderVps(dyn(x), vps))}</li>)}
     </ul>
   );
   if (any.walk) return (
@@ -130,8 +130,8 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
             {i < any.walk.length - 1 && <span style={{ width: 2, flex: 1, background: 'var(--line)', marginTop: 6, minHeight: 14 }} />}
           </div>
           <div style={{ flex: 1, minWidth: 0, paddingBottom: 18 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: s.d ? 4 : 0 }}>{s.t}</div>
-            {s.d && <div className="muted" style={{ fontSize: 14, lineHeight: 1.7 }}>{s.d}</div>}
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: s.d ? 4 : 0 }}>{lk(renderVps(dyn(s.t), vps))}</div>
+            {s.d && <div className="muted" style={{ fontSize: 14, lineHeight: 1.7 }}>{lk(renderVps(dyn(s.d), vps))}</div>}
             {s.img && <img src={s.img} alt={s.alt || ''} loading="lazy" onClick={() => onZoom?.(s.img, s.alt || '')} style={{ width: '100%', maxWidth: 440, height: 'auto', borderRadius: 10, border: '1px solid var(--line)', marginTop: 10, display: 'block', cursor: 'zoom-in' }} />}
             {s.tip && <div style={{ marginTop: 10, background: 'rgba(52,226,160,.08)', border: '1px solid var(--green)', borderRadius: 10, padding: '9px 12px', fontSize: 13, lineHeight: 1.6, color: 'var(--tx)' }}><span style={{ color: 'var(--green)' }}><OnyxIcon emoji="💡" size={15} /></span> {s.tip}</div>}
           </div>
@@ -144,7 +144,7 @@ export function BlockView({ b, onZoom }: { b: Any; onZoom?: (src: string, alt: s
       {any.steps.map((x: string, i: number) => (
         <div key={i} className="row" style={{ gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
           <span style={{ width: 22, height: 22, borderRadius: '50%', flex: 'none', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card2)', color: 'var(--mut)' }}>{i + 1}</span>
-          <span style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--tx)' }}>{lk(dyn(x))}</span>
+          <span style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--tx)' }}>{lk(renderVps(dyn(x), vps))}</span>
         </div>
       ))}
     </div>
