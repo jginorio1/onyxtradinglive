@@ -405,15 +405,15 @@ const dict = {
 } as const;
 
 const FIRMS = [
-  { name: 'Axi', mono: 'A', color: '#b84a4e', logo: '/logos/axi.png', plats: ['MT4', 'MT5'], sizes: [],
+  { name: 'Axi', mono: 'A', color: '#e03a3f', logo: '/logos/axi.png', plats: ['MT4', 'MT5'], sizes: [],
     es: 'Bróker regulado con spreads bajos. Opera tu cuenta real en MT4 y MT5, el bróker que recomendamos.', en: 'Regulated broker with low spreads. Trade your live account on MT4 and MT5 — the broker we recommend.' },
-  { name: 'FTMO', mono: 'F', color: '#3a6aa0', logo: '/logos/ftmo.png', plats: ['MT4', 'MT5', 'cTrader', 'DXtrade'], sizes: ['10K', '25K', '50K', '100K', '200K'],
+  { name: 'FTMO', mono: 'F', color: '#1f6fd6', logo: '/logos/ftmo.png', plats: ['MT4', 'MT5', 'cTrader', 'DXtrade'], sizes: ['10K', '25K', '50K', '100K', '200K'],
     es: 'El estándar de la industria. Evaluación en dos fases y cuentas de hasta $200K.', en: 'The industry standard. Two-step evaluation and accounts up to $200K.' },
-  { name: 'The5ers', mono: '5', color: '#c07a3a', logo: '/logos/the5ers.png', plats: ['MT5', 'cTrader'], sizes: ['5K', '20K', '60K', '100K'],
+  { name: 'The5ers', mono: '5', color: '#3246c0', logo: '/logos/the5ers.png', plats: ['MT5', 'cTrader'], sizes: ['5K', '20K', '60K', '100K'],
     es: 'Programas de bajo drawdown y escalado rápido de capital.', en: 'Low-drawdown programs with fast capital scaling.' },
-  { name: 'FundedNext', mono: 'N', color: '#2f9e7a', logo: '/logos/fundednext.png', plats: ['MT4', 'MT5', 'cTrader', 'MatchTrader'], sizes: ['6K', '15K', '25K', '50K', '100K', '200K'],
+  { name: 'FundedNext', mono: 'N', color: '#14b886', logo: '/logos/fundednext.png', plats: ['MT4', 'MT5', 'cTrader', 'MatchTrader'], sizes: ['6K', '15K', '25K', '50K', '100K', '200K'],
     es: 'Reparto de hasta 95% y modelos flexibles. Cuentas MT4, MT5, cTrader y MatchTrader.', en: 'Up to 95% profit split and flexible models. MT4, MT5, cTrader and MatchTrader accounts.' },
-  { name: 'FundingPips', mono: 'P', color: '#7a68b8', logo: '/logos/fundingpips.png', plats: ['MT5', 'cTrader', 'MatchTrader'], sizes: ['5K', '10K', '25K', '50K', '100K', '200K'],
+  { name: 'FundingPips', mono: 'P', color: '#6b4be0', logo: '/logos/fundingpips.png', plats: ['MT5', 'cTrader', 'MatchTrader'], sizes: ['5K', '10K', '25K', '50K', '100K', '200K'],
     es: 'Precios agresivos y evaluación flexible de una o dos fases.', en: 'Aggressive pricing and flexible one- or two-step evaluations.' },
 ];
 
@@ -845,9 +845,7 @@ export default function Home() {
               border: i === firm ? `2px solid ${fm.color}` : '1px solid rgba(0,0,0,0.10)',
               boxShadow: i === firm ? '0 6px 18px rgba(0,0,0,0.18)' : '0 1px 3px rgba(0,0,0,0.08)',
               transform: i === firm ? 'translateY(-2px)' : 'none', transition: 'all .2s' }}>
-              <img src={fm.logo} alt={fm.name} style={{ maxWidth: '100%', maxHeight: 32, objectFit: 'contain', display: 'block' }}
-                onError={(e) => { const el = e.currentTarget; el.style.display = 'none'; const b = el.nextElementSibling as HTMLElement | null; if (b) b.style.display = 'block'; }} />
-              <b style={{ display: 'none', fontSize: 15, color: '#1a1a1a' }}>{fm.name}</b>
+              <img src={fm.logo} alt={fm.name} loading="eager" style={{ maxWidth: '100%', maxHeight: 32, objectFit: 'contain', display: 'block' }} />
             </button>
           ))}
         </div>
@@ -858,9 +856,7 @@ export default function Home() {
           <div className="card" style={{ borderTop: `3px solid ${f.color}` }}>
             <div className="row" style={{ gap: 12, marginBottom: 14, alignItems: 'center' }}>
               <span style={{ width: 56, height: 56, borderRadius: 13, background: '#ffffff', border: '1px solid rgba(0,0,0,0.10)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'grid', placeItems: 'center', flex: 'none', padding: 9 }}>
-                <img src={f.logo} alt={f.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
-                  onError={(e) => { const el = e.currentTarget; el.style.display = 'none'; const b = el.nextElementSibling as HTMLElement | null; if (b) b.style.display = 'grid'; }} />
-                <span style={{ display: 'none', width: '100%', height: '100%', placeItems: 'center', fontWeight: 700, fontSize: 14, color: f.color, textAlign: 'center', lineHeight: 1.05 }}>{f.name}</span>
+                <img src={f.logo} alt={f.name} loading="eager" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }} />
               </span>
               <div><h3 style={{ margin: 0, color: f.color }}>{f.name}</h3><span className="pill green" style={{ marginTop: 4, display: 'inline-block' }}>{t.prop.onyx}</span></div>
             </div>
