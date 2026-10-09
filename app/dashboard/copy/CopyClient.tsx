@@ -380,10 +380,10 @@ export default function CopyClient() {
   if (!d) return <div className="wrap" style={{ maxWidth: 880, margin: '0 auto', padding: '40px 22px' }}><div className="muted">…</div></div>;
 
   const head = (
-    <div style={{ marginBottom: 14 }}>
-      <h1 style={{ fontSize: 22, marginBottom: 2 }}><OnyxIcon emoji="🔁" size={16} /> {t.title}</h1>
+    <div className="copy-head" style={{ marginBottom: 14, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 12, rowGap: 4 }}>
+      <h1 style={{ fontSize: 22, margin: 0, whiteSpace: 'nowrap' }}><OnyxIcon emoji="🔁" size={16} /> {t.title}</h1>
       <p className="muted" style={{ fontSize: 13.5, margin: 0 }}>{t.sub}</p>
-      <p className="muted" style={{ fontSize: 12, margin: '4px 0 0', opacity: .85 }}><OnyxIcon emoji="ℹ" size={16} /> {t.relNote}</p>
+      <p className="muted" style={{ fontSize: 12, margin: 0, opacity: .85 }}><OnyxIcon emoji="ℹ" size={16} /> {t.relNote}</p>
     </div>
   );
 

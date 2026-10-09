@@ -31,6 +31,7 @@ namespace cAlgo.Robots
         public int PollSeconds { get; set; }
 
         private const string OnyxLabel = "OnyxCopy";
+        private readonly Random _rng = new Random();
         private HttpClient _http;
         private double _dayStartEquity;
         private Dictionary<string, string> _cloudMap = new Dictionary<string, string>();
@@ -104,6 +105,13 @@ namespace cAlgo.Robots
                     if (symCap > 0 && SumMyLots(sym) + lots > symCap) { Ack(id, false, "symbol_cap", 0, 0); continue; }
                     long units = (long)sym.NormalizeVolumeInUnits(sym.QuantityToVolumeInUnits(lots), RoundingMode.Down);
                     if (units < sym.VolumeInUnitsMin) units = (long)sym.VolumeInUnitsMin;
+                    // Anti-detección (#4): mueve SL y TP ±N puntos al azar.
+                    double sltpJit = JNum(lim, "sltp_jitter");
+                    if (sltpJit > 0 && sym.TickSize > 0)
+                    {
+                        if (sl > 0) sl += (_rng.Next(0, (int)(2 * sltpJit + 1)) - sltpJit) * sym.TickSize;
+                        if (tp > 0) tp += (_rng.Next(0, (int)(2 * sltpJit + 1)) - sltpJit) * sym.TickSize;
+                    }
                     var tt = side == "buy" ? TradeType.Buy : TradeType.Sell;
                     var r = ExecuteMarketOrder(tt, sym.Name, units, OnyxLabel + mtk);
                     int lat = (int)(DateTime.UtcNow - t0).TotalMilliseconds;
@@ -112,7 +120,10 @@ namespace cAlgo.Robots
                         // SL/TP de la master vienen como PRECIOS del mismo instrumento.
                         if (sl > 0 || tp > 0) ModifyPosition(r.Position, sl > 0 ? (double?)sl : null, tp > 0 ? (double?)tp : null);
                         _map[mt] = r.Position.Id;
-                        Ack(id, true, "", r.Position.Id, lat);
+                        // Slippage (#7): diferencia en puntos entre la master y nuestro fill.
+                        double slip = 0.0;
+                        if (mPrice > 0 && sym.TickSize > 0) slip = Math.Abs(r.Position.EntryPrice - mPrice) / sym.TickSize;
+                        Ack(id, true, "", r.Position.Id, lat, slip);
                     }
                     else Ack(id, false, "open_fail", 0, lat);
                 }
@@ -121,6 +132,12 @@ namespace cAlgo.Robots
                     int lat = (int)(DateTime.UtcNow - t0).TotalMilliseconds;
                     bool done = CloseByMaster(mt);
                     Ack(id, done, done ? "" : "close_fail", _map.ContainsKey(mt) ? _map[mt] : 0, lat);
+                }
+                else if (action == "close_all")
+                {
+                    int lat = (int)(DateTime.UtcNow - t0).TotalMilliseconds;
+                    CloseAllMine();
+                    Ack(id, true, "", 0, lat);
                 }
             }
         }
@@ -227,12 +244,22 @@ namespace cAlgo.Robots
             }
             catch { return ""; }
         }
-        private void Ack(string commandId, bool ok, string err, long slaveTicket, int latencyMs)
+        // Botón de pánico: cierra TODAS las posiciones abiertas por esta copia.
+        private int CloseAllMine()
+        {
+            int n = 0;
+            var mine = new List<Position>();
+            foreach (var p in Positions) if ((p.Label ?? "").StartsWith(OnyxLabel)) mine.Add(p);
+            foreach (var p in mine) { var r = ClosePosition(p); if (r != null && r.IsSuccessful) n++; }
+            return n;
+        }
+        private void Ack(string commandId, bool ok, string err, long slaveTicket, int latencyMs, double slippagePts = 0.0)
         {
             try
             {
                 string j = "{\"command_id\":\"" + commandId + "\",\"ok\":" + (ok ? "true" : "false")
-                    + ",\"error\":\"" + err + "\",\"slave_ticket\":\"" + slaveTicket + "\",\"latency_ms\":" + latencyMs + "}";
+                    + ",\"error\":\"" + err + "\",\"slave_ticket\":\"" + slaveTicket + "\",\"latency_ms\":" + latencyMs
+                    + ",\"slippage_pts\":" + slippagePts.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + "}";
                 var content = new StringContent(j, Encoding.UTF8, "application/json");
                 var req = new HttpRequestMessage(HttpMethod.Post, ApiBase.TrimEnd('/') + "/api/v1/copy/slave") { Content = content };
                 req.Headers.TryAddWithoutValidation("x-onyx-key", CopyApiKey);
