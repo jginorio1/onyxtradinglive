@@ -1381,3 +1381,21 @@ html:not(.is-auth) body.onyx-vivid > *:not(.promobar):not(.topbar):not(.secnav):
   .appdl .appdl-grid{ grid-template-columns:1fr !important; }
   .appdl .appdl-phone{ order:-1; }
 }
+
+/* ============================================================
+   Cockpit de copia · alineación (tanda de pulido)
+   Columnas de igual ancho, tarjetas con cabecera y acciones
+   consistentes, y filas de altura uniforme para que no se vea
+   desorganizado cuando una columna tiene más contenido.
+   ============================================================ */
+.copy-cockpit{ align-items:stretch !important; }
+.copy-cockpit > div{ display:flex; flex-direction:column; }
+/* La tarjeta ocupa el alto disponible: columnas parejas. */
+.copy-cockpit .card{ margin-bottom:0 !important; }
+/* Botones de acción a una altura fija: fila alineada. */
+.copy-cockpit .btn{ min-height:32px; display:inline-flex; align-items:center; justify-content:center; }
+/* Filas de la lista de copias: alto mínimo uniforme y separador limpio. */
+.copy-cockpit .copy-row{ min-height:44px; align-items:center; }
+.copy-cockpit .copy-row + .copy-row{ border-top:1px solid var(--line); }
+/* Cabecera de tarjeta homogénea. */
+.copy-cockpit .card > b:first-child{ display:block; margin-bottom:10px; }

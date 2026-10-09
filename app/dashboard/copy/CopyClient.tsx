@@ -609,7 +609,7 @@ export default function CopyClient() {
             {copyAccs.map((a: any) => {
               const r = roleOf(a.id);
               return (
-                <div key={a.id} className="row between" style={{ padding: '7px 0', gap: 8, flexWrap: 'wrap' }}>
+                <div key={a.id} className="row between copy-row" style={{ padding: '7px 0', gap: 8, flexWrap: 'wrap' }}>
                   <span className="row" style={{ gap: 8, alignItems: 'center' }}>
                     <span className="pill" style={{ fontSize: 9.5, color: roleColor(r), background: roleColor(r) + '22' }}>{roleLabel(r)}</span>
                     <span style={{ fontSize: 13 }}>{a.nickname || a.login}</span>
@@ -771,7 +771,7 @@ export default function CopyClient() {
                 <span className="muted" style={{ fontSize: 11 }}>· {byMaster[mid].length}</span>
               </div>
               {byMaster[mid].map((l: any) => (
-                <div key={l.id} className="row between" style={{ padding: '8px 0 8px 16px', gap: 10, flexWrap: 'wrap' }}>
+                <div key={l.id} className="row between copy-row" style={{ padding: '8px 0 8px 16px', gap: 10, flexWrap: 'wrap' }}>
                   <div style={{ fontSize: 13 }}>
                     <span className="muted" style={{ marginRight: 4 }}>↳</span>
                     <span className="pill" style={{ fontSize: 9, color: C_SLAVE, background: C_SLAVE + '22', marginRight: 4 }}>{t.role_slave}</span>
