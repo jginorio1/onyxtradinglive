@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin, requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { grantComp, revokeComp } from '@/lib/compTrial';
+import { setPlanOverride } from '@/lib/entitlements';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -75,13 +76,11 @@ export async function PATCH(req: Request) {
     if (action === 'self_plan') {
       const { data: prof0 } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
       const from = (prof0 as any)?.plan || 'free';
-      const { error: upErr } = await supabaseAdmin.from('profiles')
-        .upsert({ id: user.id, email: user.email, plan: value }, { onConflict: 'id' });
-      if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
-      const { data: check } = await supabaseAdmin.from('profiles').select('plan').eq('id', user.id).maybeSingle();
-      if (check?.plan !== value) return NextResponse.json({ error: 'No se guardo el plan.' }, { status: 500 });
-      await logAdmin(user.email, 'self_plan', user.email, { from, to: value, dir: await planDir(from, value), note: note || null });
-      return NextResponse.json({ ok: true, plan: value });
+      // Asegura que exista la fila, luego fija el override manual (no se revierte solo).
+      await supabaseAdmin.from('profiles').upsert({ id: user.id, email: user.email }, { onConflict: 'id' });
+      const eff = await setPlanOverride(user.id, value);
+      await logAdmin(user.email, 'self_plan', user.email, { from, to: value, effective: eff, dir: await planDir(from, value), note: note || null });
+      return NextResponse.json({ ok: true, plan: eff });
     }
 
     // Reenviar confirmación a TODOS los sin confirmar (no necesita id).
@@ -111,8 +110,12 @@ export async function PATCH(req: Request) {
 
     if (action === 'plan') {
       const from = (tprof as any)?.plan || 'free';
-      await supabaseAdmin.from('profiles').update({ plan: value }).eq('id', id);
-      meta.from = from; meta.to = value; meta.dir = await planDir(from, value);
+      // Fija el override manual (fuente propia). Así NO lo revierten el webhook de Stripe
+      // ni los crons: cuenta como una fuente más y, por mayor rango, se mantiene.
+      // value 'free' o vacío → quita el override (vuelve al plan que paguen las fuentes reales).
+      const ov = value && value !== 'free' ? value : null;
+      const eff = await setPlanOverride(id, ov);
+      meta.from = from; meta.to = value; meta.effective = eff; meta.dir = await planDir(from, value);
     } else if (action === 'comp_grant') {
       // Prueba de pago (cortesía) por N días, sin tarjeta.
       const g = await grantComp(id, value?.plan, value?.days);

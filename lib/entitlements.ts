@@ -24,23 +24,52 @@ function iapActive(p: any): boolean {
   return true;
 }
 
-// Recalcula profiles.plan como el de mayor rango entre Stripe e IAP (Apple), y aplica
-// los límites si el efectivo BAJÓ. Devuelve el plan efectivo.
+// ¿Sigue vigente una prueba de cortesía (comp)?
+function compActive(p: any): boolean {
+  if (!p?.comp_plan || !p?.comp_until) return false;
+  if (p.stripe_subscription_id) return false;   // con suscripción real de Stripe, la prueba no cuenta
+  return new Date(p.comp_until).getTime() > Date.now();
+}
+
+// ¿Sigue vigente un ajuste MANUAL del admin (override)? until nulo = permanente.
+function overrideActive(p: any): boolean {
+  if (!p?.plan_override) return false;
+  if (p.plan_override_until && new Date(p.plan_override_until).getTime() < Date.now()) return false;
+  return true;
+}
+
+// Recalcula profiles.plan como el de MAYOR rango entre TODAS las fuentes activas:
+//   · Stripe (web/Android)        · Apple/RevenueCat (iOS)
+//   · Prueba de cortesía (comp)   · Ajuste manual del admin (plan_override)
+// Así un plan que el admin subió a mano NO se revierte solo cuando entra un webhook
+// de Stripe o corre el cron: el override cuenta como una fuente más y, por ser el de
+// mayor rango, gana. Aplica los límites solo si el efectivo BAJÓ. Devuelve el efectivo.
 export async function applyEffectivePlan(userId: string): Promise<string> {
   const { data: p } = await supabaseAdmin.from('profiles')
-    .select('id,plan,stripe_plan,iap_plan,iap_status,iap_expires_at').eq('id', userId).maybeSingle() as any;
+    .select('id,plan,stripe_plan,iap_plan,iap_status,iap_expires_at,comp_plan,comp_until,stripe_subscription_id,plan_override,plan_override_until')
+    .eq('id', userId).maybeSingle() as any;
   if (!p) return FREE;
 
   const rank = await planRank();
   const rk = (id?: string | null) => (id && rank[id] != null ? rank[id] : -1);
 
-  const stripePlan = p.stripe_plan || (p.iap_plan ? FREE : p.plan) || FREE;   // respaldo: si no hay stripe_plan, usa el actual
-  const apple = iapActive(p) ? p.iap_plan : null;
+  // Fuentes activas (cada una puede otorgar un plan).
+  const sources: (string | null)[] = [
+    p.stripe_plan || null,
+    iapActive(p) ? p.iap_plan : null,
+    compActive(p) ? p.comp_plan : null,
+    overrideActive(p) ? p.plan_override : null,
+  ];
+  const cands = sources.filter(Boolean) as string[];
 
-  // Efectivo = el de mayor rango entre Stripe y Apple.
-  let effective = stripePlan;
-  if (apple && rk(apple) > rk(effective)) effective = apple;
-  if (rk(effective) < 0) effective = FREE;
+  let effective: string;
+  if (!cands.length) {
+    // Sin ninguna fuente: respeta lo que ya tenga (no lo bajamos a la fuerza).
+    effective = p.plan || FREE;
+  } else {
+    effective = cands.reduce((best, c) => (rk(c) > rk(best) ? c : best), FREE);
+    if (rk(effective) < 0) effective = FREE;
+  }
 
   if (effective !== p.plan) {
     await supabaseAdmin.from('profiles').update({ plan: effective }).eq('id', userId);
@@ -48,6 +77,17 @@ export async function applyEffectivePlan(userId: string): Promise<string> {
     if (rk(effective) < rk(p.plan)) { try { await enforcePlanLimits(userId, effective); } catch {} }
   }
   return effective;
+}
+
+// Fija (o quita) el ajuste MANUAL del admin y recalcula el efectivo.
+// plan=null → quita el override. until opcional (ISO) → override temporal; sin until = permanente.
+export async function setPlanOverride(userId: string, plan: string | null, until?: string | null) {
+  await supabaseAdmin.from('profiles').update({
+    plan_override: plan,
+    plan_override_until: plan ? (until || null) : null,
+    plan_override_at: new Date().toISOString(),
+  }).eq('id', userId);
+  return applyEffectivePlan(userId);
 }
 
 // Fija el plan comprado en iOS (Apple/RevenueCat) y recalcula el efectivo.
