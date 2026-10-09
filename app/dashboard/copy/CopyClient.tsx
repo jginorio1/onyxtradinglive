@@ -386,14 +386,15 @@ export default function CopyClient() {
 
   if (!d) return <div className="wrap" style={{ maxWidth: 880, margin: '0 auto', padding: '40px 22px' }}><div className="muted">…</div></div>;
 
-  const headDiv = <span aria-hidden className="copy-head-div" style={{ alignSelf: 'center', width: 1, height: 18, background: 'var(--line)', flex: '0 0 auto' }} />;
   const head = (
-    <div className="copy-head" style={{ marginBottom: 14, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 14, rowGap: 4 }}>
-      <h1 style={{ fontSize: 22, margin: 0, whiteSpace: 'nowrap' }}><OnyxIcon emoji="🔁" size={16} /> {t.title}</h1>
-      {headDiv}
-      <p className="muted" style={{ fontSize: 13.5, margin: 0 }}>{t.sub}</p>
-      {headDiv}
-      <p className="muted" style={{ fontSize: 12, margin: 0, opacity: .85 }}><OnyxIcon emoji="ℹ" size={16} /> {t.relNote}</p>
+    <div className="copy-head" style={{ marginBottom: 14 }}>
+      <h1 style={{ fontSize: 22, margin: 0, lineHeight: 1.2 }}><OnyxIcon emoji="🔁" size={16} /> {t.title}</h1>
+      {/* Segunda línea · los dos textos de ayuda al MISMO tamaño, con un divisor fino. */}
+      <div style={{ marginTop: 5, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 4 }}>
+        <span className="muted" style={{ fontSize: 13 }}>{t.sub}</span>
+        <span aria-hidden className="copy-head-div" style={{ width: 1, height: 13, background: 'var(--line)', flex: '0 0 auto' }} />
+        <span className="muted" style={{ fontSize: 13, opacity: .9 }}><OnyxIcon emoji="ℹ" size={15} /> {t.relNote}</span>
+      </div>
     </div>
   );
 
