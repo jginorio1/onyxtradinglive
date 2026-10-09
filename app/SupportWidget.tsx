@@ -401,7 +401,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     // Grupos: [1][2] markdown · [3] URL http(s) · [4] ruta interna · [5] dominio
     // "pelado" sin https:// (play.google.com/…, apps.apple.com/…, dominio.com/ruta)
     // para que los enlaces de copiar/pegar también se vuelvan clicables.
-    const BARE = '((?:play\\.google\\.com|apps\\.apple\\.com|(?:[a-z0-9-]+\\.)+(?:com|net|org|io|app|co|me|gg|ai|dev|es|mx))\\/[^\\s<>()]+)';
+    const BARE = '((?:play\\.google\\.com|apps\\.apple\\.com|(?:[a-z0-9-]+\\.)+(?:com|net|org|io|app|co|me|gg|ai|dev|es|mx|info|online|trade|fx|vip|biz|us|uk|ca|eu|live|pro|club|link|site|xyz))\\/[^\\s<>()]+)';
     const re = new RegExp('\\[([^\\]]+)\\]\\(((?:https?:\\/\\/|\\/)[^)]+)\\)|(https?:\\/\\/[^\\s<>()]+)|((?:\\/(?:en|es|pt|zh|ja|vi))?\\/' + LINKABLE + '[\\w\\-\\/?=&#.]*)|' + BARE, 'gi');
     const out: any[] = []; let last = 0; let m: RegExpExecArray | null; let k = 0;
     while ((m = re.exec(text))) {
