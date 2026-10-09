@@ -12,6 +12,7 @@
 // ============================================================
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { normalizeSymbol, aliasesOf } from '@/lib/copySymbols';
+import { copyGuardForSlave } from '@/lib/copyGuard';
 
 function mapStr(m: any): string { if (!m || typeof m !== 'object') return ''; return Object.keys(m).map((k) => k + '=' + m[k]).join(';'); }
 
@@ -62,7 +63,7 @@ export async function relayMasterSnapshot(opts: {
   if ((macc as any)?.copy_paused) return;
 
   const { data: links } = await supabaseAdmin.from('copy_links')
-    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist,max_deviation_pts,max_signal_age_s,require_sl,max_positions,per_symbol_lot_cap,jitter_max_s')
+    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist,max_deviation_pts,max_signal_age_s,require_sl,max_positions,per_symbol_lot_cap,jitter_max_s,guard_prop_rules,guard_strict')
     .eq('master_account_id', masterAccountId).eq('enabled', true);
   if (!links?.length) return;
 
@@ -79,6 +80,19 @@ export async function relayMasterSnapshot(opts: {
   const { data: slaves } = await supabaseAdmin.from('trading_accounts').select('id,copy_paused').in('id', slaveIds);
   const pausedSlave: Record<string, boolean> = {};
   (slaves || []).forEach((s: any) => { pausedSlave[s.id] = !!s.copy_paused; });
+
+  // Guardián de reglas de prop firm (por copia, apagado salvo que el trader lo
+  // active). Solo bloquea APERTURAS nuevas cuando la esclava rompe su regla
+  // (en strict, también al acercarse). Los cierres siempre pasan. Nunca lanza:
+  // ante cualquier fallo la copia sigue como siempre.
+  const guardBlockOpen: Record<string, boolean> = {};
+  try {
+    const guarded = links.filter((l: any) => l.guard_prop_rules);
+    await Promise.all(guarded.map(async (l: any) => {
+      const r = await copyGuardForSlave(userId, l.slave_account_id, { strict: !!l.guard_strict });
+      guardBlockOpen[l.id] = !!r.pause;
+    }));
+  } catch {}
 
   const mkPayload = (l: any) => ({
     mode: l.mode, multiplier: l.multiplier, risk_pct: l.risk_pct, pip_risk: l.pip_risk,
@@ -97,8 +111,9 @@ export async function relayMasterSnapshot(opts: {
   for (const l of links) {
     if (pausedSlave[l.slave_account_id]) continue;
 
-    // Aperturas: aplican sesión + whitelist.
-    for (const p of opened) {
+    // Aperturas: aplican sesión + whitelist. Si el Guardián pide pausar esta
+    // copia, no se abren nuevas (los cierres de abajo siguen pasando).
+    for (const p of (guardBlockOpen[l.id] ? [] : opened)) {
       if (!inSession(l.session_from, l.session_to)) continue;
       if (!symbolAllowed(p.symbol, l.symbol_whitelist)) continue;
       rows.push({
