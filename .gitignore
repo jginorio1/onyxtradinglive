@@ -16,3 +16,4 @@ npm-debug.log*
 .env*.local
 tsconfig.tsbuildinfo
 .DS_Store
+.DS_Store
