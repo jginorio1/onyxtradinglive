@@ -27,11 +27,24 @@ export type CopyGuardResult = {
   pause: boolean;     // true = el Guardián pide pausar la copia de esta esclava
   verdict: CopyGuardVerdict;
   firm: string;       // slug/nombre de la firma (o 'custom')
+  headroom: number;   // colchón 0..1 hasta el límite de pérdida más ajustado (1 = sin datos/intacto)
   reasonEs: string;
   reasonEn: string;
 };
 
-const NA: CopyGuardResult = { ok: true, pause: false, verdict: 'na', firm: '', reasonEs: '', reasonEn: '' };
+const NA: CopyGuardResult = { ok: true, pause: false, verdict: 'na', firm: '', headroom: 1, reasonEs: '', reasonEn: '' };
+
+// Dimensionado según el reto (#2): convierte el colchón (0..1) en un factor de
+// tamaño (0..1). Con colchón ≥ `comfort` copia al 100%; por debajo baja de forma
+// proporcional hasta un piso, para no dejar la copia en cero.
+export function sizeScaleFromHeadroom(headroom: number, opts: { comfort?: number; floor?: number } = {}): number {
+  const comfort = opts.comfort ?? 0.5;   // a partir de este colchón, tamaño pleno
+  const floor = opts.floor ?? 0.15;      // nunca por debajo de este factor
+  const h = Math.max(0, Math.min(1, Number(headroom)));
+  if (h >= comfort) return 1;
+  const f = floor + (1 - floor) * (h / comfort);
+  return Math.max(floor, Math.min(1, f));
+}
 
 // Evalúa una esclava. Nunca lanza: ante cualquier fallo devuelve "sin datos"
 // (NA) para no bloquear la copia por un error del guardián.
@@ -46,10 +59,11 @@ export async function copyGuardForSlave(
     if (!sb) return NA;
     const firm = sb.firm || 'custom';
     const closest = sb.closest;
+    const headroom = typeof sb.headroom === 'number' ? sb.headroom : 1;
 
     if (sb.verdict === 'breach') {
       return {
-        ok: false, pause: true, verdict: 'breach', firm,
+        ok: false, pause: true, verdict: 'breach', firm, headroom,
         reasonEs: closest?.es ? `Límite de prop firm alcanzado: ${closest.es}` : 'Se alcanzó un límite de la prop firm.',
         reasonEn: closest?.en ? `Prop-firm limit reached: ${closest.en}` : 'A prop-firm limit was reached.',
       };
@@ -57,13 +71,13 @@ export async function copyGuardForSlave(
 
     if (opts.strict && sb.verdict === 'watch') {
       return {
-        ok: false, pause: true, verdict: 'watch', firm,
+        ok: false, pause: true, verdict: 'watch', firm, headroom,
         reasonEs: closest?.es ? `Cerca del límite de prop firm: ${closest.es}` : 'Cerca de un límite de la prop firm.',
         reasonEn: closest?.en ? `Close to a prop-firm limit: ${closest.en}` : 'Close to a prop-firm limit.',
       };
     }
 
-    return { ok: true, pause: false, verdict: (sb.verdict as CopyGuardVerdict) || 'na', firm, reasonEs: '', reasonEn: '' };
+    return { ok: true, pause: false, verdict: (sb.verdict as CopyGuardVerdict) || 'na', firm, headroom, reasonEs: '', reasonEn: '' };
   } catch {
     return NA;
   }

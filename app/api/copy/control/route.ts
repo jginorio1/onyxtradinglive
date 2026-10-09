@@ -68,5 +68,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, paused });
   }
 
+  // Botón de pánico por esclava: cierra YA todas las posiciones que la copia
+  // abrió en esa cuenta. Inserta un comando 'close_all' por cada copia activa
+  // cuyo esclavo sea esa cuenta; la esclava lo ejecuta en su próximo sondeo.
+  if (action === 'close_all_account') {
+    const accId = String(b.accountId || '');
+    const { data: acc } = await supabaseAdmin.from('trading_accounts').select('id').eq('id', accId).eq('user_id', user.id).maybeSingle();
+    if (!acc) return NextResponse.json({ error: 'Cuenta no válida.' }, { status: 400 });
+    const { data: links } = await supabaseAdmin.from('copy_links')
+      .select('id').eq('owner_id', user.id).eq('slave_account_id', accId).eq('enabled', true);
+    const rows = (links || []).map((l: any) => ({
+      link_id: l.id, slave_account_id: accId, action: 'close_all',
+      master_ticket: '', base_symbol: '', side: '', volume_hint: 0,
+      sl: null, tp: null, price: null, payload: {}, status: 'pending', execute_after: null,
+    }));
+    if (rows.length) await supabaseAdmin.from('copy_commands').insert(rows);
+    await logControl(user.id, 'close_all_account', accId);
+    alertUser(user.id, 'copy_paused', '🧯 <b>Cerrar todo</b>\nSe envió la orden de cerrar todas las posiciones copiadas en esta cuenta esclava.').catch(() => {});
+    return NextResponse.json({ ok: true, sent: rows.length });
+  }
+
   return NextResponse.json({ error: 'acción no válida' }, { status: 400 });
 }

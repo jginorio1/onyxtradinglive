@@ -28,6 +28,9 @@ export type Scoreboard = {
   verdict: 'on_track' | 'watch' | 'breach';
   rules: ChallengeRule[];
   closest?: { es: string; en: string };
+  // Colchón que queda hasta el límite de pérdida más ajustado (1 = intacto, 0 = al límite).
+  // Lo usa el dimensionado según el reto (#2) para escalar el tamaño de la copia.
+  headroom: number;
   lines: string[];             // resumen compacto en inglés para el panel del EA
 };
 
@@ -154,12 +157,14 @@ export function computeChallenge(input: {
 
   near.sort((a, b) => a.pct - b.pct);
   const closest = near[0] ? { es: near[0].es, en: near[0].en } : undefined;
+  // Colchón 0..1 hasta el límite de pérdida más ajustado (1 si no hay regla de pérdida).
+  const headroom = near.length ? Math.max(0, Math.min(1, near[0].pct)) : 1;
 
   // Resumen compacto para el panel del EA (inglés, idioma por defecto de la EA)
   const lines = rules.filter((r) => r.status !== 'na').map((r) => `${r.en}: ${r.valEn}`);
 
   const ph = phaseLabel(ch.phase);
-  return { accountId: input.accountId, login: input.login, name: input.name, firm: ch.firm || 'custom', phaseEs: ph.es, phaseEn: ph.en, verdict, rules, closest, lines };
+  return { accountId: input.accountId, login: input.login, name: input.name, firm: ch.firm || 'custom', phaseEs: ph.es, phaseEn: ph.en, verdict, rules, closest, headroom, lines };
 }
 
 // Trae los datos de una cuenta y calcula su marcador. null si no aplica.

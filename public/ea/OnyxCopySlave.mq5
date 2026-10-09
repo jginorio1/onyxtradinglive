@@ -359,6 +359,14 @@ ulong PositionLastTicket(string sym){
       if(PositionSelectByTicket(tk) && PositionGetString(POSITION_SYMBOL) == sym && PositionGetInteger(POSITION_MAGIC) == ONYX_MAGIC) return tk; }
    return 0;
 }
+//--- Cierra TODAS las posiciones abiertas por esta copia (botón de pánico).
+int CloseAllMine(){
+   int n = 0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--){ ulong tk = PositionGetTicket(i);
+      if(PositionSelectByTicket(tk) && PositionGetInteger(POSITION_MAGIC) == ONYX_MAGIC){
+         trade.SetExpertMagicNumber(ONYX_MAGIC); if(trade.PositionClose(tk)) n++; } }
+   return n;
+}
 //--- Cierra la posicion ligada al ticket de la master.
 bool CloseByMaster(long mt){
    ulong st = MapGet(mt);
@@ -502,6 +510,11 @@ void OnTimer()
          int lat = (int)(GetTickCount() - t0);
          bool done = CloseByMaster(mt);
          Ack(id, done, done ? "" : "close_fail", MapGet(mt), lat);
+      }
+      else if(action == "close_all"){     // botón de pánico: cierra todo lo de esta copia
+         int lat = (int)(GetTickCount() - t0);
+         int n = CloseAllMine();
+         Ack(id, true, "", 0, lat);
       }
       // "modify" (ajustar SL/TP) se puede añadir aquí igual que "open".
    }

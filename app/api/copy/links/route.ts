@@ -50,13 +50,13 @@ export async function GET() {
 
   // Veredicto del Guardián en vivo, solo para las copias que lo tienen activo.
   // (verdict: on_track | watch | breach | na · pause = true cuando frena aperturas)
-  const guarded = (links || []).filter((l: any) => l.guard_prop_rules);
+  const guarded = (links || []).filter((l: any) => l.guard_prop_rules || l.size_by_challenge);
   if (guarded.length) {
     await Promise.all(guarded.map(async (l: any) => {
       try {
         const r = await copyGuardForSlave(user.id, l.slave_account_id, { strict: !!l.guard_strict });
-        l.guard = { verdict: r.verdict, pause: r.pause, firm: r.firm, reasonEs: r.reasonEs, reasonEn: r.reasonEn };
-      } catch { l.guard = { verdict: 'na', pause: false }; }
+        l.guard = { verdict: r.verdict, pause: r.pause, firm: r.firm, headroom: r.headroom, reasonEs: r.reasonEs, reasonEn: r.reasonEn };
+      } catch { l.guard = { verdict: 'na', pause: false, headroom: 1 }; }
     }));
   }
 
@@ -116,6 +116,8 @@ export async function POST(req: Request) {
     // su límite de reto, se pausan las aperturas nuevas (strict = también al acercarse).
     guard_prop_rules: b.guard_prop_rules === true,
     guard_strict: b.guard_strict === true,
+    // #2 Dimensionado según el reto (apagado por defecto).
+    size_by_challenge: b.size_by_challenge === true,
   };
 
   if (b.id) {

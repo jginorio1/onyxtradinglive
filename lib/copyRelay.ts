@@ -12,7 +12,7 @@
 // ============================================================
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { normalizeSymbol, aliasesOf } from '@/lib/copySymbols';
-import { copyGuardForSlave } from '@/lib/copyGuard';
+import { copyGuardForSlave, sizeScaleFromHeadroom } from '@/lib/copyGuard';
 import { alertOncePerDay, accName } from '@/lib/telegram';
 
 function mapStr(m: any): string { if (!m || typeof m !== 'object') return ''; return Object.keys(m).map((k) => k + '=' + m[k]).join(';'); }
@@ -64,7 +64,7 @@ export async function relayMasterSnapshot(opts: {
   if ((macc as any)?.copy_paused) return;
 
   const { data: links } = await supabaseAdmin.from('copy_links')
-    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist,max_deviation_pts,max_signal_age_s,require_sl,max_positions,per_symbol_lot_cap,jitter_max_s,guard_prop_rules,guard_strict')
+    .select('id,slave_account_id,mode,multiplier,risk_pct,pip_risk,max_lot,reverse,symbol_map,daily_loss_pct,max_drawdown_pct,max_spread,session_from,session_to,symbol_whitelist,max_deviation_pts,max_signal_age_s,require_sl,max_positions,per_symbol_lot_cap,jitter_max_s,guard_prop_rules,guard_strict,size_by_challenge')
     .eq('master_account_id', masterAccountId).eq('enabled', true);
   if (!links?.length) return;
 
@@ -88,13 +88,17 @@ export async function relayMasterSnapshot(opts: {
   // (en strict, también al acercarse). Los cierres siempre pasan. Nunca lanza:
   // ante cualquier fallo la copia sigue como siempre.
   const guardBlockOpen: Record<string, boolean> = {};
+  // Dimensionado según el reto (#2): factor 0..1 por copia (1 = tamaño pleno).
+  const sizeScale: Record<string, number> = {};
   try {
-    const guarded = links.filter((l: any) => l.guard_prop_rules);
-    await Promise.all(guarded.map(async (l: any) => {
+    // Evalúa todas las copias que usan Guardián o dimensionado según el reto.
+    const needEval = links.filter((l: any) => l.guard_prop_rules || l.size_by_challenge);
+    await Promise.all(needEval.map(async (l: any) => {
       const r = await copyGuardForSlave(userId, l.slave_account_id, { strict: !!l.guard_strict });
-      guardBlockOpen[l.id] = !!r.pause;
+      if (l.guard_prop_rules) guardBlockOpen[l.id] = !!r.pause;
+      if (l.size_by_challenge) sizeScale[l.id] = sizeScaleFromHeadroom(r.headroom);
       // Aviso por Telegram (1 vez al día por esclava) cuando el Guardián frena.
-      if (r.pause) {
+      if (l.guard_prop_rules && r.pause) {
         const nm = accName(slaveById[l.slave_account_id] || {});
         await alertOncePerDay(userId, 'copy_paused', `guard:${l.id}`,
           `🛡️ Guardián de prop firm · ${nm}\nSe pausaron las copias NUEVAS en esta cuenta: ${r.reasonEs || 'límite de prop firm'}. Los cierres siguen activos. Se reanudará solo cuando la cuenta vuelva dentro de su regla.`);
@@ -102,8 +106,11 @@ export async function relayMasterSnapshot(opts: {
     }));
   } catch {}
 
-  const mkPayload = (l: any) => ({
-    mode: l.mode, multiplier: l.multiplier, risk_pct: l.risk_pct, pip_risk: l.pip_risk,
+  const mkPayload = (l: any) => {
+    // Dimensionado según el reto: escala el tamaño según el colchón de la esclava.
+    const sc = l.size_by_challenge ? (sizeScale[l.id] ?? 1) : 1;
+    return {
+    mode: l.mode, multiplier: (Number(l.multiplier) || 1) * sc, risk_pct: (Number(l.risk_pct) || 0) * sc, pip_risk: l.pip_risk,
     max_lot: l.max_lot, symbol_map: l.symbol_map || {}, masterBalance: Number(masterBalance) || 0,
     limits: {
       max_lot: Number(l.max_lot) || 0, max_spread: Number(l.max_spread) || 0,
@@ -113,7 +120,8 @@ export async function relayMasterSnapshot(opts: {
       per_symbol_lot_cap: Number(l.per_symbol_lot_cap) || 0,
     },
     symbol_map_str: mapStr(l.symbol_map),
-  });
+  };
+  };
 
   const rows: any[] = [];
   for (const l of links) {

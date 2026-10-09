@@ -104,6 +104,7 @@ const T: any = {
     jitter: 'Retraso aleatorio (s)', jitterNote: 'Añade un retraso al azar (0…N s) antes de copiar cada apertura, para que el timing NO sea idéntico al de la master. Reduce el riesgo de que una prop firm detecte copia por patrón. Los cierres siempre salen al instante. 0 = sin retraso.',
     guardProp: '🛡️ Guardián de reglas de prop firm', guardStrict: 'Modo estricto (frenar también al acercarse)',
     guardOk: 'Dentro de las reglas', guardWatch: 'Cerca del límite', guardBreach: 'Copias nuevas en pausa', guardNa: 'Sin datos de reto',
+    sizeByChallenge: '📏 Ajustar tamaño según el reto', closeAll: 'Cerrar todo', closeAllAsk: '¿Cerrar TODAS las posiciones copiadas en esta cuenta esclava? Esto no se puede deshacer.', closeAllDone: 'Orden de cierre enviada',
     symMap: 'Tabla de símbolos (una por línea: MASTER=ESCLAVA)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
     dupTitle: 'Esta cuenta ya está en copia', dupBodyA: 'ya está activa como', dupBodyB: 'de la copia', dupRoleM: 'MASTER', dupRoleS: 'ESCLAVA',
     dupWarn: 'Usarla en dos copias puede duplicar operaciones y romper tu gestión de riesgo.', dupCancel: 'Elegir otra', dupGo: 'Continuar de todos modos',
@@ -207,6 +208,7 @@ const T: any = {
     jitter: 'Random delay (s)', jitterNote: 'Adds a random delay (0…N s) before copying each open, so the timing is NOT identical to the master. Lowers the chance a prop firm flags copying by pattern. Closes always go out instantly. 0 = no delay.',
     guardProp: '🛡️ Prop-firm rules guard', guardStrict: 'Strict mode (also pause when getting close)',
     guardOk: 'Within the rules', guardWatch: 'Close to the limit', guardBreach: 'New copies paused', guardNa: 'No challenge data',
+    sizeByChallenge: '📏 Size by challenge headroom', closeAll: 'Close all', closeAllAsk: 'Close ALL copied positions on this slave account? This cannot be undone.', closeAllDone: 'Close order sent',
     symMap: 'Symbol table (one per line: MASTER=SLAVE)', symMapPh: 'US100=NAS100\nGOLD=XAUUSD',
     dupTitle: 'This account is already copying', dupBodyA: 'is already active as', dupBodyB: 'of link', dupRoleM: 'MASTER', dupRoleS: 'SLAVE',
     dupWarn: 'Using it in two copies can duplicate trades and break your risk management.', dupCancel: 'Pick another', dupGo: 'Continue anyway',
@@ -396,6 +398,7 @@ export default function CopyClient() {
         {o.guard_prop_rules && (
           <label className="muted row" style={{ fontSize: 12, gap: 8, alignItems: 'center', marginTop: 8, marginLeft: 24 }}><input type="checkbox" checked={!!o.guard_strict} onChange={(e) => set('guard_strict', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {t.guardStrict}<Hint id="guardStrict" /></label>
         )}
+        <label className="muted row" style={{ fontSize: 12.5, gap: 8, alignItems: 'center', marginTop: 10, fontWeight: 600, color: 'var(--tx)' }}><input type="checkbox" checked={!!o.size_by_challenge} onChange={(e) => set('size_by_challenge', e.target.checked)} style={{ width: 'auto', margin: 0 }} /> {t.sizeByChallenge}<Hint id="sizeByChallenge" /></label>
       </div>
       <div style={{ gridColumn: '1 / -1' }}>
         <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.symMap}<Hint id="symMap" /></div>
@@ -428,6 +431,7 @@ export default function CopyClient() {
     requireSL: ['Si está activo, la esclava NO copia operaciones que lleguen sin Stop Loss. Protege de entradas sin protección. Recomendado dejarlo activo.', 'If on, the slave does NOT copy trades that arrive without a Stop Loss. Protects from unprotected entries. Recommended to keep on.'],
     guardProp: ['Usa las reglas de tu reto (de "Mi reto") para proteger esta cuenta esclava. Si la esclava alcanza su límite de pérdida diaria o de drawdown total, el Guardián PAUSA las copias NUEVAS automáticamente. Los cierres siguen pasando, para no dejar posiciones huérfanas. Se reanuda solo cuando la cuenta vuelve dentro de su regla. Ninguna otra plataforma de copia respeta las reglas de prop firm así.', 'Uses your challenge rules (from "My challenge") to protect this slave account. If the slave hits its daily-loss or total-drawdown limit, the Guard automatically PAUSES NEW copies. Closes still pass, so no orphan positions. It resumes once the account is back within its rule. No other copy platform respects prop-firm rules like this.'],
     guardStrict: ['Frena las copias nuevas ya al ACERCARSE al límite (no solo al romperlo). Más seguro para el reto, pero copia menos.', 'Pauses new copies as soon as the account gets CLOSE to the limit (not only when it breaks it). Safer for the challenge, but copies less.'],
+    sizeByChallenge: ['Reduce automáticamente el tamaño de la copia según cuánto colchón le queda a la esclava hasta su límite de pérdida. Con la cuenta holgada copia al 100%; a medida que se acerca al límite, copia más pequeño (hasta un piso de ~15%). Así proteges el reto sin tener que apagar la copia.', 'Automatically shrinks the copy size based on how much headroom the slave has left to its loss limit. With a comfortable account it copies at 100%; as it approaches the limit it copies smaller (down to a ~15% floor). Protects the challenge without turning copying off.'],
     symMap: ['Traduce el nombre del símbolo entre brókers distintos. Ej.: la master usa "US100" y tu esclava "NAS100". Añade la equivalencia y se copia bien.', 'Maps symbol names between different brokers. E.g. the master uses "US100" and your slave "NAS100". Add the pair and it copies correctly.'],
     maxLot: ['Tope de lote por operación en la esclava, pase lo que pase. Protege de una operación gigante.', 'Max lot per trade on the slave, no matter what. Protects from a huge trade.'],
     reverse: ['Copia al revés: si la master compra, la esclava vende. Para estrategias de cobertura.', 'Copy inverted: if the master buys, the slave sells. For hedging strategies.'],
@@ -740,11 +744,16 @@ export default function CopyClient() {
                     <b>{label(l.slave_account_id)}</b>
                     <div className="muted" style={{ fontSize: 11.5, marginTop: 2, marginLeft: 16 }}>{modeLabel(l.mode)}{l.reverse ? ' · ⇄' : ''} · máx {l.max_lot}
                       {l.daily_loss_pct ? ` · DL ${l.daily_loss_pct}%` : ''}{l.session_from && l.session_to ? ` · ${l.session_from}-${l.session_to}` : ''}{(l.symbol_whitelist || []).length ? ` · ${l.symbol_whitelist.length} símb.` : ''}</div>
-                    {l.guard_prop_rules && (() => {
+                    {(l.guard_prop_rules || l.size_by_challenge) && (() => {
                       const v = l.guard?.verdict || 'na';
                       const txt = v === 'breach' ? t.guardBreach : v === 'watch' ? t.guardWatch : v === 'on_track' ? t.guardOk : t.guardNa;
                       const col = v === 'breach' ? 'var(--red)' : v === 'watch' ? 'var(--brand)' : v === 'on_track' ? 'var(--green)' : 'var(--mut)';
-                      return <div style={{ marginLeft: 16, marginTop: 4 }}><span className="pill" style={{ fontSize: 10, color: col, background: 'color-mix(in srgb, ' + col + ' 16%, transparent)' }}>🛡️ {txt}</span></div>;
+                      const hr = typeof l.guard?.headroom === 'number' ? Math.round(l.guard.headroom * 100) : null;
+                      return <div style={{ marginLeft: 16, marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {l.guard_prop_rules && <span className="pill" style={{ fontSize: 10, color: col, background: 'color-mix(in srgb, ' + col + ' 16%, transparent)' }}>🛡️ {txt}</span>}
+                        {l.size_by_challenge && <span className="pill" style={{ fontSize: 10, color: 'var(--brand)', background: 'color-mix(in srgb, var(--brand) 16%, transparent)' }}>📏 {hr != null ? hr + '%' : '—'}</span>}
+                        {l.guard?.firm && v !== 'na' && <span className="pill" style={{ fontSize: 10, color: 'var(--mut)', background: 'color-mix(in srgb, var(--mut) 12%, transparent)' }}>{l.guard.firm}</span>}
+                      </div>;
                     })()}
                   </div>
                   <div className="row" style={{ gap: 8 }}>
@@ -753,6 +762,8 @@ export default function CopyClient() {
                     </button>
                     <span className="pill" style={l.enabled ? { color: 'var(--soft-green)', background: 'rgba(52,226,160,.15)' } : { color: 'var(--mut)' }}>{l.enabled ? t.on : t.off}</span>
                     <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => setEdit({ ...blankLink(), ...l, symbol_whitelist: l.symbol_whitelist || [], session_from: l.session_from || '', session_to: l.session_to || '', symbol_rows: objToRows(l.symbol_map) })}>{t.edit}</button>
+                    <button className="btn btn-ghost" title={t.closeAll} style={{ padding: '4px 10px', fontSize: 12, color: 'var(--red)', borderColor: 'var(--red)' }}
+                      onClick={async () => { if (!confirm(t.closeAllAsk)) return; const ok = await control('close_all_account', { accountId: l.slave_account_id }); if (ok) toast(t.closeAllDone); }}>🧯 {t.closeAll}</button>
                     <button className="btn btn-danger" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => del(l.id)}>{t.del}</button>
                   </div>
                 </div>
@@ -1033,6 +1044,7 @@ function linkPayload(l: any) {
     max_deviation_pts: l.max_deviation_pts ?? 20, max_signal_age_s: l.max_signal_age_s ?? 30,
     require_sl: l.require_sl !== false, max_positions: l.max_positions ?? 20, per_symbol_lot_cap: l.per_symbol_lot_cap ?? 0, jitter_max_s: l.jitter_max_s ?? 0,
     guard_prop_rules: !!l.guard_prop_rules, guard_strict: !!l.guard_strict,
+    size_by_challenge: !!l.size_by_challenge,
     symbol_map: l.symbol_rows ? rowsToObj(l.symbol_rows) : (l.symbol_map || {}),
   };
 }

@@ -317,6 +317,18 @@ double SumMyLots(string sym){ double v=0; for(int i=OrdersTotal()-1;i>=0;i--){ i
 
 #define ONYX_MAGIC 990201
 
+//--- Cierra TODAS las órdenes abiertas por esta copia (botón de pánico).
+int CloseAllMine()
+{
+   int n = 0;
+   for(int i = OrdersTotal() - 1; i >= 0; i--){
+      if(!OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) continue;
+      if(OrderMagicNumber() != ONYX_MAGIC || OrderType() > OP_SELL) continue;
+      double px = (OrderType() == OP_BUY) ? MarketInfo(OrderSymbol(), MODE_BID) : MarketInfo(OrderSymbol(), MODE_ASK);
+      if(OrderClose(OrderTicket(), OrderLots(), px, Slippage, clrNONE)) n++;
+   }
+   return(n);
+}
 //--- Cierra la orden ligada al ticket de la master (por mapa o por comentario).
 bool CloseByMaster(long mt)
 {
@@ -458,6 +470,11 @@ void OnTimer()
          int lat = GetTickCount() - t0;
          bool done = CloseByMaster(mt);
          Ack(id, done, done ? "" : "close_fail", MapGet(mt), lat);
+      }
+      else if(action == "close_all"){     // botón de pánico: cierra todo lo de esta copia
+         int lat = GetTickCount() - t0;
+         CloseAllMine();
+         Ack(id, true, "", 0, lat);
       }
       // "modify" (ajustar SL/TP) se puede añadir aquí con OrderModify.
    }
