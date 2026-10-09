@@ -19,8 +19,14 @@ type Served =
 // la tarjeta del socio (y onError sirve de red por si igual falla).
 function looksLikeImage(u: string) {
   if (!u) return false;
-  if (u.startsWith('data:image/')) return true;
-  return /\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(u.trim());
+  const s = u.trim();
+  if (s.startsWith('data:image/')) return true;
+  if (/\.(png|jpe?g|gif|webp|avif|svg)(\?|#|$)/i.test(s)) return true;
+  // Muchos CDNs de afiliados sirven la imagen por query (sin extensión), p. ej.
+  // axiaffiliates.ck-cdn.com/tn/serve/?cid=… . Lo aceptamos como imagen SALVO que
+  // sea claramente un enlace de clic/seguimiento. Si igual falla, onError cae a la tarjeta.
+  const isClick = /\/(visit|click|go|aff|redirect|track)\b|[?&](bta|aff|ref|pid|cpid)=/i.test(s);
+  return /^https?:\/\//i.test(s) && !isClick;
 }
 
 // Contador de huecos por carga de página: cada AdSlot toma una posición (0,1,2…)
