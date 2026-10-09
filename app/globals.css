@@ -476,8 +476,16 @@ div.urow:hover,button.urow:hover,a.urow:hover{background:rgba(124,140,255,.12) !
 .adminnav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--mut);cursor:pointer;font-size:14px;font-weight:600;border:none;background:transparent;text-align:left;width:100%;transition:.15s;}
 .adminnav-item:hover{background:var(--card2);color:#fff;}
 .adminnav-item.on{background:var(--grad);color:#fff;}
-.toggle{width:40px;height:22px;border-radius:20px;position:relative;cursor:pointer;flex:none;transition:.15s;}
-.toggle .knob{position:absolute;top:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.15s;}
+/* Toggle moderno (un solo lugar = aplica a toda la app). Más grande, knob con
+   sombra y rebote suave, verde vivo al encender, e iconos ✓ / – horneados en el
+   riel (el knob blanco tapa el del lado donde está). El estado sigue viniendo
+   del inline left:21/3 y background var(--green)/var(--soft-brand) de cada uso. */
+.toggle{width:44px;height:26px;border-radius:999px;position:relative;cursor:pointer;flex:none;transition:background .2s;}
+.toggle::before{content:'✓';position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:800;line-height:1;color:#06452b;pointer-events:none;}
+.toggle::after{content:'';position:absolute;right:9px;top:50%;transform:translateY(-50%);width:9px;height:2px;border-radius:2px;background:rgba(255,255,255,.55);pointer-events:none;}
+.toggle .knob{position:absolute;top:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:left .22s cubic-bezier(.34,1.56,.64,1);box-shadow:0 2px 5px rgba(0,0,0,.4);z-index:1;}
+/* Verde vivo solo en el estado encendido (su inline usa var(--green) o var(--soft-brand)). */
+.toggle[style*="var(--green)"],.toggle[style*="var(--soft-brand)"]{background:#1fe08a!important;}
 /* Selector de sección para móvil (Admin y Mi cuenta): oculto en escritorio */
 .adminnav-mobile{display:none;width:100%;}
 
