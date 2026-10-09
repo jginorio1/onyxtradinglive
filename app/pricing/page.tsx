@@ -196,7 +196,7 @@ export default function Pricing() {
             </span>
           ))}
         </div>
-        <p className="muted" style={{ fontSize: 12.5, margin: '-8px auto 22px', maxWidth: 560 }}><OnyxIcon name="shield" size={13} glow={false} /> {t.compat}</p>
+        <p className="muted" style={{ fontSize: 12.5, margin: '-8px auto 22px', maxWidth: 560, textAlign: 'center' }}>{t.compat}</p>
 
         {/* En la app de iOS: no se muestran precios ni compra (regla 3.1.1 de Apple).
             Se invita a ver/gestionar los planes en el sitio web. */}
