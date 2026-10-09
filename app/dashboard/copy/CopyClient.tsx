@@ -237,7 +237,7 @@ export default function CopyClient() {
   const [nl, setNl] = useState<any>(blankLink());
   const [confirmLink, setConfirmLink] = useState<any>(null);
   const [showRisk, setShowRisk] = useState(false);
-  const [showHow, setShowHow] = useState(true);
+  const [showHow, setShowHow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState<any>(null);
   const [wizard, setWizard] = useState<any>(null);
@@ -487,6 +487,12 @@ export default function CopyClient() {
         )}
       </div>
 
+      {/* COCKPIT · 3 columnas que llenan la pantalla y se apilan solas en móvil */}
+      <div className="copy-cockpit" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 12, alignItems: 'start', marginTop: 4 }}>
+
+      {/* COLUMNA · Control + PIN (se muestra solo cuando ya hay enlaces) */}
+      {links.length > 0 && (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, order: 3 }}>
       {/* CONTROL REMOTO · solo cuando ya hay al menos un enlace que controlar */}
       {links.length > 0 && (
       <div id="copy-ctrl" className="card" style={{ marginBottom: 12, border: `1px solid ${paused ? 'var(--red)' : 'var(--green)'}`, background: paused ? 'rgba(255,90,90,.05)' : 'linear-gradient(180deg,rgba(52,226,160,.06),transparent)' }}>
@@ -543,7 +549,11 @@ export default function CopyClient() {
         </div>
       </div>
       )}
+      </div>
+      )}
 
+      {/* COLUMNA · Cuentas (izquierda): cupo, descarga de la EA y claves */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, order: 1 }}>
       {/* Cupo de esclavas y masters */}
       <div className="card" style={{ marginBottom: 12 }}>
         {/* Esclavas */}
@@ -644,6 +654,10 @@ export default function CopyClient() {
         </div>
       )}
 
+      </div>
+
+      {/* COLUMNA · Enlaces + Nuevo enlace + Log (centro) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, order: 2 }}>
       {/* ENLACES */}
       <div className="card" style={{ marginBottom: 12 }}>
         <b style={{ fontSize: 14 }}>{t.links}</b>
@@ -771,6 +785,9 @@ export default function CopyClient() {
             </>
           );
         })()}
+      </div>
+
+      </div>
       </div>
 
       {/* MODALES */}

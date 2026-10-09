@@ -51,7 +51,11 @@ export function HintPop({ text, glyph = '?' }: { text: string; glyph?: string })
   }, [open, text]);
 
   return (
-    <span style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle', marginLeft: 5 }}>
+    <span
+      style={{ position: 'relative', display: 'inline-flex', verticalAlign: 'middle', marginLeft: 5 }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
       <button
         ref={btnRef} type="button" aria-label="Ayuda"
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((o) => !o); }}
