@@ -52,13 +52,13 @@ const STATS = [
 ];
 
 /* Marcas para el carrusel (broker/prop firm + plataformas) */
-const LOGOS = [
-  { n: 'FTMO', c: '#2f6bff' }, { n: 'FundedNext', c: '#16c98d' },
-  { n: 'FundingPips', c: '#9b82ff' }, { n: 'The5%ers', c: '#ffce00' },
+const LOGOS: { n: string; c: string; logo?: string }[] = [
+  { n: 'FTMO', c: '#2f6bff', logo: '/logos/ftmo.png' }, { n: 'FundedNext', c: '#16c98d', logo: '/logos/fundednext.png' },
+  { n: 'FundingPips', c: '#9b82ff', logo: '/logos/fundingpips.png' }, { n: 'The5%ers', c: '#ffce00', logo: '/logos/the5ers.png' },
   { n: 'MetaTrader 4', c: '#f0a020' }, { n: 'MetaTrader 5', c: '#2f6bff' },
   { n: 'cTrader', c: '#e0533d' }, { n: 'MatchTrader', c: '#16c98d' }, { n: 'TradeLocker', c: '#34d399' }, { n: 'DXtrade', c: '#f472b6' },
   { n: 'TradingView', c: '#111' },
-  { n: 'Axi', c: '#ff4757' }, { n: 'IC Markets', c: 'var(--red2)' },
+  { n: 'Axi', c: '#ff4757', logo: '/logos/axi.png' }, { n: 'IC Markets', c: 'var(--red2)' },
   { n: 'Pepperstone', c: '#e2531f' }, { n: 'Exness', c: '#ffcf5c' },
 ];
 
@@ -728,7 +728,12 @@ export default function Home() {
           return (
             <div className="logostrip-track" style={{ animationDuration: `${dur}s` }}>
               {[...base, ...base].map((l, i) => (
-                <span key={i} style={{ color: l.c, fontWeight: 800, fontSize: 20, whiteSpace: 'nowrap' }}>{l.n}</span>
+                <span key={i} style={{ flex: 'none', display: 'grid', placeItems: 'center', height: 46, minWidth: 118, padding: '0 16px',
+                  background: 'rgba(15,17,21,0.04)', border: '1px solid rgba(15,17,21,0.10)', borderRadius: 11 }}>
+                  {l.logo
+                    ? <img src={l.logo} alt={l.n} loading="eager" style={{ maxHeight: 26, maxWidth: 92, objectFit: 'contain', display: 'block', filter: 'grayscale(1) brightness(0) opacity(0.55)' }} />
+                    : <span style={{ color: '#5b616b', fontWeight: 600, fontSize: 15, whiteSpace: 'nowrap' }}>{l.n}</span>}
+                </span>
               ))}
             </div>
           );

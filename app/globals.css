@@ -573,7 +573,7 @@ div.urow:hover,button.urow:hover,a.urow:hover{background:rgba(124,140,255,.12) !
 /* Franja blanca de logos: borde a borde, continua, difuminada en las orillas */
 .logostrip{background:#fff;padding:20px 0;overflow:hidden;margin:0 0 22px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);}
 .logostrip-track{display:flex;width:max-content;animation:scrollx 26s linear infinite;will-change:transform;}
-.logostrip-track>*{margin-right:48px;}
+.logostrip-track>*{margin-right:14px;}
 .logostrip:hover .logostrip-track{animation-play-state:paused;}
 /* Animación "creando robot": círculo verde iluminado (pulso) + anillo girando. */
 @keyframes bbxspin{to{transform:rotate(360deg)}}
