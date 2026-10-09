@@ -390,10 +390,17 @@ export default function CopyClient() {
     <div className="copy-head" style={{ marginBottom: 14 }}>
       <h1 style={{ fontSize: 22, margin: 0, lineHeight: 1.2 }}><OnyxIcon emoji="🔁" size={16} /> {t.title}</h1>
       {/* Segunda línea · los dos textos de ayuda al MISMO tamaño, con un divisor fino. */}
-      <div style={{ marginTop: 5, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 4 }}>
+      <div style={{ marginTop: 5, display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 6 }}>
         <span className="muted" style={{ fontSize: 13 }}>{t.sub}</span>
         <span aria-hidden className="copy-head-div" style={{ width: 1, height: 13, background: 'var(--line)', flex: '0 0 auto' }} />
         <span className="muted" style={{ fontSize: 13, opacity: .9 }}><OnyxIcon emoji="ℹ" size={15} /> {t.relNote}</span>
+        {/* Chip de acceso directo a Cuentas (donde se conectan), en la misma línea. */}
+        <Link href="/dashboard/keys" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500, color: 'var(--brand)', background: 'color-mix(in srgb, var(--brand) 14%, transparent)', border: '1px solid color-mix(in srgb, var(--brand) 45%, transparent)', borderRadius: 20, padding: '3px 10px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          <OnyxIcon emoji="👛" size={14} /> {t.how1link}
+        </Link>
+        <HintPop glyph="?" text={lang === 'en'
+          ? 'Takes you to Accounts, where you connect and manage your trading accounts (MetaTrader, cTrader, MatchTrader, TradeLocker or DXtrade). There you pick which one is the Master and which are Slaves; here in Onyx Copy you only set HOW they copy.'
+          : 'Te lleva a Cuentas, donde conectas y gestionas tus cuentas de trading (MetaTrader, cTrader, MatchTrader, TradeLocker o DXtrade). Ahí eliges cuál es la Master y cuáles las Esclavas; aquí en Onyx Copy solo configuras CÓMO se copian.'} />
       </div>
     </div>
   );
@@ -518,12 +525,26 @@ export default function CopyClient() {
         const cc = todayLog.filter((e: any) => e.kind === 'copied').length;
         const sc = todayLog.filter((e: any) => e.kind === 'skipped').length;
         const last = log && log[0]?.created_at ? new Date(log[0].created_at) : null;
-        const lastTxt = last ? last.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+        const loc = lang === 'es' ? 'es-ES' : 'en-US';
+        // Fecha completa: "9 oct 2026, 07:45 PM" (día, mes, año + hora) en el idioma del usuario.
+        const lastTxt = last
+          ? `${last.toLocaleDateString(loc, { day: 'numeric', month: 'short', year: 'numeric' })}, ${last.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })}`
+          : '—';
+        // Relativo "hace X" / "X ago".
+        const relTime = (d: Date | null): string => {
+          if (!d) return '';
+          const s = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+          const m = Math.floor(s / 60), h = Math.floor(m / 60), dd = Math.floor(h / 24);
+          if (s < 60) return lang === 'es' ? 'hace un momento' : 'just now';
+          if (m < 60) return lang === 'es' ? `hace ${m} min` : `${m} min ago`;
+          if (h < 24) return lang === 'es' ? `hace ${h} h` : `${h} h ago`;
+          return lang === 'es' ? `hace ${dd} d` : `${dd} d ago`;
+        };
         const tiles = [
-          { k: lang === 'es' ? 'Estado' : 'Status', v: paused ? (lang === 'es' ? 'Pausado' : 'Paused') : (lang === 'es' ? 'Copiando' : 'Copying'), c: paused ? 'var(--red)' : 'var(--green)' },
-          { k: lang === 'es' ? 'Copias activas' : 'Active copies', v: String(linksActive), c: 'var(--tx)' },
-          { k: lang === 'es' ? 'Copiadas hoy' : 'Copied today', v: `${cc}${sc ? ` · ${sc} ${lang === 'es' ? 'omit.' : 'skip.'}` : ''}`, c: 'var(--tx)' },
-          { k: lang === 'es' ? 'Última' : 'Last', v: lastTxt, c: 'var(--tx)' },
+          { k: lang === 'es' ? 'Estado' : 'Status', v: paused ? (lang === 'es' ? 'Pausado' : 'Paused') : (lang === 'es' ? 'Copiando' : 'Copying'), c: paused ? 'var(--red)' : 'var(--green)', sub: '' },
+          { k: lang === 'es' ? 'Copias activas' : 'Active copies', v: String(linksActive), c: 'var(--tx)', sub: '' },
+          { k: lang === 'es' ? 'Copiadas hoy' : 'Copied today', v: `${cc}${sc ? ` · ${sc} ${lang === 'es' ? 'omit.' : 'skip.'}` : ''}`, c: 'var(--tx)', sub: '' },
+          { k: lang === 'es' ? 'Última' : 'Last', v: lastTxt, c: 'var(--tx)', sub: last ? relTime(last) : '' },
         ];
         return (
           <div style={{ marginBottom: 10 }}>
@@ -532,6 +553,7 @@ export default function CopyClient() {
                 <div key={i} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, padding: '10px 12px' }}>
                   <div className="muted" style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.04em' }}>{x.k}</div>
                   <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4, color: x.c }}>{x.v}</div>
+                  {x.sub ? <div className="muted" style={{ fontSize: 10.5, marginTop: 2 }}>{x.sub}</div> : null}
                 </div>
               ))}
             </div>
