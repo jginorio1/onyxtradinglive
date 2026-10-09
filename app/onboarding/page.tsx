@@ -98,7 +98,9 @@ export default function Onboarding() {
     if (planUrl) { window.location.href = `/pricing?plan=${planUrl}${qs.get('annual') === '1' ? '&annual=1' : ''}${promoUrl ? `&promo=${promoUrl}` : ''}`; return; }
     const pend = getPending();
     if (pend) { window.location.href = pendingPricingUrl(pend); return; }
-    router.push('/dashboard'); router.refresh();
+    // Pantalla de bienvenida: "¿qué quieres hacer?" + planes (se muestra 1 vez).
+    // Si ya la vio, /welcome se salta solo al panel.
+    router.push('/welcome'); router.refresh();
   }
 
   const field: React.CSSProperties = { marginBottom: 4, display: 'block', fontSize: 13, color: 'var(--mut)' };

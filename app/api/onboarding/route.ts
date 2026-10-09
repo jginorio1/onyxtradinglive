@@ -42,6 +42,16 @@ export async function POST(req: Request) {
       });
     }
 
+    // Intención del usuario (pantalla "¿qué quieres hacer?"): qué servicios le
+    // interesan. Se guarda para ordenar el panel y para marketing. Lista acotada.
+    const INTENT_OK = ['monitor', 'guardian', 'copy', 'robots', 'academy', 'all'];
+    if (Array.isArray(b?.intent)) {
+      fields.onboard_intent = b.intent.map((x: any) => String(x)).filter((x: string) => INTENT_OK.includes(x)).slice(0, 6);
+    }
+    // El paywall de bienvenida solo se muestra una vez: lo marcamos cuando el
+    // usuario lo ve (ya sea que compre, vea planes o siga gratis).
+    if (b?.paywall_seen === true) fields.onboard_paywall_seen = true;
+
     const { error } = await supabaseAdmin.from('profiles').update(fields).eq('id', user.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
