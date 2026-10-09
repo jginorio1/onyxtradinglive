@@ -405,16 +405,16 @@ const dict = {
 } as const;
 
 const FIRMS = [
-  { name: 'FTMO', mono: 'F', color: '#2f6bff', logo: '/logos/ftmo.png', plats: ['MT4', 'MT5', 'cTrader', 'DXtrade'], sizes: ['10K', '25K', '50K', '100K', '200K'],
-    es: 'El estándar de la industria. Evaluación en dos fases y cuentas de hasta $200K.', en: 'The industry standard. Two-step evaluation and accounts up to $200K.' },
-  { name: 'FundedNext', mono: 'N', color: '#16c98d', logo: '/logos/fundednext.png', plats: ['MT4', 'MT5', 'cTrader', 'MatchTrader'], sizes: ['6K', '15K', '25K', '50K', '100K', '200K'],
-    es: 'Reparto de hasta 95% y modelos flexibles. Cuentas MT4, MT5, cTrader y MatchTrader.', en: 'Up to 95% profit split and flexible models. MT4, MT5, cTrader and MatchTrader accounts.' },
-  { name: 'The5ers', mono: '5', color: '#ff8a3d', logo: '/logos/the5ers.png', plats: ['MT5', 'cTrader'], sizes: ['5K', '20K', '60K', '100K'],
-    es: 'Programas de bajo drawdown y escalado rápido de capital.', en: 'Low-drawdown programs with fast capital scaling.' },
-  { name: 'FundingPips', mono: 'P', color: '#9b82ff', logo: '/logos/fundingpips.png', plats: ['MT5', 'cTrader', 'MatchTrader'], sizes: ['5K', '10K', '25K', '50K', '100K', '200K'],
-    es: 'Precios agresivos y evaluación flexible de una o dos fases.', en: 'Aggressive pricing and flexible one- or two-step evaluations.' },
-  { name: 'Axi', mono: 'A', color: '#e5484d', logo: '/logos/axi.png', plats: ['MT4', 'MT5'], sizes: [],
+  { name: 'Axi', mono: 'A', color: '#b84a4e', logo: '/logos/axi.png', plats: ['MT4', 'MT5'], sizes: [],
     es: 'Bróker regulado con spreads bajos. Opera tu cuenta real en MT4 y MT5, el bróker que recomendamos.', en: 'Regulated broker with low spreads. Trade your live account on MT4 and MT5 — the broker we recommend.' },
+  { name: 'FTMO', mono: 'F', color: '#3a6aa0', logo: '/logos/ftmo.png', plats: ['MT4', 'MT5', 'cTrader', 'DXtrade'], sizes: ['10K', '25K', '50K', '100K', '200K'],
+    es: 'El estándar de la industria. Evaluación en dos fases y cuentas de hasta $200K.', en: 'The industry standard. Two-step evaluation and accounts up to $200K.' },
+  { name: 'The5ers', mono: '5', color: '#c07a3a', logo: '/logos/the5ers.png', plats: ['MT5', 'cTrader'], sizes: ['5K', '20K', '60K', '100K'],
+    es: 'Programas de bajo drawdown y escalado rápido de capital.', en: 'Low-drawdown programs with fast capital scaling.' },
+  { name: 'FundedNext', mono: 'N', color: '#2f9e7a', logo: '/logos/fundednext.png', plats: ['MT4', 'MT5', 'cTrader', 'MatchTrader'], sizes: ['6K', '15K', '25K', '50K', '100K', '200K'],
+    es: 'Reparto de hasta 95% y modelos flexibles. Cuentas MT4, MT5, cTrader y MatchTrader.', en: 'Up to 95% profit split and flexible models. MT4, MT5, cTrader and MatchTrader accounts.' },
+  { name: 'FundingPips', mono: 'P', color: '#7a68b8', logo: '/logos/fundingpips.png', plats: ['MT5', 'cTrader', 'MatchTrader'], sizes: ['5K', '10K', '25K', '50K', '100K', '200K'],
+    es: 'Precios agresivos y evaluación flexible de una o dos fases.', en: 'Aggressive pricing and flexible one- or two-step evaluations.' },
 ];
 
 
@@ -841,13 +841,13 @@ export default function Home() {
           {FIRMS.map((fm, i) => (
             <button key={i} onClick={() => setFirm(i)} aria-pressed={i === firm} aria-label={fm.name} style={{
               cursor: 'pointer', display: 'grid', placeItems: 'center', width: 132, height: 56, borderRadius: 14, padding: '0 16px',
-              border: i === firm ? '2px solid var(--brand)' : '1px solid var(--line)',
-              background: i === firm ? 'var(--brand-soft, rgba(52,226,160,0.12))' : 'var(--bg2)',
-              boxShadow: i === firm ? '0 4px 16px rgba(0,0,0,0.12)' : 'none',
-              opacity: i === firm ? 1 : 0.72, transition: 'all .2s' }}>
+              background: '#ffffff',
+              border: i === firm ? `2px solid ${fm.color}` : '1px solid rgba(0,0,0,0.10)',
+              boxShadow: i === firm ? '0 6px 18px rgba(0,0,0,0.18)' : '0 1px 3px rgba(0,0,0,0.08)',
+              transform: i === firm ? 'translateY(-2px)' : 'none', transition: 'all .2s' }}>
               <img src={fm.logo} alt={fm.name} style={{ maxWidth: '100%', maxHeight: 32, objectFit: 'contain', display: 'block' }}
                 onError={(e) => { const el = e.currentTarget; el.style.display = 'none'; const b = el.nextElementSibling as HTMLElement | null; if (b) b.style.display = 'block'; }} />
-              <b style={{ display: 'none', fontSize: 15, color: 'var(--tx)' }}>{fm.name}</b>
+              <b style={{ display: 'none', fontSize: 15, color: '#1a1a1a' }}>{fm.name}</b>
             </button>
           ))}
         </div>
@@ -855,14 +855,14 @@ export default function Home() {
         {/* detalle + tracker */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 20 }}>
           {/* detalle de la firma */}
-          <div className="card" style={{ borderTop: '3px solid var(--brand)' }}>
+          <div className="card" style={{ borderTop: `3px solid ${f.color}` }}>
             <div className="row" style={{ gap: 12, marginBottom: 14, alignItems: 'center' }}>
-              <span style={{ width: 52, height: 52, borderRadius: 13, background: 'var(--bg2)', border: '1px solid var(--line)', display: 'grid', placeItems: 'center', flex: 'none', padding: 8 }}>
+              <span style={{ width: 56, height: 56, borderRadius: 13, background: '#ffffff', border: '1px solid rgba(0,0,0,0.10)', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'grid', placeItems: 'center', flex: 'none', padding: 9 }}>
                 <img src={f.logo} alt={f.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
                   onError={(e) => { const el = e.currentTarget; el.style.display = 'none'; const b = el.nextElementSibling as HTMLElement | null; if (b) b.style.display = 'grid'; }} />
-                <span style={{ display: 'none', width: '100%', height: '100%', placeItems: 'center', fontWeight: 800, fontSize: 20, color: 'var(--brand)' }}>{f.mono}</span>
+                <span style={{ display: 'none', width: '100%', height: '100%', placeItems: 'center', fontWeight: 700, fontSize: 14, color: f.color, textAlign: 'center', lineHeight: 1.05 }}>{f.name}</span>
               </span>
-              <div><h3 style={{ margin: 0, color: 'var(--tx)' }}>{f.name}</h3><span className="pill green" style={{ marginTop: 4, display: 'inline-block' }}>{t.prop.onyx}</span></div>
+              <div><h3 style={{ margin: 0, color: f.color }}>{f.name}</h3><span className="pill green" style={{ marginTop: 4, display: 'inline-block' }}>{t.prop.onyx}</span></div>
             </div>
             <p className="muted" style={{ fontSize: 15, marginBottom: 16 }}>{lang === 'es' ? f.es : f.en}</p>
             <div style={{ fontSize: 13, color: 'var(--mut)', marginBottom: 7 }}>{t.prop.plats}</div>
