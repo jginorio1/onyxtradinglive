@@ -48,8 +48,8 @@ export const RECO_BROKER_DEFAULT: RecoBroker = {
   enabled: true,
   name: 'Axi',
   url: 'https://records.axiaffiliates.com/visit/?bta=44173&brand=axitrader',
-  blurb_es: 'regulado, spreads bajos y compatible con MT4, MT5 y cTrader',
-  blurb_en: 'regulated, low spreads and works with MT4, MT5 and cTrader',
+  blurb_es: 'regulado, spreads bajos y compatible con MT4 y MT5',
+  blurb_en: 'regulated, low spreads and works with MT4 and MT5',
 };
 export const recoBrokerSettings = () => getSetting<RecoBroker>('reco_broker', RECO_BROKER_DEFAULT);
 
