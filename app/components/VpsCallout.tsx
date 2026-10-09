@@ -15,7 +15,7 @@ let _inflight: Promise<VpsInfo> | null = null;
 async function fetchVps(): Promise<VpsInfo> {
   if (_cache) return _cache;
   if (_inflight) return _inflight;
-  _inflight = fetch('/api/botlab/vps').then((r) => r.json()).then((j) => {
+  _inflight = fetch('/api/botlab/vps', { cache: 'no-store' }).then((r) => r.json()).then((j) => {
     _cache = { on: j?.on !== false, url: String(j?.url || ''), name: String(j?.name || ''), note_es: String(j?.note_es || ''), note_en: String(j?.note_en || '') };
     return _cache;
   }).catch(() => { _cache = { on: false, url: '', name: '', note_es: '', note_en: '' }; return _cache; });
