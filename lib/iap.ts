@@ -9,7 +9,7 @@
 // así que el import es inofensivo fuera de iOS.
 // ============================================================
 import { Purchases } from '@revenuecat/purchases-capacitor';
-import { nativePlatform } from '@/lib/native';
+import { nativePlatform, openExternal, isNativeApp } from '@/lib/native';
 
 let _configured = false;
 
@@ -172,4 +172,22 @@ export async function getActiveIapPlan(plans: Array<string | PlanMatch>): Promis
 export async function restoreIap(): Promise<boolean> {
   if (!iosOnly()) return false;
   try { await Purchases.restorePurchases(); return true; } catch { return false; }
+}
+
+// Abre la pantalla NATIVA para gestionar/cancelar la suscripción.
+// RevenueCat da la URL de gestión real en customerInfo.managementURL (en iOS es la
+// de Suscripciones de Apple; en Android, la de Google Play). La abrimos en el
+// NAVEGADOR DEL SISTEMA (no dentro del WebView), que es quien sabe llevar a Ajustes.
+// Respaldo: la URL fija de suscripciones de Apple.
+export async function manageSubscription(): Promise<void> {
+  const APPLE = 'https://apps.apple.com/account/subscriptions';
+  let url = APPLE;
+  try {
+    const info: any = await Purchases.getCustomerInfo();
+    const ci: any = info?.customerInfo || info || {};
+    if (ci?.managementURL) url = String(ci.managementURL);
+  } catch {}
+  // Dentro de la app → navegador del sistema (abre Ajustes/Play). En web → nueva pestaña.
+  if (isNativeApp()) { if (!openExternal(url)) { try { window.open(url, '_blank'); } catch {} } }
+  else { try { window.open(url, '_blank'); } catch { window.location.assign(url); } }
 }

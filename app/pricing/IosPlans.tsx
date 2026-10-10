@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { configureIAP, getIapPlans, buyPlan, restoreIap, getActiveIapPlan, type IapPlan } from '@/lib/iap';
+import { configureIAP, getIapPlans, buyPlan, restoreIap, getActiveIapPlan, manageSubscription, type IapPlan } from '@/lib/iap';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // ============================================================
 // Planes DENTRO de la app de iOS con COMPRA NATIVA de Apple (In-App Purchase).
@@ -160,7 +161,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
                 return (
                   <div style={{ marginTop: 8 }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(52,199,120,.16)', color: 'var(--green2,#12b981)', fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
-                      🎁 {txt}
+                      <OnyxIcon name="gift" size={13} /> {txt}
                     </span>
                     <span className="muted" style={{ fontSize: 11, marginLeft: 8 }}>{es ? `luego ${priceStr}` : `then ${priceStr}`}</span>
                   </div>
@@ -198,7 +199,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
 
       <div style={{ textAlign: 'center', marginTop: 18, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
         <button className="btn btn-ghost" style={{ fontSize: 12.5 }} disabled={!!busy} onClick={restore}>{es ? 'Restaurar compras' : 'Restore purchases'}</button>
-        <a className="btn btn-ghost" style={{ fontSize: 12.5 }} href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noreferrer">{es ? 'Gestionar suscripción' : 'Manage subscription'}</a>
+        <button className="btn btn-ghost" style={{ fontSize: 12.5 }} onClick={() => manageSubscription()}>{es ? 'Gestionar suscripción' : 'Manage subscription'}</button>
       </div>
       <p className="muted" style={{ textAlign: 'center', marginTop: 14, fontSize: 11, lineHeight: 1.6 }}>
         {es ? 'El pago se hace con tu Apple ID. La suscripción se renueva sola hasta que la canceles en Ajustes de tu iPhone.' : 'Payment is charged to your Apple ID. The subscription auto-renews until you cancel it in your iPhone Settings.'}
