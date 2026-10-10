@@ -11,6 +11,7 @@ import MarketHours from './MarketHours';
 import HubVitals, { StatCard, type Vital, type Tile } from './HubVitals';
 import SetupGuide from './SetupGuide';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { trialTag } from '@/lib/trialTag';
 import { GetAppBanner } from '@/app/components/AppPromo';
 import { openAuthedFile } from '@/lib/nativeShare';
 import { useIsIOSApp } from '@/app/account/ManageOnWeb';
@@ -446,7 +447,7 @@ function FundCard({ acc, net, maxDD, L, onSave }: { acc: Acc; net: number; maxDD
 }
 
 // Candado con vista previa difuminada: se ve el valor de la función, no solo el cerrojo.
-function ProLock({ L, plan = 'Pro', desc, price, preview }: { L: any; plan?: string; desc?: string; price?: number; preview?: any }) {
+function ProLock({ L, plan = 'Pro', desc, price, preview, trial }: { L: any; plan?: string; desc?: string; price?: number; preview?: any; trial?: string }) {
   const col = plan === 'Elite' ? 'var(--green)' : 'var(--brand2)';
   const ios = useIsIOSApp();   // en iOS: sin precio, sin botón y sin nombrar el plan de pago (Apple 3.1.1)
   return (
@@ -460,9 +461,9 @@ function ProLock({ L, plan = 'Pro', desc, price, preview }: { L: any; plan?: str
         <div style={{ fontSize: 28, marginBottom: 6 }}><OnyxIcon emoji="🔒" size={15} /></div>
         {ios
           ? <h3 style={{ marginBottom: 6 }}>{L.iosLockT}</h3>
-          : <h3 style={{ marginBottom: 6 }}>{L.available} <span style={{ color: col }}>{plan}</span></h3>}
+          : <h3 style={{ marginBottom: 6 }}>{L.available} <span style={{ color: col }}>{plan}</span>{trial ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8, verticalAlign: 'middle', background: 'rgba(52,226,160,.14)', color: 'var(--green)', fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 20 }}><OnyxIcon name="gift" size={13} /> {trial}</span> : null}</h3>}
         <p className="muted" style={{ marginBottom: ios ? 0 : 16 }}>{desc || L.proLockD}</p>
-        {!ios && <Link className="btn btn-primary" href="/pricing">{L.upgradeTo} {plan}{price ? ` · $${price}/${L.perMo}` : ''} →</Link>}
+        {!ios && <Link className="btn btn-primary" href="/pricing">{L.upgradeTo} {plan}{price ? ` · $${price}/${L.perMo}` : ''}{trial ? ` · ${trial}` : ''} →</Link>}
       </div>
     </div>
   );
@@ -629,7 +630,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const upsell = (capKey: string) => {
     const cands = plans.filter((p: any) => p.id !== (plan || 'free') && p.capabilities?.[capKey] && p.active !== false).sort((x: any, y: any) => (x.price_month || 0) - (y.price_month || 0));
     const t = cands[0] || plans.find((p: any) => p.id === 'pro');
-    return { name: t?.name || 'Pro', price: t?.price_month || proPrice };
+    const td = Math.max(0, Math.min(90, Math.round(Number(t?.capabilities?.trial_days) || 0)));
+    return { name: t?.name || 'Pro', price: t?.price_month || proPrice, trial: trialTag(td, lang) };
   };
   const upJ = upsell('journal'), upC = upsell('compare'), upF = upsell('funding');
   const upCh = upsell('challenge'), upH = upsell('habits'), upE = upsell('edge');
@@ -1330,11 +1332,11 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               </Card>
             )}
 
-            {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} focusUndoc={journalUndoc} accounts={accounts} />)}
+            {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} trial={upJ.trial} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} focusUndoc={journalUndoc} accounts={accounts} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} accounts={accounts} />}
-            {view === 'reto' && (!canChallenge ? <ProLock L={L} plan={upCh.name} price={upCh.price} desc={lang === 'en' ? 'Track your prop firm challenge: phase, limits and verdict.' : 'Sigue tu reto de prop firm: fase, límites y veredicto.'} /> : <Challenge lang={lang} />)}
-            {view === 'plan' && (!canHabits ? <ProLock L={L} plan={upH.name} price={upH.price} desc={lang === 'en' ? 'Daily plan, habit check-in, adherence and streak.' : 'Plan diario, check-in de hábitos, adherencia y racha.'} /> : <PlanHabits lang={lang} account={sel} accountName={curName} />)}
-            {view === 'edge' && (!canEdge ? <ProLock L={L} plan={upE.name} price={upE.price} desc={lang === 'en' ? 'Advanced quantitative metrics of your edge.' : 'Métricas cuantitativas avanzadas de tu ventaja.'} /> : <QuantEdgeCard a={a} lang={lang} />)}
+            {view === 'reto' && (!canChallenge ? <ProLock L={L} plan={upCh.name} price={upCh.price} trial={upCh.trial} desc={lang === 'en' ? 'Track your prop firm challenge: phase, limits and verdict.' : 'Sigue tu reto de prop firm: fase, límites y veredicto.'} /> : <Challenge lang={lang} />)}
+            {view === 'plan' && (!canHabits ? <ProLock L={L} plan={upH.name} price={upH.price} trial={upH.trial} desc={lang === 'en' ? 'Daily plan, habit check-in, adherence and streak.' : 'Plan diario, check-in de hábitos, adherencia y racha.'} /> : <PlanHabits lang={lang} account={sel} accountName={curName} />)}
+            {view === 'edge' && (!canEdge ? <ProLock L={L} plan={upE.name} price={upE.price} trial={upE.trial} desc={lang === 'en' ? 'Advanced quantitative metrics of your edge.' : 'Métricas cuantitativas avanzadas de tu ventaja.'} /> : <QuantEdgeCard a={a} lang={lang} />)}
 
             {view === 'cuentas' && (<>
               <Card title={L.accCard} icon="🗂️">
@@ -1361,8 +1363,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 </div>
               </Card>
               {/* Comparar cuentas solo tiene sentido en Portafolio (todas). Con una cuenta seleccionada se oculta. */}
-              {sel === 'all' && accounts.length >= 2 && (!canCompare ? <ProLock L={L} plan={upC.name} desc={L.dLock2} price={upC.price} preview={<PreviewCompare />} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
-              {sel !== 'all' && cur && !canFunding && <ProLock L={L} plan={upF.name} desc={L.dLock3} price={upF.price} preview={<PreviewFunding />} />}
+              {sel === 'all' && accounts.length >= 2 && (!canCompare ? <ProLock L={L} plan={upC.name} desc={L.dLock2} price={upC.price} trial={upC.trial} preview={<PreviewCompare />} /> : <CompareAccounts accounts={accounts} trades={ranged} lang={lang} />)}
+              {sel !== 'all' && cur && !canFunding && <ProLock L={L} plan={upF.name} desc={L.dLock3} price={upF.price} trial={upF.trial} preview={<PreviewFunding />} />}
               {sel !== 'all' && cur && canFunding && <FundCard acc={cur} net={a.net} maxDD={a.maxDD} L={L} onSave={(fields) => { const toNum = (v: any) => (v === '' || v == null ? null : Number(v)); setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, fund_target: toNum(fields.fund_target), fund_max_daily: toNum(fields.fund_max_daily), fund_max_total: toNum(fields.fund_max_total), fund_start: toNum(fields.fund_start) } : x))); }} />}
               {sel !== 'all' && cur && canFunding && <AccountExtras acc={cur} net={a.net} lang={lang} onSaved={(fields) => setAccounts(accounts.map((x) => (x.id === cur.id ? { ...x, acc_type: fields.acc_type || null, challenge_status: fields.challenge_status || null, challenge_cost: fields.challenge_cost === '' ? null : Number(fields.challenge_cost) } : x)))} />}
               {sel === 'all' && <p className="muted" style={{ fontSize: 13 }}>{lang === 'es' ? 'Elige una cuenta arriba para ver su fondeo, retiros y documentos.' : 'Pick an account above to see its funding, payouts and documents.'}</p>}

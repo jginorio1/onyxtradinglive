@@ -5,6 +5,7 @@ import { toast } from '@/lib/toast';
 import CopyEarningsCalc from '@/app/copy/CopyEarningsCalc';
 import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { trialTag } from '@/lib/trialTag';
 
 type Lang = 'es' | 'en';
 const TIERC: Record<string, string> = { diamond: '#378ADD', gold: 'var(--gold)', silver: '#9aa0ac', none: 'var(--mut)' };
@@ -48,7 +49,7 @@ export default function OnyxCopyHub() {
   const [providers, setProviders] = useState<any[]>([]);
   const ios = useIsIOSApp(); // iOS (Apple 3.1.1): seguir un trader de pago es una compra → se hace en la web
   // Candado de plan para Onyx Copy (capacidad 'copymkt'): apagado en Free, encendido en pago por defecto.
-  const [copyLock, setCopyLock] = useState<{ on: boolean; upName: string; upPrice: number }>({ on: true, upName: 'Pro', upPrice: 0 });
+  const [copyLock, setCopyLock] = useState<{ on: boolean; upName: string; upPrice: number; upTrial: number }>({ on: true, upName: 'Pro', upPrice: 0, upTrial: 0 });
   useEffect(() => {
     fetch('/api/account').then((r) => r.json()).then((j) => {
       const myPlan = j?.profile?.plan || 'free';
@@ -57,7 +58,7 @@ export default function OnyxCopyHub() {
       const v = plans.find((p: any) => p.id === myPlan)?.capabilities?.copymkt;
       const on = (v === undefined || v === null) ? !isFree : !!v;
       const cand = plans.filter((p: any) => p.id !== myPlan && p.capabilities?.copymkt && p.active !== false).sort((a: any, b: any) => (a.price_month || 0) - (b.price_month || 0))[0] || plans.find((p: any) => p.id === 'pro');
-      setCopyLock({ on, upName: cand?.name || 'Pro', upPrice: cand?.price_month || 0 });
+      setCopyLock({ on, upName: cand?.name || 'Pro', upPrice: cand?.price_month || 0, upTrial: Math.max(0, Math.min(90, Math.round(Number(cand?.capabilities?.trial_days) || 0))) });
     }).catch(() => {});
   }, []);
   const [follows, setFollows] = useState<any[]>([]);
@@ -234,11 +235,11 @@ export default function OnyxCopyHub() {
       {!copyLock.on ? (
         <div className="card" style={{ textAlign: 'center', padding: 32 }}>
           <div style={{ fontSize: 34, marginBottom: 8 }}>🔒</div>
-          <h3 style={{ marginBottom: 6 }}>{es ? 'Disponible en' : 'Available in'} <span style={{ color: 'var(--brand2)' }}>{copyLock.upName}</span></h3>
+          <h3 style={{ marginBottom: 6 }}>{es ? 'Disponible en' : 'Available in'} <span style={{ color: 'var(--brand2)' }}>{copyLock.upName}</span>{copyLock.upTrial > 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8, verticalAlign: 'middle', background: 'rgba(52,226,160,.14)', color: 'var(--green)', fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 20 }}><OnyxIcon name="gift" size={13} /> {trialTag(copyLock.upTrial, es ? 'es' : 'en')}</span> : null}</h3>
           <p className="muted" style={{ fontSize: 14, maxWidth: 440, margin: '0 auto 14px' }}>
             {es ? 'Sigue a los mejores traders o conviértete en proveedor de señales en el ranking Onyx Copy.' : 'Follow top traders or become a signal provider on the Onyx Copy ranking.'}
           </p>
-          {!ios && <a className="btn btn-primary" href="/pricing">{es ? 'Mejorar a' : 'Upgrade to'} {copyLock.upName}{copyLock.upPrice ? ` · $${copyLock.upPrice}/${es ? 'mes' : 'mo'}` : ''} →</a>}
+          {!ios && <a className="btn btn-primary" href="/pricing">{es ? 'Mejorar a' : 'Upgrade to'} {copyLock.upName}{copyLock.upPrice ? ` · $${copyLock.upPrice}/${es ? 'mes' : 'mo'}` : ''}{copyLock.upTrial > 0 ? ` · ${trialTag(copyLock.upTrial, es ? 'es' : 'en')}` : ''} →</a>}
         </div>
       ) : (<>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>

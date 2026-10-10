@@ -10,6 +10,7 @@ import { errMsg } from '@/lib/i18nErrors';
 import InstallWizard, { WIZ } from './InstallWizard';
 import QrPop from '@/app/components/QrPop';
 import { isNativeApp, openExternal } from '@/lib/native';
+import { trialTag } from '@/lib/trialTag';
 import MacInstallNote from '@/app/components/MacInstallNote';
 import { useIsIOSApp } from '@/app/account/ManageOnWeb';
 import { useCatalog } from '@/lib/useCatalog';
@@ -257,7 +258,7 @@ export default function KeysPage() {
   function pickPlat(k: string) { setPlat(k); try { localStorage.setItem('onyx_plat', k); } catch {} }
   // Candado de plan para Multi-plataforma (capacidad 'platforms'): las plataformas por
   // API (MatchTrader/TradeLocker/DXtrade) requieren plan con la capacidad; MT siempre libre.
-  const [multi, setMulti] = useState<{ on: boolean; upName: string }>({ on: true, upName: 'Pro' });
+  const [multi, setMulti] = useState<{ on: boolean; upName: string; upTrial: number }>({ on: true, upName: 'Pro', upTrial: 0 });
   useEffect(() => {
     fetch('/api/account').then((r) => r.json()).then((j) => {
       const myPlan = j?.profile?.plan || 'free';
@@ -266,7 +267,7 @@ export default function KeysPage() {
       const v = plans.find((p: any) => p.id === myPlan)?.capabilities?.platforms;
       const on = (v === undefined || v === null) ? !isFree : !!v;
       const cand = plans.filter((p: any) => p.id !== myPlan && p.capabilities?.platforms && p.active !== false).sort((a: any, b: any) => (a.price_month || 0) - (b.price_month || 0))[0] || plans.find((p: any) => p.id === 'pro');
-      setMulti({ on, upName: cand?.name || 'Pro' });
+      setMulti({ on, upName: cand?.name || 'Pro', upTrial: Math.max(0, Math.min(90, Math.round(Number(cand?.capabilities?.trial_days) || 0))) });
     }).catch(() => {});
   }, []);
   const API_KINDS = ['matchtrader', 'tradelocker', 'dxtrade'];
@@ -525,11 +526,11 @@ export default function KeysPage() {
         {API_KINDS.includes(kind) && !multi.on ? (
           <div className="card" style={{ textAlign: 'center', padding: 32 }}>
             <div style={{ fontSize: 34, marginBottom: 8 }}>🔒</div>
-            <h3 style={{ marginBottom: 6 }}>{lang === 'en' ? 'Available in' : 'Disponible en'} <span style={{ color: 'var(--brand2)' }}>{multi.upName}</span></h3>
+            <h3 style={{ marginBottom: 6 }}>{lang === 'en' ? 'Available in' : 'Disponible en'} <span style={{ color: 'var(--brand2)' }}>{multi.upName}</span>{multi.upTrial > 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8, verticalAlign: 'middle', background: 'rgba(52,226,160,.14)', color: 'var(--green)', fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 20 }}><OnyxIcon name="gift" size={13} /> {trialTag(multi.upTrial, lang)}</span> : null}</h3>
             <p className="muted" style={{ fontSize: 14, maxWidth: 440, margin: '0 auto 14px' }}>
               {lang === 'en' ? 'Connect MatchTrader, TradeLocker and DXtrade by broker API. MetaTrader stays available on every plan.' : 'Conecta MatchTrader, TradeLocker y DXtrade por API del bróker. MetaTrader sigue disponible en todos los planes.'}
             </p>
-            <a className="btn btn-primary" href="/pricing">{lang === 'en' ? 'Upgrade to' : 'Mejorar a'} {multi.upName} →</a>
+            <a className="btn btn-primary" href="/pricing">{lang === 'en' ? 'Upgrade to' : 'Mejorar a'} {multi.upName}{multi.upTrial > 0 ? ` · ${trialTag(multi.upTrial, lang)}` : ''} →</a>
           </div>
         ) : kind === 'matchtrader' ? (
           <MatchtraderConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
