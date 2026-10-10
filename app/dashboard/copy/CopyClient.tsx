@@ -58,8 +58,9 @@ const T: any = {
     wizWait: 'Esperando la primera señal de tu EA…', wizOk: '¡Conectada! Ya puedes copiar.', wizClose: 'Cerrar',
     dlMaster: 'EA Master (.mq5)', dlSlave: 'EA Esclava (.mq5)',
     wzPlat: '¿Tu MetaTrader es 4 o 5?', wzMt5: 'MetaTrader 5', wzMt4: 'MetaTrader 4',
-    wzS1t: 'Descarga el archivo', wzS1d: 'Pulsa el botón. Se baja la EA a tu computadora.', wzDl: 'Descargar EA',
-    wzS2t: 'Ponlo en MetaTrader', wzS2d: 'En MetaTrader: Archivo → Abrir carpeta de datos → __F__ → Experts. Pega ahí el archivo y reinicia MetaTrader.',
+    wzS1t: 'Descarga el archivo', wzS1d: 'Pulsa el botón. La EA ya viene compilada y lista, no tienes que compilar nada. Se baja a tu computadora.', wzDl: 'Descargar EA',
+    wzSrcFallback: '¿No abre o te da error? Descarga el código fuente y compílalo',
+    wzS2t: 'Ponlo en MetaTrader', wzS2d: 'En MetaTrader: Archivo → Abrir carpeta de datos → __F__ → Experts. Pega ahí el archivo. Luego, en el Navegador, clic derecho en “Asesores Expertos” → Actualizar: aparecerá la EA.',
     wzS3t: 'Arrástralo a un gráfico', wzS3d: 'Abre cualquier gráfico y arrastra la EA encima. Marca “Permitir operaciones automáticas”.',
     wzS4t: 'Pega esta dirección', wzS4d: 'Marca “Permitir WebRequest para las URL siguientes” y pega esta línea:',
     wzS5t: 'Pega tu clave Copy', wzS5d: 'En el recuadro ApiKey pega tu clave y pulsa Aceptar.',
@@ -72,7 +73,7 @@ const T: any = {
     wzStuck: [
       { t: 'El botón Algo Trading no está verde', d: 'Es lo que falla el 80% de las veces.' },
       { t: 'Falta autorizar la dirección', d: 'Herramientas → Opciones → Asesores Expertos → “Permitir WebRequest”.' },
-      { t: 'No compilaste la EA', d: 'Ábrela en MetaEditor y pulsa F7 (0 errores).' },
+      { t: 'La EA no aparece en el Navegador', d: 'Clic derecho en “Asesores Expertos” → Actualizar. Si da error al abrir, baja el código fuente y compílalo.' },
       { t: 'La clave se pegó mal', d: 'Copia otra vez tu clave Copy en el campo ApiKey.' },
     ],
     // --- cTrader (copy) ---
@@ -171,8 +172,9 @@ const T: any = {
     wizWait: 'Waiting for your EA’s first signal…', wizOk: 'Connected! You can copy now.', wizClose: 'Close',
     dlMaster: 'Master EA (.mq5)', dlSlave: 'Slave EA (.mq5)',
     wzPlat: 'Is your MetaTrader 4 or 5?', wzMt5: 'MetaTrader 5', wzMt4: 'MetaTrader 4',
-    wzS1t: 'Download the file', wzS1d: 'Click the button. The EA downloads to your computer.', wzDl: 'Download EA',
-    wzS2t: 'Put it in MetaTrader', wzS2d: 'In MetaTrader: File → Open Data Folder → __F__ → Experts. Drop the file there and restart MetaTrader.',
+    wzS1t: 'Download the file', wzS1d: 'Click the button. The EA comes already compiled and ready — you do not have to compile anything. It downloads to your computer.', wzDl: 'Download EA',
+    wzSrcFallback: "Won't open or gives an error? Download the source and compile it",
+    wzS2t: 'Put it in MetaTrader', wzS2d: 'In MetaTrader: File → Open Data Folder → __F__ → Experts. Drop the file there. Then, in the Navigator, right-click "Expert Advisors" → Refresh: the EA will appear.',
     wzS3t: 'Drag it onto a chart', wzS3d: 'Open any chart and drag the EA onto it. Tick “Allow algo trading”.',
     wzS4t: 'Paste this address', wzS4d: 'Tick “Allow WebRequest for listed URL” and paste this line:',
     wzS5t: 'Paste your Copy key', wzS5d: 'In the ApiKey box paste your key and click OK.',
@@ -185,7 +187,7 @@ const T: any = {
     wzStuck: [
       { t: 'The Algo Trading button is not green', d: 'This fails 80% of the time.' },
       { t: 'The address is not authorized', d: 'Tools → Options → Expert Advisors → “Allow WebRequest”.' },
-      { t: 'You did not compile the EA', d: 'Open it in MetaEditor and press F7 (0 errors).' },
+      { t: 'The EA is not in the Navigator', d: 'Right-click "Expert Advisors" → Refresh. If it errors on open, download the source and compile it.' },
       { t: 'The key was pasted wrong', d: 'Copy your Copy key again into the ApiKey field.' },
     ],
     // --- cTrader (copy) ---
@@ -787,8 +789,8 @@ export default function CopyClient() {
               <summary className="muted" style={{ fontSize: 11, cursor: 'pointer' }}>{t.masterLegacy}</summary>
               <div className="muted" style={{ fontSize: 11, margin: '6px 0 8px' }}>{t.masterLegacyD}</div>
               <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq5" download><OnyxIcon emoji="⬇" size={16} /> MT5</a>
-                <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.mq4" download><OnyxIcon emoji="⬇" size={16} /> MT4</a>
+                <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.ex5" download><OnyxIcon emoji="⬇" size={16} /> MT5</a>
+                <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopyMaster.ex4" download><OnyxIcon emoji="⬇" size={16} /> MT4</a>
                 <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ctrader/OnyxCopyMaster.cs" download><OnyxIcon emoji="⬇" size={16} /> cTrader</a>
               </div>
             </details>
@@ -797,8 +799,8 @@ export default function CopyClient() {
             <span className="pill" style={{ fontSize: 9.5, color: C_SLAVE, background: C_SLAVE + '22' }}>{t.role_slave}</span>
             <div className="muted" style={{ fontSize: 12, margin: '7px 0 9px' }}>{t.dlSlaveDesc}</div>
             <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.mq5" download><OnyxIcon emoji="⬇" size={16} /> MT5 (.mq5)</a>
-              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.mq4" download><OnyxIcon emoji="⬇" size={16} /> MT4 (.mq4)</a>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.ex5" download><OnyxIcon emoji="⬇" size={16} /> MT5 (.ex5)</a>
+              <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ea/OnyxCopySlave.ex4" download><OnyxIcon emoji="⬇" size={16} /> MT4 (.ex4)</a>
               <a className="btn btn-ghost" style={{ fontSize: 12, padding: '5px 11px' }} href="/ctrader/OnyxCopySlave.cs" download><OnyxIcon emoji="⬇" size={16} /> cTrader (.cs)</a>
             </div>
           </div>
@@ -1276,10 +1278,14 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
   const color = isMaster ? C_MASTER : C_SLAVE;
   const roleTx = isMaster ? t.role_master : t.role_slave;
   const ext = plat === 'mt5' ? 'mq5' : plat === 'mt4' ? 'mq4' : 'cs';
+  // En MetaTrader entregamos el binario ya compilado (.ex5/.ex4); el fuente queda de respaldo.
+  const binExt = plat === 'mt5' ? 'ex5' : plat === 'mt4' ? 'ex4' : 'cs';
   const folder = plat === 'mt5' ? 'MQL5' : 'MQL4';
   const dlBase = isMaster ? 'OnyxCopyMaster' : 'OnyxCopySlave';
-  const dlName = dlBase + '.' + ext;
+  const dlName = dlBase + '.' + binExt;
   const dlHref = isCt ? `/ctrader/${dlName}` : `/ea/${dlName}`;
+  const srcName = dlBase + '.' + ext;
+  const srcHref = isCt ? '' : `/ea/${srcName}`;
   const stuckList = isCt ? t.wzCtStuck : t.wzStuck;
 
   // Cuenta el tiempo esperando la señal → ayuda a los ~75 s si no conecta.
@@ -1322,6 +1328,11 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
       <Step n={2} title={t.wzS1t}>
         <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wzS1d}</div>
         <a className="btn btn-primary" style={{ fontSize: 12.5, padding: '6px 13px' }} href={dlHref} download><OnyxIcon emoji="⬇" size={16} /> {isCt ? t.wzCtDl : t.wzDl} · {dlName}</a>
+        {!isCt && (
+          <div style={{ marginTop: 7 }}>
+            <a className="muted" style={{ fontSize: 11.5, textDecoration: 'underline' }} href={srcHref} download>{t.wzSrcFallback} ({srcName})</a>
+          </div>
+        )}
       </Step>
 
       {isCt ? (
@@ -1383,21 +1394,8 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
             </div>
           </Step>
 
-          {/* 4 · Compilar */}
-          <Step n={4} title={t.wzCompT}>
-            <div className="muted" style={{ fontSize: 12 }}>{t.wzCompD}</div>
-            <div style={box}>
-              <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-                <span style={chip}>⌨️ F4</span>{arrow}<span style={chip}>MetaEditor</span>{arrow}<span style={chip}>▶️ {plat === 'mt5' ? 'Compilar' : 'Compile'} (F7)</span>
-              </div>
-              <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.10)', border: '1px solid var(--green)', borderRadius: 8, padding: '5px 9px' }}>
-                {tick}<span style={{ fontSize: 11.5, color: 'var(--green)' }}>{t.wzOk0}</span>
-              </div>
-            </div>
-          </Step>
-
-          {/* 5 · Arrastrar al gráfico */}
-          <Step n={5} title={t.wzS3t}>
+          {/* 4 · Arrastrar al gráfico (ya viene compilado, no hay paso de compilar) */}
+          <Step n={4} title={t.wzS3t}>
             <div className="muted" style={{ fontSize: 12 }}>{t.wzS3d}</div>
             <div style={box}>
               <div className="row" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1413,8 +1411,8 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
             </div>
           </Step>
 
-          {/* 6 · WebRequest */}
-          <Step n={6} title={t.wzS4t}>
+          {/* 5 · WebRequest */}
+          <Step n={5} title={t.wzS4t}>
             <div style={box}>
               <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
                 <span style={chip}>{t.wzMenuTools}</span>{arrow}<span style={chip}>{t.wzMenuOpt}</span>{arrow}<span style={chip}>{t.wzMenuEA}</span>
@@ -1424,8 +1422,8 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
             </div>
           </Step>
 
-          {/* 7 · Clave Copy */}
-          <Step n={7} title={t.wzS5t}>
+          {/* 6 · Clave Copy */}
+          <Step n={6} title={t.wzS5t}>
             <div className="muted" style={{ fontSize: 12 }}>{t.wzS5d}</div>
             <div style={box}>
               <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1437,8 +1435,8 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
             </div>
           </Step>
 
-          {/* 8 · Algo Trading */}
-          <Step n={8} title={t.wzAlgoT}>
+          {/* 7 · Algo Trading */}
+          <Step n={7} title={t.wzAlgoT}>
             <div className="muted" style={{ fontSize: 12 }}>{t.wzAlgoD}</div>
             <div style={box}>
               <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.12)', color: 'var(--green)', borderRadius: 6, padding: '5px 9px', fontSize: 12 }}>▶️ Algo Trading</span>
