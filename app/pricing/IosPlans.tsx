@@ -8,7 +8,12 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 // Cumple la regla 3.1.1: los planes se compran con Apple (Face ID / Apple Pay). El
 // plan se activa en el servidor por el webhook de RevenueCat.
 // ============================================================
-type Plan = { id: string; name: string; name_en: string; price_month: number; features?: string[]; features_en?: string[] };
+type Plan = { id: string; name: string; name_en: string; price_month: number; price_year?: number; features?: string[]; features_en?: string[] };
+
+// Un plan "de pago" para iOS = no es Free y tiene algún precio (mensual O anual).
+// Antes solo miraba el mensual, así que un plan SOLO anual (p. ej. Onyx Builder)
+// quedaba fuera. Con esto vuelve a aparecer.
+const isPaid = (p: Plan) => p.id !== 'free' && (Number(p.price_month) > 0 || Number(p.price_year) > 0);
 
 export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; lang: 'es' | 'en'; currentPlan?: string }) {
   const es = lang === 'es';
@@ -21,8 +26,8 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
 
   // Lista de planes de pago a emparejar (id interno + palabras del nombre + precio).
   const paidMatch = plans
-    .filter((p) => p.id !== 'free' && Number(p.price_month) > 0)
-    .map((p) => ({ id: p.id, price: Number(p.price_month) || 0, aliases: [String(p.name || ''), String(p.name_en || '')].join(' ').split(/[^a-z0-9]+/i).filter(Boolean) }));
+    .filter(isPaid)
+    .map((p) => ({ id: p.id, price: Number(p.price_month) || Number(p.price_year) || 0, aliases: [String(p.name || ''), String(p.name_en || '')].join(' ').split(/[^a-z0-9]+/i).filter(Boolean) }));
 
   // Trae precios de Apple y FUSIONA con lo que ya había (nunca borra un precio ya cargado).
   // Devuelve true si ya están TODOS los planes de pago.
@@ -100,7 +105,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
   // Mostramos TODOS los planes de pago; el precio de Apple llega de forma asíncrona,
   // así que si aún no está usamos el precio de la BD como respaldo y el botón queda
   // en "Cargando…". Así ninguna tarjeta (p. ej. Builder) desaparece por timing.
-  const paid = plans.filter((p) => p.id !== 'free' && Number(p.price_month) > 0);
+  const paid = plans.filter(isPaid);
 
   return (
     <div className="wrap" style={{ padding: '44px 18px 60px', maxWidth: 560, margin: '0 auto' }}>
@@ -111,7 +116,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
         {paid.map((p) => {
           const ip = prices[p.id];
           const loaded = !!ip?.pkg;                                   // Apple ya devolvió el paquete
-          const priceStr = ip?.priceString || `$${Number(p.price_month).toFixed(2)}`; // respaldo: precio BD
+          const priceStr = ip?.priceString || `$${(Number(p.price_month) || Number(p.price_year) || 0).toFixed(2)}`; // respaldo: precio BD (mensual o anual)
           const nm = es ? p.name : (p.name_en || p.name);
           const feats = (es ? p.features : p.features_en) || [];
           const active = (activePlan || currentPlan) === p.id;
