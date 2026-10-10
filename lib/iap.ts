@@ -174,20 +174,34 @@ export async function restoreIap(): Promise<boolean> {
   try { await Purchases.restorePurchases(); return true; } catch { return false; }
 }
 
-// Abre la pantalla NATIVA para gestionar/cancelar la suscripción.
-// RevenueCat da la URL de gestión real en customerInfo.managementURL (en iOS es la
-// de Suscripciones de Apple; en Android, la de Google Play). La abrimos en el
-// NAVEGADOR DEL SISTEMA (no dentro del WebView), que es quien sabe llevar a Ajustes.
-// Respaldo: la URL fija de suscripciones de Apple.
+// Abre la gestión de la suscripción SIN mandar al usuario a Safari.
+//
+// 1) Intenta la HOJA NATIVA de Apple/RevenueCat DENTRO de la app (showManageSubscriptions):
+//    aparece encima de Onyx, muestra SOLO esta suscripción y deja cambiar/cancelar ahí
+//    mismo. Si la versión del plugin no expone ese método, no pasa nada (seguimos).
+// 2) Respaldo iOS: esquema `itms-apps://` → iOS abre la pantalla de Suscripciones de
+//    Ajustes (NATIVA, dentro del teléfono, NUNCA el navegador).
+// 3) Respaldo Android/web: la URL de gestión real (Google Play / cuenta de Apple).
 export async function manageSubscription(): Promise<void> {
-  const APPLE = 'https://apps.apple.com/account/subscriptions';
-  let url = APPLE;
+  // 1) Hoja nativa (lo ideal: no sale de la app).
+  if (isNativeApp()) {
+    try {
+      const anyP: any = Purchases as any;
+      if (typeof anyP.showManageSubscriptions === 'function') { await anyP.showManageSubscriptions(); return; }
+    } catch { /* si falla, caemos al respaldo nativo */ }
+  }
+  // URL de gestión real (RevenueCat la expone en customerInfo).
+  let url = 'https://apps.apple.com/account/subscriptions';
   try {
     const info: any = await Purchases.getCustomerInfo();
     const ci: any = info?.customerInfo || info || {};
     if (ci?.managementURL) url = String(ci.managementURL);
   } catch {}
-  // Dentro de la app → navegador del sistema (abre Ajustes/Play). En web → nueva pestaña.
+  // 2) iOS: esquema nativo → Ajustes › Suscripciones (sin Safari).
+  if (nativePlatform() === 'ios') {
+    try { window.location.href = 'itms-apps://apps.apple.com/account/subscriptions'; return; } catch {}
+  }
+  // 3) Android (navegador del sistema → Play) / web (pestaña nueva).
   if (isNativeApp()) { if (!openExternal(url)) { try { window.open(url, '_blank'); } catch {} } }
   else { try { window.open(url, '_blank'); } catch { window.location.assign(url); } }
 }
