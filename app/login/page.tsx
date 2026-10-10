@@ -189,6 +189,9 @@ function LoginInner() {
   // A dónde vuelve el usuario tras confirmar el email o tras entrar.
   const nextRaw = params.get('next') || planDest || '/dashboard';
   const nextDest = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/dashboard';
+  // Llega desde /confirmado cuando el enlace del correo se abrió en otro navegador:
+  // mostramos un aviso de "email confirmado" sobre el login normal (misma pantalla).
+  const justConfirmed = params.get('confirmed') === '1';
 
   // ¿La cuenta necesita el código de 2 pasos antes de entrar? Robusto: primero
   // el nivel de aseguramiento (AAL); si por una condición de carrera aún no
@@ -422,6 +425,12 @@ function LoginInner() {
         </div>
         </div>{/* /lb-left */}
         <div className="lb-right">
+        {justConfirmed && !signup && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(52,226,160,.12)', border: '1px solid rgba(52,226,160,.35)', borderRadius: 10, padding: '9px 12px', marginBottom: 14 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green, #34e2a0)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            <span style={{ fontSize: 13, color: 'var(--tx)' }}>{lang === 'en' ? 'Email confirmed. Sign in to continue.' : 'Email confirmado. Entra para continuar.'}</span>
+          </div>
+        )}
         <form onSubmit={submit}>
           {/* Honeypot: invisible para humanos, los bots lo rellenan. */}
           <input type="text" name="company" tabIndex={-1} autoComplete="off" value={hp} onChange={(e) => setHp(e.target.value)}

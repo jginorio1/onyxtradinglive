@@ -344,7 +344,9 @@ export default function KeysPage() {
       <div className="wrap-wide" style={{ padding: '28px 0', fontSize: 15 }}>
         <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <h1>{t.h1}</h1>
-          {typeof window !== 'undefined' && <QrPop data={window.location.origin + '/dashboard/keys'} label={lang === 'es' ? 'Abrir en el móvil' : 'Open on phone'} />}
+          {/* "Abrir en el móvil" (QR) solo tiene sentido en escritorio: lo escaneas con
+              el teléfono. Dentro de la app nativa ya estás en el móvil, así que se oculta. */}
+          {!!origin && !isNativeApp() && <QrPop data={origin + '/dashboard/keys'} label={lang === 'es' ? 'Abrir en el móvil' : 'Open on phone'} />}
         </div>
         <p className="muted" style={{ margin: '8px 0 22px' }}>{t.intro}</p>
 

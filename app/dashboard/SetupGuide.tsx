@@ -13,10 +13,10 @@ type Acc = {
   tradeAllowed?: boolean | null;
 };
 
-const PLATS = ['MT5', 'MT4', 'cTrader'];
+const PLATS = ['MT5', 'MT4', 'cTrader', 'MatchTrader', 'TradeLocker', 'DXtrade'];
 // Mapea el nombre visible al código que usa la página de conectar, para
 // preseleccionar el conector correcto de esa plataforma.
-const platKey = (p: string) => ({ MT5: 'mt5', MT4: 'mt4', cTrader: 'ctrader' } as Record<string, string>)[p] || (p || 'mt5').toLowerCase();
+const platKey = (p: string) => ({ MT5: 'mt5', MT4: 'mt4', cTrader: 'ctrader', MatchTrader: 'matchtrader', TradeLocker: 'tradelocker', DXtrade: 'dxtrade' } as Record<string, string>)[p] || (p || 'mt5').toLowerCase();
 
 export default function SetupGuide() {
   const { lang } = useLang();
