@@ -28,7 +28,31 @@ export async function configureIAP(userId: string): Promise<boolean> {
   } catch { return false; }
 }
 
-export type IapPlan = { planId: string; priceString: string; productId: string; pkg: any };
+// intro = oferta introductoria del producto (la PRUEBA GRATIS, si existe). La lee
+// RevenueCat/StoreKit del propio producto; freeTrial=true cuando el precio es 0.
+export type IapIntro = { freeTrial: boolean; priceString: string; units: number; unit: string };
+export type IapPlan = { planId: string; priceString: string; productId: string; pkg: any; intro?: IapIntro | null };
+
+// Extrae la oferta introductoria de un producto de RevenueCat, tolerando las
+// distintas formas del SDK (introPrice clásico, o defaultOption/subscriptionOptions
+// en versiones nuevas con Google Play). Devuelve null si no hay prueba.
+function readIntro(product: any): IapIntro | null {
+  try {
+    // 1) Forma clásica: product.introPrice { price, priceString, periodUnit, periodNumberOfUnits }
+    const ip = product?.introPrice;
+    if (ip && (Number(ip.price) === 0 || /free|gratis|0[.,]00/i.test(String(ip.priceString || '')))) {
+      return { freeTrial: true, priceString: String(ip.priceString || ''), units: Number(ip.periodNumberOfUnits) || Number(ip.cycles) || 1, unit: String(ip.periodUnit || ip.period || 'DAY').toUpperCase() };
+    }
+    // 2) Forma nueva (subscriptionOptions): busca una fase gratis.
+    const opt = product?.defaultOption || (Array.isArray(product?.subscriptionOptions) ? product.subscriptionOptions[0] : null);
+    const free = opt?.freePhase || (Array.isArray(opt?.pricingPhases) ? opt.pricingPhases.find((p: any) => Number(p?.price?.amountMicros) === 0 || Number(p?.price) === 0) : null);
+    if (free) {
+      const per = free.billingPeriod || free.period || {};
+      return { freeTrial: true, priceString: '', units: Number(per.value) || Number(free.billingCycleCount) || 1, unit: String(per.unit || 'DAY').toUpperCase() };
+    }
+  } catch {}
+  return null;
+}
 
 // Un plan a emparejar: su id, y palabras clave alternativas (p. ej. del nombre) por si
 // el product identifier no contiene el id interno. Ej: plan id 'trader' con nombre
@@ -97,7 +121,7 @@ export async function getIapPlans(plans: Array<string | PlanMatch>, tries = 6, d
       const used = new Set<string>();
       for (const m of list) {
         const pkg = matchPkg(pkgs.filter((k: any) => !used.has(String(k?.product?.identifier || ''))), m);
-        if (pkg) { used.add(String(pkg.product?.identifier || '')); out.push({ planId: m.id, priceString: pkg.product?.priceString || '', productId: pkg.product?.identifier || '', pkg }); }
+        if (pkg) { used.add(String(pkg.product?.identifier || '')); out.push({ planId: m.id, priceString: pkg.product?.priceString || '', productId: pkg.product?.identifier || '', pkg, intro: readIntro(pkg.product) }); }
       }
       if (out.length > best.length) best = out;          // nos quedamos con la corrida más completa
       if (best.length >= list.length) return best;       // ya están todos → listo

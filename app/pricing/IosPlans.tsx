@@ -150,6 +150,22 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
                 </b>
                 <span style={{ fontSize: 15, fontWeight: 700 }}>{priceStr}</span>
               </div>
+              {ip?.intro?.freeTrial && (() => {
+                // Texto de la prueba gratis: "7 días gratis" / "7 days free".
+                const n = Math.max(1, Number(ip.intro!.units) || 1);
+                const u = String(ip.intro!.unit || 'DAY');
+                const unitEs: Record<string, string> = { DAY: n === 1 ? 'día' : 'días', WEEK: n === 1 ? 'semana' : 'semanas', MONTH: n === 1 ? 'mes' : 'meses', YEAR: n === 1 ? 'año' : 'años' };
+                const unitEn: Record<string, string> = { DAY: n === 1 ? 'day' : 'days', WEEK: n === 1 ? 'week' : 'weeks', MONTH: n === 1 ? 'month' : 'months', YEAR: n === 1 ? 'year' : 'years' };
+                const txt = es ? `${n} ${unitEs[u] || 'días'} gratis` : `${n} ${unitEn[u] || 'days'} free`;
+                return (
+                  <div style={{ marginTop: 8 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(52,199,120,.16)', color: 'var(--green2,#12b981)', fontSize: 11.5, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
+                      🎁 {txt}
+                    </span>
+                    <span className="muted" style={{ fontSize: 11, marginLeft: 8 }}>{es ? `luego ${priceStr}` : `then ${priceStr}`}</span>
+                  </div>
+                );
+              })()}
               {feats.length > 0 && (
                 <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--mut)', lineHeight: 1.7 }}>
                   {feats.slice(0, 5).map((f, i) => <li key={i}>{f}</li>)}
@@ -170,6 +186,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
                   ? (es ? '✓ Tu plan actual' : '✓ Your current plan')
                   : busy === p.id ? '…'
                   : !loaded ? (es ? 'Cargando… (toca para reintentar)' : 'Loading… (tap to retry)')
+                  : ip?.intro?.freeTrial ? (es ? 'Probar gratis' : 'Start free trial')
                   : (es ? `Comprar ${nm}` : `Buy ${nm}`)}
               </button>
             </div>
