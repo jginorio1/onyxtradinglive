@@ -76,11 +76,12 @@ async function sendToToken(token: string, projectId: string, oauth: string, p: P
           sound: 'default',
           default_vibrate_timings: true,
           // Identidad Onyx en la notificación:
-          //  • icon: ícono chico monocromo de la barra de estado (drawable ic_stat_onyx del APK).
-          //  • color: acento morado de marca (tiñe el ícono y el nombre).
+          //  • icon: ícono chico monocromo de la barra de estado (drawable ic_stat_onyx = anillo Onyx).
+          //  • color: NARANJA de marca (mismo del icono de la app) para que Android se vea
+          //    igual que iOS, donde la notificación usa el icono naranja de la app.
           //  • channel_id: la categoría → canal (Plan, Robots, Soporte…), creado en NativeInit.
           icon: 'ic_stat_onyx',
-          color: '#4B3FF0',
+          color: '#C77C35',
           channel_id: p.category || 'onyx_default',
         },
       },
