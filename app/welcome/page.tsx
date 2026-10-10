@@ -15,16 +15,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/lib/lang';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 type Intent = 'monitor' | 'guardian' | 'copy' | 'robots' | 'academy' | 'all';
 
+// icon = nombre del set moderno de Onyx (líneas), no emoji → congruente con el resto de la app.
 const OPTS: { id: Intent; icon: string; es: string; en: string; esSub: string; enSub: string }[] = [
-  { id: 'monitor', icon: '📊', es: 'Monitorear mis cuentas', en: 'Monitor my accounts', esSub: 'KPIs, diario, reto', enSub: 'KPIs, journal, challenge' },
-  { id: 'guardian', icon: '🛡️', es: 'Proteger mi reto', en: 'Protect my challenge', esSub: 'Onyx Guardian', enSub: 'Onyx Guardian' },
-  { id: 'copy', icon: '🔁', es: 'Copiar operaciones', en: 'Copy trading', esSub: 'Onyx Copy', enSub: 'Onyx Copy' },
-  { id: 'robots', icon: '🤖', es: 'Robots', en: 'Robots', esSub: 'Comprar o vender · Bot Lab', enSub: 'Buy or sell · Bot Lab' },
-  { id: 'academy', icon: '🎓', es: 'Montar mi academia', en: 'Build my academy', esSub: 'Onyx Academy', enSub: 'Onyx Academy' },
-  { id: 'all', icon: '✨', es: 'Explorar todo', en: 'Explore everything', esSub: 'El ecosistema completo', enSub: 'The full ecosystem' },
+  { id: 'monitor', icon: 'performance', es: 'Monitorear mis cuentas', en: 'Monitor my accounts', esSub: 'KPIs, diario, reto', enSub: 'KPIs, journal, challenge' },
+  { id: 'guardian', icon: 'shield', es: 'Proteger mi reto', en: 'Protect my challenge', esSub: 'Onyx Guardian', enSub: 'Onyx Guardian' },
+  { id: 'copy', icon: 'swap', es: 'Copiar operaciones', en: 'Copy trading', esSub: 'Onyx Copy', enSub: 'Onyx Copy' },
+  { id: 'robots', icon: 'ai', es: 'Robots', en: 'Robots', esSub: 'Comprar o vender · Bot Lab', enSub: 'Buy or sell · Bot Lab' },
+  { id: 'academy', icon: 'graduation', es: 'Montar mi academia', en: 'Build my academy', esSub: 'Onyx Academy', enSub: 'Onyx Academy' },
+  { id: 'all', icon: 'star', es: 'Explorar todo', en: 'Explore everything', esSub: 'El ecosistema completo', enSub: 'The full ecosystem' },
 ];
 
 // Plan sugerido según lo que elija (solo para el teaser; el detalle real está en /pricing).
@@ -93,7 +95,7 @@ export default function WelcomePage() {
                 const on = sel.includes(o.id);
                 return (
                   <button key={o.id} type="button" onClick={() => toggle(o.id)} className={'ow-opt' + (on ? ' on' : '')}>
-                    <span className="ow-ic">{o.icon}</span>
+                    <span className="ow-ic"><OnyxIcon name={o.icon} size={22} /></span>
                     <span className="ow-ot">{es ? o.es : o.en}</span>
                     <span className="ow-os">{es ? o.esSub : o.enSub}</span>
                     {on && <span className="ow-check">✓</span>}
@@ -137,7 +139,7 @@ const css = `
   .ow-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
   .ow-opt { position: relative; text-align: left; background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 11px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; transition: border-color .15s, background .15s; }
   .ow-opt.on { border-color: var(--brand); background: rgba(255,157,61,.10); }
-  .ow-ic { font-size: 20px; }
+  .ow-ic { color: var(--brand); display: inline-flex; margin-bottom: 2px; }
   .ow-ot { font-size: 13px; font-weight: 600; color: var(--tx); }
   .ow-os { font-size: 11px; color: var(--mut); }
   .ow-check { position: absolute; top: 9px; right: 10px; width: 18px; height: 18px; border-radius: 50%; background: var(--brand); color: #1a1205; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
