@@ -271,7 +271,10 @@ export default function KeysPage() {
   }, []);
   const API_KINDS = ['matchtrader', 'tradelocker', 'dxtrade'];
   const activePlat = (t.platforms || []).find((p: any) => p.key === plat) || t.platforms[0];
-  const kind = activePlat.kind; // 'mt' | 'ctrader' | 'soon'
+  const kind = activePlat.kind; // 'mt' | 'ctrader' | 'matchtrader' | 'tradelocker' | 'dxtrade'
+  // ¿La plataforma elegida se conecta por API del bróker (sin conector ni clave Onyx)?
+  // MatchTrader, TradeLocker y DXtrade entran con el login del bróker; MT/cTrader usan EA.
+  const isApi = API_KINDS.includes(kind);
 
   // Datos que dependen de la plataforma para pasar al asistente
   const platData = (() => {
@@ -348,7 +351,11 @@ export default function KeysPage() {
               el teléfono. Dentro de la app nativa ya estás en el móvil, así que se oculta. */}
           {!!origin && !isNativeApp() && <QrPop data={origin + '/dashboard/keys'} label={lang === 'es' ? 'Abrir en el móvil' : 'Open on phone'} />}
         </div>
-        <p className="muted" style={{ margin: '8px 0 22px' }}>{t.intro}</p>
+        <p className="muted" style={{ margin: '8px 0 22px' }}>{isApi
+          ? (lang === 'en'
+              ? 'Pick your platform, then connect via your broker API — nothing to install. Onyx only reads: it never trades or moves your funds.'
+              : 'Elige tu plataforma y conéctala por la API de tu bróker, sin instalar nada. Onyx solo lee: nunca opera ni mueve tus fondos.')
+          : t.intro}</p>
 
         {/* Medidor de cupos del plan */}
         {usage && (
@@ -366,19 +373,70 @@ export default function KeysPage() {
           </div>
         )}
 
-        {/* Recorrido en 3 fases */}
+        {/* Paso 1 · elige tu plataforma — va PRIMERO: los pasos de abajo se arman según ella. */}
         <div className="card" style={{ marginBottom: 14 }}>
-          <div className="row" style={{ alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Phase n={1} done={hasKey} active={!hasKey} label={lang === 'en' ? 'Create your key' : 'Crea tu clave'} />
-            <div style={{ flex: 1, height: 2, minWidth: 16, background: hasKey ? 'var(--green)' : 'var(--line)' }} />
-            <Phase n={2} done={false} active={hasKey} label={lang === 'en' ? 'Install the connector' : 'Instala el conector'} />
-            <div style={{ flex: 1, height: 2, minWidth: 16, background: 'var(--line)' }} />
-            <Phase n={3} done={false} active={false} label={lang === 'en' ? 'Connect' : 'Conecta'} />
+          <h3 style={{ marginBottom: 4 }}>{lang === 'en' ? '1 · Choose your platform' : '1 · Elige tu plataforma'}</h3>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.platD}</p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+            {t.platforms.map((p: any) => {
+              const on = p.key === plat;
+              const hov = hoverPlat === p.key;
+              const ac = platAccent[p.key] || 'var(--brand)';
+              const lit = on || hov;   // borde/glow encendido al seleccionar o pasar el cursor
+              return (
+                <button key={p.key} onClick={() => pickPlat(p.key)}
+                  onMouseEnter={() => setHoverPlat(p.key)} onMouseLeave={() => setHoverPlat('')}
+                  style={{
+                    textAlign: 'left', cursor: 'pointer', borderRadius: 12, padding: '12px 13px',
+                    background: on ? `color-mix(in srgb, ${ac} 12%, var(--bg2))` : 'var(--bg2)',
+                    border: `${on ? 2 : 1}px solid ${lit ? ac : 'var(--line)'}`,
+                    boxShadow: lit ? `0 0 0 1px ${ac}55, 0 0 16px ${ac}${on ? '66' : '44'}` : 'none',
+                    transform: on ? 'translateY(-1px)' : 'none',
+                    transition: 'box-shadow .18s, border-color .18s, transform .18s, background .18s',
+                  }}>
+                  <div className="row between" style={{ gap: 6, alignItems: 'center' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 3, flex: 'none', background: ac, boxShadow: lit ? `0 0 8px ${ac}` : 'none', transition: 'box-shadow .18s' }} />
+                      <b style={{ fontSize: 14.5, color: 'var(--tx)', whiteSpace: 'nowrap' }}>{p.name}</b>
+                    </span>
+                    <span style={{
+                      width: 16, height: 16, borderRadius: '50%', flex: 'none',
+                      border: on ? 'none' : '1.5px solid var(--line)',
+                      background: on ? ac : 'transparent', color: '#0a0d14',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800,
+                    }}>{on ? '✓' : ''}</span>
+                  </div>
+                  <span className="pill" style={{ marginTop: 8, fontSize: 11, background: on ? `color-mix(in srgb, ${ac} 18%, transparent)` : 'var(--card2)', color: on ? ac : 'var(--mut)' }}>{API_KINDS.includes(p.kind) && !multi.on ? `🔒 ${p.badge}` : p.badge}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Fase 1: crear la clave — colapsa a fila verde cuando ya existe */}
-        {(hasKey && !addingKey) ? (
+        {/* Recorrido en 3 fases — cambia según la plataforma: conector (MT/cTrader) vs API del bróker. */}
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div className="row" style={{ alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {isApi ? (<>
+              <Phase n={1} done={false} active={true} label={lang === 'en' ? 'Pick your broker' : 'Elige tu bróker'} />
+              <div style={{ flex: 1, height: 2, minWidth: 16, background: 'var(--line)' }} />
+              <Phase n={2} done={false} active={false} label={lang === 'en' ? 'Sign in' : 'Inicia sesión'} />
+              <div style={{ flex: 1, height: 2, minWidth: 16, background: 'var(--line)' }} />
+              <Phase n={3} done={false} active={false} label={lang === 'en' ? 'Connect' : 'Conecta'} />
+            </>) : (<>
+              <Phase n={1} done={hasKey} active={!hasKey} label={lang === 'en' ? 'Create your key' : 'Crea tu clave'} />
+              <div style={{ flex: 1, height: 2, minWidth: 16, background: hasKey ? 'var(--green)' : 'var(--line)' }} />
+              <Phase n={2} done={false} active={hasKey} label={lang === 'en' ? 'Install the connector' : 'Instala el conector'} />
+              <div style={{ flex: 1, height: 2, minWidth: 16, background: 'var(--line)' }} />
+              <Phase n={3} done={false} active={false} label={lang === 'en' ? 'Connect' : 'Conecta'} />
+            </>)}
+          </div>
+        </div>
+
+        {/* Fase 1: crear la clave — SOLO para plataformas con conector (MT/cTrader).
+            Las plataformas por API (MatchTrader/TradeLocker/DXtrade) no llevan clave Onyx:
+            su propio bloque de abajo pide bróker + login, así que aquí se oculta. */}
+        {!isApi && ((hasKey && !addingKey) ? (
           <div className="card" style={{ marginBottom: 18, border: '1px solid var(--green)' }}>
             <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
               <div className="row" style={{ gap: 10, alignItems: 'center' }}>
@@ -462,48 +520,7 @@ export default function KeysPage() {
             </>
           )}
         </div>
-        )}
-
-        {/* Paso 2: elige tu plataforma */}
-        <div className="card" style={{ marginBottom: 18 }}>
-          <h3 style={{ marginBottom: 4 }}>{t.platT}</h3>
-          <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.platD}</p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
-            {t.platforms.map((p: any) => {
-              const on = p.key === plat;
-              const hov = hoverPlat === p.key;
-              const ac = platAccent[p.key] || 'var(--brand)';
-              const lit = on || hov;   // borde/glow encendido al seleccionar o pasar el cursor
-              return (
-                <button key={p.key} onClick={() => pickPlat(p.key)}
-                  onMouseEnter={() => setHoverPlat(p.key)} onMouseLeave={() => setHoverPlat('')}
-                  style={{
-                    textAlign: 'left', cursor: 'pointer', borderRadius: 12, padding: '12px 13px',
-                    background: on ? `color-mix(in srgb, ${ac} 12%, var(--bg2))` : 'var(--bg2)',
-                    border: `${on ? 2 : 1}px solid ${lit ? ac : 'var(--line)'}`,
-                    boxShadow: lit ? `0 0 0 1px ${ac}55, 0 0 16px ${ac}${on ? '66' : '44'}` : 'none',
-                    transform: on ? 'translateY(-1px)' : 'none',
-                    transition: 'box-shadow .18s, border-color .18s, transform .18s, background .18s',
-                  }}>
-                  <div className="row between" style={{ gap: 6, alignItems: 'center' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 3, flex: 'none', background: ac, boxShadow: lit ? `0 0 8px ${ac}` : 'none', transition: 'box-shadow .18s' }} />
-                      <b style={{ fontSize: 14.5, color: 'var(--tx)', whiteSpace: 'nowrap' }}>{p.name}</b>
-                    </span>
-                    <span style={{
-                      width: 16, height: 16, borderRadius: '50%', flex: 'none',
-                      border: on ? 'none' : '1.5px solid var(--line)',
-                      background: on ? ac : 'transparent', color: '#0a0d14',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800,
-                    }}>{on ? '✓' : ''}</span>
-                  </div>
-                  <span className="pill" style={{ marginTop: 8, fontSize: 11, background: on ? `color-mix(in srgb, ${ac} 18%, transparent)` : 'var(--card2)', color: on ? ac : 'var(--mut)' }}>{API_KINDS.includes(p.kind) && !multi.on ? `🔒 ${p.badge}` : p.badge}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        ))}
 
         {API_KINDS.includes(kind) && !multi.on ? (
           <div className="card" style={{ textAlign: 'center', padding: 32 }}>
