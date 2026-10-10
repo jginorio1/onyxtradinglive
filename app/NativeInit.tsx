@@ -100,18 +100,31 @@ export default function NativeInit() {
       // launchAutoHide:false en capacitor.config el splash nativo se queda puesto
       // hasta que lo escondemos aquí; así la transición es una sola, fluida.
       try {
+        // Fondo azul marino garantizado desde ya: así, cuando el splash se funda, NUNCA
+        // se asoma un flash blanco del WebView mientras la web termina de pintar.
+        try { document.documentElement.style.backgroundColor = '#0b0f1a'; document.body.style.backgroundColor = '#0b0f1a'; } catch {}
+
         const { SplashScreen } = await import('@capacitor/splash-screen');
-        const hideSplash = () => { SplashScreen.hide({ fadeOutDuration: 250 }).catch(() => {}); };
-        // Espera a que el documento esté pintado: dos rAF (asegura un frame real) y un
-        // pequeño colchón. Red de seguridad a 2.5 s por si algo tarda.
+        // Fundido más largo (400ms) para que el paso splash→app sea suave, sin brinco.
+        const hideSplash = () => { SplashScreen.hide({ fadeOutDuration: 400 }).catch(() => {}); };
+
+        // No ocultamos en 'load' (eso es solo "recursos cargados", la app aún no pintó
+        // su primera pantalla → se veía el salto). Esperamos a que el CONTENIDO real de
+        // la app esté en el DOM (login o panel), y recién ahí fundimos el splash. Como
+        // el splash y la app comparten el mismo logo sobre azul marino, la transición es
+        // una sola, sin parpadeo. Red de seguridad a 6 s por si algo tardara.
         let done = false;
         const go = () => { if (done) return; done = true; hideSplash(); };
-        if (document.readyState === 'complete') {
-          requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(go, 80)));
-        } else {
-          window.addEventListener('load', () => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(go, 80))), { once: true });
-        }
-        setTimeout(go, 2500);
+        const ready = () => !!document.querySelector('main, .wrap, .wrap-wide, .is-auth, [data-app-ready], form, .card');
+        let tries = 0;
+        const waitReady = () => {
+          if (done) return;
+          if (ready()) { requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(go, 120))); return; }
+          if (tries++ > 360) { go(); return; }   // ~6 s máx (360 frames)
+          requestAnimationFrame(waitReady);
+        };
+        waitReady();
+        setTimeout(go, 6000);
       } catch {}
 
       // Teclado (iOS): el problema era que el campo enfocado quedaba TAPADO por el

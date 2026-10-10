@@ -37,17 +37,10 @@ html[data-theme="light"]{
   --grad:linear-gradient(100deg,#e0781f,#c2410c);
   --soft-brand:#b84a12; --soft-brand2:#a8440f; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
 }
-@media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]):not([data-theme="light"]){
-    color-scheme: light;
-    --bg:#e7ebf3; --bg2:#eff2f8; --card:#ffffff; --card2:#e9eef6; --line:#d2d9e6;
-    --tx:#101725; --mut:#56617a;
-    --brand:#c2410c; --brand2:#e0781f;  /* naranja chinita oscurecido: texto blanco sobre var(--brand) pasa WCAG */
-    --green:#0e9268; --green2:#0b7c58; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
-    --grad:linear-gradient(100deg,#e0781f,#c2410c);
-    --soft-brand:#b84a12; --soft-brand2:#a8440f; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
-  }
-}
+/* DEFAULT = DARK. Antes, si el usuario no había elegido tema, la app seguía al
+   sistema (@media prefers-color-scheme: light) y en un iPhone en modo claro abría
+   en claro. Ahora el arranque siempre es oscuro (marca Onyx); el tema claro solo
+   se aplica cuando el usuario lo elige a propósito (html[data-theme="light"]). */
 
 *{box-sizing:border-box;margin:0;padding:0;}
 /* Reserva SIEMPRE el espacio de la barra de scroll. Sin esto, al cambiar de idioma
