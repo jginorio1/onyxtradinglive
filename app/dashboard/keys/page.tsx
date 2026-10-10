@@ -33,18 +33,19 @@ const K = {
     oldT: 'Necesito el conector antiguo (solo diario)',
     oldD: 'Solo envía operaciones al diario, sin gestionar nada. Únicamente si el EA nuevo te da problemas.',
     dlMt5: 'Descargar para MT5', dlMt4: 'Descargar para MT4',
+    srcMt5: '¿No abre o te da error? Descarga el código fuente (.mq5) y compílalo',
+    srcMt4: '¿No abre o te da error? Descarga el código fuente (.mq4) y compílalo',
     step3: 'Instálalo paso a paso',
     stepsD: 'Los pasos se van marcando solos según avanzas.',
     folderPath: 'MQL5/Experts  (o MQL4/Experts en MT4)',
     allDone: 'Listo. Tu MetaTrader está reportando a Onyx.',
     steps: [
-      { t: '1. Descarga el archivo Onyx', d: 'Usa el botón de arriba: MT5 si tu plataforma es MetaTrader 5, MT4 si es MetaTrader 4. Se guarda en tu carpeta de Descargas.', viz: 'download' },
-      { t: '2. Mételo en la carpeta Experts', d: 'Abre MetaTrader. Arriba: Archivo → Abrir carpeta de datos. Entra a MQL5 y luego a Experts, y pega ahí el archivo que descargaste.', copy: 'folder', viz: 'folder' },
-      { t: '3. Compílalo (MetaEditor ya viene incluido)', d: 'No lo descargas aparte. Dentro de MetaTrader pulsa la tecla F4: se abre MetaEditor. Abre el archivo Onyx y pulsa Compilar (F7). Abajo debe decir "0 errores".', viz: 'compile' },
-      { t: '4. Arrastra Onyx a un gráfico', d: 'En el panel Navegador (a la izquierda), abre Asesores Expertos, y arrastra Onyx Connect sobre cualquier gráfico abierto. Con un solo gráfico basta.', viz: 'drag' },
-      { t: '5. Marca la casilla y pega tu clave', d: 'Al soltarlo se abre una ventana. Marca "Permitir Algo Trading" y, en la pestaña de parámetros, pega tu ApiKey. La dirección del servidor ya viene puesta: no la toques. Luego OK.', copy: 'url', viz: 'fields' },
-      { t: '6. Autoriza la dirección web', d: 'Arriba: Herramientas → Opciones → Asesores Expertos. Marca "Permitir WebRequest" y añade la dirección de abajo (escríbela y pulsa Enter). Sin esto, Onyx no puede hablar con tu cuenta.', copy: 'domain', viz: 'webrequest' },
-      { t: '7. Enciende Algo Trading', d: 'Pulsa el botón Algo Trading de la barra de arriba: se pone verde. En la esquina del gráfico debe salir una carita sonriente. En unos segundos aquí abajo dirá "Conectado".', viz: 'algo' },
+      { t: '1. Descarga el archivo Onyx', d: 'Usa el botón de arriba: MT5 si tu plataforma es MetaTrader 5, MT4 si es MetaTrader 4. Ya viene compilado y listo para usar, no tienes que compilar nada. Se guarda en tu carpeta de Descargas.', viz: 'download' },
+      { t: '2. Mételo en la carpeta Experts', d: 'Abre MetaTrader. Arriba: Archivo → Abrir carpeta de datos. Entra a MQL5 y luego a Experts (en MT4 es MQL4 → Experts), y pega ahí el archivo. Luego, en el panel Navegador, clic derecho sobre "Asesores Expertos" → Actualizar: aparecerá Onyx Connect.', copy: 'folder', viz: 'folder' },
+      { t: '3. Arrastra Onyx a un gráfico', d: 'En el panel Navegador (a la izquierda), abre Asesores Expertos, y arrastra Onyx Connect sobre cualquier gráfico abierto. Con un solo gráfico basta.', viz: 'drag' },
+      { t: '4. Marca la casilla y pega tu clave', d: 'Al soltarlo se abre una ventana. Marca "Permitir Algo Trading" y, en la pestaña de parámetros, pega tu ApiKey. La dirección del servidor ya viene puesta: no la toques. Luego OK.', copy: 'url', viz: 'fields' },
+      { t: '5. Autoriza la dirección web', d: 'Arriba: Herramientas → Opciones → Asesores Expertos. Marca "Permitir WebRequest" y añade la dirección de abajo (escríbela y pulsa Enter). Sin esto, Onyx no puede hablar con tu cuenta.', copy: 'domain', viz: 'webrequest' },
+      { t: '6. Enciende Algo Trading', d: 'Pulsa el botón Algo Trading de la barra de arriba: se pone verde. En la esquina del gráfico debe salir una carita sonriente. En unos segundos aquí abajo dirá "Conectado".', viz: 'algo' },
     ],
     // --- Selector de plataforma ---
     platT: 'Elige tu plataforma', platD: 'Selecciona dónde operas. El paso a paso cambia según la plataforma.',
@@ -117,18 +118,19 @@ const K = {
     oldT: 'I need the old connector (journal only)',
     oldD: 'It only sends trades to the journal, it manages nothing. Use it only if the new EA gives you trouble.',
     dlMt5: 'Download for MT5', dlMt4: 'Download for MT4',
+    srcMt5: "Won't open or gives an error? Download the source (.mq5) and compile it",
+    srcMt4: "Won't open or gives an error? Download the source (.mq4) and compile it",
     step3: 'Install it step by step',
     stepsD: 'Steps tick themselves off as you go.',
     folderPath: 'MQL5/Experts  (or MQL4/Experts on MT4)',
     allDone: 'Done. Your MetaTrader is reporting to Onyx.',
     steps: [
-      { t: '1. Download the Onyx file', d: 'Use the button above: MT5 if your platform is MetaTrader 5, MT4 if it is MetaTrader 4. It saves to your Downloads folder.', viz: 'download' },
-      { t: '2. Put it in the Experts folder', d: 'Open MetaTrader. Top menu: File → Open Data Folder. Go into MQL5, then Experts, and paste the file you downloaded there.', copy: 'folder', viz: 'folder' },
-      { t: '3. Compile it (MetaEditor is built in)', d: 'You do not download it separately. Inside MetaTrader press F4: MetaEditor opens. Open the Onyx file and click Compile (F7). It should say "0 errors".', viz: 'compile' },
-      { t: '4. Drag Onyx onto a chart', d: 'In the Navigator panel (left side), open Expert Advisors and drag Onyx Connect onto any open chart. One chart is enough.', viz: 'drag' },
-      { t: '5. Tick the box and paste your key', d: 'A window opens. Tick "Allow Algo Trading" and, in the inputs tab, paste your ApiKey. The server address is already set: do not change it. Then OK.', copy: 'url', viz: 'fields' },
-      { t: '6. Authorize the web address', d: 'Top menu: Tools → Options → Expert Advisors. Tick "Allow WebRequest" and add the address below (type it and press Enter). Without this, Onyx cannot talk to your account.', copy: 'domain', viz: 'webrequest' },
-      { t: '7. Turn on Algo Trading', d: 'Press the Algo Trading button in the top bar: it turns green. A smiley face should appear in the chart corner. In a few seconds it will say "Connected" below.', viz: 'algo' },
+      { t: '1. Download the Onyx file', d: 'Use the button above: MT5 if your platform is MetaTrader 5, MT4 if it is MetaTrader 4. It comes already compiled and ready to use — you do not have to compile anything. It saves to your Downloads folder.', viz: 'download' },
+      { t: '2. Put it in the Experts folder', d: 'Open MetaTrader. Top menu: File → Open Data Folder. Go into MQL5, then Experts (on MT4 it is MQL4 → Experts), and paste the file there. Then, in the Navigator panel, right-click "Expert Advisors" → Refresh: Onyx Connect will appear.', copy: 'folder', viz: 'folder' },
+      { t: '3. Drag Onyx onto a chart', d: 'In the Navigator panel (left side), open Expert Advisors and drag Onyx Connect onto any open chart. One chart is enough.', viz: 'drag' },
+      { t: '4. Tick the box and paste your key', d: 'A window opens. Tick "Allow Algo Trading" and, in the inputs tab, paste your ApiKey. The server address is already set: do not change it. Then OK.', copy: 'url', viz: 'fields' },
+      { t: '5. Authorize the web address', d: 'Top menu: Tools → Options → Expert Advisors. Tick "Allow WebRequest" and add the address below (type it and press Enter). Without this, Onyx cannot talk to your account.', copy: 'domain', viz: 'webrequest' },
+      { t: '6. Turn on Algo Trading', d: 'Press the Algo Trading button in the top bar: it turns green. A smiley face should appear in the chart corner. In a few seconds it will say "Connected" below.', viz: 'algo' },
     ],
     // --- Platform selector ---
     platT: 'Choose your platform', platD: 'Pick where you trade. The step-by-step changes per platform.',
@@ -291,9 +293,10 @@ export default function KeysPage() {
     const isMt4 = plat === 'mt4';
     return {
       steps: t.steps, stuck: t.stuckMt,
-      dl: [{ href: isMt4 ? '/OnyxConnect_MT4.mq4' : '/OnyxConnect_MT5.mq5', label: isMt4 ? t.dlMt4 : t.dlMt5, primary: true }],
+      dl: [{ href: isMt4 ? '/OnyxConnect_MT4.ex4' : '/OnyxConnect_MT5.ex5', label: isMt4 ? t.dlMt4 : t.dlMt5, primary: true }],
+      src: { href: isMt4 ? '/OnyxConnect_MT4.mq4' : '/OnyxConnect_MT5.mq5', label: isMt4 ? t.srcMt4 : t.srcMt5 },
       conn: { name: activePlat.name, platKey: plat, waitD: t.connMt.waitD, staleHint: t.connMt.staleHint },
-      does: t.mt5Does, fileName: isMt4 ? 'OnyxConnect_MT4.mq4 · v2.00' : 'OnyxConnect_MT5.mq5 · v2.00',
+      does: t.mt5Does, fileName: isMt4 ? 'OnyxConnect_MT4.ex4 · v2.00' : 'OnyxConnect_MT5.ex5 · v2.00',
       note: isMt4 ? t.mtNoteMt4 : '',
     };
   })();
@@ -560,6 +563,12 @@ export default function KeysPage() {
                 <a className="btn btn-primary" style={{ width: '100%', background: platAccent[plat] || 'var(--brand)', borderColor: platAccent[plat] || 'var(--brand)', color: '#0b1020' }} href={platData.dl[0].href} download
                   onClick={(e) => { markDone('dl'); if (isNativeApp()) { e.preventDefault(); openExternal(platData.dl[0].href); } }}><span className="ic">↓</span>{platData.dl[0].label}</a>
                 <div className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: 'center' }}>{platData.fileName}</div>
+                {(platData as any).src && (
+                  <div style={{ textAlign: 'center', marginTop: 8 }}>
+                    <a className="muted" style={{ fontSize: 12, textDecoration: 'underline' }} href={(platData as any).src.href} download
+                      onClick={(e) => { if (isNativeApp()) { e.preventDefault(); openExternal((platData as any).src.href); } }}>{(platData as any).src.label}</a>
+                  </div>
+                )}
                 {kind === 'ctrader' && (
                   <div style={{ textAlign: 'center', marginTop: 8 }}>
                     <a className="muted" style={{ fontSize: 12, textDecoration: 'underline' }} href="/ctrader/guia" target="_blank" rel="noreferrer">{t.ctGuide}</a>
