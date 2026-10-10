@@ -25,13 +25,13 @@ function buildPriceFaqs(plans: any[], lang: 'es' | 'en'): [string, string][] {
     out.push(['¿Necesito tarjeta para empezar?', 'No. El plan Free es gratis y sin tarjeta. Solo pides tarjeta o USDT cuando eliges un plan de pago.']);
     if (f.hasTrial) out.push(['¿Hay prueba gratis?', `Sí: ${trialLine(f, 'es')}. Entras con tarjeta pero no se te cobra hasta el día ${f.trialDays}; cancela antes y no pagas nada.`]);
     out.push(['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.']);
-    out.push(['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT. El acceso se activa al confirmar el pago.']);
+    out.push(['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT en las redes Tron (TRC-20) y Ethereum (ERC-20). El acceso se activa al confirmar el pago.']);
     if (f.annualPct > 0) out.push(['¿El anual ahorra?', `Sí: pagando al año ahorras un ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (unos ${f.annualMonthsFree} meses gratis)` : ''} frente a pagar mes a mes.`]);
   } else {
     out.push(['Do I need a card to start?', 'No. The Free plan is free and card-free. We only ask for a card or USDT when you pick a paid plan.']);
     if (f.hasTrial) out.push(['Is there a free trial?', `Yes: ${trialLine(f, 'en')}. You enter with a card but you are not charged until day ${f.trialDays}; cancel before then and you pay nothing.`]);
     out.push(['Can I change or cancel anytime?', 'Yes. Upgrade or downgrade in one click from your account and cancel anytime; you keep access until the period ends.']);
-    out.push(['Do you accept crypto?', 'Yes, pay with card (Stripe) or USDT. Access activates once the payment confirms.']);
+    out.push(['Do you accept crypto?', 'Yes, pay with card (Stripe) or USDT on the Tron (TRC-20) and Ethereum (ERC-20) networks. Access activates once the payment confirms.']);
     if (f.annualPct > 0) out.push(['Does annual save money?', `Yes: paying yearly saves you ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (about ${f.annualMonthsFree} months free)` : ''} vs paying monthly.`]);
   }
   return out;
@@ -257,7 +257,7 @@ const dict = {
       ['¿En qué se diferencia de un Excel?', 'Onyx sincroniza solo, calcula 15+ métricas, tiene calendario, sesiones y noticias en vivo, costes, fondeo y gráficas modernas. Un Excel no hace nada de eso.'],
       ['¿Con qué plataformas funciona?', 'Con MetaTrader 4 y 5, cTrader, MatchTrader, TradeLocker y DXtrade. Al conectar eliges tu plataforma: MetaTrader y cTrader instalan un conector (EA o cBot); MatchTrader, TradeLocker y DXtrade se conectan por la API del bróker, sin instalar nada. La misma cuenta te vale para todas.'],
       ['¿Puedo cancelar cuando quiera?', 'Claro. Gestionas tu suscripción desde tu panel y cancelas o cambias de plan en cualquier momento.'],
-      ['¿Qué formas de pago aceptan?', 'Todos los planes incluyen prueba gratis. En las apps la compra es segura con la tienda de tu dispositivo (App Store o Google Play); en la web, con tarjeta (Stripe) o USDT. Se renueva automáticamente hasta que la canceles, y tus datos de pago nunca pasan por nuestros servidores.'],
+      ['¿Qué formas de pago aceptan?', 'Todos los planes incluyen prueba gratis. En las apps la compra es segura con la tienda de tu dispositivo (App Store o Google Play); en la web, con tarjeta (Stripe) o USDT en las redes Tron (TRC-20) y Ethereum (ERC-20). Se renueva automáticamente hasta que la canceles, y tus datos de pago nunca pasan por nuestros servidores.'],
     ],
     finalT: 'Empieza a operar con datos, no con memoria', finalCta: 'Crear cuenta gratis',
     footer: { terms: 'Términos', privacy: 'Privacidad', amb: 'Embajadores', invita: 'Invita y gana', contact: 'Contacto', rights: '© 2026 Onyx Trading Live' },
@@ -397,7 +397,7 @@ const dict = {
       ['How is it different from a spreadsheet?', 'Onyx syncs automatically, computes 15+ metrics, and has a calendar, live sessions and news, costs, prop-firm tracking and modern charts. A spreadsheet does none of that.'],
       ['Which platforms does it work with?', 'MetaTrader 4 and 5, cTrader, MatchTrader, TradeLocker and DXtrade. When you connect you pick your platform: MetaTrader and cTrader install a connector (EA or cBot); MatchTrader, TradeLocker and DXtrade connect via the broker API, nothing to install. The same account works across all of them.'],
       ['Can I cancel anytime?', 'Of course. Manage your subscription from your panel and cancel or change plan anytime.'],
-      ['What payment methods do you accept?', "Every plan includes a free trial. In the apps, purchases are secure through your device's store (App Store or Google Play); on the web, by card (Stripe) or USDT. It renews automatically until you cancel, and your payment data never touches our servers."],
+      ['What payment methods do you accept?', "Every plan includes a free trial. In the apps, purchases are secure through your device's store (App Store or Google Play); on the web, by card (Stripe) or USDT on the Tron (TRC-20) and Ethereum (ERC-20) networks. It renews automatically until you cancel, and your payment data never touches our servers."],
     ],
     finalT: 'Trade with data, not memory', finalCta: 'Create free account',
     footer: { terms: 'Terms', privacy: 'Privacy', amb: 'Ambassadors', invita: 'Invite & earn', contact: 'Contact', rights: '© 2026 Onyx Trading Live' },
@@ -1035,8 +1035,13 @@ export default function Home() {
         {lcFaqs.map((f, i) => {
           // Detecta la pregunta de "app móvil" (por la pregunta o la respuesta) para
           // mostrar debajo los badges de App Store y Google Play.
+          const q = (f[0] || '').toLowerCase();
           const blob = `${f[0]} ${f[1]}`.toLowerCase();
-          const isApp = /app m[oó]vil|mobile app|app store|google play/.test(blob);
+          // Mostramos los badges si el ítem habla de app/móvil (por la pregunta) o si
+          // menciona las tiendas (por pregunta o respuesta). Cubre variantes como
+          // "¿Tienen app móvil?" y "Does it work on mobile?".
+          const isApp = /m[oó]vil|mobile|\bapp\b|android|iphone|ipad/.test(q)
+            || /app store|google play/.test(blob);
           return (
             <details key={i} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
               <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
