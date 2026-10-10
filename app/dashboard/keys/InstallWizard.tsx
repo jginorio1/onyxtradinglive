@@ -45,6 +45,9 @@ export const WIZ: any = {
     lastSeen: 'Última señal',
     stepsT: 'Instálalo paso a paso',
     stepsD: (n: number) => `Sigue los ${n} pasos en orden.`,
+    back: 'Atrás', next: 'Siguiente',
+    stepOf: (a: number, b: number) => `Paso ${a} de ${b}`,
+    lastHint: 'Último paso. En unos segundos aquí abajo dirá «Conectado».',
     needKey: 'Antes de instalar, crea una clave arriba para tu cuenta.',
     srvNote: 'La dirección del servidor ya viene puesta en el conector. No la cambies.',
   },
@@ -71,6 +74,9 @@ export const WIZ: any = {
     lastSeen: 'Last signal',
     stepsT: 'Install it step by step',
     stepsD: (n: number) => `Follow the ${n} steps in order.`,
+    back: 'Back', next: 'Next',
+    stepOf: (a: number, b: number) => `Step ${a} of ${b}`,
+    lastHint: 'Last step. In a few seconds it will say “Connected” below.',
     needKey: 'Before installing, create a key above for your account.',
     srvNote: 'The server address is already set in the connector. Do not change it.',
   },
@@ -88,6 +94,7 @@ export default function InstallWizard({
   const [status, setStatus] = useState<any>(null);
   const [elapsed, setElapsed] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
+  const [cur, setCur] = useState(0); // paso actual del asistente (uno a la vez)
   const startedAt = useRef(0);
   const platName = conn?.name || 'MetaTrader';
 
@@ -172,26 +179,45 @@ export default function InstallWizard({
   return (
     <div style={{ marginBottom: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-      {/* Pasos de la plataforma elegida */}
+      {/* Pasos de la plataforma elegida — UNO A LA VEZ (más limpio, sin scroll) */}
       <div className="card">
-        <h3 style={{ marginBottom: 2 }}>{w.stepsT}</h3>
-        <p className="muted" style={{ fontSize: 13, marginBottom: 18 }}>{w.stepsD(nSteps)}</p>
-        {(steps || []).map((s: any, i: number) => (
-          <div key={i} className="row" style={{ gap: 12, alignItems: 'flex-start', paddingTop: i ? 16 : 0, marginTop: i ? 16 : 0, borderTop: i ? '1px solid var(--line)' : 'none' }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: '50%', flex: 'none', fontSize: 13, fontWeight: 700,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'var(--card2)', color: 'var(--tx)',
-            }}>{i + 1}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>{stripNum(s.t)}</div>
-              {s.d && <div className="muted" style={{ fontSize: 13, marginTop: 3, lineHeight: 1.6 }}>{s.d}</div>}
-              <StepVisual viz={s.viz} origin={origin} apiUrl={apiUrl} lang={lang} dlButtons={dlButtons} />
-              <StepExtras s={s} t={t} w={w} apiUrl={apiUrl} origin={origin} apiKey={apiKey}
-                copy={copy} copied={copied} onDownload={onDownload} first={i === 0} dlButtons={dlButtons} />
+        <div className="row between" style={{ alignItems: 'baseline', marginBottom: 8, gap: 10 }}>
+          <h3 style={{ margin: 0 }}>{w.stepsT}</h3>
+          <span className="muted" style={{ fontSize: 12.5, flex: 'none' }}>{w.stepOf(Math.min(cur, nSteps - 1) + 1, nSteps)}</span>
+        </div>
+        {/* Barra de progreso: verde lo hecho, marca el actual, gris lo que falta. */}
+        <div style={{ display: 'flex', gap: 6, margin: '2px 0 18px' }}>
+          {(steps || []).map((_: any, i: number) => (
+            <div key={i} style={{ height: 5, flex: 1, borderRadius: 3, transition: 'background .2s', background: i < cur ? 'var(--green)' : i === cur ? 'var(--brand)' : 'var(--line)' }} />
+          ))}
+        </div>
+        {(() => {
+          const s: any = (steps || [])[Math.min(cur, nSteps - 1)] || {};
+          return (
+            <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%', flex: 'none', fontSize: 14, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--brand)', color: '#0b1020',
+              }}>{Math.min(cur, nSteps - 1) + 1}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>{stripNum(s.t)}</div>
+                {s.d && <div className="muted" style={{ fontSize: 13, marginTop: 4, lineHeight: 1.6 }}>{s.d}</div>}
+                <StepVisual viz={s.viz} origin={origin} apiUrl={apiUrl} lang={lang} dlButtons={dlButtons} />
+                <StepExtras s={s} t={t} w={w} apiUrl={apiUrl} origin={origin} apiKey={apiKey}
+                  copy={copy} copied={copied} onDownload={onDownload} first={cur === 0} dlButtons={dlButtons} />
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })()}
+        {/* Navegación: Atrás / Siguiente. El último paso espera a «Conectado» (autoavance). */}
+        <div className="row between" style={{ marginTop: 18, gap: 10, alignItems: 'center' }}>
+          <button className="btn btn-ghost" style={{ fontSize: 13, visibility: cur === 0 ? 'hidden' : 'visible' }}
+            onClick={() => setCur((c) => Math.max(0, c - 1))}>← {w.back}</button>
+          {cur < nSteps - 1
+            ? <button className="btn btn-primary" style={{ fontSize: 13 }} onClick={() => setCur((c) => Math.min(nSteps - 1, c + 1))}>{w.next} →</button>
+            : <span className="muted" style={{ fontSize: 12.5, textAlign: 'right' }}>{w.lastHint}</span>}
+        </div>
       </div>
 
       {/* Estado de conexión de TODAS tus cuentas (agnóstico de plataforma) */}
