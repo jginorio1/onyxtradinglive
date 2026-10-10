@@ -94,9 +94,24 @@ export default function NativeInit() {
         try { await StatusBar.setBackgroundColor({ color: '#121829' }); } catch {}
       } catch {}
 
+      // Splash: lo ocultamos SOLO cuando la web ya pintó, con un fundido. Antes se
+      // escondía de inmediato (apenas cargaba este script) y, como la web remota aún
+      // no había pintado, se veía: logo → flash del fondo → logo otra vez. Con
+      // launchAutoHide:false en capacitor.config el splash nativo se queda puesto
+      // hasta que lo escondemos aquí; así la transición es una sola, fluida.
       try {
         const { SplashScreen } = await import('@capacitor/splash-screen');
-        await SplashScreen.hide();
+        const hideSplash = () => { SplashScreen.hide({ fadeOutDuration: 250 }).catch(() => {}); };
+        // Espera a que el documento esté pintado: dos rAF (asegura un frame real) y un
+        // pequeño colchón. Red de seguridad a 2.5 s por si algo tarda.
+        let done = false;
+        const go = () => { if (done) return; done = true; hideSplash(); };
+        if (document.readyState === 'complete') {
+          requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(go, 80)));
+        } else {
+          window.addEventListener('load', () => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(go, 80))), { once: true });
+        }
+        setTimeout(go, 2500);
       } catch {}
 
       // Teclado (iOS): el problema era que el campo enfocado quedaba TAPADO por el
@@ -129,18 +144,31 @@ export default function NativeInit() {
           setTimeout(() => { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} }, 120);
         } catch { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch {} }
       };
+      // Publica la ALTURA real del teclado a toda la web: pone --onyx-kb en <html>
+      // y dispara el evento 'onyxkb'. Así cualquier panel fijo (p. ej. el chat) puede
+      // pegar su campo justo encima del teclado, sin hueco y sin depender de medir
+      // el visualViewport (que dentro del webview de iOS no es fiable).
+      const setKb = (h: number) => {
+        kbH = Math.max(0, Math.round(h || 0));
+        try { document.documentElement.style.setProperty('--onyx-kb', kbH + 'px'); } catch {}
+        try { window.dispatchEvent(new CustomEvent('onyxkb', { detail: { h: kbH } })); } catch {}
+      };
+      try { setKb(0); } catch {}
       try {
         const { Keyboard, KeyboardResize } = await import('@capacitor/keyboard');
-        // Modo 'native': el webview se encoge al abrir el teclado SIN desactivar el
-        // scroll. (NO usar setScroll({isDisabled:true}): eso congela el scroll de toda
-        // la app.) Con la altura del teclado empujamos el campo enfocado a la vista.
-        try { await Keyboard.setResizeMode({ mode: KeyboardResize.Native }); } catch {}
-        try { await Keyboard.setAccessoryBarVisible({ isVisible: true }); } catch {}
+        // Modo 'none': el webview NO se encoge al abrir el teclado (el header pegado
+        // arriba no se mueve); el teclado solo se superpone abajo. Con la altura real
+        // subimos el campo enfocado (revealActive) y pegamos el panel del chat.
+        try { await Keyboard.setResizeMode({ mode: KeyboardResize.None }); } catch {}
+        // Sin barra de accesorios ("Done"): se ve más app y quita el hueco gris que
+        // esa barra dejaba entre el campo y el teclado.
+        try { await Keyboard.setAccessoryBarVisible({ isVisible: false }); } catch {}
         // willShow trae la altura del teclado ANTES de que termine la animación.
-        try { Keyboard.addListener('keyboardWillShow', (info: any) => { kbH = (info && info.keyboardHeight) || 0; setTimeout(revealActive, 60); }); } catch {}
-        // didShow: reintento cuando el layout ya se encogió.
-        try { Keyboard.addListener('keyboardDidShow', (info: any) => { kbH = (info && info.keyboardHeight) || kbH; revealActive(); }); } catch {}
-        try { Keyboard.addListener('keyboardDidHide', () => { kbH = 0; }); } catch {}
+        try { Keyboard.addListener('keyboardWillShow', (info: any) => { setKb((info && info.keyboardHeight) || 0); setTimeout(revealActive, 60); }); } catch {}
+        // didShow: confirma la altura cuando el teclado ya está arriba del todo.
+        try { Keyboard.addListener('keyboardDidShow', (info: any) => { setKb((info && info.keyboardHeight) || kbH); revealActive(); }); } catch {}
+        try { Keyboard.addListener('keyboardWillHide', () => { setKb(0); }); } catch {}
+        try { Keyboard.addListener('keyboardDidHide', () => { setKb(0); }); } catch {}
       } catch {}
       // Respaldo web/webview (sin plugin nativo): al enfocar un campo, lo llevamos a
       // la vista. Aquí kbH puede ser 0, así que centramos.

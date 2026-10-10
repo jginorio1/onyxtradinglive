@@ -113,8 +113,23 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // su alto y su desplazamiento para que el panel quede FIJO justo encima del
   // teclado (sin que el chat se mueva ni se esconda el campo de escribir).
   const [vv, setVv] = useState<{ h: number; top: number } | null>(null);
+  // App nativa (iOS/Android): NativeInit publica la altura real del teclado con el
+  // evento 'onyxkb'. La usamos para fijar el alto visible del panel (ventana − teclado)
+  // y así el campo de escribir queda PEGADO al teclado, sin hueco. Es más fiable que
+  // medir el visualViewport dentro del webview.
   useEffect(() => {
-    if (!open || device !== 'mobile') { setVv(null); return; }
+    if (!open || device !== 'mobile' || !isNativeApp()) return;
+    const apply = (h: number) => {
+      const H = (typeof window !== 'undefined' ? window.innerHeight : 0);
+      setVv(h > 0 ? { h: Math.max(240, H - h), top: 0 } : { h: H, top: 0 });
+    };
+    try { const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onyx-kb')) || 0; apply(cur); } catch { apply(0); }
+    const on = (e: any) => apply((e && e.detail && e.detail.h) || 0);
+    window.addEventListener('onyxkb', on as any);
+    return () => window.removeEventListener('onyxkb', on as any);
+  }, [open, device]);
+  useEffect(() => {
+    if (!open || device !== 'mobile' || isNativeApp()) { if (!isNativeApp()) setVv(null); return; }
     const vp: any = (typeof window !== 'undefined') ? (window as any).visualViewport : null;
     if (!vp) return;
     const on = () => setVv({ h: Math.round(vp.height), top: Math.round(vp.offsetTop) });
@@ -567,7 +582,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
         @keyframes onyxTease{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         .onyx-pulse{animation:onyxPulse 1.4s ease-in-out infinite}
         .onyx-d1{animation:onyxType 1.2s infinite}.onyx-d2{animation:onyxType 1.2s .2s infinite}.onyx-d3{animation:onyxType 1.2s .4s infinite}
-        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:auto!important;transform:translateY(var(--onyx-top,0px))!important;width:100%!important;max-width:100%!important;height:var(--onyx-h,100dvh)!important;max-height:var(--onyx-h,100dvh)!important;border-radius:0!important;z-index:2147483000!important}
+        @media(max-width:520px){.onyx-panel{right:0!important;left:0!important;top:0!important;bottom:auto!important;transform:translateY(var(--onyx-top,0px))!important;width:100%!important;max-width:100%!important;height:var(--onyx-h,100dvh)!important;max-height:var(--onyx-h,100dvh)!important;border-radius:0!important;z-index:2147483000!important;transition:height .22s ease,max-height .22s ease!important}
         .onyx-panel input,.onyx-panel textarea{font-size:16px!important}
         .onyx-resize{display:none!important}}
       `}</style>

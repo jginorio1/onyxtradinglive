@@ -31,7 +31,11 @@ const config: CapacitorConfig = {
   backgroundColor: '#0b0f1a',
   plugins: {
     SplashScreen: {
-      launchShowDuration: 900,
+      // launchAutoHide:false → el splash nativo NO se oculta solo; lo ocultamos
+      // desde NativeInit cuando la web YA pintó, con un fundido. Esto elimina el
+      // doble destello (logo → flash → logo) que se veía al arrancar.
+      launchAutoHide: false,
+      launchFadeOutDuration: 250,
       backgroundColor: '#0b0f1a',
       showSpinner: false,
       androidScaleType: 'CENTER_CROP',
