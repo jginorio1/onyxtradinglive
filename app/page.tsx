@@ -257,7 +257,7 @@ const dict = {
       ['¿En qué se diferencia de un Excel?', 'Onyx sincroniza solo, calcula 15+ métricas, tiene calendario, sesiones y noticias en vivo, costes, fondeo y gráficas modernas. Un Excel no hace nada de eso.'],
       ['¿Con qué plataformas funciona?', 'Con MetaTrader 4 y 5, cTrader, MatchTrader, TradeLocker y DXtrade. Al conectar eliges tu plataforma: MetaTrader y cTrader instalan un conector (EA o cBot); MatchTrader, TradeLocker y DXtrade se conectan por la API del bróker, sin instalar nada. La misma cuenta te vale para todas.'],
       ['¿Puedo cancelar cuando quiera?', 'Claro. Gestionas tu suscripción desde tu panel y cancelas o cambias de plan en cualquier momento.'],
-      ['¿Qué formas de pago aceptan?', 'Pago seguro con tarjeta a través de Stripe. Tus datos de pago nunca pasan por nuestros servidores.'],
+      ['¿Qué formas de pago aceptan?', 'Todos los planes incluyen prueba gratis. En las apps la compra es segura con la tienda de tu dispositivo (App Store o Google Play); en la web, con tarjeta (Stripe) o USDT. Se renueva automáticamente hasta que la canceles, y tus datos de pago nunca pasan por nuestros servidores.'],
     ],
     finalT: 'Empieza a operar con datos, no con memoria', finalCta: 'Crear cuenta gratis',
     footer: { terms: 'Términos', privacy: 'Privacidad', amb: 'Embajadores', invita: 'Invita y gana', contact: 'Contacto', rights: '© 2026 Onyx Trading Live' },
@@ -397,7 +397,7 @@ const dict = {
       ['How is it different from a spreadsheet?', 'Onyx syncs automatically, computes 15+ metrics, and has a calendar, live sessions and news, costs, prop-firm tracking and modern charts. A spreadsheet does none of that.'],
       ['Which platforms does it work with?', 'MetaTrader 4 and 5, cTrader, MatchTrader, TradeLocker and DXtrade. When you connect you pick your platform: MetaTrader and cTrader install a connector (EA or cBot); MatchTrader, TradeLocker and DXtrade connect via the broker API, nothing to install. The same account works across all of them.'],
       ['Can I cancel anytime?', 'Of course. Manage your subscription from your panel and cancel or change plan anytime.'],
-      ['What payment methods do you accept?', 'Secure card payments through Stripe. Your payment data never touches our servers.'],
+      ['What payment methods do you accept?', "Every plan includes a free trial. In the apps, purchases are secure through your device's store (App Store or Google Play); on the web, by card (Stripe) or USDT. It renews automatically until you cancel, and your payment data never touches our servers."],
     ],
     finalT: 'Trade with data, not memory', finalCta: 'Create free account',
     footer: { terms: 'Terms', privacy: 'Privacy', amb: 'Ambassadors', invita: 'Invite & earn', contact: 'Contact', rights: '© 2026 Onyx Trading Live' },
@@ -1032,14 +1032,26 @@ export default function Home() {
       }) }} />
       <div id="faq" className="wrap section" style={{ maxWidth: 760 }}>
         <h2 style={{ textAlign: 'center', marginBottom: 26 }}>{t.faqT}</h2>
-        {lcFaqs.map((f, i) => (
-          <details key={i} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
-            <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: 'var(--brand)' }}>▶</span> {f[0]}
-            </summary>
-            <p className="muted" style={{ fontSize: 14.5, marginTop: 10, marginBottom: 0, lineHeight: 1.6 }}>{f[1]}</p>
-          </details>
-        ))}
+        {lcFaqs.map((f, i) => {
+          // Detecta la pregunta de "app móvil" (por la pregunta o la respuesta) para
+          // mostrar debajo los badges de App Store y Google Play.
+          const blob = `${f[0]} ${f[1]}`.toLowerCase();
+          const isApp = /app m[oó]vil|mobile app|app store|google play/.test(blob);
+          return (
+            <details key={i} className="card" style={{ padding: '14px 18px', marginBottom: 10, cursor: 'pointer' }}>
+              <summary style={{ fontWeight: 700, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--brand)' }}>▶</span> {f[0]}
+              </summary>
+              <p className="muted" style={{ fontSize: 14.5, marginTop: 10, marginBottom: 0, lineHeight: 1.6 }}>{f[1]}</p>
+              {isApp && (
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+                  <AppStoreBadge size="sm" />
+                  <GooglePlayBadge size="sm" />
+                </div>
+              )}
+            </details>
+          );
+        })}
       </div>
 
       {/* SECCIÓN APP ANDROID — "llévalo en el bolsillo". Oculta dentro de la app nativa. */}
