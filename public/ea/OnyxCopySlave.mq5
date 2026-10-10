@@ -347,11 +347,11 @@ int JSplit(string arr, string &out[])
 long  g_mMaster[]; ulong g_mSlave[]; int g_mN = 0;
 void  MapAdd(long mt, ulong st){ ArrayResize(g_mMaster, g_mN + 1); ArrayResize(g_mSlave, g_mN + 1); g_mMaster[g_mN] = mt; g_mSlave[g_mN] = st; g_mN++; }
 ulong MapGet(long mt){ for(int i = 0; i < g_mN; i++) if(g_mMaster[i] == mt) return g_mSlave[i]; return 0; }
+#define ONYX_MAGIC 990201
+
 //--- Cuenta posiciones propias (por magic) y suma su lote por simbolo (para topes).
 int    CountMyPositions(){ int c=0; for(int i=PositionsTotal()-1;i>=0;i--){ ulong tk=PositionGetTicket(i); if(PositionSelectByTicket(tk) && PositionGetInteger(POSITION_MAGIC)==ONYX_MAGIC) c++; } return c; }
 double SumMyLots(string sym){ double v=0; for(int i=PositionsTotal()-1;i>=0;i--){ ulong tk=PositionGetTicket(i); if(PositionSelectByTicket(tk) && PositionGetInteger(POSITION_MAGIC)==ONYX_MAGIC && PositionGetString(POSITION_SYMBOL)==sym) v+=PositionGetDouble(POSITION_VOLUME); } return v; }
-
-#define ONYX_MAGIC 990201
 
 //--- Ultima posicion nuestra de un simbolo (respaldo si ResultOrder devuelve 0).
 ulong PositionLastTicket(string sym){

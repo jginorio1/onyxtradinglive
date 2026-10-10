@@ -312,10 +312,11 @@ int JSplit(string arr, string &out[])
 long g_mMaster[]; int g_mSlave[]; int g_mN = 0;
 void MapAdd(long mt, int st){ ArrayResize(g_mMaster, g_mN + 1); ArrayResize(g_mSlave, g_mN + 1); g_mMaster[g_mN] = mt; g_mSlave[g_mN] = st; g_mN++; }
 int  MapGet(long mt){ for(int i = 0; i < g_mN; i++) if(g_mMaster[i] == mt) return(g_mSlave[i]); return(0); }
-int    CountMyPositions(){ int c=0; for(int i=OrdersTotal()-1;i>=0;i--){ if(!OrderSelect(i,SELECT_BY_POS,MODE_TRADES)) continue; if(OrderMagicNumber()==ONYX_MAGIC && OrderType()<=OP_SELL) c++; } return(c); }
-double SumMyLots(string sym){ double v=0; for(int i=OrdersTotal()-1;i>=0;i--){ if(!OrderSelect(i,SELECT_BY_POS,MODE_TRADES)) continue; if(OrderMagicNumber()==ONYX_MAGIC && OrderSymbol()==sym) v+=OrderLots(); } return(v); }
 
 #define ONYX_MAGIC 990201
+
+int    CountMyPositions(){ int c=0; for(int i=OrdersTotal()-1;i>=0;i--){ if(!OrderSelect(i,SELECT_BY_POS,MODE_TRADES)) continue; if(OrderMagicNumber()==ONYX_MAGIC && OrderType()<=OP_SELL) c++; } return(c); }
+double SumMyLots(string sym){ double v=0; for(int i=OrdersTotal()-1;i>=0;i--){ if(!OrderSelect(i,SELECT_BY_POS,MODE_TRADES)) continue; if(OrderMagicNumber()==ONYX_MAGIC && OrderSymbol()==sym) v+=OrderLots(); } return(v); }
 
 //--- Cierra TODAS las órdenes abiertas por esta copia (botón de pánico).
 int CloseAllMine()
