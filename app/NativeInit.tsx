@@ -185,6 +185,10 @@ export default function NativeInit() {
       // a /api/push/native para atarlo a la sesión. Al tocar una notificación,
       // abre la URL que traiga (deep-link dentro de la app). Solo corre en nativo;
       // si el plugin o Firebase no están, no rompe nada.
+      // Reenvía el token de push al servidor; se asigna dentro del bloque de abajo.
+      // Lo llamamos también al volver del segundo plano (App 'resume'), para que el
+      // token quede atado al usuario aunque al primer intento aún no hubiera sesión.
+      let resendPush = () => {};
       try {
         const { PushNotifications } = await import('@capacitor/push-notifications');
         const plat = (() => { try { return (window as any).Capacitor?.getPlatform?.() || 'android'; } catch { return 'android'; } })();
@@ -210,15 +214,31 @@ export default function NativeInit() {
               try { await (PushNotifications as any).createChannel({ id: c.id, name: c.name, importance: 4, visibility: 1, vibration: true, lights: true }); } catch {}
             }
           } catch {}
-          await PushNotifications.addListener('registration', async (t: any) => {
+          // Token del dispositivo. Lo recordamos (localStorage) y lo mandamos al
+          // servidor CON REINTENTOS: en iOS el 'registration' puede dispararse antes
+          // de que el WebView tenga la sesión lista, y entonces el POST da 401 y el
+          // token se perdía (en Android la sesión ya está → por eso allí sí llegaban).
+          let pushTok = '';
+          try { pushTok = localStorage.getItem('onyx_push_tok') || ''; } catch {}
+          const sendTok = async (tries = 8): Promise<void> => {
+            if (!pushTok) return;
             try {
-              await fetch('/api/push/native', {
+              const r = await fetch('/api/push/native', {
                 method: 'POST', credentials: 'include',
                 headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ token: t?.value || '', platform: plat }),
+                body: JSON.stringify({ token: pushTok, platform: plat }),
               });
+              if (r && r.ok) return;                       // guardado bajo el usuario
             } catch {}
+            if (tries > 0) setTimeout(() => { sendTok(tries - 1); }, 3000); // sin sesión aún → reintenta
+          };
+          resendPush = () => { sendTok(); };
+          await PushNotifications.addListener('registration', async (t: any) => {
+            pushTok = t?.value || '';
+            try { localStorage.setItem('onyx_push_tok', pushTok); } catch {}
+            sendTok();
           });
+          if (pushTok) sendTok();   // por si el token ya estaba guardado de un arranque previo
           await PushNotifications.addListener('registrationError', () => {});
           // Al tocar una notificación con la app abierta o en segundo plano →
           // navegar a su URL (o al panel).
@@ -245,7 +265,7 @@ export default function NativeInit() {
         });
         removeBack = () => { try { h.remove(); } catch {} };
         // Al volver del segundo plano, re-sincroniza el plan de Apple (por si cambió).
-        try { App.addListener('resume', () => syncIap()); } catch {}
+        try { App.addListener('resume', () => { syncIap(); resendPush(); }); } catch {}
       } catch {}
     })();
 
