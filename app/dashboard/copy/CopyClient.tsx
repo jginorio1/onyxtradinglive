@@ -1326,12 +1326,14 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
         <div style={{ fontSize: 15, fontWeight: 600 }}>{t.wizTitle} {wizard.account.nickname || wizard.account.login}</div>
       </div>
 
-      {/* Paso 1: plataforma */}
-      <div className="muted" style={{ fontSize: 12, margin: '10px 0 6px' }}>1 · {t.wzPlatQ}</div>
-      <div className="row" style={{ gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>{platBtn('mt5', t.wzMt5)}{platBtn('mt4', t.wzMt4)}{platBtn('ctrader', t.wzCt)}</div>
-
-      {/* Pasos de instalación — UNO A LA VEZ (más limpio, sin scroll) */}
+      {/* Asistente UNO A LA VEZ: plataforma + instalación en un solo recorrido */}
       {(() => {
+        const platStep = (
+          <div key="plat">
+            <div className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>{t.wzPlatQ}</div>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{platBtn('mt5', t.wzMt5)}{platBtn('mt4', t.wzMt4)}{platBtn('ctrader', t.wzCt)}</div>
+          </div>
+        );
         const dlStep = (
           <Step key="dl" n={2} title={t.wzS1t}>
             <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{t.wzS1d}</div>
@@ -1436,22 +1438,23 @@ function WizardBody({ t, wizard, app, live, onCopy, copied, onCheck }: any) {
             </div>
           </Step>,
         ];
-        const list = isCt ? ctSteps : mtSteps;
-        const idx = Math.min(cur, list.length - 1);
-        const total = list.length + 1; // +1 por el paso de plataforma
+        // El recorrido completo: plataforma primero, luego los pasos de instalación.
+        const steps = [platStep, ...(isCt ? ctSteps : mtSteps)];
+        const idx = Math.min(cur, steps.length - 1);
+        const total = steps.length;
         return (
           <div>
-            <div className="muted" style={{ fontSize: 12, margin: '10px 0 6px' }}>{(t.wzStepOf ? t.wzStepOf(idx + 2, total) : `Paso ${idx + 2} de ${total}`)}</div>
+            <div className="muted" style={{ fontSize: 12, margin: '10px 0 6px' }}>{(t.wzStepOf ? t.wzStepOf(idx + 1, total) : `Paso ${idx + 1} de ${total}`)}</div>
             <div style={{ display: 'flex', gap: 6, margin: '0 0 12px' }}>
-              {list.map((_: any, i: number) => (
+              {steps.map((_: any, i: number) => (
                 <div key={i} style={{ height: 5, flex: 1, borderRadius: 3, transition: 'background .2s', background: i < idx ? 'var(--green)' : i === idx ? color : 'var(--line)' }} />
               ))}
             </div>
-            {list[idx]}
+            {steps[idx]}
             <div className="row between" style={{ marginTop: 4, gap: 10, alignItems: 'center' }}>
               <button className="btn btn-ghost" style={{ fontSize: 12.5, visibility: idx === 0 ? 'hidden' : 'visible' }} onClick={() => setCur((c) => Math.max(0, c - 1))}>← {t.wzBack || 'Atrás'}</button>
-              {idx < list.length - 1
-                ? <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => setCur((c) => Math.min(list.length - 1, c + 1))}>{t.wzNext || 'Siguiente'} →</button>
+              {idx < steps.length - 1
+                ? <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={() => setCur((c) => Math.min(steps.length - 1, c + 1))}>{t.wzNext || 'Siguiente'} →</button>
                 : <span className="muted" style={{ fontSize: 11.5, textAlign: 'right' }}>{t.wzLastHint || 'Enciende y espera a «Conectado».'}</span>}
             </div>
           </div>

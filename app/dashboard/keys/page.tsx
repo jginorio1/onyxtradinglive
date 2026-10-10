@@ -250,6 +250,10 @@ export default function KeysPage() {
   // ---- Plataforma elegida (persistida) ----
   const [plat, setPlat] = useState('mt5');
   const [hoverPlat, setHoverPlat] = useState('');
+  // Paso actual del asistente ÚNICO de Conectar cuenta (uno a la vez, más limpio).
+  const [oStep, setOStep] = useState(0);
+  // Al cambiar de plataforma, el recorrido se rearma: volvemos al primer paso.
+  useEffect(() => { setOStep(0); }, [plat]);
   // Color de acento por plataforma (colores de marca; el glow neón usa este color).
   const platAccent: Record<string, string> = { mt5: '#3b82f6', mt4: '#2dd4bf', ctrader: '#a78bfa', matchtrader: '#f59e0b', tradelocker: '#34d399', dxtrade: '#f472b6' };
   useEffect(() => { try {
@@ -318,7 +322,7 @@ export default function KeysPage() {
       const body = { ...f, label: (f.label || '').trim() || (f.broker ? f.broker : 'Mi cuenta') };
       const r = await fetch('/api/keys', { method: 'POST', body: JSON.stringify(body) });
       const j = await r.json();
-      if (j.key) { setNewKey(j.key); setAddingKey(false); setF({ label: '', acc_type: 'own', broker: '', account_login: '', acc_size: '' }); }
+      if (j.key) { setNewKey(j.key); setAddingKey(false); setF({ label: '', acc_type: 'own', broker: '', account_login: '', acc_size: '' }); setOStep((s) => s + 1); /* autoavance: clave creada → descargar */ }
       else toast(errMsg(j, lang));
     } catch { toast(errMsg({ code: 'network' }, lang)); }
     await load(); setLoading(false);
@@ -334,16 +338,23 @@ export default function KeysPage() {
   }
 
   const hasKey = keys.length > 0;
-  // Una fase del recorrido: hecho (verde) · actual (resaltada) · pendiente (gris)
-  const Phase = ({ n, done, active, label }: any) => (
-    <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-      <span style={{
-        width: 26, height: 26, borderRadius: '50%', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700,
-        background: done ? 'var(--green)' : active ? 'var(--grad)' : 'var(--card2)', color: done || active ? '#fff' : 'var(--mut)',
-      }}>{done ? '✓' : n}</span>
-      <span style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: done ? 'var(--green)' : active ? 'var(--tx)' : 'var(--mut)' }}>{label}</span>
-    </div>
-  );
+  // ---- Pasos del asistente ÚNICO de Conectar cuenta (uno a la vez) ----
+  // El recorrido cambia según la plataforma: conector (MT/cTrader) vs API del bróker vs bloqueado por plan.
+  const locked = API_KINDS.includes(kind) && !multi.on;
+  const stepKeys: string[] = locked ? ['plat', 'locked'] : isApi ? ['plat', 'connect'] : ['plat', 'key', 'dl', 'install'];
+  const stepTitles: Record<string, string> = {
+    plat: lang === 'en' ? 'Choose your platform' : 'Elige tu plataforma',
+    key: lang === 'en' ? 'Create your key' : 'Crea tu clave',
+    dl: lang === 'en' ? 'Download the connector' : 'Descarga el conector',
+    install: lang === 'en' ? 'Install it step by step' : 'Instálalo paso a paso',
+    connect: lang === 'en' ? 'Connect your broker' : 'Conecta tu bróker',
+    locked: lang === 'en' ? 'Upgrade your plan' : 'Mejora tu plan',
+  };
+  const nSteps = stepKeys.length;
+  const curIdx = Math.min(oStep, nSteps - 1);
+  const curKey = stepKeys[curIdx];
+  // En el paso de la clave no se avanza hasta que exista una clave de verdad.
+  const canNext = !(curKey === 'key' && !hasKey && !newKey);
 
   return (
     <>
@@ -377,209 +388,181 @@ export default function KeysPage() {
           </div>
         )}
 
-        {/* Paso 1 · elige tu plataforma — va PRIMERO: los pasos de abajo se arman según ella. */}
-        <div className="card" style={{ marginBottom: 14 }}>
-          <h3 style={{ marginBottom: 4 }}>{lang === 'en' ? '1 · Choose your platform' : '1 · Elige tu plataforma'}</h3>
-          <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.platD}</p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
-            {t.platforms.map((p: any) => {
-              const on = p.key === plat;
-              const hov = hoverPlat === p.key;
-              const ac = platAccent[p.key] || 'var(--brand)';
-              const lit = on || hov;   // borde/glow encendido al seleccionar o pasar el cursor
-              return (
-                <button key={p.key} onClick={() => pickPlat(p.key)}
-                  onMouseEnter={() => setHoverPlat(p.key)} onMouseLeave={() => setHoverPlat('')}
-                  style={{
-                    textAlign: 'left', cursor: 'pointer', borderRadius: 12, padding: '12px 13px',
-                    background: on ? `color-mix(in srgb, ${ac} 12%, var(--bg2))` : 'var(--bg2)',
-                    border: `${on ? 2 : 1}px solid ${lit ? ac : 'var(--line)'}`,
-                    boxShadow: lit ? `0 0 0 1px ${ac}55, 0 0 16px ${ac}${on ? '66' : '44'}` : 'none',
-                    transform: on ? 'translateY(-1px)' : 'none',
-                    transition: 'box-shadow .18s, border-color .18s, transform .18s, background .18s',
-                  }}>
-                  <div className="row between" style={{ gap: 6, alignItems: 'center' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 3, flex: 'none', background: ac, boxShadow: lit ? `0 0 8px ${ac}` : 'none', transition: 'box-shadow .18s' }} />
-                      <b style={{ fontSize: 14.5, color: 'var(--tx)', whiteSpace: 'nowrap' }}>{p.name}</b>
-                    </span>
-                    <span style={{
-                      width: 16, height: 16, borderRadius: '50%', flex: 'none',
-                      border: on ? 'none' : '1.5px solid var(--line)',
-                      background: on ? ac : 'transparent', color: '#0a0d14',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800,
-                    }}>{on ? '✓' : ''}</span>
-                  </div>
-                  <span className="pill" style={{ marginTop: 8, fontSize: 11, background: on ? `color-mix(in srgb, ${ac} 18%, transparent)` : 'var(--card2)', color: on ? ac : 'var(--mut)' }}>{API_KINDS.includes(p.kind) && !multi.on ? `🔒 ${p.badge}` : p.badge}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Recorrido en 3 fases — cambia según la plataforma: conector (MT/cTrader) vs API del bróker. */}
-        <div className="card" style={{ marginBottom: 14 }}>
-          <div className="row" style={{ alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {isApi ? (<>
-              <Phase n={1} done={false} active={true} label={lang === 'en' ? 'Pick your broker' : 'Elige tu bróker'} />
-              <div style={{ flex: 1, height: 2, minWidth: 16, background: 'var(--line)' }} />
-              <Phase n={2} done={false} active={false} label={lang === 'en' ? 'Sign in' : 'Inicia sesión'} />
-              <div style={{ flex: 1, height: 2, minWidth: 16, background: 'var(--line)' }} />
-              <Phase n={3} done={false} active={false} label={lang === 'en' ? 'Connect' : 'Conecta'} />
-            </>) : (<>
-              <Phase n={1} done={hasKey} active={!hasKey} label={lang === 'en' ? 'Create your key' : 'Crea tu clave'} />
-              <div style={{ flex: 1, height: 2, minWidth: 16, background: hasKey ? 'var(--green)' : 'var(--line)' }} />
-              <Phase n={2} done={false} active={hasKey} label={lang === 'en' ? 'Install the connector' : 'Instala el conector'} />
-              <div style={{ flex: 1, height: 2, minWidth: 16, background: 'var(--line)' }} />
-              <Phase n={3} done={false} active={false} label={lang === 'en' ? 'Connect' : 'Conecta'} />
-            </>)}
-          </div>
-        </div>
-
-        {/* Fase 1: crear la clave — SOLO para plataformas con conector (MT/cTrader).
-            Las plataformas por API (MatchTrader/TradeLocker/DXtrade) no llevan clave Onyx:
-            su propio bloque de abajo pide bróker + login, así que aquí se oculta. */}
-        {!isApi && ((hasKey && !addingKey) ? (
-          <div className="card" style={{ marginBottom: 18, border: '1px solid var(--green)' }}>
-            <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
-              <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                <span style={{ width: 28, height: 28, borderRadius: '50%', flex: 'none', background: 'rgba(52,226,160,.14)', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>✓</span>
-                <div>
-                  <div style={{ fontWeight: 700 }}>{newKey ? (lang === 'en' ? 'Step 1 · key created' : 'Paso 1 · clave creada') : (lang === 'en' ? 'Step 1 · your key is ready' : 'Paso 1 · tu clave está lista')}</div>
-                  <div className="muted" style={{ fontSize: 13 }}>{keys[0]?.label || keys[0]?.broker || (lang === 'en' ? 'Key created' : 'Clave creada')}</div>
-                </div>
-              </div>
-              <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => { setAddingKey(true); setNewKey(''); }}>{lang === 'en' ? 'Add another' : 'Crear otra'}</button>
-            </div>
-            {newKey && (
-              <div style={{ marginTop: 14, background: 'var(--bg2)', border: '1px solid var(--green)', borderRadius: 10, padding: 14 }}>
-                <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{t.created}</p>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <code style={{ flex: 1, minWidth: 200, wordBreak: 'break-all', padding: '8px 10px' }}>{newKey}</code>
-                  <button className="btn btn-ghost" onClick={() => copy(newKey, 'new')}>{copied === 'new' ? t.copied : t.copy}</button>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
+        {/* ===== CONECTAR CUENTA · UN SOLO ASISTENTE, UN PASO A LA VEZ =====
+            Antes eran tarjetas apiladas (plataforma + crear clave + descargar + instalar).
+            Ahora todo vive en un único recorrido que muestra un solo paso cada vez. */}
         <div className="card" style={{ marginBottom: 18 }}>
-          <h3 style={{ marginBottom: 4 }}>{t.step1}</h3>
-          <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.formHint}</p>
+          {/* Cabecera: título del paso + «Paso X de N» */}
+          <div className="row between" style={{ gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+            <h3 style={{ margin: 0 }}>{curIdx + 1} · {stepTitles[curKey]}</h3>
+            <span className="muted" style={{ fontSize: 12.5, flex: 'none' }}>{lang === 'en' ? `Step ${curIdx + 1} of ${nSteps}` : `Paso ${curIdx + 1} de ${nSteps}`}</span>
+          </div>
+          {/* Barra de progreso: un segmento por paso (hecho · actual · pendiente) */}
+          <div className="row" style={{ gap: 6, marginBottom: 18 }}>
+            {stepKeys.map((_, i) => (
+              <span key={i} style={{ height: 4, flex: 1, borderRadius: 4, background: i < curIdx ? 'var(--green)' : i === curIdx ? 'var(--grad)' : 'var(--line)', transition: '.2s' }} />
+            ))}
+          </div>
 
-          {atLimit ? (
-            <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10, padding: 14 }}>
-              <div style={{ fontWeight: 800, marginBottom: 6 }}><OnyxIcon emoji="🔒" size={15} /> {t.limitT}</div>
-              <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{limitDText}</p>
-              {addon?.enabled ? (
-                <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Link className="btn btn-primary ios-pay-hide" href="/account">➕ {t.addBuy} · ${addon.price}{t.addMo}</Link>
-                  <span className="muted ios-pay-hide" style={{ fontSize: 12.5 }}>{t.addOr}</span>
-                  <Link className="btn btn-ghost" href="/pricing">{t.limitCta}</Link>
+          {/* ---- PASO: elegir plataforma ---- */}
+          {curKey === 'plat' && (<>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{t.platD}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+              {t.platforms.map((p: any) => {
+                const on = p.key === plat;
+                const hov = hoverPlat === p.key;
+                const ac = platAccent[p.key] || 'var(--brand)';
+                const lit = on || hov;   // borde/glow encendido al seleccionar o pasar el cursor
+                return (
+                  <button key={p.key} onClick={() => pickPlat(p.key)}
+                    onMouseEnter={() => setHoverPlat(p.key)} onMouseLeave={() => setHoverPlat('')}
+                    style={{
+                      textAlign: 'left', cursor: 'pointer', borderRadius: 12, padding: '12px 13px',
+                      background: on ? `color-mix(in srgb, ${ac} 12%, var(--bg2))` : 'var(--bg2)',
+                      border: `${on ? 2 : 1}px solid ${lit ? ac : 'var(--line)'}`,
+                      boxShadow: lit ? `0 0 0 1px ${ac}55, 0 0 16px ${ac}${on ? '66' : '44'}` : 'none',
+                      transform: on ? 'translateY(-1px)' : 'none',
+                      transition: 'box-shadow .18s, border-color .18s, transform .18s, background .18s',
+                    }}>
+                    <div className="row between" style={{ gap: 6, alignItems: 'center' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <span style={{ width: 10, height: 10, borderRadius: 3, flex: 'none', background: ac, boxShadow: lit ? `0 0 8px ${ac}` : 'none', transition: 'box-shadow .18s' }} />
+                        <b style={{ fontSize: 14.5, color: 'var(--tx)', whiteSpace: 'nowrap' }}>{p.name}</b>
+                      </span>
+                      <span style={{
+                        width: 16, height: 16, borderRadius: '50%', flex: 'none',
+                        border: on ? 'none' : '1.5px solid var(--line)',
+                        background: on ? ac : 'transparent', color: '#0a0d14',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800,
+                      }}>{on ? '✓' : ''}</span>
+                    </div>
+                    <span className="pill" style={{ marginTop: 8, fontSize: 11, background: on ? `color-mix(in srgb, ${ac} 18%, transparent)` : 'var(--card2)', color: on ? ac : 'var(--mut)' }}>{API_KINDS.includes(p.kind) && !multi.on ? `🔒 ${p.badge}` : p.badge}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>)}
+
+          {/* ---- PASO: crear la clave (solo MT/cTrader) ---- */}
+          {curKey === 'key' && ((hasKey && !addingKey) ? (
+            <div style={{ border: '1px solid var(--green)', borderRadius: 12, padding: 16 }}>
+              <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
+                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                  <span style={{ width: 28, height: 28, borderRadius: '50%', flex: 'none', background: 'rgba(52,226,160,.14)', color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>✓</span>
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{newKey ? (lang === 'en' ? 'Key created' : 'Clave creada') : (lang === 'en' ? 'Your key is ready' : 'Tu clave está lista')}</div>
+                    <div className="muted" style={{ fontSize: 13 }}>{keys[0]?.label || keys[0]?.broker || (lang === 'en' ? 'Key created' : 'Clave creada')}</div>
+                  </div>
                 </div>
-              ) : (
-                <Link className="btn btn-primary" href="/pricing">{t.limitCta}</Link>
+                <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => { setAddingKey(true); setNewKey(''); }}>{lang === 'en' ? 'Add another' : 'Crear otra'}</button>
+              </div>
+              {newKey && (
+                <div style={{ marginTop: 14, background: 'var(--bg2)', border: '1px solid var(--green)', borderRadius: 10, padding: 14 }}>
+                  <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{t.created}</p>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <code style={{ flex: 1, minWidth: 200, wordBreak: 'break-all', padding: '8px 10px' }}>{newKey}</code>
+                    <button className="btn btn-ghost" onClick={() => copy(newKey, 'new')}>{copied === 'new' ? t.copied : t.copy}</button>
+                  </div>
+                </div>
               )}
             </div>
           ) : (
             <>
-              <div className="grid g2" style={{ gap: 12 }}>
-                <div>
-                  <span style={lbl}>{t.fNick}</span>
-                  <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="Ej: FTMO 100K" style={{ margin: '4px 0 0' }} />
-                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fNickHint}</div>
+              <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{t.formHint}</p>
+              {atLimit ? (
+                <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontWeight: 800, marginBottom: 6 }}><OnyxIcon emoji="🔒" size={15} /> {t.limitT}</div>
+                  <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{limitDText}</p>
+                  {addon?.enabled ? (
+                    <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Link className="btn btn-primary ios-pay-hide" href="/account">➕ {t.addBuy} · ${addon.price}{t.addMo}</Link>
+                      <span className="muted ios-pay-hide" style={{ fontSize: 12.5 }}>{t.addOr}</span>
+                      <Link className="btn btn-ghost" href="/pricing">{t.limitCta}</Link>
+                    </div>
+                  ) : (
+                    <Link className="btn btn-primary" href="/pricing">{t.limitCta}</Link>
+                  )}
                 </div>
-                <div>
-                  <span style={lbl}>{t.fType}</span>
-                  <select value={f.acc_type} onChange={(e) => setF({ ...f, acc_type: e.target.value })} style={{ margin: '4px 0 0' }}>
-                    {ACC_TYPES.map((x) => <option key={x.key} value={x.key}>{lang === 'en' ? x.en : x.es}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <span style={lbl}>{t.fFirm}</span>
-                  <input list="onyx-firms" value={f.broker} onChange={(e) => setF({ ...f, broker: e.target.value })} placeholder="Ej: FTMO" style={{ margin: '4px 0 0' }} />
-                  <datalist id="onyx-firms">{firmItems.map((x) => <option key={x.code} value={lang === 'en' ? (x.en || x.es) : x.es} />)}</datalist>
-                  <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fFirmHint}</div>
-                </div>
-                <div>
-                  <span style={lbl}>{t.fLogin}</span>
-                  <input value={f.account_login} onChange={(e) => setF({ ...f, account_login: e.target.value })} placeholder={t.fLoginPh} style={{ margin: '4px 0 0' }} />
-                </div>
-                {(f.acc_type === 'challenge' || f.acc_type === 'funded') && (
-                  <div>
-                    <span style={lbl}>{t.fSize}</span>
-                    <input value={f.acc_size} onChange={(e) => setF({ ...f, acc_size: e.target.value })} placeholder="Ej: 100000" style={{ margin: '4px 0 0' }} />
-                    <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fSizeHint}</div>
+              ) : (
+                <>
+                  <div className="grid g2" style={{ gap: 12 }}>
+                    <div>
+                      <span style={lbl}>{t.fNick}</span>
+                      <input value={f.label} onChange={(e) => setF({ ...f, label: e.target.value })} placeholder="Ej: FTMO 100K" style={{ margin: '4px 0 0' }} />
+                      <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fNickHint}</div>
+                    </div>
+                    <div>
+                      <span style={lbl}>{t.fType}</span>
+                      <select value={f.acc_type} onChange={(e) => setF({ ...f, acc_type: e.target.value })} style={{ margin: '4px 0 0' }}>
+                        {ACC_TYPES.map((x) => <option key={x.key} value={x.key}>{lang === 'en' ? x.en : x.es}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <span style={lbl}>{t.fFirm}</span>
+                      <input list="onyx-firms" value={f.broker} onChange={(e) => setF({ ...f, broker: e.target.value })} placeholder="Ej: FTMO" style={{ margin: '4px 0 0' }} />
+                      <datalist id="onyx-firms">{firmItems.map((x) => <option key={x.code} value={lang === 'en' ? (x.en || x.es) : x.es} />)}</datalist>
+                      <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fFirmHint}</div>
+                    </div>
+                    <div>
+                      <span style={lbl}>{t.fLogin}</span>
+                      <input value={f.account_login} onChange={(e) => setF({ ...f, account_login: e.target.value })} placeholder={t.fLoginPh} style={{ margin: '4px 0 0' }} />
+                    </div>
+                    {(f.acc_type === 'challenge' || f.acc_type === 'funded') && (
+                      <div>
+                        <span style={lbl}>{t.fSize}</span>
+                        <input value={f.acc_size} onChange={(e) => setF({ ...f, acc_size: e.target.value })} placeholder="Ej: 100000" style={{ margin: '4px 0 0' }} />
+                        <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t.fSizeHint}</div>
+                      </div>
+                    )}
                   </div>
-                )}
+                  {missing.length > 0 && (
+                    <div className="muted" style={{ fontSize: 13, marginTop: 14, background: 'rgba(255,192,77,.10)', border: '1px solid var(--amber)', borderRadius: 10, padding: '9px 12px', color: 'var(--amber)' }}>
+                      {t.missT} {missing.join(', ')}.
+                    </div>
+                  )}
+                  <button className="btn btn-primary" style={{ marginTop: 16, opacity: missing.length ? .5 : 1 }} onClick={create} disabled={loading || missing.length > 0}>
+                    {loading ? '...' : t.newKey}
+                  </button>
+                </>
+              )}
+            </>
+          ))}
+
+          {/* ---- PASO: descargar el conector (MT/cTrader) ---- */}
+          {curKey === 'dl' && (<>
+            <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{activePlat.name}</p>
+            <div style={{ background: `color-mix(in srgb, ${platAccent[plat] || 'var(--brand)'} 7%, var(--bg2))`, border: `2px solid ${platAccent[plat] || 'var(--brand)'}`, borderRadius: 12, padding: 14, maxWidth: 460, boxShadow: `0 0 0 1px color-mix(in srgb, ${platAccent[plat] || 'var(--brand)'} 30%, transparent), 0 0 26px -6px ${platAccent[plat] || 'var(--brand)'}`, transition: 'border-color .25s, box-shadow .25s, background .25s' }}>
+              <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
+                <b style={{ fontSize: 15 }}>Onyx · {activePlat.name}</b>
+                <span className="pill" style={{ background: `color-mix(in srgb, ${platAccent[plat] || 'var(--brand)'} 18%, transparent)`, color: platAccent[plat] || 'var(--brand)' }}>{activePlat.badge}</span>
               </div>
-              {missing.length > 0 && (
-                <div className="muted" style={{ fontSize: 13, marginTop: 14, background: 'rgba(255,192,77,.10)', border: '1px solid var(--amber)', borderRadius: 10, padding: '9px 12px', color: 'var(--amber)' }}>
-                  {t.missT} {missing.join(', ')}.
+              <div style={{ fontSize: 12, lineHeight: 1.9, color: 'var(--mut)', marginBottom: 14 }}>
+                {platData.does.map((x: string, i: number) => (
+                  <div key={i}><span style={{ color: 'var(--green)' }}>✓</span> {x}</div>
+                ))}
+                {platData.note && <div style={{ color: 'var(--amber)' }}>! {platData.note}</div>}
+              </div>
+              <a className="btn btn-primary" style={{ width: '100%', background: platAccent[plat] || 'var(--brand)', borderColor: platAccent[plat] || 'var(--brand)', color: '#0b1020' }} href={platData.dl[0].href} download
+                onClick={(e) => { markDone('dl'); if (isNativeApp()) { e.preventDefault(); openExternal(platData.dl[0].href); } }}><span className="ic">↓</span>{platData.dl[0].label}</a>
+              <div className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: 'center' }}>{platData.fileName}</div>
+              {(platData as any).src && (
+                <div style={{ textAlign: 'center', marginTop: 8 }}>
+                  <a className="muted" style={{ fontSize: 12, textDecoration: 'underline' }} href={(platData as any).src.href} download
+                    onClick={(e) => { if (isNativeApp()) { e.preventDefault(); openExternal((platData as any).src.href); } }}>{(platData as any).src.label}</a>
                 </div>
               )}
-              <button className="btn btn-primary" style={{ marginTop: 16, opacity: missing.length ? .5 : 1 }} onClick={create} disabled={loading || missing.length > 0}>
-                {loading ? '...' : t.newKey}
-              </button>
-            </>
-          )}
-        </div>
-        ))}
-
-        {API_KINDS.includes(kind) && !multi.on ? (
-          <div className="card" style={{ textAlign: 'center', padding: 32 }}>
-            <div style={{ fontSize: 34, marginBottom: 8 }}>🔒</div>
-            <h3 style={{ marginBottom: 6 }}>{lang === 'en' ? 'Available in' : 'Disponible en'} <span style={{ color: 'var(--brand2)' }}>{multi.upName}</span>{multi.upTrial > 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8, verticalAlign: 'middle', background: 'rgba(52,226,160,.14)', color: 'var(--green)', fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 20 }}><OnyxIcon name="gift" size={13} /> {trialTag(multi.upTrial, lang)}</span> : null}</h3>
-            <p className="muted" style={{ fontSize: 14, maxWidth: 440, margin: '0 auto 14px' }}>
-              {lang === 'en' ? 'Connect MatchTrader, TradeLocker and DXtrade by broker API. MetaTrader stays available on every plan.' : 'Conecta MatchTrader, TradeLocker y DXtrade por API del bróker. MetaTrader sigue disponible en todos los planes.'}
-            </p>
-            <a className="btn btn-primary" href="/pricing">{lang === 'en' ? 'Upgrade to' : 'Mejorar a'} {multi.upName}{multi.upTrial > 0 ? ` · ${trialTag(multi.upTrial, lang)}` : ''} →</a>
-          </div>
-        ) : kind === 'matchtrader' ? (
-          <MatchtraderConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
-        ) : kind === 'tradelocker' ? (
-          <TradeLockerConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
-        ) : kind === 'dxtrade' ? (
-          <DxtradeConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
-        ) : (
-          <>
-            {/* Paso 3: descarga el conector de la plataforma elegida.
-                La caja se enciende con el color de la plataforma seleccionada (borde + glow). */}
-            <div className="card" style={{ marginBottom: 18 }}>
-              <h3 style={{ marginBottom: 4 }}>{t.dlCardT}</h3>
-              <p className="muted" style={{ fontSize: 13, marginBottom: 14 }}>{activePlat.name}</p>
-
-              <div style={{ background: `color-mix(in srgb, ${platAccent[plat] || 'var(--brand)'} 7%, var(--bg2))`, border: `2px solid ${platAccent[plat] || 'var(--brand)'}`, borderRadius: 12, padding: 14, maxWidth: 460, boxShadow: `0 0 0 1px color-mix(in srgb, ${platAccent[plat] || 'var(--brand)'} 30%, transparent), 0 0 26px -6px ${platAccent[plat] || 'var(--brand)'}`, transition: 'border-color .25s, box-shadow .25s, background .25s' }}>
-                <div className="row between" style={{ marginBottom: 8, gap: 8 }}>
-                  <b style={{ fontSize: 15 }}>Onyx · {activePlat.name}</b>
-                  <span className="pill" style={{ background: `color-mix(in srgb, ${platAccent[plat] || 'var(--brand)'} 18%, transparent)`, color: platAccent[plat] || 'var(--brand)' }}>{activePlat.badge}</span>
+              {kind === 'ctrader' && (
+                <div style={{ textAlign: 'center', marginTop: 8 }}>
+                  <a className="muted" style={{ fontSize: 12, textDecoration: 'underline' }} href="/ctrader/guia" target="_blank" rel="noreferrer">{t.ctGuide}</a>
                 </div>
-                <div style={{ fontSize: 12, lineHeight: 1.9, color: 'var(--mut)', marginBottom: 14 }}>
-                  {platData.does.map((x: string, i: number) => (
-                    <div key={i}><span style={{ color: 'var(--green)' }}>✓</span> {x}</div>
-                  ))}
-                  {platData.note && <div style={{ color: 'var(--amber)' }}>! {platData.note}</div>}
-                </div>
-                <a className="btn btn-primary" style={{ width: '100%', background: platAccent[plat] || 'var(--brand)', borderColor: platAccent[plat] || 'var(--brand)', color: '#0b1020' }} href={platData.dl[0].href} download
-                  onClick={(e) => { markDone('dl'); if (isNativeApp()) { e.preventDefault(); openExternal(platData.dl[0].href); } }}><span className="ic">↓</span>{platData.dl[0].label}</a>
-                <div className="muted" style={{ fontSize: 11, marginTop: 7, textAlign: 'center' }}>{platData.fileName}</div>
-                {(platData as any).src && (
-                  <div style={{ textAlign: 'center', marginTop: 8 }}>
-                    <a className="muted" style={{ fontSize: 12, textDecoration: 'underline' }} href={(platData as any).src.href} download
-                      onClick={(e) => { if (isNativeApp()) { e.preventDefault(); openExternal((platData as any).src.href); } }}>{(platData as any).src.label}</a>
-                  </div>
-                )}
-                {kind === 'ctrader' && (
-                  <div style={{ textAlign: 'center', marginTop: 8 }}>
-                    <a className="muted" style={{ fontSize: 12, textDecoration: 'underline' }} href="/ctrader/guia" target="_blank" rel="noreferrer">{t.ctGuide}</a>
-                  </div>
-                )}
-                {/* Nota automática solo para usuarios de Mac (no aparece en Windows). */}
-                {(kind === 'mt' || kind === 'ctrader') && <MacInstallNote kind={kind === 'ctrader' ? 'ctrader' : 'mt'} />}
-              </div>
+              )}
+              {/* Nota automática solo para usuarios de Mac (no aparece en Windows). */}
+              {(kind === 'mt' || kind === 'ctrader') && <MacInstallNote kind={kind === 'ctrader' ? 'ctrader' : 'mt'} />}
             </div>
+          </>)}
 
-            {/* Paso 4: asistente de instalación de la plataforma */}
+          {/* ---- PASO: instalar el conector (asistente interno paso a paso) ---- */}
+          {curKey === 'install' && (
             <InstallWizard
               key={plat}
               t={t} w={WIZ[lang]} lang={lang}
@@ -590,8 +573,37 @@ export default function KeysPage() {
               steps={platData.steps} stuckList={platData.stuck}
               dlButtons={platData.dl} conn={platData.conn}
             />
-          </>
-        )}
+          )}
+
+          {/* ---- PASO: conectar por API del bróker (MatchTrader / TradeLocker / DXtrade) ---- */}
+          {curKey === 'connect' && (
+            kind === 'matchtrader' ? <MatchtraderConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
+            : kind === 'tradelocker' ? <TradeLockerConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
+            : <DxtradeConnect t={t} accent={platAccent[plat] || 'var(--brand)'} />
+          )}
+
+          {/* ---- PASO: plataforma bloqueada por plan ---- */}
+          {curKey === 'locked' && (
+            <div style={{ textAlign: 'center', padding: '12px 8px' }}>
+              <div style={{ fontSize: 34, marginBottom: 8 }}>🔒</div>
+              <h4 style={{ marginBottom: 6 }}>{lang === 'en' ? 'Available in' : 'Disponible en'} <span style={{ color: 'var(--brand2)' }}>{multi.upName}</span>{multi.upTrial > 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 8, verticalAlign: 'middle', background: 'rgba(52,226,160,.14)', color: 'var(--green)', fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 20 }}><OnyxIcon name="gift" size={13} /> {trialTag(multi.upTrial, lang)}</span> : null}</h4>
+              <p className="muted" style={{ fontSize: 14, maxWidth: 440, margin: '0 auto 14px' }}>
+                {lang === 'en' ? 'Connect MatchTrader, TradeLocker and DXtrade by broker API. MetaTrader stays available on every plan.' : 'Conecta MatchTrader, TradeLocker y DXtrade por API del bróker. MetaTrader sigue disponible en todos los planes.'}
+              </p>
+              <a className="btn btn-primary" href="/pricing">{lang === 'en' ? 'Upgrade to' : 'Mejorar a'} {multi.upName}{multi.upTrial > 0 ? ` · ${trialTag(multi.upTrial, lang)}` : ''} →</a>
+            </div>
+          )}
+
+          {/* ---- Navegación del asistente ---- */}
+          <div className="row between" style={{ gap: 10, marginTop: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button className="btn btn-ghost" style={{ fontSize: 13, visibility: curIdx === 0 ? 'hidden' : 'visible' }} onClick={() => setOStep((c) => Math.max(0, c - 1))}>← {lang === 'en' ? 'Back' : 'Atrás'}</button>
+            {curIdx < nSteps - 1
+              ? <button className="btn btn-primary" style={{ fontSize: 13, opacity: canNext ? 1 : .5 }} disabled={!canNext} onClick={() => setOStep((c) => Math.min(nSteps - 1, c + 1))}>{lang === 'en' ? 'Next' : 'Siguiente'} →</button>
+              : <span className="muted" style={{ fontSize: 12.5, textAlign: 'right' }}>{curKey === 'install'
+                  ? (lang === 'en' ? 'Last step. It will say “Connected” below once the connector syncs.' : 'Último paso. Abajo dirá «Conectado» cuando el conector sincronice.')
+                  : (lang === 'en' ? 'Follow the steps above to finish connecting.' : 'Sigue los pasos de arriba para terminar de conectar.')}</span>}
+          </div>
+        </div>
 
         {/* Lista de keys */}
         <div className="card">
