@@ -35,7 +35,6 @@ export default function SiteFooter() {
       ['/guia', L('Guía', 'Guide')],
       ['/blog', 'Blog'],
       ['/prop-firms', L('Prop firms', 'Prop firms')],
-      ['/analiza', L('Analiza gratis', 'Free analysis')],
     ] },
     { title: L('Producto', 'Product'), items: [
       ['/bot-lab', L('Bot Lab · Marketplace', 'Bot Lab · Marketplace')],

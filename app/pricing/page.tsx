@@ -82,10 +82,13 @@ const DEFAULT_PLANS: Plan[] = [
   { id: 'free', name: 'Free', name_en: 'Free', desc_es: null, desc_en: null, price_month: 0, price_year: 0, max_accounts: 1,
     features: ['1 cuenta conectada', 'Estadísticas básicas', '30 días de historial'],
     features_en: ['1 connected account', 'Basic stats', '30 days of history'], badge: null, badge_en: null },
-  { id: 'pro', name: 'Pro', name_en: 'Pro', desc_es: null, desc_en: null, price_month: 19, price_year: 190, max_accounts: 5,
+  { id: 'trader', name: 'Onyx Builder', name_en: 'Onyx Builder', desc_es: null, desc_en: null, price_month: 49, price_year: 490, max_accounts: 5,
+    features: ['Construye robots ilimitados', '5 cuentas conectadas · MT4 · MT5 · cTrader', 'Gatillos, salidas, riesgo y frenos', 'Reglas de fondeo + candado de activación', 'Filtro de noticias integrado'],
+    features_en: ['Build unlimited robots', '5 connected accounts · MT4 · MT5 · cTrader', 'Triggers, exits, risk & brakes', 'Firm rules + activation lock', 'Built-in news filter'], badge: null, badge_en: null },
+  { id: 'pro', name: 'Guardian Pro', name_en: 'Guardian Pro', desc_es: null, desc_en: null, price_month: 19, price_year: 190, max_accounts: 5,
     features: ['5 cuentas conectadas', 'Onyx Guardian: freno de riesgo', 'Historial ilimitado y reglas de fondeo', 'Diario, costes y exportar CSV', 'Crea tu academia (Onyx Academy)'],
     features_en: ['5 connected accounts', 'Onyx Guardian: risk brake', 'Unlimited history & funding rules', 'Journal, costs & CSV export', 'Build your academy (Onyx Academy)'], badge: 'Más popular', badge_en: 'Most popular' },
-  { id: 'elite', name: 'Elite', name_en: 'Elite', desc_es: null, desc_en: null, price_month: 79, price_year: 790, max_accounts: 999,
+  { id: 'elite', name: 'Guardian Elite', name_en: 'Guardian Elite', desc_es: null, desc_en: null, price_month: 79, price_year: 790, max_accounts: 999,
     features: ['Cuentas ilimitadas', 'Copy trading (1 master · 5 esclavas)', 'Cierres parciales y bloqueo por noticias', 'Alertas e informe por Telegram', 'Soporte prioritario'],
     features_en: ['Unlimited accounts', 'Copy trading (1 master · 5 slaves)', 'Partial closes & news blackout', 'Telegram alerts & report', 'Priority support'], badge: null, badge_en: null },
   { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', desc_es: null, desc_en: null, price_month: 199, price_year: 1990, max_accounts: 999,
@@ -104,7 +107,23 @@ export default function Pricing() {
   const t = dictFor(T, lang);
 
   useEffect(() => {
-    fetch('/api/admin/plans', { cache: 'no-store' }).then((r) => r.json()).then((j) => setPlans(j.plans || [])).catch(() => setPlans([]));
+    // Trae los planes del API con REINTENTOS: en el WebView de iOS la primera
+    // llamada a veces falla (red/caché) y, si nos quedábamos sin planes, caíamos en
+    // DEFAULT_PLANS (que antes no incluía Onyx Builder → "desaparecía" en la app).
+    // Ahora reintentamos hasta 4 veces y DEFAULT_PLANS ya trae los 5 planes.
+    let stop = false;
+    const load = async (tries = 4) => {
+      for (let i = 0; i < tries && !stop; i++) {
+        try {
+          const r = await fetch('/api/admin/plans?t=' + Date.now(), { cache: 'no-store' });
+          const j = await r.json();
+          if (Array.isArray(j?.plans) && j.plans.length) { if (!stop) setPlans(j.plans); return; }
+        } catch {}
+        await new Promise((res) => setTimeout(res, 1200));
+      }
+    };
+    load();
+    return () => { stop = true; };
   }, []);
 
   useEffect(() => { setMounted(true); fetch('/api/account', { cache: 'no-store' }).then((r) => r.json()).then((j: any) => setMyPlan(String(j?.plan || j?.profile?.plan || j?.subscription?.plan || ''))).catch(() => {}); }, []);

@@ -20,6 +20,7 @@ export type PlanFacts = {
   trialPlanName: string;      // nombre del plan (ES)
   trialPlanNameEn: string;    // nombre del plan (EN)
   hasTrial: boolean;          // trialDays > 0
+  trialAllPaid: boolean;      // TODOS los planes de pago tienen la misma prueba (> 0)
   // Ahorro anual (del plan de pago más representativo: la mejor prueba, o el más barato de pago)
   annualPct: number;          // % de ahorro al pagar anual vs 12 meses (0 si no aplica)
   annualMonthsFree: number;   // meses "gratis" equivalentes al año (redondeado)
@@ -70,12 +71,18 @@ export function planFacts(plans: PlanLike[] | null | undefined): PlanFacts {
     if (pm > 0 && py > 0 && py < pm * 12) annualMonthsFree = Math.round(12 - py / pm);
   }
 
+  // ¿Todos los planes de pago comparten la MISMA prueba (> 0)? Si es así, el copy
+  // dice "en todos los planes de pago" en vez de nombrar uno solo (p. ej. Builder).
+  const paidPlans = list.filter((p) => (Number(p.price_month) || 0) > 0 || (Number(p.price_year) || 0) > 0);
+  const trialAllPaid = bestDays > 0 && paidPlans.length > 1 && paidPlans.every((p) => trialDaysOf(p) === bestDays);
+
   return {
     trialDays: bestDays,
     trialPlanId: best?.id || '',
     trialPlanName: best?.name || '',
     trialPlanNameEn: best?.name_en || best?.name || '',
     hasTrial: bestDays > 0,
+    trialAllPaid,
     annualPct,
     annualMonthsFree,
   };
@@ -84,6 +91,13 @@ export function planFacts(plans: PlanLike[] | null | undefined): PlanFacts {
 // Frase corta y lista para pintar: "7 días gratis en Guardian Pro" / "".
 export function trialLine(f: PlanFacts, lang: 'es' | 'en'): string {
   if (!f.hasTrial) return '';
+  // Si todos los planes de pago comparten la prueba, lo decimos genérico (lee los
+  // días en vivo); si no, nombramos el plan que la tiene.
+  if (f.trialAllPaid) {
+    return lang === 'es'
+      ? `${f.trialDays} días gratis en todos los planes de pago`
+      : `${f.trialDays}-day free trial on all paid plans`;
+  }
   const nm = lang === 'es' ? f.trialPlanName : f.trialPlanNameEn;
   return lang === 'es'
     ? `${f.trialDays} días gratis${nm ? ` en ${nm}` : ''}`

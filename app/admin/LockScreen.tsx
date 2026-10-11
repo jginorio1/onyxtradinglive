@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLang } from '@/lib/lang';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
@@ -15,13 +15,17 @@ export default function LockScreen({ email }: { email: string }) {
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
-  async function unlock() {
-    if (pin.length !== 6) return;
+  // Auto-entrar al completar los 6 dígitos (el botón "Desbloquear" sigue por si acaso).
+  useEffect(() => { if (pin.length === 6 && !busy) unlock(pin); /* eslint-disable-next-line */ }, [pin]);
+
+  async function unlock(code?: string) {
+    const p = (code ?? pin);
+    if (p.length !== 6 || busy) return;
     setBusy(true); setErr('');
     try {
       const r = await fetch('/api/admin/security', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'unlock', pin }),
+        body: JSON.stringify({ action: 'unlock', pin: p }),
       });
       const d = await r.json().catch(() => ({}));
       if (r.ok) { router.refresh(); return; }
@@ -54,7 +58,7 @@ export default function LockScreen({ email }: { email: string }) {
         />
         {err && <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 10 }}>{err}</div>}
 
-        <button className="btn btn-primary" onClick={unlock} disabled={busy || pin.length !== 6}
+        <button className="btn btn-primary" onClick={() => unlock()} disabled={busy || pin.length !== 6}
           style={{ marginTop: 16, width: 200 }}>{busy ? '…' : (es ? 'Desbloquear' : 'Unlock')}</button>
 
         <div style={{ marginTop: 14 }}>
