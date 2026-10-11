@@ -1035,8 +1035,12 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                     <span className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: .5, cursor: 'default', borderColor: 'var(--line)' }} title={L.noRobotsHint}><OnyxIcon emoji="🤖" size={14} /> <span style={{ fontSize: 12, color: 'var(--mut)' }}>{L.segRobot}:</span> {L.noRobots}</span>
                   )}
                 </>)}
-                {/* MÓVIL: tarjeta de acciones (Compartir · Filtros · Más) del MISMO tamaño que Portafolio. */}
-                {isMobile && (
+                {/* MÓVIL: tarjeta de acciones (Compartir · Filtros · Más) del MISMO tamaño que Portafolio.
+                   En el DEMO público (forceDemo) Compartir/Exportar están deshabilitados, así que
+                   la tarjeta quedaba con un solo botón "⋯" estirado a todo el ancho (y naranja),
+                   desbalanceado junto a la píldora de portafolio. La ocultamos en el demo para que
+                   la fila quede limpia; en la app real (con 3 botones) no cambia nada. */}
+                {isMobile && !forceDemo && (
                   <div style={{ flex: 1, minWidth: 0, minHeight: 56, display: 'flex', alignItems: 'stretch', gap: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 6 }}>
                     {canShare && !forceDemo && <ShareReport lang={lang} from={expFrom} to={expTo} acc={sel} pdfHref={pdfHref} compact />}
                     {view === 'rendimiento' && (

@@ -26,22 +26,28 @@ export function GetAppBanner() {
   if (!show) return null;
   const close = () => { try { localStorage.setItem('onyx_getapp_banner', 'off'); } catch {} setShow(false); };
 
+  // El fondo del banner es SIEMPRE oscuro, así que forzamos texto claro (no
+  // var(--tx), que en tema claro es oscuro → se volvía invisible). Y permitimos
+  // que envuelva en móvil: en pantallas angostas las insignias bajan a una 2ª
+  // línea en vez de apretujar el texto en una columna de 7 renglones. La ✕ va
+  // anclada arriba a la derecha para que no estorbe al envolver.
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      background: 'linear-gradient(120deg,#1b2033,#141828)', border: '1px solid var(--line,#2b3250)',
-      borderRadius: 12, padding: '11px 14px', marginBottom: 14,
+      position: 'relative',
+      display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
+      background: 'linear-gradient(120deg,#1b2033,#141828)', border: '1px solid rgba(255,255,255,.10)',
+      borderRadius: 12, padding: '12px 38px 12px 14px', marginBottom: 14,
     }}>
       <span style={{ fontSize: 20, flex: 'none' }}>📱</span>
-      <div style={{ flex: 1, lineHeight: 1.3 }}>
-        <b style={{ fontSize: 14 }}>{es ? 'Llévanos en el móvil' : 'Carry us on your phone'}</b>
-        <div className="muted" style={{ fontSize: 12 }}>
+      <div style={{ flex: '1 1 150px', minWidth: 140, lineHeight: 1.3 }}>
+        <b style={{ fontSize: 14, color: '#f2f5fb' }}>{es ? 'Llévanos en el móvil' : 'Carry us on your phone'}</b>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,.62)' }}>
           {es ? 'Tu Guardian, tus robots y tus cuentas en el bolsillo.' : 'Your Guardian, robots and accounts in your pocket.'}
         </div>
       </div>
-      <span style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}><GooglePlayBadge size="xs" /><AppStoreBadge size="xs" /></span>
+      <span style={{ flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: 8 }}><GooglePlayBadge size="xs" /><AppStoreBadge size="xs" /></span>
       <button aria-label={es ? 'Cerrar' : 'Close'} onClick={close}
-        style={{ background: 'none', border: 'none', color: 'var(--mut,#8a90a2)', fontSize: 16, cursor: 'pointer', flex: 'none' }}>✕</button>
+        style={{ position: 'absolute', top: 8, right: 10, background: 'none', border: 'none', color: 'rgba(255,255,255,.6)', fontSize: 16, cursor: 'pointer', lineHeight: 1, padding: 2 }}>✕</button>
     </div>
   );
 }
