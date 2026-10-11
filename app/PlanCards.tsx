@@ -61,7 +61,12 @@ export default function PlanCards({
         const badgeText = /high[\s-]?ticket|alto\s*valor/i.test(badgeRaw || '')
           ? (lang === 'es' ? 'El definitivo' : 'The ultimate')
           : badgeRaw;
-        const gold = 'var(--gold, #e8b923)';
+        // Dorado VIVO fijo para fondos (botón "popular", insignia, borde). No usamos
+        // var(--gold): esa variable se oscurece en tema claro para que el dorado como
+        // TEXTO se lea, pero como FONDO quedaría marrón apagado. Aquí queremos el oro
+        // brillante con texto oscuro. Gradiente para botón/insignia, sólido para borde.
+        const gold = '#e8b923';
+        const goldGrad = 'linear-gradient(100deg,#ffe08a,#e8b923)';
         const goldDark = '#3a2a06';
         const prev = plans[i - 1];
         const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
@@ -84,7 +89,7 @@ export default function PlanCards({
         return (
           <div key={p.id} className="card" style={{ flex: '1 1 240px', minWidth: 230, maxWidth: 320, display: 'flex', flexDirection: 'column', ...(isBlack ? { position: 'relative', border: '2px solid transparent', background: 'radial-gradient(120% 80% at 50% 0%, #241a3a 0%, #120d1f 45%, #07060d 100%) padding-box, linear-gradient(160deg,#ffe08a,#e8b923 20%,#7a5cff 60%,#2a1a4d) border-box', boxShadow: '0 0 34px rgba(232,185,35,.3), 0 0 60px -10px rgba(124,92,255,.28)' } : botCyan ? { position: 'relative', border: '2px solid transparent', background: 'linear-gradient(180deg, color-mix(in srgb, #22d3ee 9%, var(--card)) 0%, var(--card) 58%) padding-box, linear-gradient(160deg,#22d3ee,#2dd4bf 55%,#0891b2) border-box', boxShadow: '0 0 30px rgba(34,211,238,.24)' } : goldHi ? { border: `2px solid ${gold}`, boxShadow: '0 0 30px rgba(232,185,35,.28)', position: 'relative' } : hasBadge ? { border: '2px solid var(--brand)', boxShadow: '0 0 30px rgba(124,140,255,.25)', position: 'relative' } : { position: 'relative' }) }}>
             {hasBadge && (isPopular
-              ? <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: gold, color: goldDark, fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badgeText}</span>
+              ? <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: goldGrad, color: goldDark, fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>★ {badgeText}</span>
               : isBlack
                 ? <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(100deg,#ffe08a,#e8b923)', color: '#2a1e02', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap', letterSpacing: '.03em', boxShadow: '0 4px 14px -4px rgba(232,185,35,.6)' }}>◆ {badgeText}</span>
                 : <span style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 11, fontWeight: 800, padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>◆ {badgeText}</span>)}
@@ -123,7 +128,7 @@ export default function PlanCards({
               const label = isFree ? (freeLabel || t.free)
                 : (trialLabel || (ctas?.[p.id] ? (lang === 'es' ? ctas[p.id].es : ctas[p.id].en) : t.choose + ' ' + name));
               return (
-                <button className={'btn ' + (goldHi || isBlack || botCyan ? '' : hasBadge ? 'btn-primary' : 'btn-ghost')} style={isBlack ? { width: '100%', background: 'linear-gradient(100deg,#ffe08a,#e8b923 45%,#ff9d3d)', color: '#2a1e02', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -4px rgba(232,185,35,.5)' } : botCyan ? { width: '100%', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 55%,#06b6d4)', color: '#042f2e', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -4px rgba(34,211,238,.45)' } : goldHi ? { width: '100%', background: gold, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%' }} onClick={() => onChoose(p.id, price)} disabled={loadingId === p.id}>
+                <button className={'btn ' + (goldHi || isBlack || botCyan ? '' : hasBadge ? 'btn-primary' : 'btn-ghost')} style={isBlack ? { width: '100%', background: 'linear-gradient(100deg,#ffe08a,#e8b923 45%,#ff9d3d)', color: '#2a1e02', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -4px rgba(232,185,35,.5)' } : botCyan ? { width: '100%', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 55%,#06b6d4)', color: '#042f2e', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -4px rgba(34,211,238,.45)' } : goldHi ? { width: '100%', background: goldGrad, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%' }} onClick={() => onChoose(p.id, price)} disabled={loadingId === p.id}>
                   {loadingId === p.id ? '...' : label}
                 </button>
               );
