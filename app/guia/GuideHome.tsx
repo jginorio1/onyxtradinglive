@@ -119,6 +119,16 @@ export default function GuideHome() {
         <p className="muted" style={{ fontSize: 15, marginTop: 8 }}>{t.sub}</p>
       </div>
 
+      {/* Acceso al Centro de Guías paso a paso (capturas reales + pasos numerados) */}
+      <Link href="/como-usar" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none', border: '1px solid color-mix(in srgb,var(--brand) 40%,var(--line))', borderRadius: 14, padding: '14px 16px', marginBottom: 16, background: 'linear-gradient(120deg, color-mix(in srgb,var(--brand) 10%,transparent), transparent), var(--card)' }}>
+        <span style={{ width: 40, height: 40, borderRadius: 11, background: 'linear-gradient(135deg,#ffcf5c,#ff6a2b)', color: '#241002', display: 'grid', placeItems: 'center', flex: 'none' }}><OnyxIcon name="book" size={20} glow={false} /></span>
+        <span style={{ flex: 1 }}>
+          <b style={{ display: 'block', color: 'var(--tx)', fontSize: 15 }}>{lang === 'es' ? 'Cómo usar Onyx, paso a paso' : 'How to use Onyx, step by step'}</b>
+          <span className="muted" style={{ fontSize: 13 }}>{lang === 'es' ? 'Registro, conectar cuenta, el panel y cada módulo — con capturas reales.' : 'Sign-up, connect account, the dashboard and every module — with real screenshots.'}</span>
+        </span>
+        <span style={{ color: 'var(--brand)', fontSize: 20, flex: 'none' }}>→</span>
+      </Link>
+
       {/* Barra "Pregúntale a Onyx" */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', border: '1px solid var(--brand)', borderRadius: 14, padding: '8px 10px 8px 14px', background: 'linear-gradient(135deg, rgba(124,140,255,.08), transparent), var(--card)' }}>
         <span style={{ color: 'var(--brand)', display: 'inline-flex', flex: 'none' }}><OnyxIcon name="ai" size={20} /></span>
