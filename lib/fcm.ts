@@ -65,11 +65,18 @@ type Payload = { title: string; body: string; url?: string; category?: string };
 
 // Envía a un token concreto. Devuelve 'ok' | 'dead' (token inválido → borrar) | 'err'.
 async function sendToToken(token: string, projectId: string, oauth: string, p: Payload): Promise<'ok' | 'dead' | 'err'> {
+  // Logo de Onyx que acompaña la notificación (imagen grande). Absoluta y pública.
+  const logo = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '') + '/icon-512.png';
   const message = {
     message: {
       token,
       notification: { title: p.title, body: p.body },
-      data: { url: p.url || '/dashboard' },
+      // 'image' en data → la Notification Service Extension de iOS la lee de
+      // userInfo["image"] y la adjunta (ver ios-native/OnyxNotificationService).
+      data: { url: p.url || '/dashboard', image: logo },
+      // Imagen de marca para ambas plataformas (Android la pinta directo; iOS la
+      // pinta solo si el build tiene la Notification Service Extension).
+      fcm_options: { image: logo },
       android: {
         priority: 'HIGH',
         notification: {
@@ -79,13 +86,23 @@ async function sendToToken(token: string, projectId: string, oauth: string, p: P
           //  • icon: ícono chico monocromo de la barra de estado (drawable ic_stat_onyx = anillo Onyx).
           //  • color: AZUL del logo (anillo Onyx) para que Android combine con el icono
           //    azul/morado de la app, igual que en iOS.
+          //  • image: logo grande de Onyx dentro de la notificación expandida.
           //  • channel_id: la categoría → canal (Plan, Robots, Soporte…), creado en NativeInit.
           icon: 'ic_stat_onyx',
           color: '#7F90FF',
+          image: logo,
           channel_id: p.category || 'onyx_default',
         },
       },
-      apns: { payload: { aps: { sound: 'default' } } },
+      // iOS: el ícono CHICO de la notificación es SIEMPRE el ícono de la app (Apple
+      // no permite cambiarlo). Para mostrar el logo como imagen grande hace falta
+      // mutable-content:1 + una Notification Service Extension en el build iOS, que
+      // descarga 'image' y la adjunta. Sin esa extensión, iOS ignora la imagen pero
+      // la notificación llega igual (con el ícono de la app).
+      apns: {
+        payload: { aps: { sound: 'default', 'mutable-content': 1 } },
+        fcm_options: { image: logo },
+      },
     },
   };
   try {

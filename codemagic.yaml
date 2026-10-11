@@ -1,0 +1,119 @@
+workflows:
+  ios-release:
+    name: Onyx iOS - App Store
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Onyx ASC
+    environment:
+      ios_signing:
+        provisioning_profiles:
+          - onyx_appstore
+          # Perfil de distribución para la Notification Service Extension.
+          # Debes crearlo UNA VEZ en Apple Developer / Codemagic:
+          #   App ID: com.onyxtradinglive.app.OnyxNotificationService
+          #   Tipo:   App Store distribution
+          # y subirlo a Codemagic con ESTE nombre (o cambia el nombre aquí).
+          - onyx_nse_appstore
+        certificates:
+          - onyx_dist
+      vars:
+        BUNDLE_ID: "com.onyxtradinglive.app"
+      node: 20
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install deps
+        script: npm ci || npm install
+      - name: Cap sync ios
+        script: npx cap sync ios
+      # === Iconos de la app (iOS) desde resources/icon.png ===
+      # Genera el AppIcon de iOS con tu logo real (no el placeholder de Capacitor).
+      # Requiere resources/icon.png (1024x1024, PNG, SIN transparencia).
+      - name: App icons (iOS)
+        script: |
+          test -f resources/icon.png || { echo "FALTA resources/icon.png (1024x1024, opaco)"; exit 1; }
+          npx @capacitor/assets generate --ios
+          echo "=== AppIcon generado ==="; ls ios/App/App/Assets.xcassets/AppIcon.appiconset | head
+      # === Notification Service Extension (logo de Onyx dentro del push iOS) ===
+      # Inyecta el target OnyxNotificationService en el App.xcodeproj recién
+      # generado. Es idempotente. El servidor ya manda mutable-content:1 + la
+      # imagen del logo; esta extensión la descarga y la adjunta al aviso.
+      - name: Notification Service Extension (push logo)
+        script: |
+          set -e
+          gem list xcodeproj -i >/dev/null 2>&1 || gem install xcodeproj --no-document
+          ruby scripts/ios_add_nse.rb
+      # === Firebase Cloud Messaging (push iOS) — verificaciones ===
+      # El GoogleService-Info.plist y la linea "pod 'FirebaseMessaging'" en el
+      # Podfile los pones tu en el repo. Aqui solo verificamos que esten; si falta
+      # alguno, el build se detiene con un mensaje claro (no compila a medias).
+      - name: Firebase push - checks
+        script: |
+          set -e
+          test -f ios/App/App/GoogleService-Info.plist || { echo "FALTA ios/App/App/GoogleService-Info.plist — subelo al repo"; exit 1; }
+          grep -q "FirebaseMessaging" ios/App/Podfile || { echo "FALTA la linea  pod 'FirebaseMessaging'  dentro de target 'App' do en ios/App/Podfile"; exit 1; }
+          echo "=== Podfile OK ==="; sed -n '1,40p' ios/App/Podfile
+      - name: Pod install
+        script: cd ios/App && pod install
+      # === Textos de privacidad OBLIGATORIOS (Apple ITMS-90683) + exencion de encriptacion ===
+      - name: Info.plist privacy strings
+        script: |
+          set -e
+          PLIST="ios/App/App/Info.plist"
+          plutil -remove NSPhotoLibraryUsageDescription "$PLIST" 2>/dev/null || true
+          plutil -insert NSPhotoLibraryUsageDescription -string "Onyx Trading Live usa tu biblioteca de fotos para que puedas adjuntar capturas de tus operaciones, certificados de prop firm y comprobantes de pago en tu cuenta y en soporte." "$PLIST"
+          plutil -remove NSPhotoLibraryAddUsageDescription "$PLIST" 2>/dev/null || true
+          plutil -insert NSPhotoLibraryAddUsageDescription -string "Onyx Trading Live puede guardar en tu biblioteca de fotos las imagenes de reportes y comprobantes que generes en la app." "$PLIST"
+          plutil -remove NSCameraUsageDescription "$PLIST" 2>/dev/null || true
+          plutil -insert NSCameraUsageDescription -string "Onyx Trading Live usa la camara para que puedas tomar y adjuntar fotos de comprobantes o documentos en soporte." "$PLIST"
+          plutil -replace ITSAppUsesNonExemptEncryption -bool false "$PLIST" 2>/dev/null || plutil -insert ITSAppUsesNonExemptEncryption -bool false "$PLIST"
+          echo "=== Info.plist verificado ==="
+          plutil -p "$PLIST" | grep -iE "UsageDescription|ITSAppUsesNonExemptEncryption"
+      # === Entitlement de Push + meter el GoogleService-Info.plist al bundle ===
+      # Crea App.entitlements (aps-environment production), lo enlaza al target y
+      # añade el plist a los recursos del target para que Firebase lo encuentre.
+      - name: Push entitlement + bundle plist
+        script: |
+          set -e
+          cd ios/App
+          cat > App/App.entitlements <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>aps-environment</key>
+            <string>production</string>
+          </dict>
+          </plist>
+          PLIST
+          gem list xcodeproj -i >/dev/null 2>&1 || gem install xcodeproj --no-document
+          ruby -e "
+            require 'xcodeproj'
+            p = Xcodeproj::Project.open('App.xcodeproj')
+            t = p.targets.find { |x| x.name == 'App' }
+            t.build_configurations.each { |c| c.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'App/App.entitlements' }
+            unless p.files.any? { |f| f.path && f.path.end_with?('GoogleService-Info.plist') }
+              ref = p.main_group.new_file('App/GoogleService-Info.plist')
+              t.add_resources([ref])
+            end
+            p.save
+          "
+          echo "=== Entitlement y plist enlazados ==="
+      - name: Set up code signing
+        script: xcode-project use-profiles
+      - name: Increment build number
+        script: |
+          cd ios/App
+          agvtool new-version -all "$BUILD_NUMBER"
+      - name: Build ipa
+        script: cd ios/App && xcode-project build-ipa --workspace App.xcworkspace --scheme App
+    artifacts:
+      - ios/App/build/ios/ipa/*.ipa
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
