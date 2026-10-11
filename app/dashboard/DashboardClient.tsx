@@ -1074,7 +1074,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                         <div style={{ position: 'absolute', right: 0, left: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 230, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
                           {!forceDemo && <button className="btn btn-ghost" onClick={() => { setDemo(!demo); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="🎬" size={14} /> {L.demo}{demo ? ' ✓' : ''}</button>}
                           <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} onClick={() => { setRange(range === 'custom' ? 'all' : 'custom'); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: canShare ? 6 : 0 }}><OnyxIcon emoji="📅" size={14} /> {L.customRange}{range === 'custom' ? ' ✓' : ''}</button>
-                          {canShare && <>
+                          {canShare && !forceDemo && <>
                             <div className="muted" style={{ fontSize: 11, padding: '6px 8px 6px', borderTop: '1px solid var(--line)', marginTop: 2 }}>{lang === 'es' ? 'Exportar reporte' : 'Export report'}</div>
                             <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(pdfDlHref, `onyx-reporte-${expFrom}.pdf`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>
                             <button className="btn btn-ghost" onClick={() => { setMoreOpen(false); openAuthedFile(xlsxHref, `onyx-reporte-${expFrom}.xlsx`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📊" size={14} /> Excel</button>
@@ -1099,7 +1099,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 {!isMobile && canShare && !forceDemo && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
                 {/* ESCRITORIO: Demo + Exportar sueltos, como antes. */}
                 {!isMobile && !forceDemo && <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>}
-                {!isMobile && canShare && (
+                {!isMobile && canShare && !forceDemo && (
                   <span style={{ position: 'relative', display: 'inline-flex' }}>
                     <button type="button" className="btn btn-ghost" style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => setExpOpen((o) => !o)}><OnyxIcon emoji="⬇️" size={15} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span></button>
                     {expOpen && (<>
