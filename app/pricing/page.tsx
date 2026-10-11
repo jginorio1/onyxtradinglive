@@ -187,8 +187,8 @@ export default function Pricing() {
 
         {!iosApp && (
         <div style={{ display: 'inline-flex', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 30, padding: 4, marginBottom: 30 }}>
-          <button className="btn" style={{ borderRadius: 30, background: !annual ? 'var(--grad)' : 'transparent', color: !annual ? '#fff' : 'var(--mut)' }} onClick={() => setAnnual(false)}>{t.monthly}</button>
-          <button className="btn" style={{ borderRadius: 30, background: annual ? 'var(--grad)' : 'transparent', color: annual ? '#fff' : 'var(--mut)', display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setAnnual(true)}>{t.annual} · {t.save} {facts.annualPct > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>−{facts.annualPct}%</span>}</button>
+          <button className="btn" style={{ borderRadius: 30, background: !annual ? 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)' : 'transparent', color: !annual ? '#241002' : 'var(--mut)', fontWeight: !annual ? 800 : 600 }} onClick={() => setAnnual(false)}>{t.monthly}</button>
+          <button className="btn" style={{ borderRadius: 30, background: annual ? 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)' : 'transparent', color: annual ? '#241002' : 'var(--mut)', fontWeight: annual ? 800 : 600, display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => setAnnual(true)}>{t.annual} · {t.save} {facts.annualPct > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>−{facts.annualPct}%</span>}</button>
         </div>
         )}
 

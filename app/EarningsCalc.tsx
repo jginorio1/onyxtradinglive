@@ -191,7 +191,7 @@ function PlanCalc({ plans, fallbackPct, lang, shell, chip, row, box }: {
           {[[false, L('Mensual', 'Monthly')], [true, L('Anual', 'Annual')]].map(([val, lbl]: any) => (
             <button key={String(val)} onClick={() => setAnnual(val)} style={{
               padding: '6px 16px', borderRadius: 999, cursor: 'pointer', border: 'none', fontWeight: 700,
-              background: annual === val ? 'var(--brand)' : 'transparent', color: annual === val ? '#fff' : 'var(--mut)',
+              background: annual === val ? 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)' : 'transparent', color: annual === val ? '#241002' : 'var(--mut)',
             }}>{lbl}</button>
           ))}
         </div>
