@@ -13,6 +13,7 @@ import AppStoreBadge, { APPSTORE_URL } from '@/app/components/AppStoreBadge';
 import { isNativeApp } from '@/lib/native';
 import { useVpsInfo, renderVps } from '@/app/components/VpsCallout';
 import { planFacts, trialLine } from '@/lib/planFacts';
+import { DEFAULT_PLANS, guardianBadge, platformsStr, accountsRange } from '@/lib/defaultPlans';
 
 type Lang = 'es' | 'en';
 
@@ -24,12 +25,16 @@ function buildPriceFaqs(plans: any[], lang: 'es' | 'en'): [string, string][] {
   if (lang === 'es') {
     out.push(['¿Necesito tarjeta para empezar?', 'No. El plan Free es gratis y sin tarjeta. Solo pides tarjeta o USDT cuando eliges un plan de pago.']);
     if (f.hasTrial) out.push(['¿Hay prueba gratis?', `Sí: ${trialLine(f, 'es')}. Entras con tarjeta pero no se te cobra hasta el día ${f.trialDays}; cancela antes y no pagas nada.`]);
+    out.push(['¿Cuántas cuentas puedo conectar?', `Depende de tu plan: ${accountsRange(plans, 'es')}. Las ves todas juntas en tu portafolio.`]);
+    out.push(['¿Con qué plataformas funciona?', `Con ${platformsStr('es')}. Al conectar eliges tu plataforma; algunas instalan un conector y otras se enlazan por la API del bróker, sin instalar nada. La misma cuenta te vale para todas.`]);
     out.push(['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.']);
     out.push(['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT en las redes Tron (TRC-20) y Ethereum (ERC-20). El acceso se activa al confirmar el pago.']);
     if (f.annualPct > 0) out.push(['¿El anual ahorra?', `Sí: pagando al año ahorras un ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (unos ${f.annualMonthsFree} meses gratis)` : ''} frente a pagar mes a mes.`]);
   } else {
     out.push(['Do I need a card to start?', 'No. The Free plan is free and card-free. We only ask for a card or USDT when you pick a paid plan.']);
     if (f.hasTrial) out.push(['Is there a free trial?', `Yes: ${trialLine(f, 'en')}. You enter with a card but you are not charged until day ${f.trialDays}; cancel before then and you pay nothing.`]);
+    out.push(['How many accounts can I connect?', `Depends on your plan: ${accountsRange(plans, 'en')}. You see them all combined in your portfolio.`]);
+    out.push(['Which platforms does it work with?', `With ${platformsStr('en')}. When you connect you pick your platform; some install a connector and others link via the broker API, nothing to install. The same account works across all of them.`]);
     out.push(['Can I change or cancel anytime?', 'Yes. Upgrade or downgrade in one click from your account and cancel anytime; you keep access until the period ends.']);
     out.push(['Do you accept crypto?', 'Yes, pay with card (Stripe) or USDT on the Tron (TRC-20) and Ethereum (ERC-20) networks. Access activates once the payment confirms.']);
     if (f.annualPct > 0) out.push(['Does annual save money?', `Yes: paying yearly saves you ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (about ${f.annualMonthsFree} months free)` : ''} vs paying monthly.`]);
@@ -158,10 +163,10 @@ const dict = {
     hero: {
       badge: '🧩 Journal · Guardian · Copy · Prop firms',
       h1a: 'El sistema operativo', h1b: 'del trader de fondeo',
-      sub: 'Para forex y CFDs (índices, oro, acciones y cripto). Conecta MT4, MT5, cTrader, MatchTrader, TradeLocker y DXtrade, sigue las reglas de tu prop firm en vivo, protege tu riesgo con el Onyx Guardian y copia entre cuentas. Analítica real y ganancia neta. Mucho más que un diario.',
+      sub: `Para forex y CFDs (índices, oro, acciones y cripto). Conecta ${platformsStr('es')}, sigue las reglas de tu prop firm en vivo, protege tu riesgo con el Onyx Guardian y copia entre cuentas. Analítica real y ganancia neta. Mucho más que un diario.`,
       cta1: 'Empieza gratis →', cta2: 'Ver precios', note: 'Sin tarjeta para empezar · Cancela cuando quieras',
     },
-    trust: ['✅ MT4, MT5, cTrader, MatchTrader, TradeLocker y DXtrade', '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
+    trust: [`✅ ${platformsStr('es')}`, '🔒 Conexión de solo lectura', '💳 Pagos seguros con Stripe'],
     osCompat: 'Funciona en:',
     logosT: 'Forex y CFDs en tu bróker y tu prop firm',
     videoBadge: '▶ En acción',
@@ -251,11 +256,9 @@ const dict = {
       ['¿Puedo copiar operaciones entre mis cuentas?', 'Sí, con el copy trading integrado: replicas de una cuenta maestra a varias esclavas, con control de riesgo por cada enlace. Disponible según tu plan.'],
       ['¿Puedo ejecutar señales de TradingView?', 'Sí. Tus alertas de TradingView pueden abrir la operación en tu cuenta real a través de tu EA de Onyx, con tope de lote y símbolos permitidos. El Guardian sigue protegiéndote. En planes de pago.'],
       ['¿Tienen academia o comunidad?', 'Sí. En Onyx Academy aprendes con mentores verificados, cursos y comunidad estilo Skool. Y si eres mentor, puedes crear la tuya y cobrar por ella.'],
-      ['¿Cuántas cuentas puedo conectar?', 'Depende de tu plan: desde 1 cuenta en el plan gratis hasta cuentas ilimitadas. Ves todas juntas en tu portafolio.'],
       ['¿Tienen programa de afiliados o embajadores?', 'Sí. Si tienes comunidad, canal o seguidores, cobras una comisión recurrente por cada persona que se suscriba con tu enlace, mientras siga pagando. Además tu audiencia entra con descuento usando tu código. Míralo en la página de Embajadores.'],
       ['¿Tienen app móvil?', 'Sí. Onyx está disponible en Android (Google Play) y en iPhone/iPad (App Store) para llevar tus cuentas, robots y el Guardian en el bolsillo. También funciona como app web desde el navegador, y el panel se adapta a móvil, tablet y monitores grandes.'],
       ['¿En qué se diferencia de un Excel?', 'Onyx sincroniza solo, calcula 15+ métricas, tiene calendario, sesiones y noticias en vivo, costes, fondeo y gráficas modernas. Un Excel no hace nada de eso.'],
-      ['¿Con qué plataformas funciona?', 'Con MetaTrader 4 y 5, cTrader, MatchTrader, TradeLocker y DXtrade. Al conectar eliges tu plataforma: MetaTrader y cTrader instalan un conector (EA o cBot); MatchTrader, TradeLocker y DXtrade se conectan por la API del bróker, sin instalar nada. La misma cuenta te vale para todas.'],
       ['¿Puedo cancelar cuando quiera?', 'Claro. Gestionas tu suscripción desde tu panel y cancelas o cambias de plan en cualquier momento.'],
       ['¿Qué formas de pago aceptan?', 'Todos los planes incluyen prueba gratis. En las apps la compra es segura con la tienda de tu dispositivo (App Store o Google Play); en la web, con tarjeta (Stripe) o USDT en las redes Tron (TRC-20) y Ethereum (ERC-20). Se renueva automáticamente hasta que la canceles, y tus datos de pago nunca pasan por nuestros servidores.'],
     ],
@@ -298,10 +301,10 @@ const dict = {
     hero: {
       badge: '🧩 Journal · Guardian · Copy · Prop firms',
       h1a: 'The operating system', h1b: 'for funded traders',
-      sub: 'For forex and CFDs (indices, gold, stocks and crypto). Connect MT4, MT5, cTrader, MatchTrader, TradeLocker and DXtrade, track your prop-firm rules live, protect your risk with Onyx Guardian and copy across accounts. Real analytics and net profit. Much more than a journal.',
+      sub: `For forex and CFDs (indices, gold, stocks and crypto). Connect ${platformsStr('en')}, track your prop-firm rules live, protect your risk with Onyx Guardian and copy across accounts. Real analytics and net profit. Much more than a journal.`,
       cta1: 'Start free →', cta2: 'See pricing', note: 'No card to start · Cancel anytime',
     },
-    trust: ['✅ MT4, MT5, cTrader, MatchTrader, TradeLocker & DXtrade', '🔒 Read-only connection', '💳 Secure payments with Stripe'],
+    trust: [`✅ ${platformsStr('en')}`, '🔒 Read-only connection', '💳 Secure payments with Stripe'],
     osCompat: 'Runs on Windows and Mac',
     logosT: 'Forex and CFDs on your broker and prop firm',
     videoBadge: '▶ In action',
@@ -391,11 +394,9 @@ const dict = {
       ['Can I copy trades between my accounts?', 'Yes, with built-in copy trading: replicate from a master account to several slaves, with per-link risk control. Available depending on your plan.'],
       ['Can I execute TradingView signals?', 'Yes. Your TradingView alerts can open the trade in your real account through your Onyx EA, with a lot cap and allowed symbols. Guardian keeps protecting you. On paid plans.'],
       ['Do you have an academy or community?', 'Yes. In Onyx Academy you learn with verified mentors, courses and a Skool-style community. And if you\'re a mentor, you can build your own and charge for it.'],
-      ['How many accounts can I connect?', 'Depends on your plan: from 1 account on Free to unlimited accounts. You see them all combined in your portfolio.'],
       ['Do you have an affiliate or ambassador program?', 'Yes. If you have a community, channel or followers, you earn a recurring commission for every person who subscribes through your link, for as long as they keep paying. Your audience also gets a discount with your code. Check the Ambassadors page.'],
       ['Do you have a mobile app?', 'Yes. Onyx is on Android (Google Play) and on iPhone/iPad (App Store) to carry your accounts, robots and the Guardian in your pocket. It also works as a web app from your browser, and the dashboard adapts to phone, tablet and large monitors.'],
       ['How is it different from a spreadsheet?', 'Onyx syncs automatically, computes 15+ metrics, and has a calendar, live sessions and news, costs, prop-firm tracking and modern charts. A spreadsheet does none of that.'],
-      ['Which platforms does it work with?', 'MetaTrader 4 and 5, cTrader, MatchTrader, TradeLocker and DXtrade. When you connect you pick your platform: MetaTrader and cTrader install a connector (EA or cBot); MatchTrader, TradeLocker and DXtrade connect via the broker API, nothing to install. The same account works across all of them.'],
       ['Can I cancel anytime?', 'Of course. Manage your subscription from your panel and cancel or change plan anytime.'],
       ['What payment methods do you accept?', "Every plan includes a free trial. In the apps, purchases are secure through your device's store (App Store or Google Play); on the web, by card (Stripe) or USDT on the Tron (TRC-20) and Ethereum (ERC-20) networks. It renews automatically until you cancel, and your payment data never touches our servers."],
     ],
@@ -465,7 +466,21 @@ export default function Home() {
   useEffect(() => { try { setIsNative(isNativeApp()); } catch {} }, []);
 
   useEffect(() => {
-    fetch('/api/admin/plans', { cache: 'no-store' }).then((r) => r.json()).then((j) => setDbPlans(j.plans || [])).catch(() => {});
+    // Planes del API con REINTENTOS: en el WebView de iOS la primera llamada a
+    // veces falla y caíamos en los planes por defecto (sin Onyx Builder, nombres
+    // viejos). Reintentamos hasta 4 veces antes de rendirnos.
+    let stop = false;
+    const loadPlans = async (tries = 4) => {
+      for (let i = 0; i < tries && !stop; i++) {
+        try {
+          const r = await fetch('/api/admin/plans?t=' + Date.now(), { cache: 'no-store' });
+          const j = await r.json();
+          if (Array.isArray(j?.plans) && j.plans.length) { if (!stop) setDbPlans(j.plans); return; }
+        } catch {}
+        await new Promise((res) => setTimeout(res, 1200));
+      }
+    };
+    loadPlans();
     fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((c) => setLc(c || {})).catch(() => {});
     // Cifras reales para la prueba social; crecen solas con el uso.
     // no-store + ?t=: siempre trae lo último del admin (base + real, comisión/cupón), sin caché.
@@ -486,16 +501,11 @@ export default function Home() {
     }).catch(() => { /* si falla, mantenemos las cifras que ya se ven */ });
     loadStats();
     const iv = setInterval(loadStats, 20000);
-    return () => clearInterval(iv);
+    return () => { stop = true; clearInterval(iv); };
   }, []);
-  // Si la BD aún no devolvió planes, mostramos unos por defecto (nunca vacío).
-  const FALLBACK_PLANS: any[] = [
-    { id: 'free', name: 'Free', name_en: 'Free', price_month: 0, price_year: 0, max_accounts: 1, features: t.plans[0].items, features_en: dict.en.plans[0].items, badge: null, badge_en: null },
-    { id: 'pro', name: 'Pro', name_en: 'Pro', price_month: 19, price_year: 190, max_accounts: 5, features: t.plans[1].items, features_en: dict.en.plans[1].items, badge: lang === 'es' ? 'Más popular' : 'Most popular', badge_en: 'Most popular' },
-    { id: 'elite', name: 'Elite', name_en: 'Elite', price_month: 79, price_year: 790, max_accounts: 999, features: t.plans[2].items, features_en: dict.en.plans[2].items, badge: null, badge_en: null },
-    { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', price_month: 199, price_year: 1990, max_accounts: 999, features: t.plans[3].items, features_en: dict.en.plans[3].items, badge: null, badge_en: null },
-  ];
-  const shownPlans = dbPlans.length ? dbPlans : FALLBACK_PLANS;
+  // Si la BD aún no devolvió planes, mostramos los por defecto (una sola fuente
+  // compartida con /pricing: lib/defaultPlans). Nunca vacío, nunca desactualizado.
+  const shownPlans = dbPlans.length ? dbPlans : DEFAULT_PLANS;
   const priceFacts = planFacts(shownPlans as any);
   const priceFaqs = buildPriceFaqs(shownPlans as any, lang);
   const f = FIRMS[firm];
@@ -931,7 +941,7 @@ export default function Home() {
       {/* GESTOR DE RIESGO — el EA que gestiona y frena, sin abrir nunca una operación */}
       <div id="gestor" className="wrap section">
         <div style={{ textAlign: 'center', marginBottom: 34 }}>
-          <span className="pill green">{t.mgr.badge}</span>
+          <span className="pill green">{guardianBadge(shownPlans, lang)}</span>
           <h2 style={{ marginTop: 14 }}>{t.mgr.title}</h2>
           <p className="muted" style={{ fontSize: 17, margin: '12px auto 0', maxWidth: 640 }}>{t.mgr.sub}</p>
         </div>

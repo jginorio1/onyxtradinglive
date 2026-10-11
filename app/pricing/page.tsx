@@ -13,6 +13,7 @@ import IosPlans from '@/app/pricing/IosPlans';
 import { nativePlatform } from '@/lib/native';
 import { getPending } from '@/lib/pendingCheckout';
 import { planFacts, trialLine } from '@/lib/planFacts';
+import { DEFAULT_PLANS as SHARED_DEFAULT_PLANS } from '@/lib/defaultPlans';
 
 // FAQ de precios que se ARMA con los hechos reales de los planes (prueba, ahorro
 // anual) — sin números fijos. Si cambias los días o precios en Admin → Planes,
@@ -78,23 +79,8 @@ const CTAS: Record<string, { es: string; en: string }> = {
 // Fallback: si la API no devuelve planes (tabla vacía o sin conexión), mostramos
 // estos por defecto para que la página nunca se vea vacía. Los reales (de la BD)
 // siempre tienen prioridad.
-const DEFAULT_PLANS: Plan[] = [
-  { id: 'free', name: 'Free', name_en: 'Free', desc_es: null, desc_en: null, price_month: 0, price_year: 0, max_accounts: 1,
-    features: ['1 cuenta conectada', 'Estadísticas básicas', '30 días de historial'],
-    features_en: ['1 connected account', 'Basic stats', '30 days of history'], badge: null, badge_en: null },
-  { id: 'trader', name: 'Onyx Builder', name_en: 'Onyx Builder', desc_es: null, desc_en: null, price_month: 49, price_year: 490, max_accounts: 5,
-    features: ['Construye robots ilimitados', '5 cuentas conectadas · MT4 · MT5 · cTrader', 'Gatillos, salidas, riesgo y frenos', 'Reglas de fondeo + candado de activación', 'Filtro de noticias integrado'],
-    features_en: ['Build unlimited robots', '5 connected accounts · MT4 · MT5 · cTrader', 'Triggers, exits, risk & brakes', 'Firm rules + activation lock', 'Built-in news filter'], badge: null, badge_en: null },
-  { id: 'pro', name: 'Guardian Pro', name_en: 'Guardian Pro', desc_es: null, desc_en: null, price_month: 19, price_year: 190, max_accounts: 5,
-    features: ['5 cuentas conectadas', 'Onyx Guardian: freno de riesgo', 'Historial ilimitado y reglas de fondeo', 'Diario, costes y exportar CSV', 'Crea tu academia (Onyx Academy)'],
-    features_en: ['5 connected accounts', 'Onyx Guardian: risk brake', 'Unlimited history & funding rules', 'Journal, costs & CSV export', 'Build your academy (Onyx Academy)'], badge: 'Más popular', badge_en: 'Most popular' },
-  { id: 'elite', name: 'Guardian Elite', name_en: 'Guardian Elite', desc_es: null, desc_en: null, price_month: 79, price_year: 790, max_accounts: 999,
-    features: ['Cuentas ilimitadas', 'Copy trading (1 master · 5 esclavas)', 'Cierres parciales y bloqueo por noticias', 'Alertas e informe por Telegram', 'Soporte prioritario'],
-    features_en: ['Unlimited accounts', 'Copy trading (1 master · 5 slaves)', 'Partial closes & news blackout', 'Telegram alerts & report', 'Priority support'], badge: null, badge_en: null },
-  { id: 'black', name: 'Black Onyx', name_en: 'Black Onyx', desc_es: null, desc_en: null, price_month: 199, price_year: 1990, max_accounts: 999,
-    features: ['Copy trading ilimitado (masters y esclavas)', 'Todo sin límites', 'Soporte prioritario'],
-    features_en: ['Unlimited copy trading (masters & slaves)', 'Everything with no limits', 'Priority support'], badge: null, badge_en: null },
-];
+// Respaldo compartido con el landing y keys (una sola fuente: lib/defaultPlans).
+const DEFAULT_PLANS = SHARED_DEFAULT_PLANS as unknown as Plan[];
 
 
 export default function Pricing() {
