@@ -8,6 +8,37 @@ import { useEffect, useRef, useState } from 'react';
 export default function DemoFrame({ lang = 'es' }: { lang?: 'es' | 'en' }) {
   const es = lang === 'es';
   const wrapRef = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // El demo se muestra con el tema OPUESTO al del sitio. El servidor ya lo pinta
+  // así al cargar, pero si el usuario cambia el tema con el interruptor (que solo
+  // toca el <html> del sitio, no el del iframe), el demo se quedaba igual hasta
+  // recargar. Aquí observamos el data-theme del sitio y, al cambiar, fijamos el
+  // tema inverso dentro del iframe al instante (mismo origen → podemos tocarlo).
+  useEffect(() => {
+    const sync = () => {
+      try {
+        const site = document.documentElement.getAttribute('data-theme')
+          || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        const inverse = site === 'light' ? 'dark' : 'light';
+        const doc = iframeRef.current?.contentDocument;
+        if (doc?.documentElement) doc.documentElement.setAttribute('data-theme', inverse);
+      } catch { /* cross-origin u aún sin cargar: lo reintenta el onLoad */ }
+    };
+    sync();
+    const obs = new MutationObserver(sync);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => obs.disconnect();
+  }, []);
+  // Al (re)cargar el iframe, aplica el tema inverso de inmediato.
+  const applyInverseTheme = () => {
+    try {
+      const site = document.documentElement.getAttribute('data-theme')
+        || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      const doc = iframeRef.current?.contentDocument;
+      if (doc?.documentElement) doc.documentElement.setAttribute('data-theme', site === 'light' ? 'dark' : 'light');
+    } catch {}
+  };
   const [fs, setFs] = useState(false);          // fullscreen real del navegador
   const [expanded, setExpanded] = useState(false); // fallback iOS (CSS)
   const [cue, setCue] = useState(true);         // pista "tócalo — es interactivo"
@@ -83,6 +114,8 @@ export default function DemoFrame({ lang = 'es' }: { lang?: 'es' | 'en' }) {
 
       <div style={{ position: 'relative', flex: active ? 1 : 'none', minHeight: 0, display: 'flex' }}>
         <iframe
+          ref={iframeRef}
+          onLoad={applyInverseTheme}
           src="/demo"
           title={es ? 'Demo interactivo de Onyx' : 'Interactive Onyx demo'}
           loading="lazy"
