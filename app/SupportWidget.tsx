@@ -653,7 +653,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                   {plans.map((p) => (
                     <div key={p.name} style={{ position: 'relative', background: 'var(--card2, rgba(255,255,255,.04))', border: p.popular ? '1.5px solid var(--brand)' : '1px solid var(--line)', borderRadius: 11, padding: '10px 11px' }}>
                       {p.trial_days > 0 && (
-                        <span style={{ position: 'absolute', top: -8, left: 10, background: 'var(--brand)', color: '#0b1020', fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 6 }}>{p.trial_days} {es ? 'días gratis' : 'days free'}</span>
+                        <span style={{ position: 'absolute', top: -8, left: 10, background: 'linear-gradient(100deg,#ffe08a,#e8b923)', color: '#2a1e02', fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 6 }}>{p.trial_days} {es ? 'días gratis' : 'days free'}</span>
                       )}
                       <div style={{ fontSize: 13, fontWeight: 800, marginTop: p.trial_days > 0 ? 4 : 0 }}>{p.name}</div>
                       <div style={{ fontSize: 16, fontWeight: 800, margin: '2px 0' }}>${p.price_month}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 600 }}>/{es ? 'mes' : 'mo'}</span>{p.price_year > 0 && <span style={{ fontSize: 10.5, color: 'var(--mut)', fontWeight: 600 }}> · ${p.price_year}/{es ? 'año' : 'yr'}</span>}</div>
