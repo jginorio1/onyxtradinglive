@@ -100,9 +100,17 @@ export default function NativeInit() {
       // launchAutoHide:false en capacitor.config el splash nativo se queda puesto
       // hasta que lo escondemos aquí; así la transición es una sola, fluida.
       try {
-        // Fondo azul marino garantizado desde ya: así, cuando el splash se funda, NUNCA
-        // se asoma un flash blanco del WebView mientras la web termina de pintar.
-        try { document.documentElement.style.backgroundColor = '#0b0f1a'; document.body.style.backgroundColor = '#0b0f1a'; } catch {}
+        // Fondo garantizado desde ya para que, al fundirse el splash, NUNCA se asome
+        // un flash del WebView mientras la web termina de pintar. OJO: este fondo
+        // inline PISA al del tema, así que DEBE seguir el tema; si no, en modo claro
+        // el cuerpo quedaba oscuro y solo las tarjetas salían claras (se veía roto).
+        // Oscuro por defecto (marca Onyx); claro solo si el tema elegido es claro.
+        try {
+          const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+          const appBg = isLight ? '#e7ebf3' : '#0b0f1a';
+          document.documentElement.style.backgroundColor = appBg;
+          document.body.style.backgroundColor = appBg;
+        } catch {}
 
         const { SplashScreen } = await import('@capacitor/splash-screen');
         // Fundido más largo (400ms) para que el paso splash→app sea suave, sin brinco.

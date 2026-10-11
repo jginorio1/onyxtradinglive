@@ -22,6 +22,16 @@ export default function ThemeToggle() {
     const next = theme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     document.cookie = `onyx_theme=${next}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+    // En la app nativa, NativeInit fija un fondo inline en html/body (anti-flash del
+    // splash) que PISA al del tema. Si no lo actualizamos aquí, al cambiar a claro el
+    // cuerpo se quedaba oscuro. Solo tocamos el inline si ya estaba puesto (nativo).
+    try {
+      if (document.body.style.backgroundColor) {
+        const bg = next === 'light' ? '#e7ebf3' : '#0b0f1a';
+        document.documentElement.style.backgroundColor = bg;
+        document.body.style.backgroundColor = bg;
+      }
+    } catch {}
     setTheme(next);
   }
 
