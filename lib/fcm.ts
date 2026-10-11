@@ -70,13 +70,15 @@ async function sendToToken(token: string, projectId: string, oauth: string, p: P
   const message = {
     message: {
       token,
-      notification: { title: p.title, body: p.body },
+      // 'image' va DENTRO de notification (campo cross-plataforma válido en FCM
+      // HTTP v1). OJO: message.fcm_options NO tiene campo 'image' (solo
+      // analytics_label); ponerlo ahí hacía que FCM rechazara TODO el envío con
+      // 400 y no llegara ni a iOS ni a Android. La imagen por plataforma se
+      // refuerza abajo en android.notification.image y apns.fcm_options.image.
+      notification: { title: p.title, body: p.body, image: logo },
       // 'image' en data → la Notification Service Extension de iOS la lee de
       // userInfo["image"] y la adjunta (ver ios-native/OnyxNotificationService).
       data: { url: p.url || '/dashboard', image: logo },
-      // Imagen de marca para ambas plataformas (Android la pinta directo; iOS la
-      // pinta solo si el build tiene la Notification Service Extension).
-      fcm_options: { image: logo },
       android: {
         priority: 'HIGH',
         notification: {
