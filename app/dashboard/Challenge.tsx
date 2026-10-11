@@ -66,7 +66,32 @@ const T: any = {
 
 const STCOL: any = { ok: 'var(--green)', watch: 'var(--amber)', breach: 'var(--red)', na: 'var(--mut)' };
 
-export default function Challenge({ lang }: { lang: Lang }) {
+// Marcador de ejemplo para el demo público (sin sesión). Un reto FTMO 100K en
+// Fase 1, en camino: objetivo a medias, pérdida diaria y total con holgura.
+function demoChallengeData() {
+  return {
+    firms: [],
+    accounts: [
+      { id: 'demo-ftmo', login: 1045872, name: 'Demo · FTMO 100K', broker: 'FTMO',
+        rules: { on: true, firm: 'ftmo', phase: '1', base: 'day_start_balance', reset_hour: 0,
+          daily_loss: 5, daily_loss_pct: true, total_loss: 10, total_loss_pct: true,
+          profit_target: 10, profit_target_pct: true, min_days: 4, consistency: 0, no_weekend_hold: false } },
+    ],
+    boards: [
+      { accountId: 'demo-ftmo', login: 1045872, name: 'Demo · FTMO 100K', firm: 'FTMO',
+        phaseEs: 'Fase 1', phaseEn: 'Phase 1', verdict: 'on_track', headroom: 0.62,
+        closest: { es: 'Pérdida diaria', en: 'Daily loss' }, lines: [],
+        rules: [
+          { key: 'target', status: 'na', es: 'Objetivo de ganancia', en: 'Profit target', valEs: '$8,240 de $10,000 · 82%', valEn: '$8,240 of $10,000 · 82%', pct: 82 },
+          { key: 'daily_loss', status: 'ok', es: 'Pérdida diaria', en: 'Daily loss', valEs: '$1,900 de $5,000 · 38%', valEn: '$1,900 of $5,000 · 38%', pct: 38 },
+          { key: 'total_loss', status: 'ok', es: 'Pérdida máx. total', en: 'Max total loss', valEs: '$0 de $10,000 · 0%', valEn: '$0 of $10,000 · 0%', pct: 0 },
+          { key: 'min_days', status: 'ok', es: 'Días mínimos', en: 'Minimum days', valEs: '6 de 4', valEn: '6 of 4', pct: 100 },
+        ] },
+    ],
+  };
+}
+
+export default function Challenge({ lang, demo = false }: { lang: Lang; demo?: boolean }) {
   const L = dictFor(T, lang);
   const [data, setData] = useState<any>(null);
   const [busy, setBusy] = useState('');
@@ -135,6 +160,15 @@ export default function Challenge({ lang }: { lang: Lang }) {
     toast(L.aiDone, 'ok');
   }
   async function load() {
+    // Demo público: sin sesión el API responde 401; servimos un marcador de ejemplo.
+    if (demo) {
+      const j = demoChallengeData();
+      setData(j);
+      const d: any = {};
+      j.accounts.forEach((a: any) => { d[a.id] = { ...a.rules }; });
+      setDraft(d);
+      return;
+    }
     try {
       const r = await fetch('/api/challenge'); const j = await r.json();
       setData(j);

@@ -945,9 +945,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             )}
             {/* Clima en vivo (icono + temperatura), tras un divisor (el divisor va dentro
                 del chip para que no quede colgando si el clima no carga). */}
-            <WeatherCard country={profile?.country} lang={lang} sep />
+            {!forceDemo && <WeatherCard country={profile?.country} lang={lang} sep />}
             <span style={{ width: 1, height: 22, background: 'var(--line)', flex: 'none' }} className="hero-sep" />
-            <TrackShare lang={lang} name={profile?.full_name || ''} />
+            <TrackShare lang={lang} name={profile?.full_name || ''} demo={forceDemo} />
           </div>
           {/* El balance del portafolio se movió al lado del selector de cuenta (abajo),
               para que siga la cuenta elegida. El saludo queda solo con identidad+chips. */}
@@ -1072,7 +1072,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                       {moreOpen && (<>
                         <span onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
                         <div style={{ position: 'absolute', right: 0, left: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 230, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
-                          <button className="btn btn-ghost" onClick={() => { setDemo(!demo); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="🎬" size={14} /> {L.demo}{demo ? ' ✓' : ''}</button>
+                          {!forceDemo && <button className="btn btn-ghost" onClick={() => { setDemo(!demo); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="🎬" size={14} /> {L.demo}{demo ? ' ✓' : ''}</button>}
                           <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} onClick={() => { setRange(range === 'custom' ? 'all' : 'custom'); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: canShare ? 6 : 0 }}><OnyxIcon emoji="📅" size={14} /> {L.customRange}{range === 'custom' ? ' ✓' : ''}</button>
                           {canShare && <>
                             <div className="muted" style={{ fontSize: 11, padding: '6px 8px 6px', borderTop: '1px solid var(--line)', marginTop: 2 }}>{lang === 'es' ? 'Exportar reporte' : 'Export report'}</div>
@@ -1098,7 +1098,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 {/* Compartir: en escritorio va suelto; en móvil, junto a "Más" en su propia fila. */}
                 {!isMobile && canShare && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
                 {/* ESCRITORIO: Demo + Exportar sueltos, como antes. */}
-                {!isMobile && <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>}
+                {!isMobile && !forceDemo && <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>}
                 {!isMobile && canShare && (
                   <span style={{ position: 'relative', display: 'inline-flex' }}>
                     <button type="button" className="btn btn-ghost" style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => setExpOpen((o) => !o)}><OnyxIcon emoji="⬇️" size={15} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span></button>
@@ -1137,7 +1137,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <button onClick={() => setRange('all')} title={lang === 'es' ? 'Cerrar' : 'Close'} aria-label={lang === 'es' ? 'Cerrar' : 'Close'} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--soft-brand2)', cursor: 'pointer', fontSize: 15, lineHeight: 1, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>✕ {lang === 'es' ? 'Cerrar' : 'Close'}</button>
               </div>
             )}
-            {demo && <div style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '8px 14px', fontSize: 13, alignSelf: isMobile ? 'stretch' : 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 10 }}>{L.demoOn}<button onClick={() => setDemo(false)} title={lang === 'es' ? 'Cerrar demo' : 'Close demo'} aria-label={lang === 'es' ? 'Cerrar demo' : 'Close demo'} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--amber)', cursor: 'pointer', fontSize: 15, lineHeight: 1, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>✕ {lang === 'es' ? 'Cerrar' : 'Close'}</button></div>}
+            {demo && <div style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '8px 14px', fontSize: 13, alignSelf: isMobile ? 'stretch' : 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 10 }}>{L.demoOn}{!forceDemo && <button onClick={() => setDemo(false)} title={lang === 'es' ? 'Cerrar demo' : 'Close demo'} aria-label={lang === 'es' ? 'Cerrar demo' : 'Close demo'} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--amber)', cursor: 'pointer', fontSize: 15, lineHeight: 1, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>✕ {lang === 'es' ? 'Cerrar' : 'Close'}</button>}</div>}
             {fundAlert && <div style={{ background: fundAlert.type === 'danger' ? 'rgba(255,107,125,.12)' : 'rgba(52,226,160,.12)', border: '1px solid ' + (fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)'), color: fundAlert.type === 'danger' ? 'var(--red)' : 'var(--green)', borderRadius: 10, padding: '10px 14px', fontSize: 14, fontWeight: 600 }}>{fundAlert.txt}</div>}
             {histDays > 0 && <div style={{ background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', color: 'var(--soft-brand2)', borderRadius: 10, padding: '9px 14px', fontSize: 13, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{iosApp ? L.iosHistCap : <>{L.histCap} <Link href="/pricing" style={{ color: '#fff', fontWeight: 700 }}>{L.proLockCta}</Link></>}</div>}
 
@@ -1337,8 +1337,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
 
             {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} trial={upJ.trial} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} focusUndoc={journalUndoc} accounts={accounts} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} accounts={accounts} />}
-            {view === 'reto' && (!canChallenge ? <ProLock L={L} plan={upCh.name} price={upCh.price} trial={upCh.trial} desc={lang === 'en' ? 'Track your prop firm challenge: phase, limits and verdict.' : 'Sigue tu reto de prop firm: fase, límites y veredicto.'} /> : <Challenge lang={lang} />)}
-            {view === 'plan' && (!canHabits ? <ProLock L={L} plan={upH.name} price={upH.price} trial={upH.trial} desc={lang === 'en' ? 'Daily plan, habit check-in, adherence and streak.' : 'Plan diario, check-in de hábitos, adherencia y racha.'} /> : <PlanHabits lang={lang} account={sel} accountName={curName} />)}
+            {view === 'reto' && ((!canChallenge && !forceDemo) ? <ProLock L={L} plan={upCh.name} price={upCh.price} trial={upCh.trial} desc={lang === 'en' ? 'Track your prop firm challenge: phase, limits and verdict.' : 'Sigue tu reto de prop firm: fase, límites y veredicto.'} /> : <Challenge lang={lang} demo={forceDemo} />)}
+            {view === 'plan' && ((!canHabits && !forceDemo) ? <ProLock L={L} plan={upH.name} price={upH.price} trial={upH.trial} desc={lang === 'en' ? 'Daily plan, habit check-in, adherence and streak.' : 'Plan diario, check-in de hábitos, adherencia y racha.'} /> : <PlanHabits lang={lang} account={sel} accountName={curName} demo={forceDemo} />)}
             {view === 'edge' && (!canEdge ? <ProLock L={L} plan={upE.name} price={upE.price} trial={upE.trial} desc={lang === 'en' ? 'Advanced quantitative metrics of your edge.' : 'Métricas cuantitativas avanzadas de tu ventaja.'} /> : <QuantEdgeCard a={a} lang={lang} />)}
 
             {view === 'cuentas' && (<>

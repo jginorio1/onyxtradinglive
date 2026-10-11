@@ -43,8 +43,23 @@ export default function DemoGuard({ lang = 'es' }: { lang?: 'es' | 'en' }) {
       toast(es ? 'Esto es una demostración. Crea tu cuenta para usar tu panel real.' : 'This is a demo. Create your account to use your real dashboard.');
     };
 
+    // Bloquea también envíos de formularios a rutas internas (p. ej. /auth/signout).
+    const onSubmit = (e: Event) => {
+      const form = e.target as HTMLFormElement;
+      const action = form?.getAttribute?.('action') || '';
+      if (!action) return;
+      let url: URL;
+      try { url = new URL(action, location.href); } catch { return; }
+      if (url.origin !== location.origin) return;
+      if (url.pathname === '/demo' || url.pathname.startsWith('/demo/')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      toast(es ? 'Esto es una demostración. Crea tu cuenta para usar tu panel real.' : 'This is a demo. Create your account to use your real dashboard.');
+    };
+
     document.addEventListener('click', onClick, true); // captura: corre antes que Next
-    return () => { document.removeEventListener('click', onClick, true); clearTimeout(toastT); const el = document.getElementById('demo-toast'); if (el) el.remove(); };
+    document.addEventListener('submit', onSubmit, true);
+    return () => { document.removeEventListener('click', onClick, true); document.removeEventListener('submit', onSubmit, true); clearTimeout(toastT); const el = document.getElementById('demo-toast'); if (el) el.remove(); };
   }, [es]);
 
   return null;

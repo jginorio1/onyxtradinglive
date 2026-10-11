@@ -4,8 +4,8 @@ import Link from 'next/link';
 
 // Avatar con menú. Se cierra al pulsar fuera o con Escape, como cualquier
 // menú al que el usuario esté acostumbrado.
-export default function TopBarMenu({ email, initial, isAdmin, isRep = false, salesLabel = 'Mi panel de ventas', canTrain = false, trainLabel = 'Centro de formación', t }:
-  { email: string; initial: string; isAdmin: boolean; isRep?: boolean; salesLabel?: string; canTrain?: boolean; trainLabel?: string; t: Record<string, string> }) {
+export default function TopBarMenu({ email, initial, isAdmin, isRep = false, salesLabel = 'Mi panel de ventas', canTrain = false, trainLabel = 'Centro de formación', t, demo = false }:
+  { email: string; initial: string; isAdmin: boolean; isRep?: boolean; salesLabel?: string; canTrain?: boolean; trainLabel?: string; t: Record<string, string>; demo?: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -38,11 +38,12 @@ export default function TopBarMenu({ email, initial, isAdmin, isRep = false, sal
 
           {/* El idioma ya vive en la barra superior (junto al avatar), así que
               aquí no se repite. */}
-          <div style={{ borderTop: '1px solid var(--line)', margin: '6px 0' }} />
-
-          <form action="/auth/signout" method="post">
-            <button className="menu-item danger" type="submit">{t.signout}</button>
-          </form>
+          {!demo && <div style={{ borderTop: '1px solid var(--line)', margin: '6px 0' }} />}
+          {!demo && (
+            <form action="/auth/signout" method="post">
+              <button className="menu-item danger" type="submit">{t.signout}</button>
+            </form>
+          )}
         </div>
       )}
     </div>

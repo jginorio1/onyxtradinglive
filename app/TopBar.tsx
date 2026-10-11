@@ -172,11 +172,8 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         { href: '/guia', label: t.guide },
       ];
 
-  // En el demo, los enlaces del menú apuntan a /demo (todo se queda dentro del
-  // demo en vez de mandar al login al pulsar una sección).
-  if (isDemo) {
-    navItems = navItems.map((n: any) => ({ ...n, href: (n.href && !String(n.href).startsWith('__')) ? '/demo' : n.href }));
-  }
+  // En el demo dejamos los enlaces reales; el DemoGuard (dentro de /demo)
+  // intercepta el clic y muestra "regístrate" en vez de navegar al login.
 
   return (
     <div className={'topbar' + (home ? ' center-nav' : '') + (user ? ' app' : '')}>
@@ -200,7 +197,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
               <ThemeToggle />
               <LangToggle compact />
               <span className="topsep" />
-              <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} isRep={isRep} salesLabel={lang === 'en' ? 'My sales panel' : 'Mi panel de ventas'} canTrain={canTrain} trainLabel={lang === 'en' ? 'Training center' : 'Centro de formación'} t={t} />
+              <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} isRep={isRep} salesLabel={lang === 'en' ? 'My sales panel' : 'Mi panel de ventas'} canTrain={canTrain} trainLabel={lang === 'en' ? 'Training center' : 'Centro de formación'} t={t} demo={isDemo} />
             </div>
           </div>
           {/* Fila 2: todos los tabs, a lo ancho. Si no caben, la fila se desliza. */}
