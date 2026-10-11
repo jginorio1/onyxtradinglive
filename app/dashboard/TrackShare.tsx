@@ -111,29 +111,41 @@ export default function TrackShare({ lang = 'es', name = '', demo = false }: { l
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{prof.on ? (es ? 'Activo' : 'Active') : (es ? 'Desactivado' : 'Off')}</div>
                 <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{es ? 'Enciéndelo para tener tu enlace público.' : 'Turn it on to get your public link.'}</div>
               </div>
-              <span className="toggle" onClick={() => !busy && toggle(!prof.on)} style={{ background: prof.on ? 'var(--green)' : '#556080' }}><span className="knob" style={{ left: prof.on ? 21 : 3 }} /></span>
+              {/* En demo el toggle no hace nada (sin sesión), así que lo dejamos
+                  fijo y no interactivo. */}
+              <span className="toggle" onClick={() => !demo && !busy && toggle(!prof.on)} style={{ background: prof.on ? 'var(--green)' : '#556080', cursor: demo ? 'default' : 'pointer', opacity: demo ? 0.8 : 1 }}><span className="knob" style={{ left: prof.on ? 21 : 3 }} /></span>
             </div>
 
             {prof.on && (<>
-              {/* Enlace */}
-              <div className="row" style={{ gap: 8, marginTop: 12, alignItems: 'center' }}>
-                <input value={url} readOnly onFocus={(e) => e.currentTarget.select()} style={{ margin: 0, flex: 1, fontSize: 12.5 }} />
-                <button className="btn btn-ghost" onClick={copyLink}>{es ? 'Copiar' : 'Copy'}</button>
-              </div>
-
-              {/* QR */}
+              {/* QR siempre visible */}
               <div style={{ display: 'flex', justifyContent: 'center', margin: '14px 0 8px' }}>
                 <img src={qrSrc} alt="QR" width={190} height={190} style={{ borderRadius: 14, background: '#fff', padding: 10, border: '1px solid var(--line)' }} />
               </div>
 
-              <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button className="btn btn-ghost" onClick={downloadQR}><OnyxIcon emoji="⬇" size={15} /> {es ? 'Descargar QR' : 'Download QR'}</button>
-                <button className="btn btn-ghost" onClick={shareQR}><OnyxIcon emoji="🖼️" size={15} /> {es ? 'Compartir QR' : 'Share QR'}</button>
-                <button className="btn btn-primary" onClick={share}><OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir enlace' : 'Share link'}</button>
-                <a className="btn btn-ghost" href={url} target="_blank" rel="noopener noreferrer">{es ? 'Ver' : 'View'}</a>
-              </div>
-              {note && <div className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 8, color: 'var(--green)' }}>{note}</div>}
-              <canvas ref={cvRef} style={{ display: 'none' }} />
+              {demo ? (
+                /* En la demo no hay enlace real: compartir/descargar/ver llevarían a
+                   una página que no existe. Mostramos solo una nota explicativa. */
+                <div className="muted" style={{ textAlign: 'center', fontSize: 12.5, marginTop: 10, lineHeight: 1.5 }}>
+                  {es
+                    ? 'En tu cuenta real, aquí tendrás tu enlace y QR públicos para compartir tu trackrecord verificado.'
+                    : 'In your real account, here you’ll get your public link and QR to share your verified trackrecord.'}
+                </div>
+              ) : (<>
+                {/* Enlace */}
+                <div className="row" style={{ gap: 8, marginTop: 12, alignItems: 'center' }}>
+                  <input value={url} readOnly onFocus={(e) => e.currentTarget.select()} style={{ margin: 0, flex: 1, fontSize: 12.5 }} />
+                  <button className="btn btn-ghost" onClick={copyLink}>{es ? 'Copiar' : 'Copy'}</button>
+                </div>
+
+                <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 10 }}>
+                  <button className="btn btn-ghost" onClick={downloadQR}><OnyxIcon emoji="⬇" size={15} /> {es ? 'Descargar QR' : 'Download QR'}</button>
+                  <button className="btn btn-ghost" onClick={shareQR}><OnyxIcon emoji="🖼️" size={15} /> {es ? 'Compartir QR' : 'Share QR'}</button>
+                  <button className="btn btn-primary" onClick={share}><OnyxIcon emoji="📤" size={15} /> {es ? 'Compartir enlace' : 'Share link'}</button>
+                  <a className="btn btn-ghost" href={url} target="_blank" rel="noopener noreferrer">{es ? 'Ver' : 'View'}</a>
+                </div>
+                {note && <div className="muted" style={{ textAlign: 'center', fontSize: 12, marginTop: 8, color: 'var(--green)' }}>{note}</div>}
+                <canvas ref={cvRef} style={{ display: 'none' }} />
+              </>)}
             </>)}
           </div>
         </div>

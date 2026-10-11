@@ -1038,7 +1038,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 {/* MÓVIL: tarjeta de acciones (Compartir · Filtros · Más) del MISMO tamaño que Portafolio. */}
                 {isMobile && (
                   <div style={{ flex: 1, minWidth: 0, minHeight: 56, display: 'flex', alignItems: 'stretch', gap: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 6 }}>
-                    {canShare && <ShareReport lang={lang} from={expFrom} to={expTo} acc={sel} pdfHref={pdfHref} compact />}
+                    {canShare && !forceDemo && <ShareReport lang={lang} from={expFrom} to={expTo} acc={sel} pdfHref={pdfHref} compact />}
                     {view === 'rendimiento' && (
                       <span style={{ position: 'relative', display: 'inline-flex', flex: 1 }}>
                         <button type="button" aria-label={L.filterBy} className={'btn ' + ((segSym || segBot) ? 'btn-primary' : 'btn-ghost')} style={{ flex: 1, width: '100%', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setFiltOpen((o) => !o)}><OnyxIcon emoji="🔎" size={17} /></button>
@@ -1096,7 +1096,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   {!isMobile && <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', flex: 'none' }} onClick={() => setRange(range === 'custom' ? 'all' : 'custom')} title={L.customRange}><OnyxIcon emoji="📅" size={15} /></button>}
                 </div>
                 {/* Compartir: en escritorio va suelto; en móvil, junto a "Más" en su propia fila. */}
-                {!isMobile && canShare && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
+                {!isMobile && canShare && !forceDemo && <ShareReport lang={lang} from={expFrom} to={expTo} pdfHref={pdfHref} />}
                 {/* ESCRITORIO: Demo + Exportar sueltos, como antes. */}
                 {!isMobile && !forceDemo && <button className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }} onClick={() => setDemo(!demo)}><OnyxIcon emoji="🎬" size={15} /> {L.demo}</button>}
                 {!isMobile && canShare && (

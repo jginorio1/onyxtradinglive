@@ -3,6 +3,7 @@ import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useIsIOSApp } from '@/app/account/ManageOnWeb';
+import { toast as flashToast } from '@/lib/toast';
 
 type Lang = 'es' | 'en';
 
@@ -211,7 +212,14 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
     }));
   }, [d]);
 
-  function goGuardian() { if (onGoGuardian) onGoGuardian(); else window.location.href = '/dashboard/manager'; }
+  // En la demo pública no hay sesión: cualquier guardado o navegación fuera del
+  // demo saca al visitante o falla. Devuelve true (y avisa) si hay que frenar.
+  function demoStop() {
+    if (!demo) return false;
+    flashToast(lang === 'es' ? 'Esto es una demostración. Crea tu cuenta para usar tu panel real.' : 'This is a demo. Create your account to use your real dashboard.');
+    return true;
+  }
+  function goGuardian() { if (demoStop()) return; if (onGoGuardian) onGoGuardian(); else window.location.href = '/dashboard/manager'; }
 
   if (!d || !d.plan) return <div className="card muted">…</div>;
   const p = d.plan; const s = d.stats || {}; const g = d.guardian || { linked: false, hasAccounts: false, accounts: [] };
@@ -226,6 +234,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
   const primaryName = (g.accounts || []).find((a: any) => a.id === (p.primary_account_id || g.accounts?.[0]?.id))?.name || '—';
 
   async function saveCheckin() {
+    if (demoStop()) return;
     setBusy('ck');
     const r = await fetch('/api/plan', { method: 'POST', body: JSON.stringify({ items, note }) });
     const j = await r.json(); setBusy('');
@@ -258,6 +267,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
     </span>
   );
   async function savePlan() {
+    if (demoStop()) return;
     setBusy('plan');
     const r = await fetch('/api/plan', { method: 'PATCH', body: JSON.stringify({ plan: { ...form } }) });
     const j = await r.json(); setBusy('');
@@ -288,6 +298,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
   }
   // Guarda los dos límites en el Guardian según el alcance elegido (todo en línea).
   async function saveLimits() {
+    if (demoStop()) return;
     if (!g.hasAccounts) { setDone('no_acc'); return; }
     setLimBusy(true);
     try {
@@ -312,6 +323,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
   }
   // Guarda los 2 números de ESA cuenta en el Guardian y confirma con un aviso.
   async function saveProtect() {
+    if (demoStop()) return;
     const pr = protect; if (!pr) return;
     setLimBusy(true);
     try {

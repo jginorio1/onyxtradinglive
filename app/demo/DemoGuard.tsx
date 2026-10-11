@@ -29,14 +29,18 @@ export default function DemoGuard({ lang = 'es' }: { lang?: 'es' | 'en' }) {
       const a = (e.target as HTMLElement)?.closest?.('a') as HTMLAnchorElement | null;
       if (!a) return;
       const href = a.getAttribute('href') || '';
-      if (!href || href.startsWith('#') || a.target === '_blank') return;
+      if (!href || href.startsWith('#')) return;
       let url: URL;
       try { url = new URL(a.href, location.href); } catch { return; }
-      if (url.origin !== location.origin) return;       // externo: permitir
+      // Externo: permitir SOLO si es otro sitio. Un enlace interno con
+      // target="_blank" (p. ej. "Ver" del trackrecord) abriría una página que
+      // no existe sin sesión (/u/demo → 404), así que también lo bloqueamos.
+      if (url.origin !== location.origin) return;       // externo real: permitir
       const p = url.pathname;
       if (p === '/demo' || p.startsWith('/demo/')) return; // dentro del demo: permitir
       if (p === location.pathname && url.hash) return;      // ancla en la misma página
-      // Cualquier otra ruta interna (protegida o pública) → bloquear y avisar.
+      // Cualquier otra ruta interna (protegida o pública), incluso en pestaña
+      // nueva → bloquear y avisar.
       e.preventDefault();
       e.stopPropagation();
       (e as any).stopImmediatePropagation?.();

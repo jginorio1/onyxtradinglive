@@ -101,6 +101,14 @@ export default function Challenge({ lang, demo = false }: { lang: Lang; demo?: b
 
   useEffect(() => { load(); }, []);
 
+  // En la demo pública no hay sesión: adjuntar, leer con IA o guardar fallarían
+  // (401). Devuelve true (y avisa) si hay que frenar la acción.
+  function demoStop() {
+    if (!demo) return false;
+    toast(lang === 'es' ? 'Esto es una demostración. Crea tu cuenta para usar tu panel real.' : 'This is a demo. Create your account to use your real dashboard.');
+    return true;
+  }
+
   // Convierte un File a base64 (sin el prefijo data:).
   function fileToB64(file: File): Promise<{ media_type: string; data: string }> {
     return new Promise((resolve, reject) => {
@@ -112,6 +120,7 @@ export default function Challenge({ lang, demo = false }: { lang: Lang; demo?: b
   // Adjunta un contrato (foto o PDF) y lo lee con IA para prellenar el reto.
   async function readFile(id: string, file: File) {
     if (!file) return;
+    if (demoStop()) return;
     if (file.size > 8 * 1024 * 1024) { toast(lang === 'es' ? 'El archivo es muy grande (máx 8 MB).' : 'File too large (max 8 MB).'); return; }
     setBusy('ai' + id);
     try {
@@ -121,6 +130,7 @@ export default function Challenge({ lang, demo = false }: { lang: Lang; demo?: b
   }
   // Lee las reglas pegadas con AI y prellena los campos (el trader confirma y guarda).
   async function readRules(id: string) {
+    if (demoStop()) return;
     const text = String(aiText[id] || '');
     if (text.trim().length < 15) { toast(L.aiPlaceholder); return; }
     setBusy('ai' + id);
@@ -192,6 +202,7 @@ export default function Challenge({ lang, demo = false }: { lang: Lang; demo?: b
   function setF(id: string, k: string, v: any) { setDraft((p: any) => ({ ...p, [id]: { ...p[id], [k]: v } })); }
 
   async function save(id: string) {
+    if (demoStop()) return;
     setBusy(id);
     const r = await fetch('/api/challenge', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ account_id: id, ...draft[id] }) });
     const j = await r.json().catch(() => ({})); setBusy('');
