@@ -14,6 +14,7 @@ import { isNativeApp } from '@/lib/native';
 import { useVpsInfo, renderVps } from '@/app/components/VpsCallout';
 import { planFacts, trialLine } from '@/lib/planFacts';
 import { DEFAULT_PLANS, guardianBadge, platformsStr, accountsRange } from '@/lib/defaultPlans';
+import DemoFrame from '@/app/DemoFrame';
 
 type Lang = 'es' | 'en';
 
@@ -799,30 +800,8 @@ export default function Home() {
         <span className="pill green">{t.videoBadge}</span>
         <h2 style={{ margin: '16px 0 10px' }}>{t.videoT}</h2>
         <p className="muted" style={{ fontSize: 17, maxWidth: 620, margin: '0 auto 26px' }}>{t.videoS}</p>
-        <div className="vframe" style={{ maxWidth: 940, margin: '0 auto' }}>
-          <div className="row" style={{ gap: 7, padding: '11px 14px', borderBottom: '1px solid var(--line)', background: 'var(--bg)' }}>
-            <span className="vdot" style={{ background: 'var(--red)' }} /><span className="vdot" style={{ background: 'var(--amber)' }} /><span className="vdot" style={{ background: 'var(--green)' }} />
-            <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>onyxtradinglive.vercel.app/dashboard</span>
-          </div>
-          {!vidErr ? (
-            <video ref={vidRef} muted loop playsInline preload="none" poster="/dashboard-demo.jpg" onError={() => setVidErr(true)} style={{ background: 'var(--bg2)' }}>
-              <source src="/dashboard-demo.mp4" type="video/mp4" />
-            </video>
-          ) : (
-            <svg viewBox="0 0 940 460" width="100%" xmlns="http://www.w3.org/2000/svg" fontFamily="Segoe UI,sans-serif">
-              <rect x="0" y="0" width="940" height="460" fill="#0f131e" />
-              {[['Neto', '+$8,240', 'var(--green)'], ['Win rate', '63%', 'var(--tx)'], ['Profit factor', '1.94', 'var(--tx)'], ['Expectancy', '+$42', 'var(--brand)'], ['Drawdown', '4.1%', 'var(--red)']].map((c, i) => (
-                <g key={i}><rect x={22 + i * 182} y="22" width="168" height="76" rx="10" fill="#151a28" /><text x={38 + i * 182} y="50" fill="var(--mut)" fontSize="12">{c[0]}</text><text x={38 + i * 182} y="80" fill={c[2] as string} fontSize="23" fontWeight="800">{c[1]}</text></g>
-              ))}
-              <rect x="22" y="112" width="560" height="326" rx="10" fill="#151a28" /><text x="40" y="140" fill="var(--tx)" fontSize="13" fontWeight="700">Curva de equity</text>
-              <polyline points="44,392 130,378 216,398 302,340 388,352 474,286 540,300 582,232" fill="none" stroke="var(--brand)" strokeWidth="3" />
-              <polygon points="44,392 130,378 216,398 302,340 388,352 474,286 540,300 582,232 582,420 44,420" fill="var(--brand)" opacity="0.12" />
-              <rect x="598" y="112" width="320" height="326" rx="10" fill="#151a28" /><text x="616" y="140" fill="var(--tx)" fontSize="13" fontWeight="700">Calendario</text>
-              {Array.from({ length: 25 }).map((_, i) => { const g = (i * 7) % 3 !== 0; return <rect key={i} x={616 + (i % 5) * 60} y={156 + Math.floor(i / 5) * 52} width="52" height="44" rx="6" fill={g ? 'rgba(52,226,160,0.42)' : 'rgba(255,107,125,0.42)'} />; })}
-            </svg>
-          )}
-        </div>
-        <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>{t.videoNote}</p>
+        <DemoFrame lang={lang} />
+        <p className="muted" style={{ fontSize: 13, marginTop: 12 }}>{lang === 'es' ? 'Demo en vivo con datos de ejemplo · toca y explora, sin registrarte' : 'Live demo with example data · tap and explore, no sign-up'}</p>
       </div>
 
       {/* HOW */}

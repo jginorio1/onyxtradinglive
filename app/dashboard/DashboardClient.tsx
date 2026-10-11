@@ -524,7 +524,7 @@ function mergeAccounts(prev: Acc[], next: Acc[]): Acc[] {
   return out;
 }
 
-export default function DashboardClient({ email = '', plan = 'free', capOverride, profile, trades = [], accounts: accs0 = [] }: { email?: string; plan?: string; capOverride?: Record<string, any>; profile?: { full_name?: string; trade_style?: string; experience?: string; platform?: string; goal?: string; country?: string; avatar_url?: string }; trades?: TT[]; accounts?: Acc[] }) {
+export default function DashboardClient({ email = '', plan = 'free', capOverride, profile, trades = [], accounts: accs0 = [], forceDemo = false }: { email?: string; plan?: string; capOverride?: Record<string, any>; profile?: { full_name?: string; trade_style?: string; experience?: string; platform?: string; goal?: string; country?: string; avatar_url?: string }; trades?: TT[]; accounts?: Acc[]; forceDemo?: boolean }) {
   const isFree = (plan || 'free') === 'free';
   const { lang, setLang } = useLang();
   const [accounts, setAccounts] = useState<Acc[]>(accs0 || []);
@@ -580,7 +580,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const [range, setRange] = useState<string>('all');
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');
-  const [demo, setDemo] = useState(false);
+  const [demo, setDemo] = useState(!!forceDemo);
   const [expOpen, setExpOpen] = useState(false); // menú Exportar (cierra al tocar fuera)
   const [moreOpen, setMoreOpen] = useState(false); // menú "Más" (móvil): Demo · Calendario · Exportar
   const [filtOpen, setFiltOpen] = useState(false);  // "Filtros" (móvil): Activo · Robot
@@ -647,8 +647,11 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   useEffect(() => {
   }, []);
 
-  // Auto-refresco cada 30s + al volver a la pestaña
+  // Auto-refresco cada 30s + al volver a la pestaña.
+  // En el demo público del landing (forceDemo) NO llamamos al API: el invitado no
+  // tiene sesión, así que no hay nada que refrescar y evitamos peticiones 401.
   useEffect(() => {
+    if (forceDemo) return;
     let stop = false;
     async function refresh() {
       try { const r = await fetch('/api/dashboard'); const j = await r.json(); if (!stop && j.trades) { setTradesS(j.trades); if (j.accounts) setAccounts((prev) => mergeAccounts(prev, j.accounts)); setLastUpdate(Date.now()); } } catch {}
