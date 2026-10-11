@@ -126,7 +126,41 @@ const T: any = {
 
 const TYPE_LABEL: Record<string, [string, string]> = { challenge: ['challenge', 'challenge'], funded: ['fondeada', 'funded'], own: ['propia', 'own'], demo: ['demo', 'demo'] };
 
-export default function PlanHabits({ lang, onGoGuardian, account = 'all', accountName }: { lang: Lang; onGoGuardian?: () => void; account?: string; accountName?: string }) {
+// Plan + hábitos de ejemplo para el demo público (sin sesión). Un day trader
+// disciplinado: adherencia alta, racha, estadísticas y mapa de 30 días lleno.
+function demoPlanData() {
+  const today = new Date();
+  const history = Array.from({ length: 30 }).map((_, k) => {
+    const d = new Date(today); d.setDate(today.getDate() - (29 - k));
+    const adherence = [92, 88, 100, 75, 83, 100, 67, 90, 100, 85][k % 10];
+    return { day: d.toISOString().slice(0, 10), adherence, checkin_rate: Math.min(100, adherence + 5), blocked: 0, overrode: 0 };
+  });
+  return {
+    aiEnabled: true,
+    hasPlan: true,
+    habitKeys: Object.keys(HAB),
+    checkin: { items: { reviewed_calendar: true, defined_risk: true, followed_plan: true, no_revenge: true, journaled: false }, note: '' },
+    plan: {
+      style: 'day', risk_per_trade: 1, max_daily_loss_pct: 3, max_trades_day: 3,
+      sessions: ['london', 'ny'], pairs: 'EURUSD, XAUUSD, US30',
+      goal: 'Pasar la Fase 1 de FTMO sin romper ninguna regla', scope: 'primary', primary_account_id: 'demo-ftmo',
+      habits: ['reviewed_calendar', 'defined_risk', 'followed_plan', 'journaled', 'no_revenge'],
+      custom_habits: [], habit_moments: {},
+      rules: ['Relación riesgo/beneficio mínima 1:2', 'No mover el stop en contra', 'Parar tras 2 pérdidas seguidas'],
+    },
+    stats: { adherence: 86, streak: 9, daysCompliant: 24, rangeDays: 30, blocks: 0,
+      winRateRespect: 64, winRateBroken: 38, overtradingDays: 2, guardianActive: true },
+    history,
+    guardian: { linked: true, hasAccounts: true,
+      accounts: [
+        { id: 'demo-ftmo', name: 'Demo · FTMO 100K', daily_loss_pct: 3, max_trades_day: 3 },
+        { id: 'demo-ctrader', name: 'Demo · Real cTrader', daily_loss_pct: 5, max_trades_day: null },
+      ], warnings: [] },
+    auto: {},
+  };
+}
+
+export default function PlanHabits({ lang, onGoGuardian, account = 'all', accountName, demo = false }: { lang: Lang; onGoGuardian?: () => void; account?: string; accountName?: string; demo?: boolean }) {
   const t = dictFor(T, lang); const i = lang === 'en' ? 1 : 0;
   const ios = useIsIOSApp();   // iOS: sin nombrar plan de pago ni CTA de compra (Apple 3.1.1)
   const [tab, setTab] = useState<'hoy' | 'plan' | 'limites'>(() => {
@@ -153,6 +187,12 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
 
   useEffect(() => { load(); }, [account]);   // recarga al cambiar la cuenta elegida arriba
   async function load() {
+    // Demo público: sin sesión el API responde 401; servimos plan y hábitos de ejemplo.
+    if (demo) {
+      const j = demoPlanData();
+      setD(j); setItems(j.checkin?.items || {}); setNote(j.checkin?.note || '');
+      return;
+    }
     try {
       const r = await fetch('/api/plan?account=' + encodeURIComponent(account || 'all')); const j = await r.json();
       setD(j); setItems(j.checkin?.items || {}); setNote(j.checkin?.note || '');
@@ -225,6 +265,16 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
   }
   async function runAI() {
     setBusy('ai'); setReview('');
+    // Demo público: repaso de ejemplo (sin sesión no hay IA real).
+    if (demo) {
+      setTimeout(() => {
+        setReview(lang === 'en'
+          ? '✅ What is working\nYou respected your daily loss every day this week and kept a 9-day streak. Trading only London and NY is paying off.\n⚠️ Watch out\nTwo overtrading days this month. Your win rate drops from 64% to 38% when you break the limit — the rules are protecting you.\n🎯 This week\nJournal every trade (your weakest habit) and you will likely clear FTMO Phase 1 without a single breach.'
+          : '✅ Lo que va bien\nRespetaste tu pérdida diaria todos los días de la semana y llevas 9 días de racha. Operar solo Londres y NY te está funcionando.\n⚠️ Ojo con esto\nDos días de sobre-operar este mes. Tu win rate baja de 64% a 38% cuando rompes el límite — las reglas te están protegiendo.\n🎯 Esta semana\nRegistra cada operación (tu hábito más flojo) y probablemente pases la Fase 1 de FTMO sin una sola regla rota.');
+        setBusy('');
+      }, 600);
+      return;
+    }
     const r = await fetch('/api/plan/ai', { method: 'POST', body: JSON.stringify({ lang }) });
     const j = await r.json(); setBusy('');
     if (j.review) setReview(j.review);
@@ -276,6 +326,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
   // Cambia la ventana de estadísticas (7/30/90) y recalcula stats + mapa.
   async function changeRange(rn: number) {
     setRange(rn);
+    if (demo) return;   // demo público: mantenemos el mapa de ejemplo
     try { const r = await fetch('/api/plan?range=' + rn); const j = await r.json(); setD((old: any) => ({ ...old, stats: j.stats, history: j.history })); } catch {}
   }
 

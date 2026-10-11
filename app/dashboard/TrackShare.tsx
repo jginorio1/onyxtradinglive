@@ -6,7 +6,7 @@ import { shareLink, shareImage, saveImage } from '@/lib/nativeShare';
 // Compartir tu trackrecord desde el saludo del dashboard: activar/desactivar la
 // página pública, copiar el enlace, abrir el QR (escanear/copiar/descargar con
 // marca de agua Onyx) y compartir (Web Share en móvil; copia en PC).
-export default function TrackShare({ lang = 'es', name = '' }: { lang?: string; name?: string }) {
+export default function TrackShare({ lang = 'es', name = '', demo = false }: { lang?: string; name?: string; demo?: boolean }) {
   const es = lang !== 'en';
   const [prof, setProf] = useState<{ id: string; on: boolean } | null>(null);
   const [open, setOpen] = useState(false);
@@ -15,10 +15,13 @@ export default function TrackShare({ lang = 'es', name = '' }: { lang?: string; 
   const cvRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
+    // Demo público: sin sesión /api/account responde 401; mostramos la tarjeta
+    // con un trackrecord de ejemplo ya activado.
+    if (demo) { setProf({ id: 'demo', on: true }); return; }
     fetch('/api/account').then((r) => r.json()).then((d) => {
       const p = d?.profile || d; if (p?.id) setProf({ id: p.id, on: !!p.public_track });
     }).catch(() => {});
-  }, []);
+  }, [demo]);
 
   if (!prof) return null;
   const url = (typeof window !== 'undefined' ? window.location.origin : '') + '/u/' + prof.id;
