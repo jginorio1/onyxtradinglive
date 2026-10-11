@@ -1248,7 +1248,7 @@ body:not(.onyx-vivid) .lv-aurora{display:none !important}
 :root:not([data-theme="dark"]) .lv-aurora span:nth-child(3){opacity:.14}
 
 /* Botón primario con degradado china (color/forma siempre; el "levantar" solo con mouse). */
-.onyx-vivid .btn-primary{background:linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b);color:#241002;border:none;
+.onyx-vivid .btn-primary{background:linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b);color:#241002 !important;border:none;
   box-shadow:0 0 0 1px rgba(255,255,255,.08),0 10px 30px -8px rgba(255,106,43,.6),0 0 30px -6px rgba(255,207,92,.45);
   transition:transform .15s ease,box-shadow .25s ease}
 .onyx-vivid .btn-ghost{transition:transform .15s ease,box-shadow .25s ease,border-color .2s ease}
