@@ -234,7 +234,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {/* Nota: el menú de arriba (promo + TopBar + submenú) se renderiza SIEMPRE en
                 páginas públicas y se oculta en login/registro vía la clase html.is-auth
                 (AuthChrome la mantiene en cada navegación). Así vuelve al salir de login. */}
-            {promoLive && promo && !inBotLab && (
+            {promoLive && promo && !inBotLab && path !== '/demo' && (
               <PromoBar
                 id={promo.id}
                 text={(lang === 'es' ? promo.text_es : promo.text_en) || (lang === 'es' ? promo.text_en : promo.text_es)}
@@ -244,7 +244,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 anim={promo.anim} speed={promo.speed} countdown={promo.countdown} countdownFmt={promo.countdownFmt} dismissible={promo.dismissible}
               />
             )}
-            <BetaBanner />
+            {path !== '/demo' && <BetaBanner />}
             {inBotLab ? <BotLabHeader loggedIn={loggedIn} /> : <TopBar home={['/', '/en', '/en/', '/bot-builder', '/en/bot-builder'].includes(path)} />}
             <AuthChrome />
             {/* Segundo menú GLOBAL: siempre visible en las páginas públicas (se auto-oculta
@@ -293,14 +293,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {!path.startsWith('/admin') && path !== '/demo' && (inBotLab
               ? (botlabCfg && <SupportWidget loggedIn={loggedIn} cfg={botlabCfg} variant="botlab" />)
               : <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />)}
-            <BackToTop />
+            {path !== '/demo' && <BackToTop />}
             {/* Smart banner de la app Android, solo en web móvil (nunca en la app nativa) */}
-            {!path.startsWith('/admin') && <AppSmartBanner />}
-            {online && online.enabled && (
+            {!path.startsWith('/admin') && path !== '/demo' && <AppSmartBanner />}
+            {online && online.enabled && path !== '/demo' && (
               <OnlineNow min={online.min} max={online.max} speed={online.speed} color={online.color} hideMobile={online.hideMobile} label={lang === 'es' ? online.label_es : online.label_en} />
             )}
             <PendingCheckoutGate />
-            {!path.startsWith('/admin') && !path.startsWith('/dashboard') && <RepInviteBanner />}
+            {!path.startsWith('/admin') && !path.startsWith('/dashboard') && path !== '/demo' && <RepInviteBanner />}
             <VisitorBeacon />
             {/* Banner sticky de abajo RETIRADO por completo (molestaba y tapaba
                 contenido en escritorio y móvil). Si algún día se quiere reactivar,
