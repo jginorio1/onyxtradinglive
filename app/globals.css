@@ -27,7 +27,10 @@ html[data-theme="light"]{
   color-scheme: light;
   /* Lienzo gris claro (no casi-blanco) para que las tarjetas blancas resalten,
      borde visible y texto secundario un punto más oscuro → más contraste. */
-  --bg:#e7ebf3; --bg2:#eff2f8; --card:#ffffff; --card2:#e9eef6; --line:#d2d9e6;
+  /* Lienzo gris más frío/profundo para que las tarjetas blancas se despeguen de
+     verdad (antes #e7ebf3 casi no contrastaba con el blanco → todo se veía plano
+     y "muy blanco"). Borde un punto más marcado para separar mejor. */
+  --bg:#dfe4ee; --bg2:#e9edf5; --card:#ffffff; --card2:#e9eef6; --line:#cdd5e4;
   --tx:#101725; --mut:#56617a;
   /* --brand de tema claro oscurecido de #5b6cff a #5261e6: el botón primario usa
      texto blanco sobre var(--brand) y #5b6cff solo daba 4.17:1 (WCAG pide 4.5).
@@ -73,13 +76,22 @@ html[lang="ja"] body{font-family:"Noto Sans JP","Segoe UI",system-ui,-apple-syst
 .themetoggle:hover{background:var(--card2);}
 
 /* Ajustes finos para que el tema claro se vea limpio (sombras y contrastes) */
-html[data-theme="light"] .card{box-shadow:0 4px 14px rgba(30,41,70,.10);}
+/* Sombra de RELIEVE real (no el glow morado) para que las tarjetas floten sobre
+   el lienzo gris. !important para ganarle a glows inline de componentes. */
+html[data-theme="light"] .card{box-shadow:0 1px 2px rgba(20,26,43,.07),0 10px 22px -8px rgba(20,26,43,.16) !important;border-color:#dce3ef;}
+html[data-theme="light"] .statcard{box-shadow:0 1px 2px rgba(20,26,43,.07),0 8px 18px -8px rgba(20,26,43,.16) !important;}
 /* En claro, el resplandor (drop-shadow) del icono se ve como mancha borrosa
    sobre fondo blanco. Lo quitamos; en oscuro el halo se conserva. */
 html[data-theme="light"] .onyx-ic{filter:none !important;}
 html[data-theme="light"] .btn-primary{color:#fff;}
-html[data-theme="light"] .topbar{background:rgba(255,255,255,.78);}
-html[data-theme="light"] .secnav{background:rgba(255,255,255,.95);}
+/* CABECERA OSCURA aun en tema claro: tema claro ≠ todo blanco. La barra de
+   navegación va sobre navy para que resalte y sea fácil navegar (antes era
+   blanca translúcida y se fundía con el fondo). Reescalamos --tx/--mut DENTRO
+   de la barra para que su texto/iconos (que usan esas variables) se vuelvan
+   claros automáticamente. El avatar pasa a círculo índigo con inicial blanca. */
+html[data-theme="light"] .topbar:not(.botlab-topbar){background:#141a2b !important;border-bottom-color:#232c42;--tx:#f2f5fb;--mut:#aab6d6;color:#f2f5fb;}
+html[data-theme="light"] .secnav{background:#1a2133 !important;border-color:#232c42;--tx:#eef1f8;--mut:#aab6d6;color:#eef1f8;}
+html[data-theme="light"] .topbar:not(.botlab-topbar) .avatar{background:#3b46b8 !important;color:#fff !important;}
 html[data-theme="light"] .code{background:#eef2f9;color:#274690;}
 html[data-theme="light"] .adminnav-item:hover{color:var(--tx);background:var(--card2);}
 html[data-theme="light"] .adminnav-item.on{color:#3b46b8;background:rgba(91,108,255,.12);}
