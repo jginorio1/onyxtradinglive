@@ -54,7 +54,7 @@ export default function NotifBell() {
       </button>
 
       {open && (
-        <div style={narrow
+        <div className="onyx-pop" style={narrow
           ? { position: 'fixed', top: 62, left: 8, right: 8, width: 'auto', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 34px rgba(0,0,0,.35)', zIndex: 1000, overflow: 'hidden' }
           : { position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 340, maxWidth: 'calc(100vw - 16px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, boxShadow: '0 12px 34px rgba(0,0,0,.35)', zIndex: 1000, overflow: 'hidden' }}>
           <div className="row between" style={{ padding: '11px 14px', borderBottom: '1px solid var(--line)' }}>

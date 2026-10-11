@@ -70,7 +70,7 @@ export default function LangToggle({ compact = false, label = '' }: { compact?: 
         <span style={{ fontSize: 10, color: 'var(--mut)', transform: open ? 'rotate(180deg)' : 'none', transition: '.15s' }}>▾</span>
       </button>
       {open && (
-        <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', width: 168, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 11, boxShadow: '0 12px 30px rgba(0,0,0,.45)', zIndex: 80, overflow: 'hidden', padding: 4 }}>
+        <div className="onyx-pop" style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', width: 168, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 11, boxShadow: '0 12px 30px rgba(0,0,0,.45)', zIndex: 80, overflow: 'hidden', padding: 4 }}>
           {LANGS.map((l) => {
             const on = l === lang;
             return (

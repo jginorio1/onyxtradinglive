@@ -94,6 +94,14 @@ html[data-theme="light"] .btn-primary{color:#fff;}
    variables) se vuelvan claros solos. El avatar pasa a círculo índigo. */
 html[data-theme="light"] .topbar.app{background:#141a2b !important;border-bottom-color:#232c42;--tx:#f2f5fb;--mut:#aab6d6;color:#f2f5fb;}
 html[data-theme="light"] .topbar.app .avatar{background:#3b46b8 !important;color:#fff !important;}
+/* IMPORTANTE: los popovers/dropdowns (menú hamburguesa .menu, panel de
+   notificaciones .onyx-pop, ayuda .helppop) se renderizan DENTRO de .topbar.app,
+   así que heredaban el --tx CLARO de la cabecera oscura → texto claro sobre su
+   fondo blanco = invisible. Reseteamos las variables de texto a los valores
+   normales de tema claro dentro de esos popovers para que se lean bien. */
+html[data-theme="light"] .topbar.app .menu,
+html[data-theme="light"] .topbar.app .helppop,
+html[data-theme="light"] .topbar.app .onyx-pop{--tx:#101725;--mut:#56617a;color:#101725;}
 /* La CABECERA DEL LANDING (.topbar.center-nav) y su .secnav ya son OSCURAS en
    ambos temas. Pero en tema claro el ítem ACTIVO (.navlink.on / .secnav-item.on)
    tomaba fondo claro (var(--card2)=#e9eef6) con texto claro → se veía como una
