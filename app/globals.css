@@ -84,38 +84,19 @@ html[data-theme="light"] .statcard{box-shadow:0 1px 2px rgba(20,26,43,.07),0 8px
    sobre fondo blanco. Lo quitamos; en oscuro el halo se conserva. */
 html[data-theme="light"] .onyx-ic{filter:none !important;}
 html[data-theme="light"] .btn-primary{color:#fff;}
-/* CABECERA OSCURA aun en tema claro: tema claro ≠ todo blanco. SOLO la barra del
-   DASHBOARD/app (.topbar.app) va sobre navy para que la navegación resalte y sea
-   fácil de usar (antes era blanca translúcida y se fundía con el fondo).
-   OJO: scopeado a .topbar.app a propósito — el LANDING usa .topbar.center-nav y
-   su propia .secnav (anclas Ecosystem/How it works…) con botones/pills pensados
-   para cabecera clara; si los pintábamos de navy se veían cajas blancas flotando.
-   Reescalamos --tx/--mut dentro de la barra para que texto/iconos (que usan esas
-   variables) se vuelvan claros solos. El avatar pasa a círculo índigo. */
-html[data-theme="light"] .topbar.app{background:#141a2b !important;border-bottom-color:#232c42;--tx:#f2f5fb;--mut:#aab6d6;color:#f2f5fb;}
-html[data-theme="light"] .topbar.app .avatar{background:#3b46b8 !important;color:#fff !important;}
-/* IMPORTANTE: los popovers/dropdowns (menú hamburguesa .menu, panel de
-   notificaciones .onyx-pop, ayuda .helppop) se renderizan DENTRO de .topbar.app,
-   así que heredaban el --tx CLARO de la cabecera oscura → texto claro sobre su
-   fondo blanco = invisible. Reseteamos las variables de texto a los valores
-   normales de tema claro dentro de esos popovers para que se lean bien. */
-html[data-theme="light"] .topbar.app .menu,
-html[data-theme="light"] .topbar.app .helppop,
-html[data-theme="light"] .topbar.app .onyx-pop{--tx:#101725;--mut:#56617a;color:#101725;}
-/* La CABECERA DEL LANDING (.topbar.center-nav) y su .secnav ya son OSCURAS en
-   ambos temas. Pero en tema claro el ítem ACTIVO (.navlink.on / .secnav-item.on)
-   tomaba fondo claro (var(--card2)=#e9eef6) con texto claro → se veía como una
-   CAJA BLANCA VACÍA sobre el navy. Lo forzamos a una píldora translúcida clara
-   con texto claro para que se lea bien sobre la cabecera oscura. */
-/* Incluye los estados ACTIVO (.on) Y HOVER/PRESIONADO: el hover usaba
-   color:#fff + background:var(--card2) (claro en tema claro) → al presionar un
-   tab quedaba texto BLANCO sobre píldora CLARA = invisible. Sobre la cabecera
-   oscura usamos píldora translúcida clara + texto claro, legible en ambos. */
-html[data-theme="light"] .topbar .navlink.on,
-html[data-theme="light"] .topbar .navlink:hover,
-html[data-theme="light"] .topbar .navl a:hover,
-html[data-theme="light"] .secnav-item.on,
-html[data-theme="light"] .secnav-item:hover{background:rgba(255,255,255,.14) !important;color:#f2f5fb !important;}
+/* CABECERA CLARA ANCLADA en tema claro: blanca SÓLIDA (no translúcida, que se
+   fundía con el fondo) con borde y una sombra sutil abajo, para que la barra de
+   navegación quede anclada y "flote" sobre el lienzo gris. Así TODOS los controles
+   (bandera, Sign in, campana, sol/luna, avatar, casita, pills de estado) se ven
+   bien sobre blanco, sin cuadros blancos raros ni texto/íconos invisibles. */
+html[data-theme="light"] .topbar{background:#ffffff;border-bottom:1px solid var(--line);box-shadow:0 1px 0 var(--line),0 8px 20px -14px rgba(20,26,43,.3);}
+html[data-theme="light"] .secnav{background:#ffffff;}
+/* El hover de los tabs ponía color:#fff (pensado para tema oscuro); en claro eso
+   dejaba texto BLANCO sobre la píldora clara (var(--card2)) = invisible al pasar
+   o presionar. Forzamos texto oscuro en claro; el activo (.on) ya usa var(--tx). */
+html[data-theme="light"] .navlink:hover,
+html[data-theme="light"] .navl a:hover,
+html[data-theme="light"] .secnav-item:hover{color:var(--tx) !important;}
 html[data-theme="light"] .code{background:#eef2f9;color:#274690;}
 html[data-theme="light"] .adminnav-item:hover{color:var(--tx);background:var(--card2);}
 html[data-theme="light"] .adminnav-item.on{color:#3b46b8;background:rgba(91,108,255,.12);}
