@@ -36,7 +36,9 @@ html[data-theme="light"]{
      texto blanco sobre var(--brand) y #5b6cff solo daba 4.17:1 (WCAG pide 4.5).
      #5261e6 da 4.72:1 y es visualmente casi idéntico. El modo oscuro no cambia. */
   --brand:#c2410c; --brand2:#e0781f;
-  --green:#0e9268; --green2:#0b7c58; --red:#e23b55; --red2:#c62f47; --amber:#c9860a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
+  /* --amber un punto más oscuro (#c9860a→#a8710a): el chip "Viendo datos de
+     ejemplo" usaba texto ámbar sobre fondo ámbar claro y casi no se leía. */
+  --green:#0e9268; --green2:#0b7c58; --red:#e23b55; --red2:#c62f47; --amber:#a8710a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
   --grad:linear-gradient(100deg,#e0781f,#c2410c);
   --soft-brand:#b84a12; --soft-brand2:#a8440f; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
 }
@@ -97,6 +99,10 @@ html[data-theme="light"] .secnav{background:#ffffff;}
 html[data-theme="light"] .navlink:hover,
 html[data-theme="light"] .navl a:hover,
 html[data-theme="light"] .secnav-item:hover{color:var(--tx) !important;}
+/* La píldora de plan ("Guardian Elite") usaba verde claro (#7fe9c0) sobre verde
+   claro: en tema claro casi no se leía. Verde oscuro sobre verde pálido. */
+html[data-theme="light"] .planpill{color:#0b7c58;background:rgba(14,146,104,.12);border-color:rgba(14,146,104,.32);}
+html[data-theme="light"] .planpill:hover{background:rgba(14,146,104,.2);}
 html[data-theme="light"] .code{background:#eef2f9;color:#274690;}
 html[data-theme="light"] .adminnav-item:hover{color:var(--tx);background:var(--card2);}
 html[data-theme="light"] .adminnav-item.on{color:#3b46b8;background:rgba(91,108,255,.12);}
