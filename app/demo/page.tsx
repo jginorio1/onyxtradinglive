@@ -1,4 +1,5 @@
 import DashboardClient from '@/app/dashboard/DashboardClient';
+import DemoGuard from './DemoGuard';
 
 export const metadata = {
   title: 'Demo en vivo · Onyx Trading Live',
@@ -18,13 +19,16 @@ export default function DemoPage() {
   ] as any;
 
   return (
-    <DashboardClient
-      forceDemo
-      email=""
-      plan="elite"
-      profile={{ full_name: 'Trader Demo' }}
-      accounts={demoAccounts}
-      trades={[]}
-    />
+    <>
+      <DemoGuard />
+      <DashboardClient
+        forceDemo
+        email=""
+        plan="elite"
+        profile={{ full_name: 'Trader Demo' }}
+        accounts={demoAccounts}
+        trades={[]}
+      />
+    </>
   );
 }
