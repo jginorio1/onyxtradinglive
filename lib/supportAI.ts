@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { listPublished } from '@/lib/blog';
 import { sendEmail } from '@/lib/mail';
 import { getSetting, aiPromptSettings, addonSettings, RECO_BROKER_DEFAULT, type RecoBroker } from '@/lib/settings';
-import { planFacts } from '@/lib/planFacts';
+import { planFacts, trialLine } from '@/lib/planFacts';
 import { botLabSettings, clampPct, listMarketplace, vpsInfo } from '@/lib/botlab';
 import { academyFeeSettings } from '@/lib/settings';
 import { pickActiveBar, type PromoQueue } from '@/lib/promo';
@@ -204,18 +204,14 @@ export async function supportChatReply(question: string, lang: Lang, history: an
       // Prueba gratis y ahorro anual REALES (calculados de los planes; nada fijo).
       const f = planFacts(plans as any);
       if (f.hasTrial) {
-        const nm = en ? f.trialPlanNameEn : f.trialPlanName;
-        // Si TODOS los planes de pago comparten la misma prueba, la IA debe decir
-        // "en todos los planes de pago" — no nombrar solo uno (p. ej. Onyx Builder).
-        if (f.trialAllPaid) {
-          prices += en
-            ? `\nFREE TRIAL: ${f.trialDays} days on ALL paid plans. The person enters with a card but is NOT charged until day ${f.trialDays}; if they cancel before then they pay nothing. Only for new subscribers. Say the exact number of days; never invent a different number. The trial applies to EVERY paid plan — say "all paid plans", do NOT single out "Onyx Builder" or "the builder". Answer the trial question directly with these facts and do not steer the reply toward the robot builder.`
-            : `\nPRUEBA GRATIS: ${f.trialDays} días en TODOS los planes de pago. Entra con tarjeta pero NO se le cobra hasta el día ${f.trialDays}; si cancela antes no paga nada. Solo para suscriptores nuevos. Di el número exacto de días; nunca inventes otro número. La prueba aplica a CADA plan de pago — di "todos los planes de pago", NO destaques solo "Onyx Builder" ni "el constructor". Responde la pregunta de la prueba directamente con estos datos y no desvíes la respuesta hacia el constructor de robots.`;
-        } else {
-          prices += en
-            ? `\nFREE TRIAL: ${f.trialDays} days on the ${nm} plan. The person enters with a card but is NOT charged until day ${f.trialDays}; if they cancel before then they pay nothing. Only for new subscribers. Say the exact number of days; never invent a different number. This is the free trial of the ${nm} SUBSCRIPTION PLAN — name it as "${nm}", NOT as "Onyx Builder" or "the builder". Answer the trial question directly with these facts and do not steer the reply toward the robot builder.`
-            : `\nPRUEBA GRATIS: ${f.trialDays} días en el plan ${nm}. Entra con tarjeta pero NO se le cobra hasta el día ${f.trialDays}; si cancela antes no paga nada. Solo para suscriptores nuevos. Di el número exacto de días; nunca inventes otro número. Esta prueba es de la SUSCRIPCIÓN al plan ${nm} — nómbrala como "${nm}", NO como "Onyx Builder" ni "el constructor". Responde la pregunta de la prueba directamente con estos datos y no desvíes la respuesta hacia el constructor de robots.`;
-        }
+        // Frase EN VIVO (misma que el landing): "todos los planes de pago", un solo
+        // plan, o VARIOS planes con días distintos listados uno por uno.
+        const line = trialLine(f, en ? 'en' : 'es');
+        // Desglose exacto por plan para que la IA nunca invente números.
+        const perPlan = (f.trials || []).map((tr) => `${en ? (tr.name_en || tr.name) : (tr.name || tr.name_en)}: ${tr.days}`).join(' · ');
+        prices += en
+          ? `\nFREE TRIAL: ${line}. Exact days per plan — ${perPlan}. Each plan keeps ITS OWN number of days; never merge or average them and never invent a number. The person enters with a card but is NOT charged until the trial ends; if they cancel before then they pay nothing. Only for new subscribers. If plans have DIFFERENT trial lengths, mention each plan with its own days; if they all share the same, say "all paid plans". Do NOT single out "Onyx Builder" / "the builder" unless it is the only plan with a trial. Answer the trial question directly and do not steer the reply toward the robot builder.`
+          : `\nPRUEBA GRATIS: ${line}. Días exactos por plan — ${perPlan}. Cada plan conserva SU PROPIO número de días; nunca los mezcles ni promedies, ni inventes un número. Entra con tarjeta pero NO se le cobra hasta que termina la prueba; si cancela antes no paga nada. Solo para suscriptores nuevos. Si los planes tienen días DISTINTOS, menciona cada plan con sus días; si todos coinciden, di "todos los planes de pago". NO destaques solo "Onyx Builder" / "el constructor" salvo que sea el único plan con prueba. Responde la pregunta de la prueba directamente y no desvíes la respuesta hacia el constructor de robots.`;
       } else {
         prices += en ? `\nFREE TRIAL: none right now. The Free plan is free forever without a card.` : `\nPRUEBA GRATIS: ahora mismo no hay. El plan Free es gratis para siempre y sin tarjeta.`;
       }

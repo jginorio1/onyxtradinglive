@@ -21,6 +21,9 @@ export type PlanFacts = {
   trialPlanNameEn: string;    // nombre del plan (EN)
   hasTrial: boolean;          // trialDays > 0
   trialAllPaid: boolean;      // TODOS los planes de pago tienen la misma prueba (> 0)
+  // Prueba por plan (solo planes de pago con prueba > 0), ordenada de más a menos días.
+  // Sirve para listar "9 días en Builder, 7 en Pro y 5 en Elite" cuando difieren.
+  trials: { id: string; name: string; name_en: string; days: number }[];
   // Ahorro anual (del plan de pago más representativo: la mejor prueba, o el más barato de pago)
   annualPct: number;          // % de ahorro al pagar anual vs 12 meses (0 si no aplica)
   annualMonthsFree: number;   // meses "gratis" equivalentes al año (redondeado)
@@ -76,6 +79,12 @@ export function planFacts(plans: PlanLike[] | null | undefined): PlanFacts {
   const paidPlans = list.filter((p) => (Number(p.price_month) || 0) > 0 || (Number(p.price_year) || 0) > 0);
   const trialAllPaid = bestDays > 0 && paidPlans.length > 1 && paidPlans.every((p) => trialDaysOf(p) === bestDays);
 
+  // Desglose por plan: cada plan de pago que tenga prueba (> 0), de más a menos días.
+  const trials = paidPlans
+    .map((p) => ({ id: p.id, name: p.name || p.name_en || p.id, name_en: p.name_en || p.name || p.id, days: trialDaysOf(p) }))
+    .filter((x) => x.days > 0)
+    .sort((a, b) => b.days - a.days);
+
   return {
     trialDays: bestDays,
     trialPlanId: best?.id || '',
@@ -83,21 +92,42 @@ export function planFacts(plans: PlanLike[] | null | undefined): PlanFacts {
     trialPlanNameEn: best?.name_en || best?.name || '',
     hasTrial: bestDays > 0,
     trialAllPaid,
+    trials,
     annualPct,
     annualMonthsFree,
   };
 }
 
-// Frase corta y lista para pintar: "7 días gratis en Guardian Pro" / "".
+// Une una lista en lenguaje natural: "A, B y C" / "A, B and C".
+function joinNat(items: string[], lang: 'es' | 'en'): string {
+  const arr = items.filter(Boolean);
+  if (arr.length <= 1) return arr[0] || '';
+  const sep = lang === 'es' ? ' y ' : ' and ';
+  return arr.slice(0, -1).join(', ') + sep + arr[arr.length - 1];
+}
+
+// Frase lista para pintar, SIEMPRE en vivo desde los planes:
+//   • Todos los planes de pago con los mismos días → "7 días gratis en todos los planes de pago".
+//   • Un solo plan con prueba                       → "9 días gratis en Onyx Builder".
+//   • Varios planes con días DISTINTOS              → "9 días gratis en Onyx Builder, 7 en Guardian Pro y 5 en Guardian Elite".
 export function trialLine(f: PlanFacts, lang: 'es' | 'en'): string {
   if (!f.hasTrial) return '';
-  // Si todos los planes de pago comparten la prueba, lo decimos genérico (lee los
-  // días en vivo); si no, nombramos el plan que la tiene.
   if (f.trialAllPaid) {
     return lang === 'es'
       ? `${f.trialDays} días gratis en todos los planes de pago`
       : `${f.trialDays}-day free trial on all paid plans`;
   }
+  const list = f.trials || [];
+  // Varios planes con pruebas (distintas): los listamos con sus días.
+  if (list.length > 1) {
+    const parts = list.map((tr, i) => {
+      const nm = lang === 'es' ? tr.name : tr.name_en;
+      if (lang === 'es') return i === 0 ? `${tr.days} días gratis en ${nm}` : `${tr.days} en ${nm}`;
+      return i === 0 ? `${tr.days}-day free trial on ${nm}` : `${tr.days} on ${nm}`;
+    });
+    return joinNat(parts, lang);
+  }
+  // Un solo plan con prueba.
   const nm = lang === 'es' ? f.trialPlanName : f.trialPlanNameEn;
   return lang === 'es'
     ? `${f.trialDays} días gratis${nm ? ` en ${nm}` : ''}`

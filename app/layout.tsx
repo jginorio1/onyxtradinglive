@@ -253,7 +253,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               const en = path.startsWith('/en');
               // Nota: /login NO se excluye aquí a propósito. El submenú se oculta en login
               // vía html.is-auth (CSS), para que al salir de login vuelva a aparecer sin recargar.
-              const priv = ['/dashboard', '/admin', '/account', '/onboarding', '/en/dashboard', '/en/admin', '/en/account', '/en/onboarding'].some((p) => path === p || path.startsWith(p + '/'));
+              const priv = ['/dashboard', '/admin', '/account', '/onboarding', '/demo', '/en/dashboard', '/en/admin', '/en/account', '/en/onboarding'].some((p) => path === p || path.startsWith(p + '/'));
               if (priv) return null;
               // Etiquetas en AMBOS idiomas: SectionNav (cliente) elige con el idioma actual
               // (cookie/contexto), así el submenú cambia AL INSTANTE al togglear, sin depender de la URL /en.
@@ -277,7 +277,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               // cuenta, onboarding, login), en español ni en /en. Solo en páginas públicas.
               // /login fuera de la lista: el footer se oculta en login vía html.is-auth (CSS),
               // así vuelve al salir sin recargar.
-              const appArea = ['/dashboard', '/admin', '/account', '/onboarding', '/en/dashboard', '/en/admin', '/en/account', '/en/onboarding'].some((p) => path === p || path.startsWith(p + '/'));
+              const appArea = ['/dashboard', '/admin', '/account', '/onboarding', '/demo', '/en/dashboard', '/en/admin', '/en/account', '/en/onboarding'].some((p) => path === p || path.startsWith(p + '/'));
               if (appArea) return null;
               // Con sesión iniciada el footer de marketing NO se muestra en NINGUNA página:
               // si el usuario entra a /blog, /copy, /academy, Bot Lab o el landing estando
@@ -290,7 +290,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               if (inBotLab) return <div className={loggedIn ? 'blf-hide-mobile' : undefined}><BotLabFooter /></div>;
               return <SiteFooter />;
             })()}
-            {!path.startsWith('/admin') && (inBotLab
+            {!path.startsWith('/admin') && path !== '/demo' && (inBotLab
               ? (botlabCfg && <SupportWidget loggedIn={loggedIn} cfg={botlabCfg} variant="botlab" />)
               : <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />)}
             <BackToTop />

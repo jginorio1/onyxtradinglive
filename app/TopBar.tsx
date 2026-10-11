@@ -43,6 +43,11 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
   // renderiza como visitante, sin tomar la cuenta de quien previsualiza.
   const adPreview = (() => { try { return headers().get('x-onyx-preview') === '1'; } catch { return false; } })();
 
+  // Demo público del landing: mostramos la barra como si el usuario estuviera
+  // dentro (menú de la app, no el de páginas públicas), con datos de ejemplo.
+  // No hay sesión real; solo pintamos el menú logueado.
+  const isDemo = (() => { try { return (headers().get('x-onyx-path') || '') === '/demo'; } catch { return false; } })();
+
   try {
     if (!adPreview) {
     const sb = createSupabaseServer();
@@ -119,13 +124,23 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
     }
   } catch { /* si falla, enseñamos la barra de invitado y ya */ }
 
+  // Demo: fingimos sesión SOLO para pintar el menú de la app (sin datos reales).
+  if (isDemo) {
+    user = { id: 'demo', email: 'demo@onyxtradinglive.com' };
+    plan = 'elite';
+    planName = 'Guardian Elite';
+    caps = { manager: true, copy: true, algo: true, tv: true, expenses: true };
+    isAdmin = false;
+    guardianOn = false; copyActive = false; botsActive = false; tvOn = false; eaLive = null;
+  }
+
   const initial = (user?.email || '?').slice(0, 1).toUpperCase();
 
   // Enlaces según haya sesión o no. "Planes" también va dentro: si no,
   // un usuario con sesión solo llega a precios por la píldora del plan.
   // Arriba solo las 4 herramientas del día a día (con icono). Soporte y Planes
   // viven en el menú del avatar para no saturar. Admin sigue arriba para el owner.
-  const navItems = user
+  let navItems = user
     ? [
         { href: '/dashboard', label: t.dashboard, icon: '📊' },
         { href: '/dashboard/keys', label: t.accounts, icon: '🔌' },
@@ -156,6 +171,12 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         { href: '/embajadores', label: t.ambassadors },
         { href: '/guia', label: t.guide },
       ];
+
+  // En el demo, los enlaces del menú apuntan a /demo (todo se queda dentro del
+  // demo en vez de mandar al login al pulsar una sección).
+  if (isDemo) {
+    navItems = navItems.map((n: any) => ({ ...n, href: (n.href && !String(n.href).startsWith('__')) ? '/demo' : n.href }));
+  }
 
   return (
     <div className={'topbar' + (home ? ' center-nav' : '') + (user ? ' app' : '')}>

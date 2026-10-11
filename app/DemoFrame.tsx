@@ -44,8 +44,11 @@ export default function DemoFrame({ lang = 'es' }: { lang?: 'es' | 'en' }) {
       style={{
         maxWidth: active ? '100%' : 940,
         margin: '0 auto',
-        ...(expanded ? { position: 'fixed', inset: 0, zIndex: 9999, maxWidth: '100%', width: '100vw', height: '100dvh', borderRadius: 0 } : {}),
         display: 'flex', flexDirection: 'column',
+        // Pantalla completa real (Fullscreen API): el contenedor ocupa todo el alto.
+        ...(active ? { width: '100%', height: '100dvh', borderRadius: 0, background: 'var(--bg)' } : {}),
+        // Fallback iOS: además lo fijamos sobre todo lo demás.
+        ...(expanded ? { position: 'fixed', inset: 0, zIndex: 9999, maxWidth: '100%', width: '100vw' } : {}),
       }}
     >
       <div className="row" style={{ gap: 7, padding: '11px 14px', borderBottom: '1px solid var(--line)', background: 'var(--bg)' }}>
@@ -65,7 +68,7 @@ export default function DemoFrame({ lang = 'es' }: { lang?: 'es' | 'en' }) {
         src="/demo"
         title={es ? 'Demo interactivo de Onyx' : 'Interactive Onyx demo'}
         loading="lazy"
-        style={{ width: '100%', flex: expanded ? 1 : 'none', height: expanded ? 'auto' : 'min(72vh, 640px)', border: 0, background: 'var(--bg2)' }}
+        style={{ width: '100%', flex: active ? 1 : 'none', height: active ? 'auto' : 'min(72vh, 640px)', minHeight: 0, border: 0, background: 'var(--bg2)' }}
       />
     </div>
   );

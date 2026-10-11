@@ -25,7 +25,7 @@ function buildPriceFaqs(plans: any[], lang: 'es' | 'en'): [string, string][] {
   const out: [string, string][] = [];
   if (lang === 'es') {
     out.push(['¿Necesito tarjeta para empezar?', 'No. El plan Free es gratis y sin tarjeta. Solo pides tarjeta o USDT cuando eliges un plan de pago.']);
-    if (f.hasTrial) out.push(['¿Hay prueba gratis?', `Sí: ${trialLine(f, 'es')}. Entras con tarjeta pero no se te cobra hasta el día ${f.trialDays}; cancela antes y no pagas nada.`]);
+    if (f.hasTrial) out.push(['¿Hay prueba gratis?', `Sí: ${trialLine(f, 'es')}. Entras con tarjeta pero no se te cobra hasta que termina la prueba; cancela antes y no pagas nada.`]);
     out.push(['¿Cuántas cuentas puedo conectar?', `Depende de tu plan: ${accountsRange(plans, 'es')}. Las ves todas juntas en tu portafolio.`]);
     out.push(['¿Con qué plataformas funciona?', `Con ${platformsStr('es')}. Al conectar eliges tu plataforma; algunas instalan un conector y otras se enlazan por la API del bróker, sin instalar nada. La misma cuenta te vale para todas.`]);
     out.push(['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.']);
@@ -33,7 +33,7 @@ function buildPriceFaqs(plans: any[], lang: 'es' | 'en'): [string, string][] {
     if (f.annualPct > 0) out.push(['¿El anual ahorra?', `Sí: pagando al año ahorras un ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (unos ${f.annualMonthsFree} meses gratis)` : ''} frente a pagar mes a mes.`]);
   } else {
     out.push(['Do I need a card to start?', 'No. The Free plan is free and card-free. We only ask for a card or USDT when you pick a paid plan.']);
-    if (f.hasTrial) out.push(['Is there a free trial?', `Yes: ${trialLine(f, 'en')}. You enter with a card but you are not charged until day ${f.trialDays}; cancel before then and you pay nothing.`]);
+    if (f.hasTrial) out.push(['Is there a free trial?', `Yes: ${trialLine(f, 'en')}. You enter with a card but you are not charged until the trial ends; cancel before then and you pay nothing.`]);
     out.push(['How many accounts can I connect?', `Depends on your plan: ${accountsRange(plans, 'en')}. You see them all combined in your portfolio.`]);
     out.push(['Which platforms does it work with?', `With ${platformsStr('en')}. When you connect you pick your platform; some install a connector and others link via the broker API, nothing to install. The same account works across all of them.`]);
     out.push(['Can I change or cancel anytime?', 'Yes. Upgrade or downgrade in one click from your account and cancel anytime; you keep access until the period ends.']);
