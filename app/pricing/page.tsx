@@ -128,11 +128,10 @@ export default function Pricing() {
 
   useEffect(() => { setMounted(true); fetch('/api/account', { cache: 'no-store' }).then((r) => r.json()).then((j: any) => setMyPlan(String(j?.plan || j?.profile?.plan || j?.subscription?.plan || ''))).catch(() => {}); }, []);
 
-  // Si la BD no devolvió planes, usamos los de por defecto para no dejar la página vacía.
-  // Además garantizamos que Black Onyx siempre aparezca como 4º plan (para el 2×2).
-  const _base = plans.length ? plans : DEFAULT_PLANS;
-  const _black = DEFAULT_PLANS.find((p) => p.id === 'black');
-  const shown = (_base.some((p) => /black/i.test(p.id || '')) || !_black) ? _base : [..._base, _black];
+  // Si la BD no devolvió planes, usamos los de por defecto solo para no dejar la página
+  // vacía. Ya NO forzamos a Black Onyx: la lista refleja exactamente lo que está activo
+  // en Admin (si lo desactivas o lo renombras, aquí también desaparece/cambia).
+  const shown = plans.length ? plans : DEFAULT_PLANS;
   // Hechos de venta reales (prueba, ahorro anual) para toggle y FAQ. Sin números fijos.
   const facts = planFacts(shown as any);
   const dynFaqs = buildFaqs(shown as any, lang);
