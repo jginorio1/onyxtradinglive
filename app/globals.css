@@ -38,7 +38,10 @@ html[data-theme="light"]{
   --brand:#c2410c; --brand2:#e0781f;
   /* --amber un punto más oscuro (#c9860a→#a8710a): el chip "Viendo datos de
      ejemplo" usaba texto ámbar sobre fondo ámbar claro y casi no se leía. */
-  --green:#0e9268; --green2:#0b7c58; --red:#e23b55; --red2:#c62f47; --amber:#a8710a; --cyan:#0b93c9; --gold:#c98b17; --purple:#8b5cff;
+  /* --gold más oscuro (#c98b17→#946800): como TEXTO (Oro/ORO, "Guardian Pro",
+     costes, Onyx Score) sobre fondos claros el dorado claro no se leía; como
+     fondo de chip (con texto oscuro) sigue bien. */
+  --green:#0e9268; --green2:#0b7c58; --red:#e23b55; --red2:#c62f47; --amber:#a8710a; --cyan:#0b93c9; --gold:#946800; --purple:#8b5cff;
   --grad:linear-gradient(100deg,#e0781f,#c2410c);
   --soft-brand:#b84a12; --soft-brand2:#a8440f; --soft-green:#0e8a63; --soft-purple:#7b4fd0;
 }

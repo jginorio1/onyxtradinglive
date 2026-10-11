@@ -175,7 +175,7 @@ export default async function BotLabLanding() {
         const cards: [string, string, string][] = [
           [nf(grow((s as any).stat_verified_base ?? 84, 0.15)), es ? 'Robots verificados' : 'Verified robots', 'var(--green)'],
           [String(Math.max(0, Math.min(100, Math.round(Number((s as any).stat_score_avg ?? 87))))), es ? 'Onyx Score promedio' : 'Avg Onyx Score', GOLD],
-          [nf(grow((s as any).stat_buyers_week ?? 55, 1)), es ? 'Compraron esta semana' : 'Bought this week', '#38d9ff'],
+          [nf(grow((s as any).stat_buyers_week ?? 55, 1)), es ? 'Compraron esta semana' : 'Bought this week', 'var(--cyan)'],
           ['$' + priceFrom, monthly ? (es ? 'Desde, al mes' : 'From, per month') : (es ? 'Precio desde' : 'Price from'), 'var(--brand)'],
         ];
         return (
