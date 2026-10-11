@@ -103,6 +103,17 @@ html[data-theme="light"] .secnav-item:hover{color:var(--tx) !important;}
    claro: en tema claro casi no se leía. Verde oscuro sobre verde pálido. */
 html[data-theme="light"] .planpill{color:#0b7c58;background:rgba(14,146,104,.12);border-color:rgba(14,146,104,.32);}
 html[data-theme="light"] .planpill:hover{background:rgba(14,146,104,.2);}
+/* TEXTO NARANJA ("china") sobre fondos casi blancos en tema claro: el naranja claro
+   (#ffb15e/#ff9d3d), pensado para fondos oscuros, quedaba invisible en claro. Lo
+   oscurecemos a un naranja quemado legible SOLO en tema claro (en oscuro no se toca).
+   Cubre: botón "Nueva conversación" del chat y la pregunta del FAQ abierto. */
+html[data-theme="light"] .onyx-newconv{color:#c2410c !important;background:rgba(234,88,12,.09) !important;border-color:rgba(234,88,12,.42) !important;}
+html[data-theme="light"] .onyx-vivid details[open] > summary{color:#c2410c !important;}
+html[data-theme="light"] .onyx-vivid .faq .qa.open .q > span:first-child{color:#c2410c;}
+html[data-theme="light"] .onyx-vivid .faq .qa .qa-mk{color:#c2410c;}
+/* Pills cálidas: ámbar y rojo claros se perdían sobre su propio fondo pálido en claro. */
+html[data-theme="light"] .pill.amber{background:rgba(255,192,77,.2);color:#9a6600;}
+html[data-theme="light"] .pill.red{background:rgba(226,59,85,.12);color:#c2334a;}
 html[data-theme="light"] .code{background:#eef2f9;color:#274690;}
 html[data-theme="light"] .adminnav-item:hover{color:var(--tx);background:var(--card2);}
 html[data-theme="light"] .adminnav-item.on{color:#3b46b8;background:rgba(91,108,255,.12);}
@@ -1330,6 +1341,8 @@ html.is-auth .site-footer{display:none !important}
 /* Enlaces del login en naranja (congruente). Se excluye el logo (href="/") para no
    teñir el nombre de marca. Cubre "¿Olvidaste tu contraseña?", "Crear cuenta", Términos. */
 .login-box a:not([href="/"]){color:#ffb15e !important}
+/* En tema claro la tarjeta es blanca → el naranja claro no se leía. Naranja quemado. */
+html[data-theme="light"] .login-box a:not([href="/"]){color:#c2410c !important}
 /* Botón principal del login en degradado china (congruente con las páginas públicas). */
 .login-box .btn-primary{background:linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b) !important;color:#241002 !important;border:none !important;
   box-shadow:0 10px 26px -10px rgba(255,106,43,.6) !important}
