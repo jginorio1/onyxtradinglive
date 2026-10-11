@@ -107,8 +107,15 @@ html[data-theme="light"] .topbar.app .onyx-pop{--tx:#101725;--mut:#56617a;color:
    tomaba fondo claro (var(--card2)=#e9eef6) con texto claro → se veía como una
    CAJA BLANCA VACÍA sobre el navy. Lo forzamos a una píldora translúcida clara
    con texto claro para que se lea bien sobre la cabecera oscura. */
-html[data-theme="light"] .topbar .navlink.on{background:rgba(255,255,255,.12) !important;color:#f2f5fb !important;}
-html[data-theme="light"] .secnav-item.on{background:rgba(255,255,255,.12) !important;color:#f2f5fb !important;}
+/* Incluye los estados ACTIVO (.on) Y HOVER/PRESIONADO: el hover usaba
+   color:#fff + background:var(--card2) (claro en tema claro) → al presionar un
+   tab quedaba texto BLANCO sobre píldora CLARA = invisible. Sobre la cabecera
+   oscura usamos píldora translúcida clara + texto claro, legible en ambos. */
+html[data-theme="light"] .topbar .navlink.on,
+html[data-theme="light"] .topbar .navlink:hover,
+html[data-theme="light"] .topbar .navl a:hover,
+html[data-theme="light"] .secnav-item.on,
+html[data-theme="light"] .secnav-item:hover{background:rgba(255,255,255,.14) !important;color:#f2f5fb !important;}
 html[data-theme="light"] .code{background:#eef2f9;color:#274690;}
 html[data-theme="light"] .adminnav-item:hover{color:var(--tx);background:var(--card2);}
 html[data-theme="light"] .adminnav-item.on{color:#3b46b8;background:rgba(91,108,255,.12);}
