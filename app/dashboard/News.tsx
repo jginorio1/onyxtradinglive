@@ -13,7 +13,7 @@ const T = {
   en: { title: '📰 News', next: 'NEXT HIGH-IMPACT', in: 'in', med: '+ Medium', low: '+ Low', today: 'Today', prev: 'Prev', fcst: 'Fcst', none: 'No upcoming news.', unavail: 'Calendar unavailable now.', warn: 'in under 30 min — careful', loading: 'Loading…', all: 'See all', hide: 'Hide', more: 'more this week', credit: 'By Forex Factory', localTz: 'local time', tzNote: 'Times in your local time' },
 };
 
-export default function News({ lang }: { lang: Lang }) {
+export default function News({ lang, demo = false }: { lang: Lang; demo?: boolean }) {
   const t = dictFor(T, lang);
   const [events, setEvents] = useState<Ev[] | null>(null);
   const [open, setOpen] = useState(false);
@@ -84,7 +84,9 @@ export default function News({ lang }: { lang: Lang }) {
           </div>
         )}
       </>)}
-      <a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'right', fontSize: 10, color: 'var(--mut)', marginTop: 10, textDecoration: 'none' }}>{t.credit} ↗</a>
+      {demo
+        ? <span style={{ display: 'block', textAlign: 'right', fontSize: 10, color: 'var(--mut)', marginTop: 10 }}>{t.credit}</span>
+        : <a href="https://www.forexfactory.com/calendar" target="_blank" rel="noopener noreferrer" style={{ display: 'block', textAlign: 'right', fontSize: 10, color: 'var(--mut)', marginTop: 10, textDecoration: 'none' }}>{t.credit} ↗</a>}
     </div>
   );
 }

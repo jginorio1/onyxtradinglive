@@ -1377,7 +1377,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           </div>
           {/* Riel izquierdo: contexto de mercado (sesiones · calculadora de lotes · noticias).
               En escritorio va a la izquierda (order:1, sticky); en móvil baja al final. */}
-          <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon name="lots" size={16} /> {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details><div style={{ marginTop: 12 }}><News lang={lang} /></div></div>
+          <div className="rail-left"><MarketHours lang={lang} compact /><details style={{ marginTop: 12 }}><summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 700, color: 'var(--tx)', padding: '10px 12px', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, listStyle: 'none', display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon name="lots" size={16} /> {lang === 'en' ? 'Lot size calculator' : 'Calculadora de lotes'}</summary><div style={{ marginTop: 10 }}><LotCalculator lang={lang} balance={Number(cur?.balance) || totalBalance || undefined} /></div></details><div style={{ marginTop: 12 }}><News lang={lang} demo={forceDemo} /></div></div>
         </div>
       </div>
     </>
