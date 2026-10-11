@@ -625,7 +625,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
-            <div style={{ maxWidth: '86%', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, ...bubble('assistant') }}>{linkify(greet)}</div>
+            <div style={{ maxWidth: '86%', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, ...bubble('assistant') }}>{linkify(greet)}</div>
             {!started && cfg.showTopics && topics.length > 0 && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--mut)', margin: '2px 0 6px' }}>{x.topicsT}</div>
@@ -638,7 +638,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
               </div>
             )}
             {chat.map((m, i) => (
-              <div key={i} style={{ maxWidth: '86%', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, whiteSpace: m.role === 'assistant' ? 'normal' : 'pre-wrap', ...bubble(m.role) }}>{m.role === 'assistant' ? renderRich(m.content) : m.content}</div>
+              <div key={i} style={{ maxWidth: '86%', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, whiteSpace: m.role === 'assistant' ? 'normal' : 'pre-wrap', ...bubble(m.role) }}>{m.role === 'assistant' ? renderRich(m.content) : m.content}</div>
             ))}
             {busy && (
               <div style={{ padding: '9px 12px', ...bubble('assistant') }}>
