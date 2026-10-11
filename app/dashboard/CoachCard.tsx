@@ -32,7 +32,7 @@ function RichText({ text }: { text: string }) {
 // Coach AI: repaso honesto del rendimiento del trader, bajo demanda.
 // Analiza EL MISMO rango de fechas que el filtro del dashboard (from/to). Si no
 // hay rango, cae a los últimos 90 días. Muestra siempre qué período analizó.
-export default function CoachCard({ from, to, account, rail = false }: { from?: string; to?: string; account?: string; rail?: boolean }) {
+export default function CoachCard({ from, to, account, rail = false, demo = false }: { from?: string; to?: string; account?: string; rail?: boolean; demo?: boolean }) {
   const { lang } = useLang();
   const L = mkL(lang);
   const [txt, setTxt] = useState('');
@@ -46,6 +46,18 @@ export default function CoachCard({ from, to, account, rail = false }: { from?: 
 
   async function gen() {
     setBusy(true); setMsg(''); setTxt(''); setSum(null); setActions([]);
+    // Demo público: sin sesión no hay IA (ni gasto de créditos). Mostramos un
+    // repaso de ejemplo en vez de llamar al endpoint.
+    if (demo) {
+      setTimeout(() => {
+        setSum({ scope: lang === 'es' ? 'Portafolio' : 'Portfolio', periodLabel: lang === 'es' ? 'Últimos 90 días' : 'Last 90 days', trades: 128, tradingDays: 42, perDay: '3.0' });
+        setTxt(lang === 'en'
+          ? '## What is working\n- Your win rate on London-session trades is **64%**, well above your NY sessions.\n- You respect your stop on **9 of 10** trades — discipline is your edge.\n## Where you leak\n- Friday afternoons are your worst window: **-2.1R** on average.\n- Position size creeps up after a win (revenge sizing).\n## This week\n- Cut Friday-afternoon trades and keep risk flat after wins.'
+          : '## Lo que va bien\n- Tu win rate en la sesión de Londres es **64%**, muy por encima de Nueva York.\n- Respetas tu stop en **9 de cada 10** operaciones — la disciplina es tu ventaja.\n## Dónde pierdes\n- Los viernes por la tarde son tu peor franja: **-2,1R** de media.\n- El tamaño sube después de una ganancia (sizing por euforia).\n## Esta semana\n- Evita operar viernes por la tarde y mantén el riesgo plano tras ganar.');
+        setOpen(true); setBusy(false);
+      }, 600);
+      return;
+    }
     try {
       const qs = new URLSearchParams({ lang });
       if (from) qs.set('from', from);

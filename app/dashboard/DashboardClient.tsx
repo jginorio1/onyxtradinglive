@@ -984,7 +984,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   desplegable nunca esté vacío aunque el plan no incluya Neto ni Coach. */}
               <MarketClock />
               {caps?.expenses ? <NetRealCard /> : null}
-              {caps?.coach ? <CoachCard rail from={rangeDates.from} to={rangeDates.to} account={sel} /> : null}
+              {(caps?.coach || forceDemo) ? <CoachCard rail from={rangeDates.from} to={rangeDates.to} account={sel} demo={forceDemo} /> : null}
             </div>
           </div>
           )}
