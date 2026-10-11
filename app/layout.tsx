@@ -179,8 +179,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // de promo, para que la caja del login sea el único foco (menos distracción).
   const isAuthScreen = ['/login', '/reset-password'].some((p) => { const q = path.replace(/^\/en/, '') || '/'; return q === p || q.startsWith(p + '/'); });
 
+  // El DEMO del landing se muestra con el tema OPUESTO al del sitio: si estás en
+  // oscuro, el demo va claro, y viceversa. Así se ve como una "ventana" distinta
+  // y el visitante percibe los dos temas de un vistazo. Solo afecta a la ruta /demo
+  // (que vive dentro de un iframe en el landing, con su propio <html>).
+  const isDemo = ['/demo'].some((p) => { const q = path.replace(/^\/en/, '') || '/'; return q === p || q.startsWith(p + '/'); });
+  const htmlTheme = isDemo ? (theme === 'light' ? 'dark' : 'light') : theme;
+
   return (
-    <html lang={lang} data-theme={theme || undefined} className={isAuthScreen ? 'is-auth' : undefined} suppressHydrationWarning>
+    <html lang={lang} data-theme={htmlTheme || undefined} className={isAuthScreen ? 'is-auth' : undefined} suppressHydrationWarning>
       <body className={vivid ? 'onyx-vivid' : undefined}>
         {/* Auroras de color (tono china) animadas de fondo. Solo en páginas públicas. */}
         {vivid && <div className="lv-aurora" aria-hidden="true"><span></span><span></span><span></span></div>}
