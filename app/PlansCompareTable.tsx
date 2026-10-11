@@ -118,9 +118,9 @@ export default function PlansCompareTable({
                 const black = isBlackCol(id); const pop = isPopCol(id);
                 const nameColor = black ? '#e9e2ff' : pop ? 'var(--gold, #e8b923)' : isPro(p) ? 'var(--brand)' : 'var(--tx)';
                 return (
-                  <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: nameColor, fontSize: 15, position: 'relative', ...colBg(id), ...((black || pop) ? { borderTop: `2px solid ${black ? '#e8b923' : 'var(--gold, #e8b923)'}` } : {}) }}>
-                    {(black || pop) && <span style={{ position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)', background: black ? 'linear-gradient(100deg,#ffe08a,#e8b923)' : 'var(--gold, #e8b923)', color: '#2a1e02', fontSize: 9, fontWeight: 800, padding: '1px 9px', borderRadius: '0 0 8px 8px', letterSpacing: '.03em', whiteSpace: 'nowrap' }}>{black ? (lang === 'es' ? '◆ EL DEFINITIVO' : '◆ ULTIMATE') : (lang === 'es' ? '★ POPULAR' : '★ POPULAR')}</span>}
-                    <div style={{ marginTop: (black || pop) ? 8 : 0, ...(black ? { background: 'linear-gradient(90deg,#fff,#d8c9ff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', display: 'inline-block' } : {}) }}>{name(p, id)}</div>
+                  <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: nameColor, fontSize: 15, position: 'relative', ...colBg(id), ...((black || pop) ? { borderTop: '2px solid #e8b923' } : {}) }}>
+                    {(black || pop) && <span style={{ position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(100deg,#ffe08a,#e8b923)', color: '#2a1e02', fontSize: 9, fontWeight: 800, padding: '1px 9px', borderRadius: '0 0 8px 8px', letterSpacing: '.03em', whiteSpace: 'nowrap' }}>{black ? (lang === 'es' ? '◆ EL DEFINITIVO' : '◆ ULTIMATE') : (lang === 'es' ? '★ POPULAR' : '★ POPULAR')}</span>}
+                    <div className={black ? 'pcmp-black-name' : undefined} style={{ marginTop: (black || pop) ? 8 : 0, ...(black ? { background: 'linear-gradient(90deg,#fff,#d8c9ff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', display: 'inline-block' } : {}) }}>{name(p, id)}</div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{priceLabel}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 500 }}>{showPer ? per : ''}</span></div>
                     {savePct > 0 && <div style={{ marginTop: 3 }}><span style={{ fontSize: 10, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>{lang === 'es' ? `Ahorra ${savePct}%` : `Save ${savePct}%`}</span></div>}
                   </th>
@@ -143,7 +143,7 @@ export default function PlansCompareTable({
                   const td = trialDaysOf(byId(id) as any);
                   return <td key={id} style={{ textAlign: 'center', padding: '12px 16px', ...colBg(id) }}>
                     {td > 0
-                      ? <span style={{ fontSize: 12, fontWeight: 800, color: '#3a2a06', background: 'var(--gold, #ffd45e)', borderRadius: 20, padding: '2px 9px' }}>{td} {lang === 'es' ? 'días' : 'days'}</span>
+                      ? <span style={{ fontSize: 12, fontWeight: 800, color: '#3a2a06', background: 'linear-gradient(100deg,#ffe08a,#e8b923)', borderRadius: 20, padding: '2px 9px' }}>{td} {lang === 'es' ? 'días' : 'days'}</span>
                       : <span style={{ color: 'var(--mut)' }}>—</span>}
                   </td>;
                 })}

@@ -117,6 +117,10 @@ html[data-theme="light"] .onyx-vivid .faq .qa .qa-mk{color:#c2410c;}
 /* Pills cálidas: ámbar y rojo claros se perdían sobre su propio fondo pálido en claro. */
 html[data-theme="light"] .pill.amber{background:rgba(255,192,77,.2);color:#9a6600;}
 html[data-theme="light"] .pill.red{background:rgba(226,59,85,.12);color:#c2334a;}
+/* "Black Onyx" en la tabla de planes usa texto degradado blanco→lila (para el
+   fondo oscuro). En tema claro la columna es lila MUY claro → el nombre quedaba
+   invisible. Lo pintamos púrpura oscuro sólido (anula el clip de degradado). */
+html[data-theme="light"] .pcmp-black-name{background:none !important;-webkit-background-clip:border-box !important;background-clip:border-box !important;color:#4a2f9e !important;-webkit-text-fill-color:#4a2f9e !important;}
 html[data-theme="light"] .code{background:#eef2f9;color:#274690;}
 html[data-theme="light"] .adminnav-item:hover{color:var(--tx);background:var(--card2);}
 html[data-theme="light"] .adminnav-item.on{color:#3b46b8;background:rgba(91,108,255,.12);}
