@@ -119,11 +119,41 @@ function Counter({ to, prefix = '', suffix = '', compact = true }: { to: number;
     return () => { if (io) io.disconnect(); clearTimeout(timer); };
   }, []);
 
-  // Solución definitiva al corte del "+"/"%": el truco background-clip:text (texto
-  // relleno con degradado) es el que recorta el último glifo en WebKit. Aquí usamos
-  // COLOR SÓLIDO de marca (sin clip): imposible que recorte, en cualquier navegador.
+  // Autoajuste: el número (con su "+"/"%") SIEMPRE cabe dentro de la tarjeta, por
+  // muchos dígitos que tenga. Medimos el ancho real del texto contra el ancho
+  // disponible y lo encogemos con un transform: scale si hiciera falta. Se recalcula
+  // cuando cambia el número (animación / datos reales) y cuando cambia el tamaño.
+  const txtRef = useRef<HTMLSpanElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const fit = () => {
+      const box = ref.current, txt = txtRef.current;
+      if (!box || !txt) return;
+      const avail = box.clientWidth;
+      const w = txt.scrollWidth;
+      setScale(w > 0 && avail > 0 ? Math.min(1, avail / w) : 1);
+    };
+    fit();
+    let ro: ResizeObserver | null = null;
+    if (ref.current && typeof ResizeObserver !== 'undefined') { ro = new ResizeObserver(fit); ro.observe(ref.current); }
+    return () => { if (ro) ro.disconnect(); };
+  }, [n, prefix, suffix, compact]);
+
+  // Color SÓLIDO de marca (sin background-clip:text, que recortaba el último glifo
+  // en WebKit): imposible que recorte el "+"/"%" en cualquier navegador.
   return (
-    <div ref={ref} style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, lineHeight: 1.15, whiteSpace: 'nowrap', color: 'var(--green, #34e2a0)' }}>{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</div>
+    <div ref={ref} style={{ width: '100%', overflow: 'hidden' }}>
+      <span
+        ref={txtRef}
+        style={{
+          display: 'inline-block', whiteSpace: 'nowrap',
+          fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 800, lineHeight: 1.15,
+          color: 'var(--green, #34e2a0)',
+          transform: scale < 1 ? `scale(${scale})` : undefined,
+          transformOrigin: 'center',
+        }}
+      >{prefix}{compact ? fmtCompact(n) : n.toLocaleString()}{suffix}</span>
+    </div>
   );
 }
 

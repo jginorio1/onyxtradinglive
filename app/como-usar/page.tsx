@@ -283,7 +283,7 @@ export default function ComoUsar() {
       {showDemo && (
         <div
           onClick={() => setShowDemo(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(6,8,13,.86)', WebkitBackdropFilter: 'blur(4px)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', padding: '14px', gap: 10 }}
+          style={{ position: 'fixed', inset: 0, zIndex: 2147483000, background: 'rgba(6,8,13,.92)', WebkitBackdropFilter: 'blur(4px)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', padding: 'calc(14px + env(safe-area-inset-top)) 14px 14px', gap: 10 }}
         >
           <div className="row between" style={{ alignItems: 'center', flex: 'none' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 15, color: '#fff' }}>
