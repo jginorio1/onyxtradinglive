@@ -329,6 +329,9 @@ export default function ComoUsar() {
              <style> solo existe mientras la guía está montada, así que la
              regla no afecta a otras páginas. */
           .onyx-support-root,.onyx-backtotop{display:none!important}
+          /* El pie de navegación interno (Anterior/Siguiente) se oculta en
+             móvil: ya tenemos la barra fija abajo y duplicaba los botones. */
+          .onyx-guias .gnav-desktop{display:none!important}
         }
       `}</style>
 
@@ -412,8 +415,8 @@ export default function ComoUsar() {
             {/* Descripción */}
             <p style={{ fontSize: 16.5, lineHeight: 1.75, color: 'var(--tx)', marginTop: 18, maxWidth: 940, whiteSpace: 'pre-line' }}>{L(st.des_es, st.des_en)}</p>
 
-            {/* Navegación */}
-            <div className="row between" style={{ marginTop: 22, paddingTop: 16, borderTop: '1px solid var(--line)', alignItems: 'center' }}>
+            {/* Navegación (se oculta en móvil: abajo ya está la barra fija .mnav) */}
+            <div className="row between gnav-desktop" style={{ marginTop: 22, paddingTop: 16, borderTop: '1px solid var(--line)', alignItems: 'center' }}>
               <button className="btn btn-ghost" disabled={step === 0} onClick={() => go(step - 1)} style={{ fontSize: 13.5 }}>← {L('Anterior', 'Previous')}</button>
               <Link href="/guia" className="muted" style={{ fontSize: 11.5, textDecoration: 'none' }}>{L('¿Dudas? Lee los artículos o pregúntale a Onyx →', 'Questions? Read the articles or ask Onyx →')}</Link>
               {step < total - 1
