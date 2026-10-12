@@ -25,7 +25,7 @@ type Cat = { es: string; en: string; guides: Guide[] };
 
 // Sube este número cada vez que reemplaces una captura en /public/guia-img/
 // para forzar que el navegador descargue la versión nueva (evita caché viejo).
-const IMG_V = '6';
+const IMG_V = '7';
 
 const CATS: Cat[] = [
   {
