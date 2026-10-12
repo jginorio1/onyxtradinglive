@@ -176,9 +176,9 @@ export default function ComoUsar() {
         .onyx-guias .glink:hover{color:var(--tx);background:var(--card2)}
         .onyx-guias .glink.on{color:var(--tx);background:color-mix(in srgb,var(--brand) 16%,transparent);font-weight:600}
         .onyx-guias .glink .gi{display:inline-flex;color:var(--brand)}
-        .onyx-guias .wrap{display:grid;grid-template-columns:270px minmax(0,1fr) 236px;gap:28px;align-items:start}
-        @media(max-width:1200px){.onyx-guias .wrap{grid-template-columns:250px minmax(0,1fr)}.onyx-guias .toc{display:none}}
-        @media(max-width:900px){.onyx-guias .wrap{grid-template-columns:1fr}.onyx-guias .side{position:static!important;max-height:none!important}.onyx-guias .inner{padding:22px 15px 60px}}
+        .onyx-guias .gwrap{display:grid;grid-template-columns:270px minmax(0,1fr) 236px;gap:28px;align-items:start;width:100%;max-width:none}
+        @media(max-width:1200px){.onyx-guias .gwrap{grid-template-columns:250px minmax(0,1fr)}.onyx-guias .toc{display:none}}
+        @media(max-width:900px){.onyx-guias .gwrap{grid-template-columns:1fr}.onyx-guias .side{position:static!important;max-height:none!important}.onyx-guias .inner{padding:22px 15px 60px}}
         .onyx-guias .stepnum{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:20px;display:grid;place-items:center;flex:none;box-shadow:0 8px 20px -6px rgba(255,120,40,.6)}
         .onyx-guias .shot{position:relative;border-radius:16px;border:1px solid var(--line);overflow:hidden;background:#0c0e15;cursor:zoom-in;box-shadow:0 24px 60px -26px rgba(0,0,0,.75)}
         .onyx-guias .shot img{display:block;width:100%;height:auto}
@@ -200,7 +200,7 @@ export default function ComoUsar() {
       `}</style>
 
       <div className="inner">
-        <div className="wrap">
+        <div className="gwrap">
           {/* ───── Columna 1: temas ───── */}
           <aside className="side card" style={{ padding: 14, alignSelf: 'start', position: 'sticky', top: 20, maxHeight: 'calc(100vh - 34px)', overflowY: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 800, color: 'var(--tx)', padding: '2px 4px 12px' }}>
