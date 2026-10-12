@@ -31,6 +31,7 @@ export default function ComoUsar() {
   const [step, setStep] = useState(0);
   const [q, setQ] = useState('');
   const [zoom, setZoom] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
   const touchX = useRef<number | null>(null);
   const touchY = useRef<number | null>(null);
 
@@ -57,13 +58,22 @@ export default function ComoUsar() {
   // Flechas del teclado ← → para avanzar/retroceder
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
+      if (showDemo) { if (e.key === 'Escape') setShowDemo(false); return; }
       if (zoom) { if (e.key === 'Escape') setZoom(false); return; }
       if (e.key === 'ArrowRight') setStep((s) => Math.min(total - 1, s + 1));
       if (e.key === 'ArrowLeft') setStep((s) => Math.max(0, s - 1));
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [total, zoom]);
+  }, [total, zoom, showDemo]);
+
+  // Bloquea el scroll del fondo mientras el demo está abierto en la capa.
+  useEffect(() => {
+    if (!showDemo) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [showDemo]);
 
   const ql = q.trim().toLowerCase();
   const match = (g: Guide) => !ql || (es ? g.es : g.en).toLowerCase().includes(ql);
@@ -132,23 +142,20 @@ export default function ComoUsar() {
       `}</style>
 
       <div className="inner">
-        {/* ───── Portada: demo interactivo (el mismo del landing) ─────
-            El usuario puede tocar el panel real (datos de ejemplo, sin login)
-            antes de leer las guías. Reutiliza DemoFrame → ruta pública /demo,
-            así no hay UI que mantener aparte. */}
-        <section style={{ marginBottom: 30 }}>
-          <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 16px' }}>
-            <h1 style={{ margin: '0 0 6px', fontSize: 26, letterSpacing: '-.4px', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ color: 'var(--brand)' }}><OnyxIcon name="play" size={22} glow={false} /></span>
-              {L('Pruébalo tú mismo', 'Try it yourself')}
-            </h1>
-            <p className="muted" style={{ margin: 0, fontSize: 14 }}>
-              {L('Explora el panel real con datos de ejemplo —sin registrarte— y luego sigue las guías paso a paso de abajo.',
-                 'Explore the real panel with example data —no sign-up— then follow the step-by-step guides below.')}
-            </p>
+        {/* ───── Portada: botón que abre el demo (el mismo del landing) ─────
+            No incrustamos el panel para no empujar las guías abajo; un botón
+            lo abre a pantalla completa en una capa. Reutiliza DemoFrame →
+            ruta pública /demo, así no hay UI que mantener aparte. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '10px 18px', maxWidth: 820, margin: '0 auto 26px', padding: '16px 20px', border: '1px solid var(--line)', borderRadius: 16, background: 'var(--card)' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-.2px' }}>{L('¿Nuevo en Onyx? Pruébalo tú mismo', 'New to Onyx? Try it yourself')}</div>
+            <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{L('Explora el panel real con datos de ejemplo, sin registrarte.', 'Explore the real panel with example data, no sign-up.')}</div>
           </div>
-          <DemoFrame lang={lang} />
-        </section>
+          <button className="btn btn-primary" onClick={() => setShowDemo(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, whiteSpace: 'nowrap' }}>
+            <OnyxIcon name="play" size={16} glow={false} /> {L('Abrir demo', 'Open demo')}
+          </button>
+        </div>
+
         <div className="gwrap">
           {/* ───── Columna 1: temas ───── */}
           <aside className="side card" style={{ padding: 14, alignSelf: 'start', position: 'sticky', top: 20, maxHeight: 'calc(100vh - 34px)', overflowY: 'auto' }}>
@@ -268,6 +275,35 @@ export default function ComoUsar() {
           </div>
           <button className="zclose" aria-label={L('Cerrar', 'Close')} onClick={(e) => { e.stopPropagation(); setZoom(false); }}>✕</button>
           <div className="zhint">{L('Toca fuera o pulsa Esc para cerrar', 'Tap outside or press Esc to close')}</div>
+        </div>
+      )}
+
+      {/* Demo a pantalla completa (capa): se abre con el botón de la portada.
+          Reutiliza DemoFrame → /demo. Cerrar con la ✕ o pulsando Esc. */}
+      {showDemo && (
+        <div
+          onClick={() => setShowDemo(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(6,8,13,.86)', WebkitBackdropFilter: 'blur(4px)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', padding: '14px', gap: 10 }}
+        >
+          <div className="row between" style={{ alignItems: 'center', flex: 'none' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 15, color: '#fff' }}>
+              <OnyxIcon name="play" size={17} glow={false} /> {L('Demo interactivo', 'Interactive demo')}
+            </span>
+            <button
+              className="btn btn-ghost"
+              onClick={(e) => { e.stopPropagation(); setShowDemo(false); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, color: '#fff', borderColor: 'rgba(255,255,255,.3)' }}
+            >
+              ✕ {L('Cerrar', 'Close')}
+            </button>
+          </div>
+          <div onClick={(e) => e.stopPropagation()} style={{ flex: 1, minHeight: 0, display: 'flex', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,.14)' }}>
+            <iframe
+              src="/demo"
+              title={L('Demo interactivo de Onyx', 'Interactive Onyx demo')}
+              style={{ width: '100%', height: '100%', border: 0, background: 'var(--bg2)' }}
+            />
+          </div>
         </div>
       )}
     </div>

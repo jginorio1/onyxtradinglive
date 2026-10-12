@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 // /demo, solo datos de ejemplo, sin login) y permite verlo a pantalla completa.
 // Pantalla completa: usa la Fullscreen API del navegador donde existe; en iOS
 // Safari (que no la soporta en divs) cae a un modo "expandido" por CSS.
-export default function DemoFrame({ lang = 'es' }: { lang?: 'es' | 'en' }) {
+export default function DemoFrame({ lang = 'es', matchTheme = false }: { lang?: 'es' | 'en'; matchTheme?: boolean }) {
   const es = lang === 'es';
   const wrapRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -20,23 +20,23 @@ export default function DemoFrame({ lang = 'es' }: { lang?: 'es' | 'en' }) {
       try {
         const site = document.documentElement.getAttribute('data-theme')
           || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-        const inverse = site === 'light' ? 'dark' : 'light';
+        const want = matchTheme ? site : (site === 'light' ? 'dark' : 'light');
         const doc = iframeRef.current?.contentDocument;
-        if (doc?.documentElement) doc.documentElement.setAttribute('data-theme', inverse);
+        if (doc?.documentElement) doc.documentElement.setAttribute('data-theme', want);
       } catch { /* cross-origin u aún sin cargar: lo reintenta el onLoad */ }
     };
     sync();
     const obs = new MutationObserver(sync);
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => obs.disconnect();
-  }, []);
+  }, [matchTheme]);
   // Al (re)cargar el iframe, aplica el tema inverso de inmediato.
   const applyInverseTheme = () => {
     try {
       const site = document.documentElement.getAttribute('data-theme')
         || (window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       const doc = iframeRef.current?.contentDocument;
-      if (doc?.documentElement) doc.documentElement.setAttribute('data-theme', site === 'light' ? 'dark' : 'light');
+      if (doc?.documentElement) doc.documentElement.setAttribute('data-theme', matchTheme ? site : (site === 'light' ? 'dark' : 'light'));
     } catch {}
   };
   const [fs, setFs] = useState(false);          // fullscreen real del navegador
