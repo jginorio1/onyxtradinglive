@@ -25,7 +25,7 @@ type Cat = { es: string; en: string; guides: Guide[] };
 
 // Sube este número cada vez que reemplaces una captura en /public/guia-img/
 // para forzar que el navegador descargue la versión nueva (evita caché viejo).
-const IMG_V = '14';
+const IMG_V = '15';
 
 const CATS: Cat[] = [
   {
@@ -216,10 +216,11 @@ const CATS: Cat[] = [
           des_en: 'The "History" tab is your mirror: how often Guardian stopped you and how often you overrode it.\n\n1. Today — whether there are active blocks, and your day’s numbers: trades, times you stopped and times you overrode.\n2. Discipline (30 days) — not a grade: a mirror of how often it stopped you and how often you overrode it (100 = perfect).\n3. Latest actions — the log of what Onyx has done on your accounts.\n4. Keep in mind — the same reminder: Onyx only acts with the platform open and the connector running; use a VPS to trade seriously.',
           markers: [{ x: 18, y: 25, n: 1, es: 'Hoy (bloqueos y números del día)', en: 'Today (blocks and day numbers)' }, { x: 50, y: 49, n: 2, es: 'Disciplina (30 días)', en: 'Discipline (30 days)' }, { x: 50, y: 67, n: 3, es: 'Últimas acciones', en: 'Latest actions' }, { x: 50, y: 84, n: 4, es: 'Ten en cuenta (VPS)', en: 'Keep in mind (VPS)' }] },
       ] },
-      { id: 'ganancia-neta', icon: 'coins', es: 'Ganancia neta', en: 'Net profit', mins: 2, steps: [
-        { es: 'Próximamente', en: 'Coming soon', img: 'guia-img/neta-1.png',
-          des_es: 'Resta tus costos de prop firm y gastos para ver tu ganancia real.',
-          des_en: 'Subtract prop-firm costs and expenses to see your real profit.' } ] },
+      { id: 'ganancia-neta', icon: 'coins', es: 'Ganancia neta', en: 'Net profit', mins: 3, steps: [
+        { es: 'Registra tus gastos y ve tu ganancia real', en: 'Log your expenses and see your real profit', img: 'guia-img/neta-1.png',
+          des_es: 'Ganancia neta es lo que de verdad te queda después de tus costos (retos de prop firm, VPS, suscripciones…).\n\n1. Bruto · Costo real · Neto real — tres tarjetas: lo que ganaste operando, lo que gastaste (menos reembolsos) y tu NETO verdadero.\n2. Selector de mes — muévete entre meses con las flechas.\n3. Adjuntar recibo o pegar texto — sube el PDF/foto del recibo o pega el texto y la IA lo registra sola ("Leer texto con IA").\n4. Campos del gasto — categoría, importe, fecha y proveedor/detalle.\n5. Datos de cuenta fondeada — si es un reto: prop firm, tamaño, tipo (fase), cuenta y si es reembolsable (la firma devuelve la cuota al pasar / primer payout).\n6. + Añadir — guarda el gasto (marca "Mensual" si se repite cada mes).\n7. Coach de gasto — "Generar lectura": la IA te da una lectura honesta de tu dinero.\n\nAbajo, "Gastos del mes" lista todo lo registrado.',
+          des_en: 'Net profit is what you truly keep after your costs (prop-firm challenges, VPS, subscriptions…).\n\n1. Gross · Real cost · True net — three cards: what you made trading, what you spent (minus refunds) and your TRUE net.\n2. Month selector — move between months with the arrows.\n3. Attach receipt or paste text — upload the receipt PDF/photo or paste the text and the AI logs it for you ("Read text with AI").\n4. Expense fields — category, amount, date and provider/detail.\n5. Funded-account details — if it’s a challenge: prop firm, size, type (phase), account and whether it’s refundable (the firm returns the fee when you pass / at first payout).\n6. + Add — saves the expense (tick "Monthly" if it repeats each month).\n7. Spending coach — "Generate read": the AI gives you an honest read of your money.\n\nBelow, "This month’s expenses" lists everything logged.',
+          markers: [{ x: 50, y: 13, n: 1, es: 'Bruto · Costo real · Neto real', en: 'Gross · Real cost · True net' }, { x: 90, y: 4, n: 2, es: 'Selector de mes', en: 'Month selector' }, { x: 18, y: 33, n: 3, es: 'Adjuntar recibo o pegar texto (IA)', en: 'Attach receipt or paste text (AI)' }, { x: 50, y: 53, n: 4, es: 'Campos del gasto', en: 'Expense fields' }, { x: 50, y: 64, n: 5, es: 'Datos de cuenta fondeada', en: 'Funded-account details' }, { x: 93, y: 74, n: 6, es: '+ Añadir (guardar gasto)', en: '+ Add (save expense)' }, { x: 90, y: 83, n: 7, es: 'Coach de gasto (IA)', en: 'Spending coach (AI)' }] } ] },
     ],
   },
   {
