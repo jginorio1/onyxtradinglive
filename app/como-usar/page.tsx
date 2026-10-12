@@ -25,7 +25,7 @@ type Cat = { es: string; en: string; guides: Guide[] };
 
 // Sube este número cada vez que reemplaces una captura en /public/guia-img/
 // para forzar que el navegador descargue la versión nueva (evita caché viejo).
-const IMG_V = '15';
+const IMG_V = '17';
 
 const CATS: Cat[] = [
   {
@@ -226,14 +226,20 @@ const CATS: Cat[] = [
   {
     es: 'Cuenta', en: 'Account',
     guides: [
-      { id: 'planes', icon: 'card', es: 'Planes y pago', en: 'Plans & billing', mins: 2, steps: [
-        { es: 'Próximamente', en: 'Coming soon', img: 'guia-img/planes-1.png',
-          des_es: 'Elegir plan, pagar con tarjeta o USDT y cambiar de plan.',
-          des_en: 'Pick a plan, pay by card or USDT and change plans.' } ] },
-      { id: 'notificaciones', icon: 'bell', es: 'Notificaciones y Telegram', en: 'Notifications & Telegram', mins: 2, steps: [
-        { es: 'Próximamente', en: 'Coming soon', img: 'guia-img/notif-1.png',
-          des_es: 'Activar push y enlazar Telegram para alertas de tus cuentas.',
-          des_en: 'Turn on push and link Telegram for account alerts.' } ] },
+      { id: 'planes', icon: 'card', es: 'Planes y pago', en: 'Plans & billing', mins: 3, steps: [
+        { es: 'Tu suscripción y cambiar de plan', en: 'Your subscription and changing plans', img: 'guia-img/planes-1.png',
+          des_es: 'Aquí ves tu plan, la facturación y cómo cambiarlo.\n\n1. Plan actual y estado — tu plan, el precio, y si está programado para cancelarse ("Cancela al final del periodo" + fecha).\n2. Crédito de cuenta — saldo a tu favor que se aplica a tu próxima factura.\n3. Cambiar tarjeta — actualiza tu método de pago.\n4. Cambiar de plan — compara los planes (Free, Guardian Pro, Onyx Builder, Guardian Elite, Black Onyx). El tuyo aparece marcado como "Tu plan / Plan actual". Subir de plan es inmediato (se cobra la diferencia prorrateada); bajar aplica en tu próxima renovación y conservas todo hasta entonces.\n5. Cuentas usadas — cuántas cuentas tienes conectadas respecto a tu límite.\n6. Reactivar / cancelar — si tu suscripción está programada para cancelar, puedes reactivarla aquí.',
+          des_en: 'Here you see your plan, billing and how to change it.\n\n1. Current plan and status — your plan, the price, and whether it’s scheduled to cancel ("Cancels at period end" + date).\n2. Account credit — balance in your favor applied to your next invoice.\n3. Change card — update your payment method.\n4. Change plan — compare the plans (Free, Guardian Pro, Onyx Builder, Guardian Elite, Black Onyx). Yours is marked "Your plan / Current plan". Upgrading is immediate (the prorated difference is charged); downgrading applies at your next renewal and you keep everything until then.\n5. Accounts used — how many accounts you have connected against your limit.\n6. Reactivate / cancel — if your subscription is scheduled to cancel, you can reactivate it here.',
+          markers: [{ x: 16, y: 23, n: 1, es: 'Plan actual y estado', en: 'Current plan and status' }, { x: 85, y: 31, n: 2, es: 'Crédito de cuenta', en: 'Account credit' }, { x: 6, y: 38, n: 3, es: 'Cambiar tarjeta', en: 'Change card' }, { x: 50, y: 54, n: 4, es: 'Cambiar de plan', en: 'Change plan' }, { x: 6, y: 71, n: 5, es: 'Cuentas usadas', en: 'Accounts used' }, { x: 9, y: 88, n: 6, es: 'Reactivar / cancelar', en: 'Reactivate / cancel' }] } ] },
+      { id: 'notificaciones', icon: 'bell', es: 'Notificaciones y Telegram', en: 'Notifications & Telegram', mins: 3, steps: [
+        { es: 'Teléfono y correo', en: 'Phone and email', img: 'guia-img/notif-1.png',
+          des_es: 'Elige dónde y de qué quieres enterarte.\n\n1. Notificaciones del teléfono — pulsa "Activar" para recibir avisos de cuenta y reto aunque Onyx esté cerrado (push móvil).\n2. Correo — interruptores por tema: Cuenta y facturación (cargos, recibos, cambios de plan), Resumen semanal de rendimiento, Alertas de reglas de prop firm (cuando te acercas a un límite) y Noticias y ofertas.\n3. Guardar — aplica tus cambios.',
+          des_en: 'Choose where and what you want to hear about.\n\n1. Phone notifications — tap "Turn on" to get account and challenge alerts even when Onyx is closed (mobile push).\n2. Email — toggles by topic: Account and billing (charges, receipts, plan changes), Weekly performance recap, Prop-firm rule alerts (when you get close to a limit) and News and offers.\n3. Save — applies your changes.',
+          markers: [{ x: 50, y: 27, n: 1, es: 'Notificaciones del teléfono (push)', en: 'Phone notifications (push)' }, { x: 50, y: 62, n: 2, es: 'Correo (interruptores por tema)', en: 'Email (toggles by topic)' }, { x: 4, y: 90, n: 3, es: 'Guardar', en: 'Save' }] },
+        { es: 'Alertas de app y móvil', en: 'App and mobile alerts', img: 'guia-img/notif-2.png',
+          des_es: 'Elige qué recibir en la campana (dentro de la app) y en el push móvil. Cada alerta tiene dos interruptores:\n\n1. Encabezado — dos columnas: BELL (campana dentro de la app) y PUSH (notificación al móvil).\n2. Cada alerta — check-in diario, días sin operar, operaciones sin diario, resumen semanal, tu robot necesita atención, respuesta a tu ticket, recompensa de referido, conexión caída, meta alcanzada, cerca del límite de pérdida, reto roto/superado, no pudimos cobrar tu plan…\n3. Columna BELL — enciende/apaga el aviso dentro de la app.\n4. Columna PUSH — enciende/apaga el aviso al móvil.\n5. Nota — el push necesita las notificaciones del móvil activadas; las alertas de Telegram se configuran en la tarjeta de arriba.',
+          des_en: 'Choose what to get in the bell (in-app) and in mobile push. Each alert has two switches:\n\n1. Header — two columns: BELL (in-app bell) and PUSH (mobile notification).\n2. Each alert — daily check-in, days without trading, trades without a journal, weekly recap, your robot needs attention, ticket reply, referral reward, connection dropped, goal reached, close to loss limit, challenge broken/passed, we couldn’t charge your plan…\n3. BELL column — turn the in-app alert on/off.\n4. PUSH column — turn the mobile alert on/off.\n5. Note — push needs mobile notifications enabled; Telegram alerts are set in the card above.',
+          markers: [{ x: 50, y: 9, n: 1, es: 'Encabezado: BELL y PUSH', en: 'Header: BELL and PUSH' }, { x: 44, y: 14, n: 2, es: 'Cada alerta', en: 'Each alert' }, { x: 92, y: 14, n: 3, es: 'Columna BELL (campana in-app)', en: 'BELL column (in-app bell)' }, { x: 97, y: 14, n: 4, es: 'Columna PUSH (móvil)', en: 'PUSH column (mobile)' }, { x: 6, y: 98, n: 5, es: 'Nota: push + Telegram', en: 'Note: push + Telegram' }] } ] },
     ],
   },
 ];
