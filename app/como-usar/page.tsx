@@ -23,6 +23,10 @@ type Step = { es: string; en: string; des_es: string; des_en: string; img: strin
 type Guide = { id: string; icon: string; es: string; en: string; mins: number; steps: Step[] };
 type Cat = { es: string; en: string; guides: Guide[] };
 
+// Sube este número cada vez que reemplaces una captura en /public/guia-img/
+// para forzar que el navegador descargue la versión nueva (evita caché viejo).
+const IMG_V = '6';
+
 const CATS: Cat[] = [
   {
     es: 'Primeros pasos', en: 'Getting started',
@@ -272,7 +276,7 @@ export default function ComoUsar() {
 
             {/* Imagen grande (clic para ampliar) */}
             <div className="shot" onClick={() => setZoom(true)} title={L('Pulsa para ampliar', 'Click to enlarge')}>
-              <img src={'/' + st.img} alt={L(st.es, st.en)}
+              <img src={'/' + st.img + '?v=' + IMG_V} alt={L(st.es, st.en)}
                    onError={(e) => { const t = e.currentTarget; t.style.display = 'none'; (t.nextElementSibling as HTMLElement).style.display = 'flex'; }} />
               <div style={{ display: 'none', minHeight: 320, alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--mut)', fontSize: 14, padding: 24, textAlign: 'center' }}>
                 <span><OnyxIcon emoji="🖼️" size={24} glow={false} /> {L('Falta la captura', 'Screenshot pending')}: <code className="code">/public/{st.img}</code></span>
@@ -323,7 +327,7 @@ export default function ComoUsar() {
       {zoom && (
         <div className="zoomwrap" onClick={() => setZoom(false)}>
           <div className="zbox" onClick={(e) => e.stopPropagation()}>
-            <img src={'/' + st.img} alt={L(st.es, st.en)} />
+            <img src={'/' + st.img + '?v=' + IMG_V} alt={L(st.es, st.en)} />
             {st.markers?.map((m, i) => (
               <span key={i} className="mk" style={{ left: m.x + '%', top: m.y + '%' }}>
                 <span className="dot">{m.n ?? i + 1}</span>
