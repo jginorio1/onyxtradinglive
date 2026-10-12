@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -142,114 +142,167 @@ export default function ComoUsar() {
   const [guideId, setGuideId] = useState('conectar-cuenta');
   const [step, setStep] = useState(0);
   const [q, setQ] = useState('');
+  const [zoom, setZoom] = useState(false);
 
   const allGuides = CATS.flatMap((c) => c.guides);
   const guide = allGuides.find((g) => g.id === guideId) || allGuides[0];
-  const st = guide.steps[Math.min(step, guide.steps.length - 1)];
   const total = guide.steps.length;
+  const st = guide.steps[Math.min(step, total - 1)];
 
-  function open(id: string) { setGuideId(id); setStep(0); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function open(id: string) { setGuideId(id); setStep(0); setZoom(false); if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function go(i: number) { setStep(Math.max(0, Math.min(total - 1, i))); setZoom(false); }
+
+  // Flechas del teclado ← → para avanzar/retroceder
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (zoom) { if (e.key === 'Escape') setZoom(false); return; }
+      if (e.key === 'ArrowRight') setStep((s) => Math.min(total - 1, s + 1));
+      if (e.key === 'ArrowLeft') setStep((s) => Math.max(0, s - 1));
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [total, zoom]);
 
   const ql = q.trim().toLowerCase();
   const match = (g: Guide) => !ql || (es ? g.es : g.en).toLowerCase().includes(ql);
 
   return (
-    <div className="onyx-guias" style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 16px 60px' }}>
+    <div className="onyx-guias">
       <style>{`
+        .onyx-guias{min-height:100vh}
+        .onyx-guias .inner{max-width:1720px;margin:0 auto;padding:26px 30px 70px}
         .onyx-guias .gcat{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);margin:16px 0 6px;font-weight:700}
-        .onyx-guias .glink{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;border:none;cursor:pointer;color:var(--mut);font-size:13.5px;padding:8px 10px;border-radius:9px;transition:.15s;line-height:1.3}
+        .onyx-guias .glink{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:none;cursor:pointer;color:var(--mut);font-size:14px;padding:9px 11px;border-radius:10px;transition:.15s;line-height:1.3}
         .onyx-guias .glink:hover{color:var(--tx);background:var(--card2)}
         .onyx-guias .glink.on{color:var(--tx);background:color-mix(in srgb,var(--brand) 16%,transparent);font-weight:600}
         .onyx-guias .glink .gi{display:inline-flex;color:var(--brand)}
-        .onyx-guias .wrap{display:grid;grid-template-columns:248px 1fr;gap:20px}
-        @media(max-width:860px){.onyx-guias .wrap{grid-template-columns:1fr}.onyx-guias .side{position:static!important;max-height:none!important}}
-        .onyx-guias .mk{position:absolute;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:7px;z-index:2}
-        .onyx-guias .mk .dot{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:13px;display:grid;place-items:center;box-shadow:0 0 0 4px rgba(255,157,61,.25),0 4px 12px rgba(0,0,0,.4);flex:none}
-        .onyx-guias .mk .lbl{font-size:12px;font-weight:700;color:#241002;background:linear-gradient(100deg,#ffe08a,#e8b923);padding:3px 9px;border-radius:7px;white-space:nowrap;box-shadow:0 4px 12px -3px rgba(0,0,0,.5)}
+        .onyx-guias .wrap{display:grid;grid-template-columns:270px minmax(0,1fr) 236px;gap:28px;align-items:start}
+        @media(max-width:1200px){.onyx-guias .wrap{grid-template-columns:250px minmax(0,1fr)}.onyx-guias .toc{display:none}}
+        @media(max-width:900px){.onyx-guias .wrap{grid-template-columns:1fr}.onyx-guias .side{position:static!important;max-height:none!important}.onyx-guias .inner{padding:22px 15px 60px}}
+        .onyx-guias .stepnum{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:20px;display:grid;place-items:center;flex:none;box-shadow:0 8px 20px -6px rgba(255,120,40,.6)}
+        .onyx-guias .shot{position:relative;border-radius:16px;border:1px solid var(--line);overflow:hidden;background:#0c0e15;cursor:zoom-in;box-shadow:0 24px 60px -26px rgba(0,0,0,.75)}
+        .onyx-guias .shot img{display:block;width:100%;height:auto}
+        .onyx-guias .mk{position:absolute;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:8px;z-index:2}
+        .onyx-guias .mk .dot{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:15px;display:grid;place-items:center;box-shadow:0 0 0 5px rgba(255,157,61,.28),0 6px 16px rgba(0,0,0,.45);flex:none}
+        .onyx-guias .mk .lbl{font-size:13px;font-weight:700;color:#241002;background:linear-gradient(100deg,#ffe08a,#e8b923);padding:4px 11px;border-radius:8px;white-space:nowrap;box-shadow:0 6px 16px -4px rgba(0,0,0,.55)}
+        .onyx-guias .toc{position:sticky;top:20px;align-self:start}
+        .onyx-guias .tocl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:800;margin-bottom:12px}
+        .onyx-guias .tocrow{display:flex;gap:11px;align-items:center;width:100%;text-align:left;background:transparent;border:none;cursor:pointer;padding:9px 0 9px 13px;color:var(--mut);transition:.15s;border-left:2px solid var(--line);line-height:1.35}
+        .onyx-guias .tocrow:hover{color:var(--tx)}
+        .onyx-guias .tocrow.on{color:var(--tx);border-left-color:var(--brand)}
+        .onyx-guias .tocrow.done .tdot{background:var(--brand);border-color:var(--brand)}
+        .onyx-guias .tdot{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex:none;font-size:9px;font-weight:800;display:grid;place-items:center;color:var(--bg);transition:.15s}
+        .onyx-guias .tocrow.on .tdot{border-color:var(--brand);background:transparent;color:var(--brand)}
+        .onyx-guias .tocrow .tt{font-size:12.5px;font-weight:600}
+        .onyx-guias .zoomwrap{position:fixed;inset:0;z-index:70;background:rgba(3,4,8,.92);display:flex;align-items:center;justify-content:center;padding:28px;cursor:zoom-out;backdrop-filter:blur(4px)}
+        .onyx-guias .zoomwrap .zbox{position:relative;max-width:1500px;width:100%;max-height:92vh}
+        .onyx-guias .zoomwrap img{display:block;width:100%;height:auto;max-height:92vh;object-fit:contain;border-radius:12px;border:1px solid rgba(255,255,255,.12)}
       `}</style>
 
-      <div style={{ textAlign: 'center', marginBottom: 20 }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: 'var(--brand)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)', padding: '5px 13px', borderRadius: 999, marginBottom: 12 }}>
-          <OnyxIcon name="book" size={14} /> {L('Centro de guías', 'Guide center')}
-        </div>
-        <h1 style={{ margin: '0 0 6px' }}>{L('Cómo usar Onyx, paso a paso', 'How to use Onyx, step by step')}</h1>
-        <p className="muted" style={{ fontSize: 15, maxWidth: 620, margin: '0 auto' }}>
-          {L('Aprende cada sección con capturas reales y pasos numerados. Elige un tema a la izquierda.',
-             'Learn each section with real screenshots and numbered steps. Pick a topic on the left.')}
-        </p>
-      </div>
+      <div className="inner">
+        <div className="wrap">
+          {/* ───── Columna 1: temas ───── */}
+          <aside className="side card" style={{ padding: 14, alignSelf: 'start', position: 'sticky', top: 20, maxHeight: 'calc(100vh - 34px)', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 800, color: 'var(--tx)', padding: '2px 4px 12px' }}>
+              <span style={{ color: 'var(--brand)' }}><OnyxIcon name="book" size={18} glow={false} /></span> {L('Centro de guías', 'Guide center')}
+            </div>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('Buscar guía…', 'Search guide…')} style={{ width: '100%', fontSize: 13.5, marginBottom: 6 }} />
+            {CATS.map((c) => {
+              const gs = c.guides.filter(match);
+              if (!gs.length) return null;
+              return (
+                <div key={c.es}>
+                  <div className="gcat">{L(c.es, c.en)}</div>
+                  {gs.map((g) => (
+                    <button key={g.id} className={'glink' + (g.id === guideId ? ' on' : '')} onClick={() => open(g.id)}>
+                      <span className="gi"><OnyxIcon name={g.icon} size={17} glow={false} /></span>{L(g.es, g.en)}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
+            <Link href="/guia" className="btn btn-ghost" style={{ marginTop: 16, width: '100%', justifyContent: 'center', fontSize: 13 }}>{L('Ver la guía completa', 'See full guide')}</Link>
+          </aside>
 
-      <div className="wrap">
-        {/* Menú lateral por categorías */}
-        <aside className="side card" style={{ padding: 12, alignSelf: 'start', position: 'sticky', top: 14, maxHeight: 'calc(100vh - 28px)', overflowY: 'auto' }}>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('Buscar guía…', 'Search guide…')} style={{ width: '100%', fontSize: 13, marginBottom: 6 }} />
-          {CATS.map((c) => {
-            const gs = c.guides.filter(match);
-            if (!gs.length) return null;
-            return (
-              <div key={c.es}>
-                <div className="gcat">{L(c.es, c.en)}</div>
-                {gs.map((g) => (
-                  <button key={g.id} className={'glink' + (g.id === guideId ? ' on' : '')} onClick={() => open(g.id)}>
-                    <span className="gi"><OnyxIcon name={g.icon} size={16} glow={false} /></span>{L(g.es, g.en)}
-                  </button>
-                ))}
+          {/* ───── Columna 2: un paso a la vez ───── */}
+          <main style={{ minWidth: 0 }}>
+            <div className="muted" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 800, color: 'var(--brand)', marginBottom: 6 }}>
+              {L('Cómo usar Onyx', 'How to use Onyx')} · {L(guide.es, guide.en)}
+            </div>
+
+            {/* Cabecera del paso */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 16 }}>
+              <span className="stepnum">{step + 1}</span>
+              <div style={{ minWidth: 0 }}>
+                <div className="muted" style={{ fontSize: 12.5, marginBottom: 2 }}>{L('Paso', 'Step')} {step + 1} {L('de', 'of')} {total} · ~{guide.mins} min</div>
+                <h1 style={{ margin: 0, fontSize: 27, letterSpacing: '-.4px' }}>{L(st.es, st.en)}</h1>
               </div>
-            );
-          })}
-          <Link href="/guia" className="btn btn-ghost" style={{ marginTop: 14, width: '100%', justifyContent: 'center', fontSize: 12.5 }}>{L('Ver la guía completa', 'See full guide')}</Link>
-        </aside>
-
-        {/* Lector de guía paso a paso */}
-        <main>
-          <div className="card" style={{ padding: '20px 22px' }}>
-            <div className="muted" style={{ fontSize: 12, marginBottom: 3 }}><span style={{ color: 'var(--brand)' }}><OnyxIcon name={guide.icon} size={13} glow={false} /></span> {L(guide.es, guide.en)}</div>
-            <h2 style={{ margin: '0 0 2px' }}>{L(st.es, st.en)}</h2>
-            <div className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>{L('Paso', 'Step')} {step + 1} {L('de', 'of')} {total} · ~{guide.mins} min</div>
+            </div>
 
             {/* Barra de progreso */}
-            <div style={{ display: 'flex', gap: 5, marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
               {guide.steps.map((_, i) => (
-                <span key={i} style={{ height: 5, flex: 1, borderRadius: 3, background: i <= step ? 'var(--brand)' : 'var(--line)', transition: '.2s' }} />
+                <span key={i} style={{ height: 6, flex: 1, borderRadius: 3, background: i <= step ? 'var(--brand)' : 'var(--line)', transition: '.2s' }} />
               ))}
             </div>
 
-            {/* Imagen con marcas superpuestas */}
-            <div style={{ position: 'relative', borderRadius: 12, border: '1px solid var(--line)', background: 'var(--bg2)', overflow: 'hidden' }}>
-              <img src={'/' + st.img} alt={L(st.es, st.en)} style={{ display: 'block', width: '100%', height: 'auto' }}
+            {/* Imagen grande (clic para ampliar) */}
+            <div className="shot" onClick={() => setZoom(true)} title={L('Pulsa para ampliar', 'Click to enlarge')}>
+              <img src={'/' + st.img} alt={L(st.es, st.en)}
                    onError={(e) => { const t = e.currentTarget; t.style.display = 'none'; (t.nextElementSibling as HTMLElement).style.display = 'flex'; }} />
-              <div style={{ display: 'none', minHeight: 220, alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--mut)', fontSize: 13, padding: 20, textAlign: 'center' }}>
-                <span><OnyxIcon emoji="🖼️" size={22} glow={false} /> {L('Falta la captura', 'Screenshot pending')}: <code className="code">/public/{st.img}</code></span>
+              <div style={{ display: 'none', minHeight: 320, alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--mut)', fontSize: 14, padding: 24, textAlign: 'center' }}>
+                <span><OnyxIcon emoji="🖼️" size={24} glow={false} /> {L('Falta la captura', 'Screenshot pending')}: <code className="code">/public/{st.img}</code></span>
               </div>
-              {st.markers?.map((m, i) => (
-                <span key={i} className="mk" style={{ left: m.x + '%', top: m.y + '%', flexDirection: m.dir === 'left' ? 'row-reverse' : 'row' }}>
+              {st.markers?.map((m, j) => (
+                <span key={j} className="mk" style={{ left: m.x + '%', top: m.y + '%', flexDirection: m.dir === 'left' ? 'row-reverse' : 'row' }}>
                   {m.n != null && <span className="dot">{m.n}</span>}
                   <span className="lbl">{L(m.es, m.en)}</span>
                 </span>
               ))}
             </div>
+            <div className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 8 }}>{L('Pulsa la imagen para ampliarla · usa ← → para navegar', 'Click the image to enlarge · use ← → to navigate')}</div>
 
-            {/* Descripción del paso */}
-            <p style={{ fontSize: 14.5, lineHeight: 1.7, color: 'var(--tx)', marginTop: 16 }}>{L(st.des_es, st.des_en)}</p>
-
-            {/* Lista de todos los pasos (saltar a uno) */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-              {guide.steps.map((s, i) => (
-                <button key={i} onClick={() => setStep(i)} className={'btn ' + (i === step ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 12, padding: '5px 11px' }}>{i + 1}. {L(s.es, s.en)}</button>
-              ))}
-            </div>
+            {/* Descripción */}
+            <p style={{ fontSize: 16.5, lineHeight: 1.75, color: 'var(--tx)', marginTop: 18, maxWidth: 940 }}>{L(st.des_es, st.des_en)}</p>
 
             {/* Navegación */}
-            <div className="row between" style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--line)', alignItems: 'center' }}>
-              <button className="btn btn-ghost" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))} style={{ fontSize: 13 }}>← {L('Anterior', 'Previous')}</button>
+            <div className="row between" style={{ marginTop: 22, paddingTop: 16, borderTop: '1px solid var(--line)', alignItems: 'center' }}>
+              <button className="btn btn-ghost" disabled={step === 0} onClick={() => go(step - 1)} style={{ fontSize: 13.5 }}>← {L('Anterior', 'Previous')}</button>
               <span className="muted" style={{ fontSize: 11.5 }}>{L('¿Dudas? Abre el chat de soporte', 'Questions? Open support chat')}</span>
               {step < total - 1
-                ? <button className="btn btn-primary" onClick={() => setStep((s) => s + 1)} style={{ fontSize: 13 }}>{L('Siguiente', 'Next')} →</button>
-                : <Link href="/dashboard" className="btn btn-primary" style={{ fontSize: 13 }}>{L('Ir a mi panel', 'Go to my panel')} →</Link>}
+                ? <button className="btn btn-primary" onClick={() => go(step + 1)} style={{ fontSize: 13.5 }}>{L('Siguiente', 'Next')} →</button>
+                : <Link href="/dashboard" className="btn btn-primary" style={{ fontSize: 13.5 }}>{L('Ir a mi panel', 'Go to my panel')} →</Link>}
             </div>
-          </div>
-        </main>
+          </main>
+
+          {/* ───── Columna 3: riel de pasos (cambia el paso al instante) ───── */}
+          <nav className="toc">
+            <div className="tocl">{L('Pasos', 'Steps')} · {step + 1}/{total}</div>
+            {guide.steps.map((s, i) => (
+              <button key={i} className={'tocrow' + (i === step ? ' on' : '') + (i < step ? ' done' : '')} onClick={() => go(i)}>
+                <span className="tdot">{i < step ? '✓' : i + 1}</span>
+                <span className="tt">{L(s.es, s.en)}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
       </div>
+
+      {/* Lightbox a tamaño completo */}
+      {zoom && (
+        <div className="zoomwrap" onClick={() => setZoom(false)}>
+          <div className="zbox" onClick={(e) => e.stopPropagation()}>
+            <img src={'/' + st.img} alt={L(st.es, st.en)} />
+            {st.markers?.map((m, i) => (
+              <span key={i} className="mk" style={{ left: m.x + '%', top: m.y + '%', flexDirection: m.dir === 'left' ? 'row-reverse' : 'row' }}>
+                {m.n != null && <span className="dot">{m.n}</span>}
+                <span className="lbl">{L(m.es, m.en)}</span>
+              </span>
+            ))}
+            <button className="btn btn-ghost" onClick={() => setZoom(false)} style={{ position: 'absolute', top: 10, right: 10, fontSize: 13 }}>✕ {L('Cerrar', 'Close')}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
