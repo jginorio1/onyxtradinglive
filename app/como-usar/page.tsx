@@ -25,7 +25,7 @@ type Cat = { es: string; en: string; guides: Guide[] };
 
 // Sube este número cada vez que reemplaces una captura en /public/guia-img/
 // para forzar que el navegador descargue la versión nueva (evita caché viejo).
-const IMG_V = '13';
+const IMG_V = '14';
 
 const CATS: Cat[] = [
   {
@@ -47,13 +47,14 @@ const CATS: Cat[] = [
       {
         id: 'iniciar-sesion', icon: 'lock', es: 'Iniciar sesión', en: 'Log in', mins: 1,
         steps: [
-          { es: 'Abre Entrar', en: 'Open Log in', img: 'guia-img/login-1.png',
-            des_es: 'Pulsa "Entrar" en la barra superior. Si olvidaste la contraseña, usa "¿Olvidaste tu contraseña?" para restablecerla por correo.',
-            des_en: 'Tap "Log in" in the top bar. Forgot your password? Use "Forgot your password?" to reset it by email.',
-            markers: [{ x: 50, y: 45, n: 1, es: 'Correo y contraseña', en: 'Email and password' }, { x: 50, y: 72, n: 2, es: '¿Olvidaste tu contraseña?', en: 'Forgot password?' }] },
+          { es: 'Inicia sesión', en: 'Sign in', img: 'guia-img/login-1.png',
+            des_es: 'Pulsa "Entrar" en la barra superior y accede a tu panel:\n\n1. Correo — el correo de tu cuenta.\n2. Contraseña.\n3. ¿Olvidaste tu contraseña? — restablécela por correo.\n4. Iniciar sesión.\n5. Entrar con passkey — opción sin contraseña (huella, cara o PIN del dispositivo), si la activaste.\n\n¿No tienes cuenta? Usa "Crear una" abajo.',
+            des_en: 'Tap "Log in" in the top bar and access your panel:\n\n1. Email — your account email.\n2. Password.\n3. Forgot your password? — reset it by email.\n4. Sign in.\n5. Sign in with passkey — passwordless option (fingerprint, face or device PIN), if you set one up.\n\nNo account yet? Use "Create one" below.',
+            markers: [{ x: 73, y: 18, n: 1, es: 'Correo', en: 'Email' }, { x: 73, y: 32, n: 2, es: 'Contraseña', en: 'Password' }, { x: 86, y: 26, n: 3, es: '¿Olvidaste tu contraseña?', en: 'Forgot your password?' }, { x: 73, y: 57, n: 4, es: 'Iniciar sesión', en: 'Sign in' }, { x: 73, y: 72, n: 5, es: 'Entrar con passkey', en: 'Sign in with passkey' }] },
           { es: 'Entra a tu panel', en: 'Enter your dashboard', img: 'guia-img/login-2.png',
-            des_es: 'Al entrar llegas a tu panel. La primera vez verás un pequeño tour y el check-in del día.',
-            des_en: 'Once in, you land on your dashboard. The first time you\'ll see a short tour and the daily check-in.' },
+            des_es: 'Al entrar llegas a tu panel. La primera vez te guía para conectar tu primera cuenta:\n\n1. Saludo + "Completa tu perfil de trader" — opcional, personaliza tu experiencia.\n2. Barra de navegación — tus módulos: Dashboard, Cuentas, Mis robots, Onyx Copy, Bot Lab, Academia.\n3. Elige tu plataforma (MT5, MT4, cTrader, MatchTrader, TradeLocker o DXtrade) — descarga el conector correcto.\n4. "Haz este paso / Conectar cuenta" — conecta tu cuenta de trading (es de solo lectura, nunca opera por ti).\n5. Rieles laterales — sesiones del mercado, calculadora de lotes y noticias.',
+            des_en: 'Once in, you land on your panel. The first time it guides you to connect your first account:\n\n1. Greeting + "Complete your trader profile" — optional, personalizes your experience.\n2. Navigation bar — your modules: Dashboard, Accounts, My robots, Onyx Copy, Bot Lab, Academy.\n3. Pick your platform (MT5, MT4, cTrader, MatchTrader, TradeLocker or DXtrade) — downloads the right connector.\n4. "Do this step / Connect account" — connect your trading account (read-only, it never trades for you).\n5. Side rails — market sessions, lot-size calculator and news.',
+            markers: [{ x: 14, y: 12, n: 1, es: 'Saludo + completar perfil', en: 'Greeting + complete profile' }, { x: 50, y: 6, n: 2, es: 'Barra de navegación (módulos)', en: 'Navigation bar (modules)' }, { x: 11, y: 28, n: 3, es: 'Elige tu plataforma', en: 'Pick your platform' }, { x: 50, y: 50, n: 4, es: 'Conectar cuenta', en: 'Connect account' }, { x: 6, y: 69, n: 5, es: 'Rieles: sesiones, calc, noticias', en: 'Rails: sessions, calc, news' }] },
         ],
       },
       {
