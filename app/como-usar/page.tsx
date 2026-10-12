@@ -25,7 +25,7 @@ type Cat = { es: string; en: string; guides: Guide[] };
 
 // Sube este número cada vez que reemplaces una captura en /public/guia-img/
 // para forzar que el navegador descargue la versión nueva (evita caché viejo).
-const IMG_V = '8';
+const IMG_V = '9';
 
 const CATS: Cat[] = [
   {
@@ -103,19 +103,19 @@ const CATS: Cat[] = [
       {
         id: 'tour-panel', icon: 'dashboard', es: 'Tour del panel', en: 'Dashboard tour', mins: 3,
         steps: [
-          { es: 'Tu cabecera: saludo, clima y estilo', en: 'Your header: greeting, weather and style', img: 'guia-img/panel-1-hub.png',
+          { es: 'Tu cabecera: saludo, clima y estilo', en: 'Your header: greeting, weather and style', img: 'guia-img/panel-hub-1.png',
             des_es: 'Arriba ves tu saludo, el clima de tu ciudad, tu estilo de trader y el check-in del día. A la derecha: notificaciones, idioma, tema y tu plan.',
             des_en: 'At the top: your greeting, your city weather, your trader style and the daily check-in. On the right: notifications, language, theme and your plan.',
             markers: [{ x: 42, y: 8, n: 1, es: 'Saludo y check-in', en: 'Greeting & check-in' }, { x: 90, y: 4, n: 2, es: 'Notificaciones y tema', en: 'Notifications & theme', dir: 'left' }] },
-          { es: 'Anillos de salud de la cuenta', en: 'Account-health rings', img: 'guia-img/panel-1-hub.png',
+          { es: 'Anillos de salud de la cuenta', en: 'Account-health rings', img: 'guia-img/panel-hub-2.png',
             des_es: 'Los cuatro anillos resumen tu cuenta de un vistazo: Salud, Win rate, Profit factor y Payoff. Cambian con el filtro de tiempo.',
             des_en: 'The four rings summarise your account at a glance: Health, Win rate, Profit factor and Payoff. They update with the time filter.',
             markers: [{ x: 14, y: 37, n: 1, es: 'Salud de la cuenta', en: 'Account health' }, { x: 86, y: 37, n: 2, es: 'Payoff', en: 'Payoff', dir: 'left' }] },
-          { es: 'Mosaicos de cada módulo', en: 'Module tiles', img: 'guia-img/panel-1-hub.png',
+          { es: 'Mosaicos de cada módulo', en: 'Module tiles', img: 'guia-img/panel-hub-3.png',
             des_es: 'Cada mosaico abre una sección: Rendimiento, Calendario, Operaciones, Costes, Cuentas, Mi reto, Mi plan y Edge. Pulsa uno para entrar.',
             des_en: 'Each tile opens a section: Performance, Calendar, Trades, Costs, Accounts, My challenge, My plan and Edge. Tap one to open it.',
             markers: [{ x: 18, y: 50, n: 1, es: 'Rendimiento', en: 'Performance' }, { x: 50, y: 60, n: 2, es: 'Mi reto (prop firm)', en: 'My challenge' }] },
-          { es: 'Filtros de tiempo y acciones', en: 'Time filters and actions', img: 'guia-img/panel-1-hub.png',
+          { es: 'Filtros de tiempo y acciones', en: 'Time filters and actions', img: 'guia-img/panel-hub-4.png',
             des_es: 'Elige el rango (Hoy, 7d, 30d, Mes, Año, Todo o fechas) y usa Compartir, Demo o Exportar para guardar o mostrar tu progreso.',
             des_en: 'Pick the range (Today, 7d, 30d, Month, Year, All or custom dates) and use Share, Demo or Export to save or show your progress.',
             markers: [{ x: 20, y: 29, n: 1, es: 'Rango de tiempo', en: 'Time range' }, { x: 75, y: 29, n: 2, es: 'Compartir · Demo · Exportar', en: 'Share · Demo · Export', dir: 'left' }] },
