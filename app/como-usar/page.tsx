@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import DemoFrame from '@/app/DemoFrame';
 import { DEFAULT_HOWTO, HOWTO_IMG_V, type Cat } from '@/lib/howtoDefault';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -131,6 +132,23 @@ export default function ComoUsar() {
       `}</style>
 
       <div className="inner">
+        {/* ───── Portada: demo interactivo (el mismo del landing) ─────
+            El usuario puede tocar el panel real (datos de ejemplo, sin login)
+            antes de leer las guías. Reutiliza DemoFrame → ruta pública /demo,
+            así no hay UI que mantener aparte. */}
+        <section style={{ marginBottom: 30 }}>
+          <div style={{ textAlign: 'center', maxWidth: 760, margin: '0 auto 16px' }}>
+            <h1 style={{ margin: '0 0 6px', fontSize: 26, letterSpacing: '-.4px', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ color: 'var(--brand)' }}><OnyxIcon name="play" size={22} glow={false} /></span>
+              {L('Pruébalo tú mismo', 'Try it yourself')}
+            </h1>
+            <p className="muted" style={{ margin: 0, fontSize: 14 }}>
+              {L('Explora el panel real con datos de ejemplo —sin registrarte— y luego sigue las guías paso a paso de abajo.',
+                 'Explore the real panel with example data —no sign-up— then follow the step-by-step guides below.')}
+            </p>
+          </div>
+          <DemoFrame lang={lang} />
+        </section>
         <div className="gwrap">
           {/* ───── Columna 1: temas ───── */}
           <aside className="side card" style={{ padding: 14, alignSelf: 'start', position: 'sticky', top: 20, maxHeight: 'calc(100vh - 34px)', overflowY: 'auto' }}>
