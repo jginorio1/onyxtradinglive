@@ -25,7 +25,7 @@ type Cat = { es: string; en: string; guides: Guide[] };
 
 // Sube este número cada vez que reemplaces una captura en /public/guia-img/
 // para forzar que el navegador descargue la versión nueva (evita caché viejo).
-const IMG_V = '12';
+const IMG_V = '13';
 
 const CATS: Cat[] = [
   {
@@ -34,17 +34,14 @@ const CATS: Cat[] = [
       {
         id: 'crear-cuenta', icon: 'user', es: 'Crear tu cuenta', en: 'Create your account', mins: 2,
         steps: [
-          { es: 'Abre la página de registro', en: 'Open the sign-up page', img: 'guia-img/registro-1.png',
-            des_es: 'Entra en onyxtradinglive.com y pulsa "Crear cuenta". También puedes hacerlo desde "Empezar gratis" en el inicio o en Precios.',
-            des_en: 'Go to onyxtradinglive.com and tap "Create account". You can also start from "Start free" on the home page or Pricing.',
-            markers: [{ x: 50, y: 30, n: 1, es: 'Botón Crear cuenta', en: 'Create account button' }] },
-          { es: 'Escribe tu nombre, correo y contraseña', en: 'Enter your name, email and password', img: 'guia-img/registro-2.png',
-            des_es: 'Rellena nombre, correo y una contraseña segura (la barra te indica la fuerza). Acepta los términos para continuar.',
-            des_en: 'Fill in your name, email and a strong password (the bar shows its strength). Accept the terms to continue.',
-            markers: [{ x: 50, y: 55, n: 1, es: 'Medidor de contraseña', en: 'Password strength' }, { x: 50, y: 80, n: 2, es: 'Aceptar términos', en: 'Accept terms' }] },
-          { es: 'Confirma tu correo', en: 'Confirm your email', img: 'guia-img/registro-3.png',
-            des_es: 'Te enviamos un enlace de confirmación. Ábrelo desde tu bandeja y tu cuenta queda activa. Revisa spam si no lo ves.',
-            des_en: 'We send a confirmation link. Open it from your inbox and your account is active. Check spam if you don\'t see it.' },
+          { es: 'Rellena el formulario de registro', en: 'Fill in the sign-up form', img: 'guia-img/registro-1.png',
+            des_es: 'Entra en onyxtradinglive.com y pulsa "Crear cuenta" (o "Empezar gratis"). Completa el formulario:\n\n1. Nombre y apellido.\n2. Correo electrónico.\n3. Contraseña — usa 10+ caracteres con al menos una letra y un número; la barra te indica la fuerza.\n4. Acepta los términos y la política de privacidad.\n5. Pulsa "Crear cuenta".\n\n¿Ya tienes cuenta? Usa "Iniciar sesión" abajo.',
+            des_en: 'Go to onyxtradinglive.com and tap "Create account" (or "Start free"). Complete the form:\n\n1. First and last name.\n2. Email address.\n3. Password — use 10+ characters with at least one letter and one number; the bar shows its strength.\n4. Accept the terms and privacy policy.\n5. Press "Create account".\n\nAlready have an account? Use "Sign in" below.',
+            markers: [{ x: 73, y: 11, n: 1, es: 'Nombre y apellido', en: 'First and last name' }, { x: 73, y: 36, n: 2, es: 'Correo electrónico', en: 'Email address' }, { x: 73, y: 49, n: 3, es: 'Contraseña + medidor de fuerza', en: 'Password + strength meter' }, { x: 55, y: 61, n: 4, es: 'Aceptar términos', en: 'Accept terms' }, { x: 55, y: 78, n: 5, es: 'Crear cuenta', en: 'Create account' }] },
+          { es: 'Confirma tu correo', en: 'Confirm your email', img: 'guia-img/registro-2.png',
+            des_es: 'Te enviamos un enlace de confirmación a tu correo. Ábrelo para activar tu cuenta e iniciar sesión.\n\n1. Mensaje "Revisa tu correo" — confirma a qué correo se envió el enlace.\n2. Reenviar enlace — si no te llega en 1-2 minutos (revisa spam o promociones).\n3. "Ya lo confirmé, iniciar sesión" — púlsalo una vez que abriste el enlace.',
+            des_en: 'We send a confirmation link to your email. Open it to activate your account and sign in.\n\n1. "Check your email" message — confirms which email the link went to.\n2. Resend link — if it doesn’t arrive in 1-2 minutes (check spam or promotions).\n3. "I confirmed it, sign in" — press it once you’ve opened the link.',
+            markers: [{ x: 50, y: 45, n: 1, es: 'Mensaje "Revisa tu correo"', en: '"Check your email" message' }, { x: 30, y: 77, n: 2, es: 'Reenviar enlace', en: 'Resend link' }, { x: 71, y: 77, n: 3, es: 'Ya lo confirmé, iniciar sesión', en: 'I confirmed it, sign in' }] },
         ],
       },
       {
