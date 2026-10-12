@@ -311,7 +311,7 @@ export default function ComoUsar() {
         .onyx-guias .zoomwrap .zbox{position:relative;max-width:1500px;width:100%;max-height:92vh}
         .onyx-guias .zoomwrap img{display:block;width:100%;height:auto;max-height:92vh;object-fit:contain;border-radius:12px;border:1px solid rgba(255,255,255,.12)}
         /* Botón cerrar circular, siempre visible */
-        .onyx-guias .zclose{position:absolute;top:12px;right:12px;width:46px;height:46px;border-radius:50%;background:rgba(10,12,18,.88);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:22px;line-height:1;display:grid;place-items:center;cursor:pointer;z-index:8;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:.15s}
+        .onyx-guias .zclose{position:absolute;top:calc(16px + env(safe-area-inset-top));right:16px;width:50px;height:50px;border-radius:50%;background:rgba(10,12,18,.92);border:1.5px solid rgba(255,255,255,.38);color:#fff;font-size:23px;line-height:1;display:grid;place-items:center;cursor:pointer;z-index:10;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 10px 26px -6px rgba(0,0,0,.7);transition:.15s}
         .onyx-guias .zclose:hover{background:linear-gradient(135deg,#ffcf5c,#ff6a2b);border-color:transparent;color:#241002}
         .onyx-guias .zhint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:11.5px;color:rgba(255,255,255,.7);background:rgba(10,12,18,.7);padding:5px 12px;border-radius:20px;z-index:8}
         /* Barra de navegación móvil fija */
@@ -324,6 +324,11 @@ export default function ComoUsar() {
           .onyx-guias .mnav .mb.prim{background:linear-gradient(100deg,#ffcf5c,#ff6a2b);color:#241002;border:none}
           .onyx-guias .mnav .mb:disabled{opacity:.4}
           .onyx-guias .mnav .mc{font-size:13px;color:var(--mut);font-weight:800;min-width:50px;text-align:center}
+          /* En la guía (móvil) ocultamos el chat y la flechita "subir":
+             estorbaban los botones Atrás/Sig. de la barra inferior. Este
+             <style> solo existe mientras la guía está montada, así que la
+             regla no afecta a otras páginas. */
+          .onyx-support-root,.onyx-backtotop{display:none!important}
         }
       `}</style>
 
@@ -444,8 +449,8 @@ export default function ComoUsar() {
         <div className="zoomwrap" onClick={() => setZoom(false)}>
           <div className="zbox" onClick={(e) => e.stopPropagation()}>
             <img src={'/' + st.img + '?v=' + IMG_V} alt={L(st.es, st.en)} />
-            <button className="zclose" aria-label={L('Cerrar', 'Close')} onClick={() => setZoom(false)}>✕</button>
           </div>
+          <button className="zclose" aria-label={L('Cerrar', 'Close')} onClick={(e) => { e.stopPropagation(); setZoom(false); }}>✕</button>
           <div className="zhint">{L('Toca fuera o pulsa Esc para cerrar', 'Tap outside or press Esc to close')}</div>
         </div>
       )}
