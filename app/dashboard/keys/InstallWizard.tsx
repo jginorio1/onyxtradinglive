@@ -403,9 +403,9 @@ function StepVisual({ viz, origin, lang, dlButtons }: any) {
             <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'rgba(52,226,160,.12)', color: 'var(--green)', borderRadius: 6, padding: '5px 9px', fontSize: 12 }}>▶️ {p('Algo Trading (verde)', 'Algo Trading (green)')}</span>
           </div>
           <div style={{ flex: 1, minWidth: 140, border: '1px solid var(--line)', borderRadius: 8, padding: 8, background: 'var(--card2)' }}>
-            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{p('Esquina del gráfico', 'Chart corner')}</div>
-            <div style={{ fontSize: 12 }}><span style={{ color: 'var(--green)' }}><OnyxIcon emoji="☺" size={15} /></span> = {p('activo', 'active')}</div>
-            <div style={{ fontSize: 11, color: 'var(--red)' }}>✕ {p('triste = revisa Algo Trading', 'sad = check Algo Trading')}</div>
+            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{p('Para comprobar', 'To confirm')}</div>
+            <div style={{ fontSize: 12 }}><OnyxIcon emoji="📋" size={14} /> {p('Pestaña «Expertos» abajo', '"Experts" tab below')}</div>
+            <div style={{ fontSize: 11, color: 'var(--mut)' }}>{p('dice que Onyx Connect se inició', 'shows Onyx Connect started')}</div>
           </div>
         </div>
       </div>;
