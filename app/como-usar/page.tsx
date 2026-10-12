@@ -25,7 +25,7 @@ type Cat = { es: string; en: string; guides: Guide[] };
 
 // Sube este número cada vez que reemplaces una captura en /public/guia-img/
 // para forzar que el navegador descargue la versión nueva (evita caché viejo).
-const IMG_V = '7';
+const IMG_V = '8';
 
 const CATS: Cat[] = [
   {
@@ -312,11 +312,7 @@ export default function ComoUsar() {
               <div style={{ display: 'none', minHeight: 320, alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--mut)', fontSize: 14, padding: 24, textAlign: 'center' }}>
                 <span><OnyxIcon emoji="🖼️" size={24} glow={false} /> {L('Falta la captura', 'Screenshot pending')}: <code className="code">/public/{st.img}</code></span>
               </div>
-              {st.markers?.map((m, j) => (
-                <span key={j} className="mk" style={{ left: m.x + '%', top: m.y + '%', width: (m.w ?? 11) + '%', height: (m.h ?? 8) + '%' }}>
-                  <span className="badge">{m.n ?? j + 1}</span>
-                </span>
-              ))}
+              {/* Los marcadores van horneados en la propia imagen (alineación perfecta). La leyenda numerada va debajo. */}
             </div>
             {/* Leyenda numerada DEBAJO de la foto: nunca tapa el contenido */}
             {st.markers && st.markers.length > 0 && (
@@ -368,11 +364,6 @@ export default function ComoUsar() {
         <div className="zoomwrap" onClick={() => setZoom(false)}>
           <div className="zbox" onClick={(e) => e.stopPropagation()}>
             <img src={'/' + st.img + '?v=' + IMG_V} alt={L(st.es, st.en)} />
-            {st.markers?.map((m, i) => (
-              <span key={i} className="mk" style={{ left: m.x + '%', top: m.y + '%', width: (m.w ?? 11) + '%', height: (m.h ?? 8) + '%' }}>
-                <span className="badge">{m.n ?? i + 1}</span>
-              </span>
-            ))}
             <button className="zclose" aria-label={L('Cerrar', 'Close')} onClick={() => setZoom(false)}>✕</button>
           </div>
           <div className="zhint">{L('Toca fuera o pulsa Esc para cerrar', 'Tap outside or press Esc to close')}</div>
