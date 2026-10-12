@@ -283,16 +283,17 @@ export const ARTICLES: Article[] = [
   {
     slug: 'conectar-cuenta',
     cat: 'start', icon: '🔌', cover: '/guia/key.svg',
-    title: { es: 'Conectar tu cuenta de MetaTrader', en: 'Connecting your MetaTrader account' },
+    title: { es: 'Conectar tu cuenta: cómo funciona', en: 'Connecting your account: how it works' },
     summary: {
-      es: 'Qué es la clave API, por qué una por cuenta, y qué pasa si te equivocas.',
-      en: 'What the API key is, why one per account, and what happens if you get it wrong.',
+      es: 'Qué es la clave, por qué una por cuenta, y en qué se diferencian las plataformas con conector y las de login.',
+      en: 'What the key is, why one per account, and the difference between connector and login platforms.',
     },
-    cta: { href: '/dashboard/keys', label: { es: 'Ir a conectar mi cuenta', en: 'Go connect my account' } },
+    cta: { href: '/como-usar', label: { es: 'Ver paso a paso con fotos', en: 'See step by step with photos' } },
     body: {
       es: [
-        { p: 'Onyx no entra en tu cuenta de MetaTrader. Es al revés: instalas un pequeño programa (el EA) dentro de tu MetaTrader, y ese programa nos envía tus operaciones. Nosotros nunca tenemos tu contraseña ni podemos mover tu dinero.' },
-        { h: 'La clave API' },
+        { note: 'Esta página explica el PORQUÉ. Para el PASO A PASO con capturas reales (MetaTrader, cTrader, MatchTrader, TradeLocker y DXtrade), abre el Centro de guías → "Conectar tu cuenta" con el botón de arriba.', title: 'Dónde ver los pasos' },
+        { p: 'Onyx no mueve tu dinero. Hay dos formas de conectar según tu plataforma: con conector (MetaTrader 5/4 y cTrader) instalas un pequeño programa que nos envía tus operaciones; sin conector (MatchTrader, TradeLocker y DXtrade) te conectas con el login de tu bróker y leemos tu cuenta por su API. En ningún caso podemos retirar ni operar sin tu permiso.' },
+        { h: 'La clave API (plataformas con conector)' },
         { p: 'Es una contraseña que identifica a tu cuenta. Se crea desde Cuentas, se pega en el EA, y ya está. La primera vez que el EA sincroniza, esa clave queda atada al número de cuenta y no acepta otra.' },
         { note: 'Eso es a propósito. Si alguien te copiara la clave, no podría usarla con su cuenta.', title: 'Por qué se ata' },
         { h: 'Una clave por cuenta' },
@@ -300,8 +301,9 @@ export const ARTICLES: Article[] = [
         { warn: 'Si desinstalas MetaTrader o formateas el ordenador, la clave sigue siendo válida. Solo tienes que volver a instalar el EA y pegarla otra vez.' },
       ],
       en: [
-        { p: 'Onyx does not log into your MetaTrader account. It is the other way round: you install a small program (the EA) inside your MetaTrader, and that program sends us your trades. We never have your password and cannot move your money.' },
-        { h: 'The API key' },
+        { note: 'This page explains the WHY. For the STEP BY STEP with real screenshots (MetaTrader, cTrader, MatchTrader, TradeLocker and DXtrade), open the Guide Center → "Connect your account" with the button above.', title: 'Where to see the steps' },
+        { p: 'Onyx does not move your money. There are two ways to connect depending on your platform: with a connector (MetaTrader 5/4 and cTrader) you install a small program that sends us your trades; without a connector (MatchTrader, TradeLocker and DXtrade) you connect with your broker login and we read your account via its API. In no case can we withdraw or trade without your permission.' },
+        { h: 'The API key (connector platforms)' },
         { p: 'It is a password that identifies your account. You create it in Accounts, paste it into the EA, and that is it. The first time the EA syncs, that key gets bound to the account number and will not accept another.' },
         { note: 'That is deliberate. If someone copied your key, they could not use it with their own account.', title: 'Why it binds' },
         { h: 'One key per account' },

@@ -268,7 +268,7 @@ export default function ComoUsar() {
             {/* Navegación */}
             <div className="row between" style={{ marginTop: 22, paddingTop: 16, borderTop: '1px solid var(--line)', alignItems: 'center' }}>
               <button className="btn btn-ghost" disabled={step === 0} onClick={() => go(step - 1)} style={{ fontSize: 13.5 }}>← {L('Anterior', 'Previous')}</button>
-              <span className="muted" style={{ fontSize: 11.5 }}>{L('¿Dudas? Abre el chat de soporte', 'Questions? Open support chat')}</span>
+              <Link href="/guia" className="muted" style={{ fontSize: 11.5, textDecoration: 'none' }}>{L('¿Dudas? Lee los artículos o pregúntale a Onyx →', 'Questions? Read the articles or ask Onyx →')}</Link>
               {step < total - 1
                 ? <button className="btn btn-primary" onClick={() => go(step + 1)} style={{ fontSize: 13.5 }}>{L('Siguiente', 'Next')} →</button>
                 : <Link href="/dashboard" className="btn btn-primary" style={{ fontSize: 13.5 }}>{L('Ir a mi panel', 'Go to my panel')} →</Link>}
