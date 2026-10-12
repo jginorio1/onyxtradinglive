@@ -56,24 +56,40 @@ const CATS: Cat[] = [
         ],
       },
       {
-        id: 'conectar-cuenta', icon: 'link', es: 'Conectar tu cuenta', en: 'Connect your account', mins: 3,
+        id: 'conectar-cuenta', icon: 'link', es: 'Conectar tu cuenta', en: 'Connect your account', mins: 6,
         steps: [
-          { es: 'Paso 1 · Elige tu plataforma', en: 'Step 1 · Pick your platform', img: 'guia-img/conectar-1.png',
-            des_es: 'Entra en "Cuentas" y elige dónde operas. Hay dos familias y el resto de la guía cambia según la tuya:\n\n• CON conector (instalas un pequeño programa): MetaTrader 5, MetaTrader 4 y cTrader. Funciona con cualquier bróker o prop firm que use esas plataformas.\n\n• SIN conector, por acceso del bróker (no instalas nada): MatchTrader, TradeLocker y DXtrade. Te conectas con el correo/usuario y contraseña de tu bróker.\n\nNo importa si tu cuenta es demo, de challenge, fondeada o tu capital propio: todas se conectan igual. Elige tu plataforma y pulsa "Siguiente".',
-            des_en: 'Open "Accounts" and pick where you trade. There are two families and the rest of the guide changes with yours:\n\n• WITH a connector (you install a small program): MetaTrader 5, MetaTrader 4 and cTrader. Works with any broker or prop firm on those platforms.\n\n• WITHOUT a connector, via broker login (you install nothing): MatchTrader, TradeLocker and DXtrade. You connect with your broker email/username and password.\n\nIt doesn\'t matter if your account is demo, a challenge, funded or your own capital: they all connect the same way. Pick your platform and press "Next".',
+          { es: 'Elige tu plataforma', en: 'Pick your platform', img: 'guia-img/conectar-1.png',
+            des_es: 'Entra en "Cuentas" y elige dónde operas. Hay dos familias:\n\n• CON conector (instalas un pequeño programa): MetaTrader 5, MetaTrader 4 y cTrader. Esta guía detalla MetaTrader paso a paso (pasos 3 a 8).\n\n• SIN conector, por login del bróker (no instalas nada): MatchTrader, TradeLocker y DXtrade. Haces los pasos 1 y 2 y saltas directo al 8 (verificar).\n\nDa igual si tu cuenta es demo, challenge, fondeada o propia: todas se conectan igual. Elige tu plataforma y pulsa "Siguiente".',
+            des_en: 'Open "Accounts" and pick where you trade. There are two families:\n\n• WITH a connector (install a small program): MetaTrader 5, MetaTrader 4 and cTrader. This guide details MetaTrader step by step (steps 3 to 8).\n\n• WITHOUT a connector, via broker login (install nothing): MatchTrader, TradeLocker and DXtrade. You do steps 1 and 2 and jump straight to step 8 (verify).\n\nIt doesn\'t matter if your account is demo, challenge, funded or your own: they all connect the same way. Pick your platform and press "Next".',
             markers: [{ x: 9, y: 41, n: 1, es: 'Selecciona la plataforma', en: 'Select the platform' }, { x: 95, y: 46, n: 2, es: 'Siguiente', en: 'Next', dir: 'left' }] },
-          { es: 'Paso 2 · Crea tu clave / cuenta', en: 'Step 2 · Create your key / account', img: 'guia-img/conectar-2.png',
-            des_es: 'Ponle un apodo a la cuenta (ej. "FTMO 100K"), elige el tipo (challenge, fondeo, propio o demo) y escribe tu prop firm o bróker. El número de cuenta es opcional en las plataformas con conector: si lo dejas vacío, la clave se ata sola en la primera sincronización.\n\n• MetaTrader / cTrader (con conector): al guardar se genera una CLAVE que pegarás en el conector en el paso 3.\n\n• MatchTrader / TradeLocker / DXtrade (sin conector): aquí mismo eliges tu servidor/bróker de la lista y escribes tu correo y contraseña; no hay clave ni descarga.\n\nPulsa "Crear clave" (o "Conectar", según tu plataforma).',
-            des_en: 'Give the account a nickname (e.g. "FTMO 100K"), choose the type (challenge, funded, own or demo) and type your prop firm or broker. The account number is optional on connector platforms: leave it blank and the key binds itself on the first sync.\n\n• MetaTrader / cTrader (with connector): saving generates a KEY you\'ll paste into the connector in step 3.\n\n• MatchTrader / TradeLocker / DXtrade (no connector): right here you pick your server/broker from the list and enter your email and password; no key, no download.\n\nPress "Create key" (or "Connect", depending on your platform).',
+          { es: 'Crea tu clave', en: 'Create your key', img: 'guia-img/conectar-2.png',
+            des_es: 'Ponle un apodo a la cuenta (ej. "FTMO 100K"), elige el tipo (challenge, fondeo, propio o demo) y escribe tu prop firm o bróker. El número de cuenta es opcional: si lo dejas vacío, la clave se ata sola en la primera sincronización.\n\n• MetaTrader / cTrader: al pulsar "Crear clave" se genera una CLAVE (ApiKey) que pegarás más adelante.\n\n• MatchTrader / TradeLocker / DXtrade: aquí eliges tu servidor/bróker y escribes correo y contraseña; no hay clave ni descarga, y pasas directo a verificar (paso 8).',
+            des_en: 'Give the account a nickname (e.g. "FTMO 100K"), choose the type (challenge, funded, own or demo) and type your prop firm or broker. The account number is optional: leave it blank and the key binds itself on first sync.\n\n• MetaTrader / cTrader: pressing "Create key" generates a KEY (ApiKey) you\'ll paste later.\n\n• MatchTrader / TradeLocker / DXtrade: here you pick your server/broker and enter email and password; no key, no download, and you jump straight to verify (step 8).',
             markers: [{ x: 27, y: 42, n: 1, es: 'Apodo de la cuenta', en: 'Account nickname' }, { x: 75, y: 42, n: 2, es: 'Tipo de cuenta', en: 'Account type', dir: 'left' }, { x: 12, y: 63, n: 3, es: 'Crear clave', en: 'Create key' }] },
-          { es: 'Paso 3 · Conecta (según tu plataforma)', en: 'Step 3 · Connect (depending on your platform)', img: 'guia-img/conectar-3.png',
-            des_es: 'Aquí se separan los dos caminos. Mira solo el que corresponde a tu plataforma.\n\n━━ A) MetaTrader 5 o MetaTrader 4 (con conector) ━━\n1. En Onyx pulsa "Descargar conector" (archivo .ex5 para MT5 o .ex4 para MT4). Ya viene con tu servidor configurado.\n2. Abre MetaTrader → menú Archivo → "Abrir carpeta de datos".\n3. Entra en la carpeta MQL5\\Experts (en MT4 es MQL4\\Experts) y pega ahí el archivo del conector.\n4. Vuelve a MetaTrader, clic derecho en el Navegador → "Actualizar". El conector "Onyx Connect" aparece en Asesores Expertos.\n5. Abre un gráfico de cualquier par y arrastra "Onyx Connect" sobre el gráfico.\n6. En la ventana que sale: pestaña "Común" → marca "Permitir Algo Trading"; pestaña "Entradas" → pega tu CLAVE del paso 2 si te la pide.\n7. Pulsa el botón "AutoTrading" de la barra superior para que quede en verde.\n8. Si ves una carita sonriente arriba del gráfico, el conector está activo.\n\n━━ B) cTrader (con conector) ━━\n1. Descarga el cBot "Onyx Connect" desde Onyx.\n2. Ábrelo en cTrader → sección "Automate" → añade el cBot a un gráfico.\n3. Pega tu clave en los parámetros y pulsa "Play".\n\n━━ C) MatchTrader, TradeLocker o DXtrade (SIN conector) ━━\nNo descargas nada. Elige tu bróker/servidor de la lista y escribe el MISMO correo (o usuario) y contraseña con los que entras a la plataforma de tu bróker. En TradeLocker además eliges entorno demo o real. Pulsa "Conectar" y Onyx inicia sesión por la API del bróker. Pasas directo al paso 4.\n\n(La foto muestra el caso de MetaTrader; en las plataformas por login no verás este paso de descarga.)',
-            des_en: 'The two paths split here. Read only the one for your platform.\n\n━━ A) MetaTrader 5 or MetaTrader 4 (with connector) ━━\n1. In Onyx press "Download connector" (.ex5 file for MT5 or .ex4 for MT4). It already has your server configured.\n2. Open MetaTrader → File menu → "Open Data Folder".\n3. Go into the MQL5\\Experts folder (on MT4 it\'s MQL4\\Experts) and paste the connector file there.\n4. Back in MetaTrader, right-click the Navigator → "Refresh". "Onyx Connect" shows up under Expert Advisors.\n5. Open a chart of any pair and drag "Onyx Connect" onto the chart.\n6. In the window that opens: "Common" tab → tick "Allow Algo Trading"; "Inputs" tab → paste your KEY from step 2 if asked.\n7. Press the "AutoTrading" button in the top toolbar so it turns green.\n8. A smiley face above the chart means the connector is live.\n\n━━ B) cTrader (with connector) ━━\n1. Download the "Onyx Connect" cBot from Onyx.\n2. Open it in cTrader → "Automate" section → add the cBot to a chart.\n3. Paste your key in the parameters and press "Play".\n\n━━ C) MatchTrader, TradeLocker or DXtrade (NO connector) ━━\nYou download nothing. Pick your broker/server from the list and enter the SAME email (or username) and password you use to log into your broker\'s platform. On TradeLocker you also choose demo or live environment. Press "Connect" and Onyx signs in through the broker API. You go straight to step 4.\n\n(The photo shows the MetaTrader case; on login platforms you won\'t see this download step.)',
-            markers: [{ x: 13, y: 51, n: 1, es: 'Descargar el conector', en: 'Download the connector' }, { x: 95, y: 73, n: 2, es: 'Siguiente', en: 'Next', dir: 'left' }] },
-          { es: 'Paso 4 · Verifica la conexión', en: 'Step 4 · Verify the connection', img: 'guia-img/conectar-4.png',
-            des_es: 'El último paso es confirmar que la cuenta aparece conectada en Onyx.\n\n• MetaTrader / cTrader (con conector): con el conector puesto en el gráfico y el AutoTrading en verde, en unos segundos la cuenta pasa de "sin señal" a "Conectada" en verde. Si sigue en "sin señal": revisa que el AutoTrading esté activado, que la carita sonría y que la clave pegada sea la correcta. Para que no se corte al apagar tu computadora, usa un VPS (lo dejas encendido 24/7).\n\n• MatchTrader / TradeLocker / DXtrade (sin conector): la conexión es automática en cuanto guardas el login; solo espera unos segundos y refresca. Si no conecta, revisa que el correo, la contraseña y el servidor/bróker sean exactamente los de tu plataforma.\n\nEn ambos casos verás tu balance y tus operaciones, y el panel se llena solo con tus datos reales. Desde "Conectar otra cuenta" repites el proceso con todas las cuentas que quieras (demo, challenge, fondeadas o propias).',
-            des_en: 'The last step is confirming the account shows as connected in Onyx.\n\n• MetaTrader / cTrader (with connector): with the connector on the chart and AutoTrading green, in a few seconds the account goes from "no signal" to green "Connected". If it stays "no signal": check AutoTrading is on, the smiley is showing, and the pasted key is correct. To avoid it cutting off when your computer is off, use a VPS (kept on 24/7).\n\n• MatchTrader / TradeLocker / DXtrade (no connector): the connection is automatic as soon as you save the login; just wait a few seconds and refresh. If it won\'t connect, check the email, password and server/broker are exactly those of your platform.\n\nEither way you\'ll see your balance and trades, and the dashboard fills with your real data. From "Connect another account" you repeat this for as many accounts as you want (demo, challenge, funded or your own).',
-            markers: [{ x: 10, y: 40, n: 1, es: 'Estado de la cuenta', en: 'Account status' }, { x: 88, y: 40, n: 2, es: 'Conectar otra cuenta', en: 'Connect another', dir: 'left' }] },
+          { es: 'Descarga el conector (MetaTrader)', en: 'Download the connector (MetaTrader)', img: 'guia-img/conectar-3.png',
+            des_es: 'Pulsa "Descargar para MT5" (o MT4 si usas MetaTrader 4). El archivo (.ex5 / .ex4) ya viene compilado y con tu servidor configurado: no tienes que compilar nada. Se guarda en tu carpeta de Descargas.\n\nEn Mac funciona igual: descarga MetaTrader para Mac desde tu bróker y sigue estos mismos pasos. Para que el conector no se detenga al apagar tu computadora, considera un VPS (encendido 24/7).',
+            des_en: 'Press "Download for MT5" (or MT4 if you use MetaTrader 4). The file (.ex5 / .ex4) comes already compiled and with your server configured: you compile nothing. It saves to your Downloads folder.\n\nOn Mac it works the same: download MetaTrader for Mac from your broker and follow these same steps. So the connector doesn\'t stop when your computer is off, consider a VPS (on 24/7).',
+            markers: [{ x: 13, y: 45, n: 1, es: 'Descargar para MT5 / MT4', en: 'Download for MT5 / MT4' }] },
+          { es: 'Mételo en la carpeta Experts', en: 'Put it in the Experts folder', img: 'guia-img/conectar-4.png',
+            des_es: 'Abre MetaTrader. Arriba: menú Archivo → "Abrir carpeta de datos". Entra en la carpeta MQL5 y luego en Experts (en MT4 es MQL4 → Experts), y pega ahí el archivo Onyx que descargaste.\n\nLuego, en el panel Navegador (izquierda), clic derecho sobre "Asesores Expertos" → "Actualizar": aparecerá "Onyx Connect".',
+            des_en: 'Open MetaTrader. Top: File menu → "Open Data Folder". Go into the MQL5 folder, then Experts (on MT4 it\'s MQL4 → Experts), and paste the Onyx file you downloaded there.\n\nThen, in the Navigator panel (left), right-click "Expert Advisors" → "Refresh": "Onyx Connect" will appear.',
+            markers: [{ x: 50, y: 48, n: 1, es: 'Archivo → Abrir carpeta de datos → MQL5 → Experts', en: 'File → Open Data Folder → MQL5 → Experts' }] },
+          { es: 'Arrástralo a un gráfico', en: 'Drag it onto a chart', img: 'guia-img/conectar-5.png',
+            des_es: 'En el panel Navegador (izquierda), abre "Asesores Expertos" y arrastra "Onyx Connect" sobre cualquier gráfico abierto. Con un solo gráfico basta.',
+            des_en: 'In the Navigator panel (left), open "Expert Advisors" and drag "Onyx Connect" onto any open chart. One chart is enough.',
+            markers: [{ x: 50, y: 50, n: 1, es: 'Navegador → Asesores Expertos → arrastra al gráfico', en: 'Navigator → Expert Advisors → drag to the chart' }] },
+          { es: 'Marca la casilla y pega tu clave', en: 'Tick the box and paste your key', img: 'guia-img/conectar-6.png',
+            des_es: 'Al soltarlo se abre una ventana. En la pestaña "Común" marca "Permitir Algo Trading". En la pestaña de parámetros/entradas pega tu ApiKey (la clave del paso 2). La dirección del servidor ya viene puesta en el conector: no la toques. Pulsa "OK".',
+            des_en: 'A window opens when you drop it. On the "Common" tab tick "Allow Algo Trading". On the parameters/inputs tab paste your ApiKey (the key from step 2). The server address is already set in the connector: don\'t touch it. Press "OK".',
+            markers: [{ x: 35, y: 40, n: 1, es: 'Permitir Algo Trading', en: 'Allow Algo Trading' }, { x: 50, y: 62, n: 2, es: 'Pega tu ApiKey', en: 'Paste your ApiKey' }] },
+          { es: 'Autoriza la dirección web', en: 'Authorize the web address', img: 'guia-img/conectar-7.png',
+            des_es: 'Arriba: menú Herramientas → Opciones → pestaña "Asesores Expertos". Marca "Permitir WebRequest para las siguientes direcciones" y añade esta (escríbela y pulsa Enter):\n\nhttps://www.onyxtradinglive.com\n\nLuego "OK". Sin esto, Onyx no puede comunicarse con tu cuenta.',
+            des_en: 'Top: Tools menu → Options → "Expert Advisors" tab. Tick "Allow WebRequest for listed URL" and add this one (type it and press Enter):\n\nhttps://www.onyxtradinglive.com\n\nThen "OK". Without this, Onyx cannot talk to your account.',
+            markers: [{ x: 40, y: 38, n: 1, es: 'Permitir WebRequest', en: 'Allow WebRequest' }, { x: 50, y: 60, n: 2, es: 'Añade la dirección y Enter', en: 'Add the address and Enter' }] },
+          { es: 'Enciende Algo Trading y verifica', en: 'Turn on Algo Trading and verify', img: 'guia-img/conectar-8.png',
+            des_es: 'Pulsa el botón "Algo Trading" (o "AutoTrading") de la barra de arriba: debe quedar en VERDE. Esa es la señal que importa.\n\nNota: en algunas versiones de MT5 NO aparece la carita en el gráfico, o es muy pequeña. No te preocupes por ella. Para confirmar que carga bien, abre la pestaña "Expertos" abajo (o "Diario"): verás un mensaje de que Onyx Connect se inició. La prueba definitiva es Onyx: en unos segundos, en "Estado de tus cuentas" la cuenta pasa de "sin señal" a "Conectado" en verde, con tu balance y operaciones.\n\nSi no conecta: revisa que (1) el botón AutoTrading esté verde, (2) hayas pegado bien la ApiKey, y (3) hayas añadido la dirección web del paso 7 en Herramientas → Opciones → Asesores Expertos.\n\n(Plataformas sin conector —MatchTrader, TradeLocker, DXtrade— llegan aquí directo: la conexión es automática tras guardar el login; solo espera y refresca.)\n\nDesde "Conectar otra cuenta" repites el proceso con todas las que quieras.',
+            des_en: 'Press the "Algo Trading" (or "AutoTrading") button in the top toolbar: it must turn GREEN. That\'s the signal that matters.\n\nNote: on some MT5 builds the smiley face does NOT appear on the chart, or is tiny. Don\'t worry about it. To confirm it loaded, open the "Experts" tab at the bottom (or "Journal"): you\'ll see a message that Onyx Connect started. The definitive proof is Onyx itself: in a few seconds, under "Account status" the account goes from "no signal" to green "Connected", with your balance and trades.\n\nIf it won\'t connect: check that (1) the AutoTrading button is green, (2) you pasted the ApiKey correctly, and (3) you added the web address from step 7 under Tools → Options → Expert Advisors.\n\n(No-connector platforms —MatchTrader, TradeLocker, DXtrade— arrive here directly: the connection is automatic after you save the login; just wait and refresh.)\n\nFrom "Connect another account" you repeat this for as many as you want.',
+            markers: [{ x: 50, y: 40, n: 1, es: 'Botón Algo Trading (verde)', en: 'Algo Trading button (green)' }, { x: 50, y: 58, n: 2, es: 'Pasará a "Conectado"', en: 'Will show "Connected"' }] },
         ],
       },
       {
@@ -182,9 +198,14 @@ export default function ComoUsar() {
         .onyx-guias .stepnum{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:20px;display:grid;place-items:center;flex:none;box-shadow:0 8px 20px -6px rgba(255,120,40,.6)}
         .onyx-guias .shot{position:relative;border-radius:16px;border:1px solid var(--line);overflow:hidden;background:#0c0e15;cursor:zoom-in;box-shadow:0 24px 60px -26px rgba(0,0,0,.75)}
         .onyx-guias .shot img{display:block;width:100%;height:auto}
-        .onyx-guias .mk{position:absolute;transform:translate(-50%,-50%);display:inline-flex;align-items:center;gap:8px;z-index:2}
-        .onyx-guias .mk .dot{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:15px;display:grid;place-items:center;box-shadow:0 0 0 5px rgba(255,157,61,.28),0 6px 16px rgba(0,0,0,.45);flex:none}
-        .onyx-guias .mk .lbl{font-size:13px;font-weight:700;color:#241002;background:linear-gradient(100deg,#ffe08a,#e8b923);padding:4px 11px;border-radius:8px;white-space:nowrap;box-shadow:0 6px 16px -4px rgba(0,0,0,.55)}
+        .onyx-guias .mk{position:absolute;transform:translate(-50%,-50%);z-index:2}
+        .onyx-guias .mk .dot{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:14px;display:grid;place-items:center;box-shadow:0 0 0 4px rgba(255,157,61,.3),0 4px 12px rgba(0,0,0,.5);flex:none}
+        .onyx-guias .legend{display:flex;flex-wrap:wrap;gap:14px 20px;margin-top:12px;padding:12px 15px;background:var(--card2);border:1px solid var(--line);border-radius:12px}
+        .onyx-guias .leg{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--tx)}
+        .onyx-guias .leg .ld{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:12px;display:grid;place-items:center;flex:none}
+        .onyx-guias .bc{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--mut);margin-bottom:12px;flex-wrap:wrap}
+        .onyx-guias .bc a{color:var(--brand);text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:5px;background:color-mix(in srgb,var(--brand) 12%,transparent);padding:5px 11px;border-radius:9px}
+        .onyx-guias .bc .sep{opacity:.5}
         .onyx-guias .toc{position:sticky;top:20px;align-self:start}
         .onyx-guias .tocl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);font-weight:800;margin-bottom:12px}
         .onyx-guias .tocrow{display:flex;gap:11px;align-items:center;width:100%;text-align:left;background:transparent;border:none;cursor:pointer;padding:9px 0 9px 13px;color:var(--mut);transition:.15s;border-left:2px solid var(--line);line-height:1.35}
@@ -226,8 +247,11 @@ export default function ComoUsar() {
 
           {/* ───── Columna 2: un paso a la vez ───── */}
           <main style={{ minWidth: 0 }}>
-            <div className="muted" style={{ fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 800, color: 'var(--brand)', marginBottom: 6 }}>
-              {L('Cómo usar Onyx', 'How to use Onyx')} · {L(guide.es, guide.en)}
+            {/* Miga de pan: volver a la Guía desde cualquier paso */}
+            <div className="bc">
+              <Link href="/guia">← {L('Guía', 'Guide')}</Link>
+              <span className="sep">/</span><span>{L('Cómo usar', 'How to use')}</span>
+              <span className="sep">/</span><span style={{ color: 'var(--tx)', fontWeight: 600 }}>{L(guide.es, guide.en)}</span>
             </div>
 
             {/* Cabecera del paso */}
@@ -254,12 +278,19 @@ export default function ComoUsar() {
                 <span><OnyxIcon emoji="🖼️" size={24} glow={false} /> {L('Falta la captura', 'Screenshot pending')}: <code className="code">/public/{st.img}</code></span>
               </div>
               {st.markers?.map((m, j) => (
-                <span key={j} className="mk" style={{ left: m.x + '%', top: m.y + '%', flexDirection: m.dir === 'left' ? 'row-reverse' : 'row' }}>
-                  {m.n != null && <span className="dot">{m.n}</span>}
-                  <span className="lbl">{L(m.es, m.en)}</span>
+                <span key={j} className="mk" style={{ left: m.x + '%', top: m.y + '%' }}>
+                  <span className="dot">{m.n ?? j + 1}</span>
                 </span>
               ))}
             </div>
+            {/* Leyenda numerada DEBAJO de la foto: nunca tapa el contenido */}
+            {st.markers && st.markers.length > 0 && (
+              <div className="legend">
+                {st.markers.map((m, j) => (
+                  <span key={j} className="leg"><span className="ld">{m.n ?? j + 1}</span> {L(m.es, m.en)}</span>
+                ))}
+              </div>
+            )}
             <div className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 8 }}>{L('Pulsa la imagen para ampliarla · usa ← → para navegar', 'Click the image to enlarge · use ← → to navigate')}</div>
 
             {/* Descripción */}
@@ -294,9 +325,8 @@ export default function ComoUsar() {
           <div className="zbox" onClick={(e) => e.stopPropagation()}>
             <img src={'/' + st.img} alt={L(st.es, st.en)} />
             {st.markers?.map((m, i) => (
-              <span key={i} className="mk" style={{ left: m.x + '%', top: m.y + '%', flexDirection: m.dir === 'left' ? 'row-reverse' : 'row' }}>
-                {m.n != null && <span className="dot">{m.n}</span>}
-                <span className="lbl">{L(m.es, m.en)}</span>
+              <span key={i} className="mk" style={{ left: m.x + '%', top: m.y + '%' }}>
+                <span className="dot">{m.n ?? i + 1}</span>
               </span>
             ))}
             <button className="btn btn-ghost" onClick={() => setZoom(false)} style={{ position: 'absolute', top: 10, right: 10, fontSize: 13 }}>✕ {L('Cerrar', 'Close')}</button>
