@@ -60,6 +60,7 @@ const Facturacion = dynamic(() => import('./Facturacion'), { ssr: false, loading
 const LandingBuilder = dynamic(() => import('./LandingBuilder'), { ssr: false, loading: tabLoad });
 const NotifAdmin = dynamic(() => import('./NotifAdmin'), { ssr: false, loading: tabLoad });
 const GuideEditor = dynamic(() => import('./GuideEditor'), { ssr: false, loading: tabLoad });
+const HowToEditor = dynamic(() => import('./HowToEditor'), { ssr: false, loading: tabLoad });
 const TeamChat = dynamic(() => import('./TeamChat'), { ssr: false, loading: tabLoad });
 const Payroll = dynamic(() => import('./Payroll'), { ssr: false, loading: tabLoad });
 const CareersAdmin = dynamic(() => import('./CareersAdmin'), { ssr: false, loading: tabLoad });
@@ -73,7 +74,7 @@ import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
-type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'nomina' | 'carreras' | 'formacion' | 'embajadores' | 'ventas' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'mtbrokers' | 'tlservers' | 'dxservers' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'copytraders' | 'botlab' | 'factory' | 'pagos' | 'antifraude' | 'trackrecord' | 'monitor' | 'ads' | 'ajustes';
+type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'nomina' | 'carreras' | 'formacion' | 'embajadores' | 'ventas' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'mtbrokers' | 'tlservers' | 'dxservers' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'comousar' | 'copytraders' | 'botlab' | 'factory' | 'pagos' | 'antifraude' | 'trackrecord' | 'monitor' | 'ads' | 'ajustes';
 
 const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'advMetrics', 'portfolioLab', 'expenses', 'coach', 'academy', 'challenge', 'habits', 'edge', 'copymkt', 'share', 'push', 'platforms'];
 const CAP_FALLBACK: Record<string, string> = { tv: 'TradingView (señales → EA)' };
@@ -777,7 +778,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
     { g: en ? 'Partners' : 'Socios', c: '#d9b661', items: [['embajadores', '🎁', t.nav_embajadores], ['ventas', '🧑‍💼', en ? 'Sales team' : 'Red de ventas'], ['copytraders', '🏆', 'Onyx Copy'], ['trackrecord', '📈', en ? 'Public trackrecord' : 'Trackrecord público']] },
     { g: en ? 'Product' : 'Producto', c: '#a679ff', items: [['modulos', '🧩', t.nav_modulos], ['academy', '🎓', en ? 'Academy' : 'Academia'], ['botlab', '🤖', 'Onyx Bot Lab'], ['factory', '🏭', en ? 'Bot Factory' : 'Fábrica de bots'], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', en ? 'Catalogs' : 'Catálogos'], ['mtbrokers', '🔌', en ? 'MatchTrader brokers' : 'Brókers MatchTrader'], ['tlservers', '🔗', en ? 'TradeLocker brokers' : 'Brókers TradeLocker'], ['dxservers', '🔗', en ? 'DXtrade brokers' : 'Brókers DXtrade']] },
     { g: en ? 'Team' : 'Equipo', c: '#f5a742', items: [['equipo', '🛡️', t.nav_equipo], ['nomina', '💵', en ? 'Payroll' : 'Nómina'], ['carreras', '💼', en ? 'Careers' : 'Carreras'], ['formacion', '🎓', en ? 'Training' : 'Formación'], ['chat', '💬', en ? 'Team chat' : 'Chat equipo']] },
-    { g: en ? 'System' : 'Sistema', c: '#8b93a7', items: [['kb', '🧠', t.nav_kb], ['guias', '📚', en ? 'Guides' : 'Guías'], ['diag', '🩺', t.nav_diag], ['audit', '📈', t.nav_audit], ['recursos', '📟', en ? 'Resources' : 'Recursos'], ['backups', '🗄️', t.nav_backups], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
+    { g: en ? 'System' : 'Sistema', c: '#8b93a7', items: [['kb', '🧠', t.nav_kb], ['guias', '📚', en ? 'Guides' : 'Guías'], ['comousar', '🧭', en ? 'How-to (/como-usar)' : 'Cómo usar (/como-usar)'], ['diag', '🩺', t.nav_diag], ['audit', '📈', t.nav_audit], ['recursos', '📟', en ? 'Resources' : 'Recursos'], ['backups', '🗄️', t.nav_backups], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
   ];
   const groups = NAV_GROUPS.map((gr) => ({ ...gr, items: gr.items.filter(([k]) => canSee(k)) })).filter((gr) => gr.items.length);
   const flatNav = groups.flatMap((gr) => gr.items);
@@ -1281,6 +1282,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'diag' && <Diagnostics />}
             {tab === 'notif' && <NotifAdmin lang={lang} />}
             {tab === 'guias' && <GuideEditor lang={lang} />}
+            {tab === 'comousar' && <HowToEditor lang={lang} />}
             {tab === 'recursos' && <Resources />}
 
             {tab === 'backups' && <Backups />}
