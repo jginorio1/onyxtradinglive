@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -18,7 +18,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 // la imagen, se muestra un marco con el nombre del archivo que falta.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Marker = { x: number; y: number; n?: number; es: string; en: string; dir?: 'up' | 'down' | 'left' | 'right' };
+type Marker = { x: number; y: number; w?: number; h?: number; n?: number; es: string; en: string; dir?: 'up' | 'down' | 'left' | 'right' };
 type Step = { es: string; en: string; des_es: string; des_en: string; img: string; markers?: Marker[] };
 type Guide = { id: string; icon: string; es: string; en: string; mins: number; steps: Step[] };
 type Cat = { es: string; en: string; guides: Guide[] };
@@ -85,11 +85,11 @@ const CATS: Cat[] = [
           { es: 'Marca la casilla y pega tu clave', en: 'Tick the box and paste your key', img: 'guia-img/conectar-6.png',
             des_es: 'Al soltarlo se abre una ventana. En la pestaña "Común" marca "Permitir Algo Trading". En la pestaña de parámetros/entradas pega tu ApiKey (la clave del paso 2). La dirección del servidor ya viene puesta en el conector: no la toques. Pulsa "OK".',
             des_en: 'A window opens when you drop it. On the "Common" tab tick "Allow Algo Trading". On the parameters/inputs tab paste your ApiKey (the key from step 2). The server address is already set in the connector: don\'t touch it. Press "OK".',
-            markers: [{ x: 5, y: 53, n: 1, es: 'Permitir Algo Trading', en: 'Allow Algo Trading' }, { x: 10, y: 59, n: 2, es: 'Pega tu ApiKey', en: 'Paste your ApiKey' }] },
+            markers: [{ x: 8, y: 53, n: 1, es: 'Permitir Algo Trading', en: 'Allow Algo Trading' }, { x: 11, y: 59, n: 2, es: 'Pega tu ApiKey', en: 'Paste your ApiKey' }] },
           { es: 'Autoriza la dirección web', en: 'Authorize the web address', img: 'guia-img/conectar-7.png',
             des_es: 'Arriba: menú Herramientas → Opciones → pestaña "Asesores Expertos". Marca "Permitir WebRequest para las siguientes direcciones" y añade esta (escríbela y pulsa Enter):\n\nhttps://www.onyxtradinglive.com\n\nLuego "OK". Sin esto, Onyx no puede comunicarse con tu cuenta.',
             des_en: 'Top: Tools menu → Options → "Expert Advisors" tab. Tick "Allow WebRequest for listed URL" and add this one (type it and press Enter):\n\nhttps://www.onyxtradinglive.com\n\nThen "OK". Without this, Onyx cannot talk to your account.',
-            markers: [{ x: 5, y: 59, n: 1, es: 'Permitir WebRequest', en: 'Allow WebRequest' }, { x: 10, y: 66, n: 2, es: 'Añade la dirección y Enter', en: 'Add the address and Enter' }] },
+            markers: [{ x: 8, y: 59, n: 1, es: 'Permitir WebRequest', en: 'Allow WebRequest' }, { x: 12, y: 66, n: 2, es: 'Añade la dirección y Enter', en: 'Add the address and Enter' }] },
           { es: 'Enciende Algo Trading y verifica', en: 'Turn on Algo Trading and verify', img: 'guia-img/conectar-8.png',
             des_es: 'Pulsa el botón "Algo Trading" (o "AutoTrading") de la barra de arriba: debe quedar en VERDE. Esa es la señal que importa.\n\nNota: en algunas versiones de MT5 NO aparece la carita en el gráfico, o es muy pequeña. No te preocupes por ella. Para confirmar que carga bien, abre la pestaña "Expertos" abajo (o "Diario"): verás un mensaje de que Onyx Connect se inició. La prueba definitiva es Onyx: en unos segundos, en "Estado de tus cuentas" la cuenta pasa de "sin señal" a "Conectado" en verde, con tu balance y operaciones.\n\nSi no conecta: revisa que (1) el botón AutoTrading esté verde, (2) hayas pegado bien la ApiKey, y (3) hayas añadido la dirección web del paso 7 en Herramientas → Opciones → Asesores Expertos.\n\n(Plataformas sin conector —MatchTrader, TradeLocker, DXtrade— llegan aquí directo: la conexión es automática tras guardar el login; solo espera y refresca.)\n\nDesde "Conectar otra cuenta" repites el proceso con todas las que quieras.',
             des_en: 'Press the "Algo Trading" (or "AutoTrading") button in the top toolbar: it must turn GREEN. That\'s the signal that matters.\n\nNote: on some MT5 builds the smiley face does NOT appear on the chart, or is tiny. Don\'t worry about it. To confirm it loaded, open the "Experts" tab at the bottom (or "Journal"): you\'ll see a message that Onyx Connect started. The definitive proof is Onyx itself: in a few seconds, under "Account status" the account goes from "no signal" to green "Connected", with your balance and trades.\n\nIf it won\'t connect: check that (1) the AutoTrading button is green, (2) you pasted the ApiKey correctly, and (3) you added the web address from step 7 under Tools → Options → Expert Advisors.\n\n(No-connector platforms —MatchTrader, TradeLocker, DXtrade— arrive here directly: the connection is automatic after you save the login; just wait and refresh.)\n\nFrom "Connect another account" you repeat this for as many as you want.',
@@ -163,6 +163,8 @@ export default function ComoUsar() {
   const [step, setStep] = useState(0);
   const [q, setQ] = useState('');
   const [zoom, setZoom] = useState(false);
+  const touchX = useRef<number | null>(null);
+  const touchY = useRef<number | null>(null);
 
   const allGuides = CATS.flatMap((c) => c.guides);
   const guide = allGuides.find((g) => g.id === guideId) || allGuides[0];
@@ -202,8 +204,10 @@ export default function ComoUsar() {
         .onyx-guias .stepnum{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:20px;display:grid;place-items:center;flex:none;box-shadow:0 8px 20px -6px rgba(255,120,40,.6)}
         .onyx-guias .shot{position:relative;border-radius:16px;border:1px solid var(--line);overflow:hidden;background:#0c0e15;cursor:zoom-in;box-shadow:0 24px 60px -26px rgba(0,0,0,.75)}
         .onyx-guias .shot img{display:block;width:100%;height:auto}
-        .onyx-guias .mk{position:absolute;transform:translate(-50%,-50%);z-index:2}
-        .onyx-guias .mk .dot{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:14px;display:grid;place-items:center;box-shadow:0 0 0 4px rgba(255,157,61,.3),0 4px 12px rgba(0,0,0,.5);flex:none}
+        /* Indicador = recuadro resaltado translúcido (no tapa el contenido) + numerito en el borde */
+        .onyx-guias .mk{position:absolute;transform:translate(-50%,-50%);z-index:2;border:2px solid var(--brand);border-radius:9px;background:color-mix(in srgb,var(--brand) 12%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 20%,transparent);animation:mkpulse 1.9s ease-in-out infinite;pointer-events:none}
+        @keyframes mkpulse{0%,100%{box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 16%,transparent)}50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--brand) 7%,transparent)}}
+        .onyx-guias .mk .badge{position:absolute;top:-11px;left:-11px;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:12px;display:grid;place-items:center;box-shadow:0 2px 7px rgba(0,0,0,.55)}
         .onyx-guias .legend{display:flex;flex-wrap:wrap;gap:14px 20px;margin-top:12px;padding:12px 15px;background:var(--card2);border:1px solid var(--line);border-radius:12px}
         .onyx-guias .leg{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--tx)}
         .onyx-guias .leg .ld{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:12px;display:grid;place-items:center;flex:none}
@@ -222,6 +226,21 @@ export default function ComoUsar() {
         .onyx-guias .zoomwrap{position:fixed;inset:0;z-index:70;background:rgba(3,4,8,.92);display:flex;align-items:center;justify-content:center;padding:28px;cursor:zoom-out;backdrop-filter:blur(4px)}
         .onyx-guias .zoomwrap .zbox{position:relative;max-width:1500px;width:100%;max-height:92vh}
         .onyx-guias .zoomwrap img{display:block;width:100%;height:auto;max-height:92vh;object-fit:contain;border-radius:12px;border:1px solid rgba(255,255,255,.12)}
+        /* Botón cerrar circular, siempre visible */
+        .onyx-guias .zclose{position:absolute;top:12px;right:12px;width:46px;height:46px;border-radius:50%;background:rgba(10,12,18,.88);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:22px;line-height:1;display:grid;place-items:center;cursor:pointer;z-index:8;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:.15s}
+        .onyx-guias .zclose:hover{background:linear-gradient(135deg,#ffcf5c,#ff6a2b);border-color:transparent;color:#241002}
+        .onyx-guias .zhint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:11.5px;color:rgba(255,255,255,.7);background:rgba(10,12,18,.7);padding:5px 12px;border-radius:20px;z-index:8}
+        /* Barra de navegación móvil fija */
+        .onyx-guias .mnav{display:none}
+        @media(max-width:900px){
+          .onyx-guias .inner{padding-bottom:86px!important}
+          .onyx-guias .mnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:50;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:rgba(14,17,23,.97);border-top:1px solid var(--line);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+          .onyx-guias .mnav .mb{flex:1;max-width:130px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:700;cursor:pointer}
+          .onyx-guias .mnav .mb.ghost{background:#1a1f2b;color:var(--tx);border:1px solid var(--line)}
+          .onyx-guias .mnav .mb.prim{background:linear-gradient(100deg,#ffcf5c,#ff6a2b);color:#241002;border:none}
+          .onyx-guias .mnav .mb:disabled{opacity:.4}
+          .onyx-guias .mnav .mc{font-size:13px;color:var(--mut);font-weight:800;min-width:50px;text-align:center}
+        }
       `}</style>
 
       <div className="inner">
@@ -250,7 +269,15 @@ export default function ComoUsar() {
           </aside>
 
           {/* ───── Columna 2: un paso a la vez ───── */}
-          <main style={{ minWidth: 0 }}>
+          <main style={{ minWidth: 0 }}
+            onTouchStart={(e) => { touchX.current = e.touches[0].clientX; touchY.current = e.touches[0].clientY; }}
+            onTouchEnd={(e) => {
+              if (touchX.current == null || touchY.current == null || zoom) return;
+              const dx = e.changedTouches[0].clientX - touchX.current;
+              const dy = e.changedTouches[0].clientY - touchY.current;
+              if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.6) { if (dx < 0) go(step + 1); else go(step - 1); }
+              touchX.current = null; touchY.current = null;
+            }}>
             {/* Miga de pan: volver a la Guía desde cualquier paso */}
             <div className="bc">
               <Link href="/guia">← {L('Guía', 'Guide')}</Link>
@@ -282,8 +309,8 @@ export default function ComoUsar() {
                 <span><OnyxIcon emoji="🖼️" size={24} glow={false} /> {L('Falta la captura', 'Screenshot pending')}: <code className="code">/public/{st.img}</code></span>
               </div>
               {st.markers?.map((m, j) => (
-                <span key={j} className="mk" style={{ left: m.x + '%', top: m.y + '%' }}>
-                  <span className="dot">{m.n ?? j + 1}</span>
+                <span key={j} className="mk" style={{ left: m.x + '%', top: m.y + '%', width: (m.w ?? 11) + '%', height: (m.h ?? 8) + '%' }}>
+                  <span className="badge">{m.n ?? j + 1}</span>
                 </span>
               ))}
             </div>
@@ -323,18 +350,28 @@ export default function ComoUsar() {
         </div>
       </div>
 
+      {/* Barra de navegación fija (solo móvil): botones grandes + contador */}
+      <div className="mnav">
+        <button className="mb ghost" disabled={step === 0} onClick={() => go(step - 1)}>‹ {L('Atrás', 'Back')}</button>
+        <span className="mc">{step + 1} / {total}</span>
+        {step < total - 1
+          ? <button className="mb prim" onClick={() => go(step + 1)}>{L('Sig.', 'Next')} ›</button>
+          : <Link href="/dashboard" className="mb prim" style={{ textDecoration: 'none' }}>{L('Panel', 'Panel')} ›</Link>}
+      </div>
+
       {/* Lightbox a tamaño completo */}
       {zoom && (
         <div className="zoomwrap" onClick={() => setZoom(false)}>
           <div className="zbox" onClick={(e) => e.stopPropagation()}>
             <img src={'/' + st.img + '?v=' + IMG_V} alt={L(st.es, st.en)} />
             {st.markers?.map((m, i) => (
-              <span key={i} className="mk" style={{ left: m.x + '%', top: m.y + '%' }}>
-                <span className="dot">{m.n ?? i + 1}</span>
+              <span key={i} className="mk" style={{ left: m.x + '%', top: m.y + '%', width: (m.w ?? 11) + '%', height: (m.h ?? 8) + '%' }}>
+                <span className="badge">{m.n ?? i + 1}</span>
               </span>
             ))}
-            <button className="btn btn-ghost" onClick={() => setZoom(false)} style={{ position: 'absolute', top: 10, right: 10, fontSize: 13 }}>✕ {L('Cerrar', 'Close')}</button>
+            <button className="zclose" aria-label={L('Cerrar', 'Close')} onClick={() => setZoom(false)}>✕</button>
           </div>
+          <div className="zhint">{L('Toca fuera o pulsa Esc para cerrar', 'Tap outside or press Esc to close')}</div>
         </div>
       )}
     </div>
