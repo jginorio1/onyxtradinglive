@@ -112,6 +112,32 @@ export default function GuideHome() {
   }
   function reset() { setAsked(''); setAnswer(''); setRefs([]); setQ(''); }
 
+  // Convierte la respuesta de Onyx en texto con enlaces clicables: markdown
+  // [texto](url), URLs http(s), rutas internas (/pricing, /bot-lab…) y dominios
+  // sueltos. Los externos abren en pestaña nueva; los internos usan <Link>.
+  const linkSt: any = { color: 'var(--brand)', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 2, overflowWrap: 'anywhere' };
+  function linkify(text: string): any[] {
+    const out: any[] = [];
+    // [1][2] markdown · [3] URL http(s) · [4] ruta interna · [5] dominio suelto
+    const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)|(https?:\/\/[^\s<>()]+)|(\/(?:pricing|bot-lab|copy|carreras|unete-ventas|publicidad|guia|como-usar|dashboard|login|mentores|embajadores)[^\s<>()]*)|([a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\/[^\s<>()]*)?)/gi;
+    let last = 0, k = 0, m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      if (m.index > last) out.push(text.slice(last, m.index));
+      const label = m[1];
+      const raw = (m[2] || m[3] || m[4] || m[5] || '').replace(/[.,;:]+$/, '');
+      const inner = label || raw;
+      if (raw.startsWith('/')) {
+        out.push(<Link key={'l' + k} href={raw} style={linkSt}>{inner}</Link>);
+      } else {
+        const ext = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
+        out.push(<a key={'l' + k} href={ext} target="_blank" rel="noopener noreferrer" style={linkSt}>{inner}</a>);
+      }
+      last = m.index + m[0].length; k++;
+    }
+    if (last < text.length) out.push(text.slice(last));
+    return out;
+  }
+
   return (
     <div className="wrap" style={{ maxWidth: 900, padding: '38px 22px 60px' }}>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
@@ -161,7 +187,7 @@ export default function GuideHome() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, color: 'var(--mut)', marginBottom: 6 }}>{asked}</div>
                 {busy ? <div className="muted" style={{ fontSize: 14 }}>{t.thinking}</div>
-                  : <div style={{ fontSize: 14.5, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{answer}</div>}
+                  : <div style={{ fontSize: 14.5, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{linkify(answer)}</div>}
               </div>
             </div>
           </div>

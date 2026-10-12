@@ -290,11 +290,11 @@ export default function ComoUsar() {
               <OnyxIcon name="play" size={17} glow={false} /> {L('Demo interactivo', 'Interactive demo')}
             </span>
             <button
-              className="btn btn-ghost"
               onClick={(e) => { e.stopPropagation(); setShowDemo(false); }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, color: '#fff', borderColor: 'rgba(255,255,255,.3)' }}
+              aria-label={L('Cerrar demo y volver a la guía', 'Close demo and return to the guide')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14.5, fontWeight: 800, color: '#2a1e02', background: 'linear-gradient(100deg,#ffe08a,#e8b923)', border: 'none', padding: '10px 18px', borderRadius: 10, cursor: 'pointer', boxShadow: '0 8px 22px -6px rgba(0,0,0,.6)' }}
             >
-              ✕ {L('Cerrar', 'Close')}
+              ✕ {L('Cerrar y volver a la guía', 'Close and back to guide')}
             </button>
           </div>
           <div onClick={(e) => e.stopPropagation()} style={{ flex: 1, minHeight: 0, display: 'flex', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,.14)' }}>
