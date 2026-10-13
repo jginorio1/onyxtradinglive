@@ -1429,23 +1429,23 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               const seg: Array<[typeof calPer, string]> = [['sem', es ? 'Semana' : 'Week'], ['mes', es ? 'Mes' : 'Month'], ['ano', es ? 'Año' : 'Year'], ['dias', es ? 'Días' : 'Days']];
               return (<>
                 <style>{`@media(max-width:860px){.cal2{grid-template-columns:1fr!important}}`}</style>
-                {/* Controles de periodo: semana / mes / año / días (rango a medida) */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 14 }}>
-                  <div className="row" style={{ background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 12, padding: 3, gap: 2 }}>
-                    {seg.map(([k, lbl]) => <button key={k} className={'btn ' + (calPer === k ? 'btn-primary' : 'btn-ghost')} style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => { setCalPer(k); setSelDay(null); }}>{lbl}</button>)}
-                  </div>
-                  {calPer === 'dias' && (<div className="row" style={{ gap: 8 }}>
-                    <input type="date" value={calD1} onChange={(e) => setCalD1(e.target.value)} style={{ margin: 0, padding: '6px 8px', fontSize: 13 }} />
-                    <span className="muted">→</span>
-                    <input type="date" value={calD2} onChange={(e) => setCalD2(e.target.value)} style={{ margin: 0, padding: '6px 8px', fontSize: 13 }} />
-                  </div>)}
-                  {calPer !== 'dias' && <div className="row" style={{ gap: 6 }}><button className="btn btn-ghost" onClick={() => calNav(-1)}>‹</button><b style={{ minWidth: 150, textAlign: 'center' }}>{perLabel}</b><button className="btn btn-ghost" onClick={() => calNav(1)}>›</button></div>}
-                  <span style={{ marginLeft: 'auto', fontSize: 14 }}>{es ? 'Total:' : 'Total:'} <b className={perCurve.tot >= 0 ? 'pos' : 'neg'}>{money2(perCurve.tot)}</b> <span className="muted">({perCurve.tr} {L.ops})</span></span>
-                </div>
 
                 <div className="cal2" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 14, alignItems: 'stretch' }}>
                   {/* IZQUIERDA · calendario */}
                   <Card title={L.calTitle} icon="🗓️">
+                    {/* Controles de periodo DENTRO de la tarjeta: semana / mes / año / días + navegación / rango */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+                      <div className="row" style={{ background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 10, padding: 3, gap: 2 }}>
+                        {seg.map(([k, lbl]) => <button key={k} className={'btn ' + (calPer === k ? 'btn-primary' : 'btn-ghost')} style={{ padding: '5px 10px', fontSize: 12.5 }} onClick={() => { setCalPer(k); setSelDay(null); }}>{lbl}</button>)}
+                      </div>
+                      {calPer === 'dias' ? (<div className="row" style={{ gap: 6, marginLeft: 'auto' }}>
+                        <input type="date" value={calD1} onChange={(e) => setCalD1(e.target.value)} style={{ margin: 0, padding: '5px 7px', fontSize: 12.5 }} />
+                        <span className="muted">→</span>
+                        <input type="date" value={calD2} onChange={(e) => setCalD2(e.target.value)} style={{ margin: 0, padding: '5px 7px', fontSize: 12.5 }} />
+                      </div>) : (
+                        <div className="row" style={{ gap: 6, marginLeft: 'auto' }}><button className="btn btn-ghost" style={{ padding: '5px 9px' }} onClick={() => calNav(-1)}>‹</button><b style={{ minWidth: 110, textAlign: 'center', fontSize: 13 }}>{perLabel}</b><button className="btn btn-ghost" style={{ padding: '5px 9px' }} onClick={() => calNav(1)}>›</button></div>
+                      )}
+                    </div>
                     {/* KPIs de fechas: lo del día y el total del periodo */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
                       <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px' }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'PNL del día' : 'Daily PNL'}</div><div className={dailyPnl >= 0 ? 'pos' : 'neg'} style={{ fontSize: 16, fontWeight: 800 }}>{money2(dailyPnl)}</div></div>
