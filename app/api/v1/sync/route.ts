@@ -10,6 +10,7 @@ import { guardianOverride } from '@/lib/guardianAccess';
 import { isCopyMaster, relayMasterSnapshot } from '@/lib/copyRelay';
 import { sendPush } from '@/lib/push';
 import { alertUser, alertOncePerDay } from '@/lib/telegram';
+import { emitNotif } from '@/lib/emitNotif';
 import { logError } from '@/lib/errlog';
 
 export const runtime = 'nodejs';
@@ -348,6 +349,11 @@ export async function POST(req: NextRequest) {
           const name = fa.nickname || fa.login;
           alertUser(userId, 'goal',
             `🏆 Onyx Guardian\n¡Llegaste al objetivo de fondeo en ${name}! Llevas +$${pnl.toFixed(0)} sobre tu inicio de $${start.toFixed(0)}.\nAhora protege lo conseguido: activa tus límites y no lo devuelvas.`).catch(() => {});
+          // Momento de máximo orgullo → invita a COMPARTIR su tarjeta verificada
+          // (bucle de crecimiento). Se dispara una sola vez por cuenta (goal_notified_at
+          // ya nos protege de repetir). Textos bilingües desde notifConfig; el link va
+          // a "Mi tarjeta verificada".
+          emitNotif(userId, 'challenge_passed', {}).catch(() => {});
           await supabaseAdmin.from('trading_accounts')
             .update({ goal_notified_at: new Date().toISOString() }).eq('id', accountId);
         }

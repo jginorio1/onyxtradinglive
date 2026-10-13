@@ -1378,6 +1378,20 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               };
               const secOrder = STYLE_ORDER.all;
               return (<>
+              {/* CTA contextual: aquí el trader está mirando sus números, así que es el
+                  mejor momento para invitarlo a generar/compartir su tarjeta verificada. */}
+              {!forceDemo && !demo && (
+                <Link href="/dashboard/mi-tarjeta" style={{ textDecoration: 'none', display: 'block', marginBottom: 14, border: '1px solid color-mix(in srgb,var(--brand) 40%,var(--line))', borderRadius: 14, padding: '13px 16px', background: 'linear-gradient(135deg, color-mix(in srgb,var(--brand) 12%,transparent), transparent), var(--card)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <span style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#ffe08a,#e8b923)', color: '#2a1e02', display: 'grid', placeItems: 'center', flex: 'none' }}><OnyxIcon emoji="🏅" size={20} glow={false} /></span>
+                    <span style={{ flex: '1 1 200px', minWidth: 0 }}>
+                      <b style={{ color: 'var(--tx)', display: 'block', fontSize: 14.5 }}>{lang === 'es' ? 'Tu tarjeta verificada' : 'Your verified card'}</b>
+                      <span className="muted" style={{ fontSize: 12.5 }}>{lang === 'es' ? 'Calificada por Onyx AI · compártela y muestra tu track record' : 'Onyx AI-graded · share it and show your track record'}</span>
+                    </span>
+                    <span style={{ color: 'var(--brand)', fontWeight: 700, fontSize: 13.5, whiteSpace: 'nowrap' }}>{lang === 'es' ? 'Generar / compartir →' : 'Generate / share →'}</span>
+                  </div>
+                </Link>
+              )}
               <div className="grid g4">
                 <StatCard icon="💰" label={L.kNet} value={money2(a.net)} accent={a.net >= 0 ? GREEN : RED} color={a.net >= 0 ? GREEN : RED} />
                 <StatCard icon="🎯" label={L.kWR} value={`${a.winRate.toFixed(0)}%`} accent={sWR} color={sWR} bar={a.winRate / 100} />

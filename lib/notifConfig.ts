@@ -111,9 +111,9 @@ export const NOTIF_CATALOG: NotifDef[] = [
   },
   {
     key: 'challenge_passed', group: 'Trading y reto',
-    es: { title: '🏆 ¡Pasaste el reto!', body: 'Cumpliste el objetivo. Enhorabuena, sigue tu plan.' },
-    en: { title: '🏆 Challenge passed!', body: 'You hit the objective. Congrats — stick to your plan.' },
-    bell: true, push: true, telegram: true, tgKind: 'challenge', url: '/dashboard?view=reto',
+    es: { title: '🏆 ¡Pasaste el reto!', body: 'Cumpliste el objetivo. Genera y comparte tu tarjeta verificada: muestra tu track record.' },
+    en: { title: '🏆 Challenge passed!', body: 'You hit the objective. Generate and share your verified card — show off your track record.' },
+    bell: true, push: true, telegram: true, tgKind: 'challenge', url: '/dashboard/mi-tarjeta',
     editableChannels: ['bell', 'push', 'telegram'],
   },
   {

@@ -205,7 +205,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
               <ThemeToggle />
               <LangToggle compact />
               <span className="topsep" />
-              <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} isRep={isRep} salesLabel={lang === 'en' ? 'My sales panel' : 'Mi panel de ventas'} canTrain={canTrain} trainLabel={lang === 'en' ? 'Training center' : 'Centro de formación'} t={t} demo={isDemo} />
+              <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} isRep={isRep} salesLabel={lang === 'en' ? 'My sales panel' : 'Mi panel de ventas'} canTrain={canTrain} trainLabel={lang === 'en' ? 'Training center' : 'Centro de formación'} cardLabel={lang === 'en' ? 'My verified card' : 'Mi tarjeta verificada'} t={t} demo={isDemo} />
             </div>
           </div>
           {/* Fila 2: todos los tabs, a lo ancho. Si no caben, la fila se desliza. */}
