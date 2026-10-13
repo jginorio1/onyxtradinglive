@@ -12,6 +12,7 @@ export default function TrackShare({ lang = 'es', name = '', demo = false }: { l
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState('');
+  const [refCode, setRefCode] = useState('');   // mi código "Invita y gana"
   const cvRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -22,9 +23,15 @@ export default function TrackShare({ lang = 'es', name = '', demo = false }: { l
       const p = d?.profile || d; if (p?.id) setProf({ id: p.id, on: !!p.public_track });
     }).catch(() => {});
   }, [demo]);
+  // Mi ref: así compartir mi trackrecord capta referido que me paga.
+  useEffect(() => {
+    if (demo) return;
+    fetch('/api/referral').then((r) => r.json()).then((j) => { if (j?.enabled && j?.code) setRefCode(String(j.code)); }).catch(() => {});
+  }, [demo]);
 
   if (!prof) return null;
-  const url = (typeof window !== 'undefined' ? window.location.origin : '') + '/u/' + prof.id;
+  const base = (typeof window !== 'undefined' ? window.location.origin : '') + '/u/' + prof.id;
+  const url = refCode ? `${base}?ref=${encodeURIComponent(refCode)}` : base;
   const qrSrc = `/api/qr?data=${encodeURIComponent(url)}&size=520&fg=0b1020&bg=ffffff`;
   const flash = (m: string) => { setNote(m); setTimeout(() => setNote(''), 1800); };
 

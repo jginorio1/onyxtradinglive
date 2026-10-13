@@ -60,16 +60,16 @@ export default async function TraderCertificate({ params }: { params: { id: stri
       {/* Estilos de impresión: solo el certificado, en una página, sin botones ni
           barras. Así "Descargar certificado" genera un documento limpio. */}
       <style dangerouslySetInnerHTML={{ __html: `
+        /* El certificado de impresión solo existe al imprimir (landscape, 1 pág). */
+        .print-cert { display: none; }
         @media print {
-          @page { size: A4 portrait; margin: 10mm; }
-          html, body { background: #fff !important; }
-          /* Oculta TODO (incluida la barra superior global de la app) y deja ver
-             solo el certificado, anclado arriba, para que salga en UNA página. */
+          @page { size: A4 landscape; margin: 0; }
+          html, body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           body * { visibility: hidden !important; }
-          .cert-area, .cert-area * { visibility: visible !important; }
-          .cert-area { position: absolute !important; left: 0; top: 0; width: 100% !important; margin: 0 !important; padding: 0 !important; page-break-inside: avoid; break-inside: avoid; }
-          .cert-area .card { box-shadow: none !important; }
-          .no-print { display: none !important; }
+          .print-cert, .print-cert * { visibility: visible !important; }
+          .print-cert { display: block !important; position: absolute !important; left: 0; top: 0; width: 100%; }
+          .no-print, .cert-area { display: none !important; }
+          .wrap.section { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
         }
       ` }} />
       <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
@@ -170,6 +170,140 @@ export default async function TraderCertificate({ params }: { params: { id: stri
       <p className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 16, maxWidth: 620, marginInline: 'auto' }}>
         {L('Certificado verificable en', 'Verifiable certificate at')} {SITE}/copy/t/{p.id}. {L('Los resultados pasados no garantizan resultados futuros.', 'Past results do not guarantee future results.')}
       </p>
+
+      {/* ====== CERTIFICADO DE IMPRESIÓN (landscape, 1 página, diseño formal) ======
+          Solo se ve al imprimir. Marco dorado, sello, firma y métricas del trader. */}
+      {(() => {
+        const accent = p.tier === 'diamond' ? '#2F6FB0' : p.tier === 'gold' ? '#9C6212' : p.tier === 'silver' ? '#7C828C' : '#2A3550';
+        const ink = '#111827', soft = '#6b7280', line = '#e5e7eb', paper = '#ffffff';
+        const certNo = String(p.id).replace(/-/g, '').slice(0, 10).toUpperCase();
+        // Curva (forma normalizada ±1)
+        const c: number[] = Array.isArray(s.curve) ? s.curve : [];
+        const CW = 560, CH = 92, cp = 6;
+        let dLine = '', dArea = '';
+        if (c.length >= 2) {
+          const cx = (i: number) => cp + (i / (c.length - 1)) * (CW - cp * 2);
+          const cy = (v: number) => CH / 2 - v * (CH / 2 - cp);
+          dLine = c.map((v, i) => `${i === 0 ? 'M' : 'L'} ${cx(i).toFixed(1)} ${cy(v).toFixed(1)}`).join(' ');
+          dArea = dLine + ` L ${cx(c.length - 1).toFixed(1)} ${(CH / 2).toFixed(1)} L ${cx(0).toFixed(1)} ${(CH / 2).toFixed(1)} Z`;
+        }
+        const curveUp = c.length ? c[c.length - 1] >= 0 : true;
+        const curveCol = curveUp ? '#1f9d55' : '#c0392b';
+        const stat = (big: string, lbl: string) => (
+          <div style={{ textAlign: 'center', padding: '0 10px' }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: ink, lineHeight: 1 }}>{big}</div>
+            <div style={{ fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase', color: soft, marginTop: 4 }}>{lbl}</div>
+          </div>
+        );
+        const pbar = (lbl: string, val: number) => (
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: soft, marginBottom: 3 }}><span>{lbl}</span><span style={{ color: ink, fontWeight: 700 }}>{val}</span></div>
+            <div style={{ height: 5, background: '#eef0f3', borderRadius: 4, overflow: 'hidden' }}><div style={{ width: `${Math.max(3, Math.min(100, val))}%`, height: '100%', background: accent }} /></div>
+          </div>
+        );
+        return (
+          <div className="print-cert">
+            <div style={{ position: 'relative', width: '277mm', height: '190mm', margin: '0 auto', background: paper, color: ink, boxSizing: 'border-box', padding: '10mm', fontFamily: 'Georgia, "Times New Roman", serif' }}>
+              {/* Marco doble */}
+              <div style={{ position: 'absolute', inset: '6mm', border: `2px solid ${accent}`, borderRadius: 4 }} />
+              <div style={{ position: 'absolute', inset: '8mm', border: `0.6mm solid ${accent}`, opacity: 0.35, borderRadius: 2 }} />
+
+              <div style={{ position: 'relative', height: '100%', padding: '6mm 10mm', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+                {/* Cabecera */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <img src="/onyx-symbol.png" alt="" width={26} height={26} style={{ width: 26, height: 26, objectFit: 'contain' }} />
+                    <span style={{ fontSize: 13, letterSpacing: 3, textTransform: 'uppercase', color: ink, fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>Onyx Trading Live</span>
+                  </div>
+                  <div style={{ textAlign: 'right', fontFamily: 'Arial, sans-serif' }}>
+                    <div style={{ fontSize: 8.5, letterSpacing: 1.5, color: soft, textTransform: 'uppercase' }}>{L('Certificado Nº', 'Certificate No.')}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: ink, letterSpacing: 1 }}>{certNo}</div>
+                  </div>
+                </div>
+
+                {/* Título */}
+                <div style={{ textAlign: 'center', marginTop: '3mm' }}>
+                  <div style={{ fontSize: 22, letterSpacing: 2, color: ink, fontWeight: 700 }}>{L('CERTIFICADO DE DESEMPEÑO VERIFICADO', 'CERTIFICATE OF VERIFIED PERFORMANCE')}</div>
+                  <div style={{ width: 120, height: 2, background: accent, margin: '4mm auto 0' }} />
+                </div>
+
+                {/* Cuerpo: izquierda identidad + score · derecha métricas + curva */}
+                <div style={{ display: 'flex', gap: '12mm', marginTop: '5mm', flex: 1, alignItems: 'center' }}>
+                  {/* Izquierda */}
+                  <div style={{ width: '38%', textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: soft, fontStyle: 'italic' }}>{L('Se certifica que', 'This certifies that')}</div>
+                    <div style={{ fontSize: 34, fontWeight: 700, color: ink, margin: '2mm 0', lineHeight: 1.1 }}>{p.display_name}</div>
+                    <div style={{ display: 'inline-block', border: `1.5px solid ${accent}`, color: accent, padding: '3px 16px', borderRadius: 999, fontSize: 13, fontWeight: 700, fontFamily: 'Arial, sans-serif', letterSpacing: 1 }}>{tierLabel(p.tier, es ? 'es' : 'en')}</div>
+                    {/* Onyx Score grande con anillo */}
+                    <div style={{ marginTop: '6mm', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+                      <div style={{ position: 'relative', width: 96, height: 96 }}>
+                        <svg viewBox="0 0 96 96" width="96" height="96">
+                          <circle cx="48" cy="48" r="42" fill="none" stroke="#eef0f3" strokeWidth="8" />
+                          <circle cx="48" cy="48" r="42" fill="none" stroke={accent} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(Math.max(0, Math.min(100, p.score)) / 100) * 264} 264`} transform="rotate(-90 48 48)" />
+                        </svg>
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ fontSize: 30, fontWeight: 800, color: ink, lineHeight: 1, fontFamily: 'Arial, sans-serif' }}>{p.score}</div>
+                          <div style={{ fontSize: 8, letterSpacing: 1, color: soft, textTransform: 'uppercase' }}>Onyx Score</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Derecha */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${line}`, borderBottom: `1px solid ${line}`, padding: '4mm 0', fontFamily: 'Arial, sans-serif' }}>
+                      {stat(`${s.winRate ?? 0}%`, 'Win rate')}
+                      {stat(String(s.pf ?? 0), 'Profit factor')}
+                      {stat(`${s.maxDDpct ?? 0}%`, L('Drawdown máx.', 'Max drawdown'))}
+                      {stat(`${s.trades ?? 0}`, L('Operaciones', 'Trades'))}
+                    </div>
+                    {/* Curva */}
+                    <div style={{ marginTop: '4mm' }}>
+                      <div style={{ fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase', color: soft, marginBottom: 2, fontFamily: 'Arial, sans-serif' }}>{L('Curva de resultados', 'Equity curve')}</div>
+                      {dLine ? (
+                        <svg viewBox={`0 0 ${CW} ${CH}`} width="100%" height="64" preserveAspectRatio="none" style={{ display: 'block' }}>
+                          <line x1="0" y1={CH / 2} x2={CW} y2={CH / 2} stroke={line} strokeWidth="1" strokeDasharray="4 4" />
+                          <path d={dArea} fill={curveCol} opacity="0.1" />
+                          <path d={dLine} fill="none" stroke={curveCol} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                        </svg>
+                      ) : <div style={{ height: 64, border: `1px dashed ${line}`, borderRadius: 4 }} />}
+                    </div>
+                    {/* Pilares */}
+                    <div style={{ display: 'flex', gap: 14, marginTop: '4mm', fontFamily: 'Arial, sans-serif' }}>
+                      {pbar(L('Disciplina', 'Discipline'), pl.discipline || 0)}
+                      {pbar(L('Riesgo', 'Risk'), pl.risk || 0)}
+                      {pbar(L('Rendimiento', 'Performance'), pl.performance || 0)}
+                      {pbar(L('Consistencia', 'Consistency'), pl.consistency || 0)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pie: firma · sello · verificación */}
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: '4mm', fontFamily: 'Arial, sans-serif' }}>
+                  <div style={{ textAlign: 'center', width: '32%' }}>
+                    <div style={{ fontSize: 15, color: ink, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>Onyx&nbsp;AI</div>
+                    <div style={{ borderTop: `1px solid ${ink}`, marginTop: 2, paddingTop: 3, fontSize: 9, color: soft }}>{L('Calificación algorítmica verificada', 'Verified algorithmic grading')}</div>
+                  </div>
+                  <div style={{ textAlign: 'center', width: '34%' }}>
+                    <div style={{ width: 54, height: 54, margin: '0 auto', borderRadius: '50%', border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accent }}>
+                      <img src="/onyx-symbol.png" alt="" width={26} height={26} style={{ width: 26, height: 26, objectFit: 'contain' }} />
+                    </div>
+                    <div style={{ fontSize: 8, color: soft, marginTop: 3, letterSpacing: 1 }}>{L('SELLO DE VERIFICACIÓN', 'VERIFICATION SEAL')}</div>
+                  </div>
+                  <div style={{ textAlign: 'center', width: '32%' }}>
+                    <div style={{ fontSize: 13, color: ink, fontWeight: 700 }}>{issued}</div>
+                    <div style={{ borderTop: `1px solid ${ink}`, marginTop: 2, paddingTop: 3, fontSize: 9, color: soft }}>{L('Fecha de emisión', 'Issue date')}</div>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'center', fontSize: 8, color: soft, marginTop: '3mm', fontFamily: 'Arial, sans-serif' }}>
+                  {L('Verificable en', 'Verifiable at')} {SITE}/copy/t/{p.id} · {L('Los resultados pasados no garantizan resultados futuros.', 'Past results do not guarantee future results.')}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

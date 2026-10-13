@@ -4,7 +4,28 @@ import { notFound } from 'next/navigation';
 import { serverLang, localeAlternates, SITE } from '@/lib/locale';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { trackSettings } from '@/lib/settings';
+import { tierLabel, type Tier } from '@/lib/copyScore';
 import ShareBar from './ShareBar';
+
+// Colores por tier (mismos que el ranking de Onyx Copy).
+const TIER_COL: Record<string, { br: string; tx: string; bg: string }> = {
+  diamond: { br: '#378ADD', tx: '#8fbdf0', bg: 'rgba(55,138,221,.12)' },
+  gold: { br: '#BA7517', tx: 'var(--gold)', bg: 'rgba(255,192,77,.12)' },
+  silver: { br: '#9aa0ac', tx: '#c7ccd6', bg: 'rgba(180,180,190,.12)' },
+};
+
+// Grado Onyx (Score + tier) del trader, si ya generó su tarjeta verificada.
+// Es el MISMO motor del ranking de Copy; aquí solo lo mostramos en su perfil.
+async function getGrade(userId: string) {
+  try {
+    const { data } = await supabaseAdmin.from('strategy_providers')
+      .select('score,tier,verified,pillars')
+      .eq('user_id', userId).eq('status', 'active')
+      .order('score', { ascending: false }).limit(1).maybeSingle();
+    if (!data || typeof data.score !== 'number') return null;
+    return data as { score: number; tier: string; verified: boolean; pillars: any };
+  } catch { return null; }
+}
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -78,6 +99,8 @@ export default async function PublicTrackrecord({ params }: { params: { id: stri
   if (!p || !p.public_track || !cfg.enabled) notFound();
 
   const s = await getStats(params.id);
+  const grade = await getGrade(params.id);
+  const gtc = grade ? (TIER_COL[grade.tier] || TIER_COL.silver) : null;
   const url = `${SITE}/u/${params.id}`;
   const money = cfg.show_money;
   const name = p.full_name || 'Trader';
@@ -118,6 +141,7 @@ export default async function PublicTrackrecord({ params }: { params: { id: stri
             <div style={{ flex: 1, minWidth: 180 }}>
               <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <h1 style={{ margin: 0, fontSize: 22 }}>{name}</h1>
+                {grade && gtc && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 800, border: `1px solid ${gtc.br}`, color: gtc.tx, background: gtc.bg, padding: '3px 11px', borderRadius: 999 }}>{tierLabel(grade.tier as Tier, es ? 'es' : 'en')}{grade.verified && <span style={{ color: 'var(--green)' }}>✓</span>}</span>}
                 {cfg.verified_badge && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, background: 'rgba(34,197,94,.14)', color: 'var(--green)', padding: '3px 10px', borderRadius: 999 }}>✔ {es ? 'Verificado por Onyx' : 'Verified by Onyx'}</span>}
               </div>
               <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
@@ -132,6 +156,20 @@ export default async function PublicTrackrecord({ params }: { params: { id: stri
               {es ? `Este trader aún no tiene suficientes operaciones para mostrar un historial (mínimo ${cfg.min_trades}).` : `This trader doesn't have enough trades yet to show a trackrecord (minimum ${cfg.min_trades}).`}
             </div>
           ) : (<>
+            {/* Onyx Score (grado verificado) — mismo motor que el ranking de Copy */}
+            {grade && gtc && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 16, padding: '14px 16px', border: `1px solid ${gtc.br}`, background: gtc.bg, borderRadius: 12, flexWrap: 'wrap' }}>
+                <div style={{ textAlign: 'center', minWidth: 72 }}>
+                  <div style={{ fontSize: 34, fontWeight: 800, color: gtc.tx, lineHeight: 1 }}>{grade.score}</div>
+                  <div className="muted" style={{ fontSize: 10.5, marginTop: 2 }}>Onyx Score</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <div style={{ fontWeight: 700, color: gtc.tx }}>{tierLabel(grade.tier as Tier, es ? 'es' : 'en')}</div>
+                  <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{es ? 'Calificación de disciplina, riesgo, rendimiento y consistencia otorgada por Onyx AI.' : 'Discipline, risk, performance and consistency grade awarded by Onyx AI.'}</div>
+                </div>
+              </div>
+            )}
+
             {/* KPIs */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10, marginTop: 16 }}>
               {kpis.map((k, i) => (

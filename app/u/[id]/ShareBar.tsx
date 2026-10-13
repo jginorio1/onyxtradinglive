@@ -1,15 +1,22 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Barra de compartir del trackrecord público: copiar enlace + compartir nativo.
+// Si quien mira tiene sesión, el enlace lleva su ?ref (capta referido al registrarse).
 export default function ShareBar({ url, es }: { url: string; es: boolean }) {
   const [copied, setCopied] = useState(false);
+  const [shareUrl, setShareUrl] = useState(url);
+  useEffect(() => {
+    fetch('/api/referral').then((r) => r.json()).then((j) => {
+      if (j?.enabled && j?.code) { const sep = url.includes('?') ? '&' : '?'; setShareUrl(`${url}${sep}ref=${encodeURIComponent(String(j.code))}`); }
+    }).catch(() => {});
+  }, [url]);
   const copy = async () => {
-    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch {}
+    try { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch {}
   };
   const share = async () => {
-    try { if ((navigator as any).share) await (navigator as any).share({ title: 'Onyx Trading', url }); else copy(); } catch {}
+    try { if ((navigator as any).share) await (navigator as any).share({ title: 'Onyx Trading', url: shareUrl }); else copy(); } catch {}
   };
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

@@ -22,6 +22,7 @@ export default function MiTarjeta() {
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState('');
   const [refCode, setRefCode] = useState('');   // mi código "Invita y gana"
+  const [myId, setMyId] = useState('');          // mi id de perfil → página pública /u/<id>
 
   async function load() {
     try {
@@ -32,13 +33,18 @@ export default function MiTarjeta() {
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
-  // Mi código de referido: así cada enlace que comparta capta referido (y me paga).
+  // Mi código de referido + mi id (la tarjeta pública es /u/<id>, única en la app).
   useEffect(() => {
     (async () => {
       try {
         const r = await fetch('/api/referral', { cache: 'no-store' });
         const j = await r.json();
         if (r.ok && j?.enabled && j?.code) setRefCode(String(j.code));
+      } catch {}
+      try {
+        const r = await fetch('/api/account', { cache: 'no-store' });
+        const j = await r.json();
+        const p = j?.profile || j; if (p?.id) setMyId(String(p.id));
       } catch {}
     })();
   }, []);
@@ -51,15 +57,19 @@ export default function MiTarjeta() {
       const r = await fetch('/api/copy/provider', { method: 'POST', body: JSON.stringify({ account_id: accId, showcase: true }) });
       const j = await r.json();
       if (!r.ok) setErr(j.error || L('No se pudo generar la tarjeta.', 'Could not generate the card.'));
-      else await load();
+      else {
+        // Enciende también la página pública /u/<id> para que el grado se vea ahí.
+        try { await fetch('/api/account', { method: 'PATCH', body: JSON.stringify({ public_track: true }) }); } catch {}
+        await load();
+      }
     } catch { setErr(L('Error de red.', 'Network error.')); }
     setBusy('');
   }
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  // El enlace compartido lleva mi ?ref para que, si el visitante se registra, se
-  // atribuya a mí (cierra el bucle: comparto tarjeta → amigo entra → gano crédito).
-  const urlFor = (id: string) => `${origin}/copy/t/${id}${refCode ? `?ref=${encodeURIComponent(refCode)}` : ''}`;
+  // La tarjeta pública es ÚNICA: /u/<miId> (perfil del trader con su Onyx Score).
+  // El enlace lleva mi ?ref para captar referido si el visitante se registra.
+  const urlFor = (_id?: string) => `${origin}/u/${myId}${refCode ? `?ref=${encodeURIComponent(refCode)}` : ''}`;
 
   async function share(p: Prov) {
     const url = urlFor(p.id);
@@ -116,7 +126,7 @@ export default function MiTarjeta() {
                     </button>
                   ) : (
                     <>
-                      <Link className="btn btn-primary" href={`/copy/t/${p!.id}`} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="👁" size={14} /> {L('Ver mi tarjeta', 'View my card')}</Link>
+                      <Link className="btn btn-primary" href={myId ? `/u/${myId}` : '#'} target="_blank" style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="👁" size={14} /> {L('Ver mi tarjeta', 'View my card')}</Link>
                       <button className="btn btn-ghost" onClick={() => share(p!)} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📤" size={14} /> {L('Compartir', 'Share')}</button>
                       <button className="btn btn-ghost" onClick={() => copyLink(p!)} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji={copied === p!.id ? '✅' : '🔗'} size={14} /> {copied === p!.id ? L('¡Copiado!', 'Copied!') : L('Copiar link', 'Copy link')}</button>
                       <button className="btn btn-ghost" disabled={busy === a.id} onClick={() => generate(a.id)} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🔄" size={14} /> {L('Actualizar', 'Refresh')}</button>
