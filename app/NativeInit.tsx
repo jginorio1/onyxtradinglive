@@ -177,10 +177,14 @@ export default function NativeInit() {
       try { setKb(0); } catch {}
       try {
         const { Keyboard, KeyboardResize } = await import('@capacitor/keyboard');
-        // Modo 'none': el webview NO se encoge al abrir el teclado (el header pegado
-        // arriba no se mueve); el teclado solo se superpone abajo. Con la altura real
-        // subimos el campo enfocado (revealActive) y pegamos el panel del chat.
-        try { await Keyboard.setResizeMode({ mode: KeyboardResize.None }); } catch {}
+        // iOS: modo 'none' (su WebView no encoge el viewport; subimos el campo con la
+        // altura real del teclado y pegamos el panel del chat). Android: modo 'native'
+        // (adjustResize) — el WebView SÍ se encoge con el teclado, que es lo fiable ahí
+        // y hace que el campo del chat quede siempre visible sobre el teclado.
+        try {
+          const isAndroid = (() => { try { return (window as any)?.Capacitor?.getPlatform?.() === 'android'; } catch { return false; } })();
+          await Keyboard.setResizeMode({ mode: isAndroid ? KeyboardResize.Native : KeyboardResize.None });
+        } catch {}
         // Sin barra de accesorios ("Done"): se ve más app y quita el hueco gris que
         // esa barra dejaba entre el campo y el teclado.
         try { await Keyboard.setAccessoryBarVisible({ isVisible: false }); } catch {}
