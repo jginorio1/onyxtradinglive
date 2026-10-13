@@ -249,7 +249,10 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       const j = await r.json();
       setChat([...next, { role: 'assistant', content: j.answer || '…' }]);
       setRefs(j.articles || []);
-      setActions(Array.isArray(j.actions) ? j.actions : []);
+      // En iOS no se ofrece Bot Lab (compra de bienes digitales fuera de Apple):
+      // filtramos cualquier botón de acción que lleve al marketplace.
+      const acts = Array.isArray(j.actions) ? j.actions : [];
+      setActions(isIOS ? acts.filter((a: any) => !/\/bot-lab\b/.test(String(a?.url || ''))) : acts);
       setPlans(Array.isArray(j.plans) ? j.plans : []);
       if (!loggedIn && j.escalate) openEmail();
     } catch { setChat([...next, { role: 'assistant', content: '…' }]); }
