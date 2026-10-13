@@ -145,15 +145,15 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
         { href: '/dashboard', label: t.dashboard, icon: '📊' },
         { href: '/dashboard/keys', label: t.accounts, icon: '🔌' },
         ...(caps.manager ? [{ href: '/dashboard/manager', label: t.manager, icon: '🛡️', dot: (guardianOn ? 'on' : 'off') as 'on' | 'off', dim: !guardianOn, dotTitle: guardianOn ? (lang === 'es' ? 'Guardian activado' : 'Guardian on') : (lang === 'es' ? 'Guardian desactivado' : 'Guardian off') }] : []),
-        ...(caps.copy ? [{ href: '/dashboard/copy', label: t.copy, icon: '🔁', dot: (copyActive ? 'on' : 'off') as 'on' | 'off', dim: !copyActive, dotTitle: (copyActive ? (lang === 'es' ? 'Copia activa' : 'Copy on') : (lang === 'es' ? 'Copia inactiva' : 'Copy off')) }] : []),
+        ...(caps.copy ? [{ href: '/dashboard/copy', label: lang === 'es' ? 'Copiadora' : lang === 'en' ? 'Copy trading' : t.copy, icon: '🔁', dot: (copyActive ? 'on' : 'off') as 'on' | 'off', dim: !copyActive, dotTitle: (copyActive ? (lang === 'es' ? 'Copia activa' : 'Copy on') : (lang === 'es' ? 'Copia inactiva' : 'Copy off')) }] : []),
         ...((caps.algo || addonAlgo) ? [{ href: '/dashboard/bots', label: (t as any).bots, icon: '🤖', dot: (botsActive ? 'on' : 'off') as 'on' | 'off', dim: !botsActive, dotTitle: (botsActive ? (lang === 'es' ? 'Robots operando' : 'Robots running') : (lang === 'es' ? 'Sin robots operando ahora' : 'No robots running now')) }] : []),
         ...((caps.tv || caps.copy) ? [{ href: '/dashboard/tradingview', label: 'TradingView', icon: '📈', dot: (tvOn ? 'on' : 'off') as 'on' | 'off', dim: !tvOn, dotTitle: (tvOn ? (lang === 'es' ? 'TradingView activado' : 'TradingView on') : (lang === 'es' ? 'TradingView desactivado' : 'TradingView off')) }] : []),
         ...(caps.expenses ? [{ href: '/dashboard/expenses', label: lang === 'en' ? 'Net profit' : 'Ganancia neta', icon: '🧮' }] : []),
         // Separador visual: aquí terminan las herramientas de trading del día a día y
         // empieza el "ecosistema" (Ingresos, Onyx Copy, Bot Lab, Academy). Todos siguen visibles.
         { href: '__sep_eco', label: '', sep: true } as any,
-        { href: '/dashboard/earnings', label: lang === 'en' ? 'Earnings' : 'Ingresos', icon: '💰', tint: 'var(--green)' },
-        { href: '/dashboard/onyx-copy', label: 'Onyx Copy', icon: '🏆' },
+        { href: '/dashboard/earnings', label: lang === 'en' ? 'Earnings center' : 'Centro de ganancias', icon: '💰', tint: 'var(--green)' },
+        { href: '/dashboard/onyx-copy', label: lang === 'en' ? 'Onyx Copy · Marketplace' : 'Onyx Copy · Mercado', icon: '🏆' },
         { href: '/dashboard/bot-lab', label: 'Onyx Bot Lab', icon: '🤖', full: true, tint: 'var(--gold, #ffd45e)' },
         { href: '/dashboard/academy', label: 'Onyx Academy', icon: '🎓' },
         ...(isAdmin ? [{ href: '/admin', label: t.admin, icon: '🛠️' }] : []),

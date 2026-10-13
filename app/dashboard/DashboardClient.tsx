@@ -1031,8 +1031,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               )}
             </h1>
           </div>
-          {/* Fila 2 · píldoras (perfil + clima + trackrecord) en UN grupo que se reacomoda
-              solo según el ancho. Sin divisores verticales; todas con la misma altura. */}
+          {/* Fila 2 · píldoras (perfil + clima + trackrecord). En móvil NO se muestran para
+              aligerar la cabecera; esos datos siguen en "Mi cuenta". En escritorio sí. */}
+          {!isMobile && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             {heroChips.length ? heroChips.map((c, i) => (
               <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--tx)', whiteSpace: 'nowrap', padding: '4px 10px', minHeight: 30, boxSizing: 'border-box', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--bg2)' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>
@@ -1042,6 +1043,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             {!forceDemo && <WeatherCard country={profile?.country} lang={lang} />}
             <TrackShare lang={lang} name={profile?.full_name || ''} demo={forceDemo} />
           </div>
+          )}
         </div>
 
         {/* Onboarding grande: solo cuando aún NO hay cuentas — se queda a lo ancho para
@@ -1090,8 +1092,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
           <div className="card"><p className="muted">{L.empty2}</p></div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
-            {/* controles: cuenta (menú) + activo/robot (menú, en Rendimiento) + filtro de tiempo */}
-            <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
+            {/* controles + neto en UNA sola tarjeta: cuenta (menú) + neto al lado + filtro de tiempo + acciones */}
+            <div className="row between" style={{ flexWrap: 'wrap', gap: 10, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '12px 14px' }}>
               <div style={isMobile ? { display: 'flex', gap: 8, alignItems: 'stretch', width: '100%' } : { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {/* Volver al dashboard: a la izquierda del selector de portafolio. */}
                 {view !== 'hub' && <button className="btn" aria-label={L.back} title={L.back} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 'none', whiteSpace: 'nowrap', background: 'linear-gradient(90deg, rgba(74,110,230,.22), rgba(74,110,230,.42))', border: '1px solid rgba(74,110,230,.75)', boxShadow: '0 0 0 1px rgba(74,110,230,.15)', color: 'var(--tx)', fontWeight: 700, minHeight: 56, padding: '8px 16px' }} onClick={() => { setView('hub'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {} }}>{isMobile ? '←' : L.back}</button>}
@@ -1184,7 +1186,17 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: isMobile ? 'stretch' : 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', ...(isMobile ? { width: '100%' } : {}) }}>
+              {/* Neto AL LADO del portafolio (en hub). En móvil se apila (fila completa). */}
+              {view === 'hub' && (
+                <div style={isMobile
+                  ? { width: '100%', display: 'flex', flexDirection: 'column', gap: 1, borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 2 }
+                  : { display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1, paddingLeft: 14, borderLeft: '1px solid var(--line)' }}>
+                  <span className="muted" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px' }}>{L.kNet} · {range === 'custom' ? L.customRange : L.ranges[range as 'd1']}</span>
+                  <span style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.05, color: a.net >= 0 ? 'var(--green)' : 'var(--red)' }}>{money2(a.net)}</span>
+                  <span className="muted" style={{ fontSize: 10.5 }}>{lang === 'es' ? 'Portafolio' : 'Portfolio'} ${(sel === 'all' ? totalBalance : Number(cur?.balance || 0)).toLocaleString()} · {a.n} {L.ops}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, alignItems: isMobile ? 'stretch' : 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', ...(isMobile ? { width: '100%' } : { marginLeft: 'auto' }) }}>
                 {/* Período: en móvil, UNA sola fila deslizable (no envuelve). */}
                 <div style={isMobile
                   ? { display: 'flex', gap: 6, overflowX: 'auto', flexWrap: 'nowrap', width: '100%', minWidth: 0, WebkitOverflowScrolling: 'touch', paddingBottom: 2 }
@@ -1263,17 +1275,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 const edgeMetric = a.rValid ? `${a.rMean >= 0 ? '+' : ''}${(a.rMean || 0).toFixed(2)} R` : '—';
                 const edgeCol = !a.rValid ? 'var(--mut)' : (a.rMean || 0) >= 0 ? GREEN : RED;
                 tiles.push({ key: 'edge', icon: '📐', label: lang === 'en' ? 'Edge' : 'Edge', metric: edgeMetric, mc: edgeCol, color: 'var(--brand)', onClick: () => setView('edge') });
-                return (<>
-                  {/* Número héroe: el resultado neto grande que resume todo, con el desglose debajo. */}
-                  <div style={{ background: 'linear-gradient(135deg, rgba(232,185,35,.10), transparent)', border: '1px solid rgba(232,185,35,.28)', borderRadius: 14, padding: '16px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
-                    <div>
-                      <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.5px' }}>{L.kNet} · {range === 'custom' ? L.customRange : L.ranges[range as 'd1']}</div>
-                      <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1, marginTop: 4, color: a.net >= 0 ? 'var(--green)' : 'var(--red)' }}>{money2(a.net)}</div>
-                      <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{es ? 'Portafolio' : 'Portfolio'} ${(sel === 'all' ? totalBalance : Number(cur?.balance || 0)).toLocaleString()} · {a.n} {L.ops}{sel === 'all' ? '' : ` · ${curName}`}</div>
-                    </div>
-                  </div>
-                  <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />
-                </>);
+                void es;
+                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />;
               })()}
 
 
