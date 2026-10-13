@@ -172,6 +172,15 @@ export default function NativeInit() {
       const setKb = (h: number) => {
         kbH = Math.max(0, Math.round(h || 0));
         try { document.documentElement.style.setProperty('--onyx-kb', kbH + 'px'); } catch {}
+        // iOS (resize:none): el WebView NO encoge, así que si la página no tiene scroll
+        // sobrante, el campo enfocado se queda DETRÁS del teclado y no se puede subir.
+        // Le damos al <body> un relleno inferior = altura del teclado para que SIEMPRE
+        // haya espacio que desplazar y revealActive/scrollIntoView pueda levantar
+        // cualquier campo por encima del teclado. En reposo (h=0) lo quitamos. La barra
+        // inferior y el chat son position:fixed, así que este relleno no los afecta.
+        try {
+          if (isIOS) document.body.style.paddingBottom = kbH > 0 ? kbH + 'px' : '';
+        } catch {}
         try { window.dispatchEvent(new CustomEvent('onyxkb', { detail: { h: kbH } })); } catch {}
       };
       try { setKb(0); } catch {}

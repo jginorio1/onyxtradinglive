@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { PLAN_ROWS } from '@/lib/plansData';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { trialDaysOf } from '@/lib/planFacts';
+import { nativePlatform } from '@/lib/native';
 
 // Icono del encabezado de cada sección (Guardian, Copy trading, Academy).
 function sectionIcon(es: string): string {
@@ -33,6 +34,10 @@ export default function PlansCompareTable({
   // Filas de comparación: si el admin las editó en Landing Builder, usamos esas;
   // si no, caemos a las del código (PLAN_ROWS). Nunca se queda en blanco.
   const [ovRows, setOvRows] = useState<typeof PLAN_ROWS | null>(null);
+  // iOS (Apple 3.1.1): ni cifras ni compra. Ocultamos los precios y los botones
+  // mandan al tab de Precios interno (/pricing → IosPlans, sin precios).
+  const [ios, setIos] = useState(false);
+  useEffect(() => { try { setIos(nativePlatform() === 'ios'); } catch {} }, []);
   useEffect(() => {
     fetch('/api/landing-content?t=' + Date.now(), { cache: 'no-store' })
       .then((r) => r.json())
@@ -121,8 +126,8 @@ export default function PlansCompareTable({
                   <th key={id} style={{ textAlign: 'center', padding: '14px 16px', color: nameColor, fontSize: 15, position: 'relative', ...colBg(id), ...((black || pop) ? { borderTop: '2px solid #e8b923' } : {}) }}>
                     {(black || pop) && <span style={{ position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(100deg,#ffe08a,#e8b923)', color: '#2a1e02', fontSize: 9, fontWeight: 800, padding: '1px 9px', borderRadius: '0 0 8px 8px', letterSpacing: '.03em', whiteSpace: 'nowrap' }}>{black ? (lang === 'es' ? '◆ EL DEFINITIVO' : '◆ ULTIMATE') : (lang === 'es' ? '★ POPULAR' : '★ POPULAR')}</span>}
                     <div className={black ? 'pcmp-black-name' : undefined} style={{ marginTop: (black || pop) ? 8 : 0, ...(black ? { background: 'linear-gradient(90deg,#fff,#d8c9ff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', display: 'inline-block' } : {}) }}>{name(p, id)}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{priceLabel}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 500 }}>{showPer ? per : ''}</span></div>
-                    {savePct > 0 && <div style={{ marginTop: 3 }}><span style={{ fontSize: 10, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>{lang === 'es' ? `Ahorra ${savePct}%` : `Save ${savePct}%`}</span></div>}
+                    {!ios && <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--tx)' }}>{priceLabel}<span style={{ fontSize: 11, color: 'var(--mut)', fontWeight: 500 }}>{showPer ? per : ''}</span></div>}
+                    {!ios && savePct > 0 && <div style={{ marginTop: 3 }}><span style={{ fontSize: 10, fontWeight: 800, color: '#04120b', background: 'var(--green)', borderRadius: 20, padding: '1px 7px' }}>{lang === 'es' ? `Ahorra ${savePct}%` : `Save ${savePct}%`}</span></div>}
                   </th>
                 );
               })}
@@ -173,7 +178,8 @@ export default function PlansCompareTable({
                 const price = p ? (annual ? p.price_year : p.price_month) : null;
                 // "Empezar gratis" SOLO para el Free real; los de pago dicen "Elegir …".
                 const isFree = id === 'free';
-                const label = isFree ? (lang === 'es' ? 'Empezar gratis' : 'Start free')
+                const label = ios ? (lang === 'es' ? 'Ver planes' : 'See plans')
+                  : isFree ? (lang === 'es' ? 'Empezar gratis' : 'Start free')
                   : (lang === 'es' ? 'Elegir ' : 'Choose ') + name(p, id);
                 const black = isBlackCol(id); const pop = isPopCol(id);
                 const btnStyle: any = black
@@ -185,7 +191,7 @@ export default function PlansCompareTable({
                   <td key={id} style={{ textAlign: 'center', padding: '18px 12px 16px', ...colBg(id) }}>
                     <button className={'btn ' + (black || pop ? '' : isPro(p) ? 'btn-primary' : 'btn-ghost')}
                       style={btnStyle}
-                      onClick={() => onChoose(id, price ?? 0)} disabled={loadingId === id || (!isFree && price == null)}>
+                      onClick={() => { if (ios) { try { window.location.href = '/pricing'; } catch {} return; } onChoose(id, price ?? 0); }} disabled={loadingId === id || (!ios && !isFree && price == null)}>
                       {loadingId === id ? '...' : label}
                     </button>
                   </td>

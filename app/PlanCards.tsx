@@ -1,5 +1,7 @@
 'use client';
+import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { nativePlatform } from '@/lib/native';
 
 // ============================================================
 // Tarjetas de planes. FUENTE ÚNICA compartida por el landing y /pricing.
@@ -30,8 +32,15 @@ export default function PlanCards({
   ctas?: Record<string, { es: string; en: string }>;
   trust?: boolean;
 }) {
+  // Dentro de la app de iOS (regla 3.1.1 de Apple) NO se muestran precios de
+  // suscripción. Ocultamos la cifra y la compra, y el botón manda al tab de Precios
+  // interno (/pricing → IosPlans, sin precios). Cubre TODA landing que use este
+  // componente (inicio, constructor, mentores, copy), venga de donde venga el enlace.
+  const [ios, setIos] = useState(false);
+  useEffect(() => { try { setIos(nativePlatform() === 'ios'); } catch {} }, []);
   const t = {
     yr: lang === 'es' ? 'año' : 'yr', mo: lang === 'es' ? 'mes' : 'mo',
+    seePlans: lang === 'es' ? 'Ver planes' : 'See plans',
     free: lang === 'es' ? 'Empezar gratis' : 'Start free',
     choose: lang === 'es' ? 'Elegir' : 'Choose',
     allOf: lang === 'es' ? 'Todo lo de' : 'Everything in',
@@ -96,9 +105,10 @@ export default function PlanCards({
             {botTag && <span style={{ position: 'absolute', top: 12, right: 12, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'color-mix(in srgb, #22d3ee 18%, transparent)', color: '#22d3ee', fontSize: 10.5, fontWeight: 800, padding: '3px 9px', borderRadius: 99, border: '1px solid color-mix(in srgb, #22d3ee 50%, transparent)', whiteSpace: 'nowrap' }}><OnyxIcon emoji="🤖" size={11} glow={false} /> {lang === 'es' ? 'Para bots' : 'For bots'}</span>}
             <h3 style={{ marginTop: hasBadge ? 6 : 0, ...(isBlack ? { background: 'linear-gradient(90deg,#fff,#d8c9ff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' } : botCyan ? { background: 'linear-gradient(90deg, var(--tx), #22d3ee)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' } : {}) }}>{name}</h3>
             {desc && <p className="muted" style={{ fontSize: 13, marginTop: 4, color: blkMut }}>{desc}</p>}
-            <div style={{ fontSize: 40, fontWeight: 800, margin: '10px 0 4px', color: blkTx }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500, color: blkMut }}>/{annual ? t.yr : t.mo}</span></div>
+            {!ios && <div style={{ fontSize: 40, fontWeight: 800, margin: '10px 0 4px', color: blkTx }}>${price}<span className="muted" style={{ fontSize: 15, fontWeight: 500, color: blkMut }}>/{annual ? t.yr : t.mo}</span></div>}
             {(() => {
               // Ahorro anual: tachamos el precio de 12 meses sueltos y mostramos el equivalente mensual.
+              if (ios) return null;   // iOS: nunca cifras (Apple 3.1.1)
               if (!annual || price <= 0 || !(p.price_month > 0)) return null;
               const full = p.price_month * 12; if (full <= price) return null;
               const pct = Math.round((1 - price / full) * 100);
@@ -125,10 +135,12 @@ export default function PlanCards({
               // automáticamente ("Probar N días gratis"), tenga o no un CTA por beneficio.
               const td = Math.max(0, Math.round(Number(p.capabilities?.trial_days) || 0));
               const trialLabel = (!isFree && td > 0) ? (lang === 'es' ? `Probar ${td} días gratis` : `Start ${td}-day free trial`) : '';
-              const label = isFree ? (freeLabel || t.free)
+              // iOS: sin cifras ni compra. El botón manda al tab de Precios interno.
+              const label = ios ? t.seePlans
+                : isFree ? (freeLabel || t.free)
                 : (trialLabel || (ctas?.[p.id] ? (lang === 'es' ? ctas[p.id].es : ctas[p.id].en) : t.choose + ' ' + name));
               return (
-                <button className={'btn ' + (goldHi || isBlack || botCyan ? '' : hasBadge ? 'btn-primary' : 'btn-ghost')} style={isBlack ? { width: '100%', background: 'linear-gradient(100deg,#ffe08a,#e8b923 45%,#ff9d3d)', color: '#2a1e02', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -4px rgba(232,185,35,.5)' } : botCyan ? { width: '100%', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 55%,#06b6d4)', color: '#042f2e', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -4px rgba(34,211,238,.45)' } : goldHi ? { width: '100%', background: goldGrad, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%' }} onClick={() => onChoose(p.id, price)} disabled={loadingId === p.id}>
+                <button className={'btn ' + (goldHi || isBlack || botCyan ? '' : hasBadge ? 'btn-primary' : 'btn-ghost')} style={isBlack ? { width: '100%', background: 'linear-gradient(100deg,#ffe08a,#e8b923 45%,#ff9d3d)', color: '#2a1e02', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -4px rgba(232,185,35,.5)' } : botCyan ? { width: '100%', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 55%,#06b6d4)', color: '#042f2e', border: 'none', fontWeight: 800, boxShadow: '0 6px 18px -4px rgba(34,211,238,.45)' } : goldHi ? { width: '100%', background: goldGrad, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%' }} onClick={() => { if (ios) { try { window.location.href = '/pricing'; } catch {} return; } onChoose(p.id, price); }} disabled={loadingId === p.id}>
                   {loadingId === p.id ? '...' : label}
                 </button>
               );
