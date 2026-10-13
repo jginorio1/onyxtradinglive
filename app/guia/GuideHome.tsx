@@ -112,25 +112,46 @@ export default function GuideHome() {
   }
   function reset() { setAsked(''); setAnswer(''); setRefs([]); setQ(''); }
 
-  // Convierte la respuesta de Onyx en texto con enlaces clicables: markdown
-  // [texto](url), URLs http(s), rutas internas (/pricing, /bot-lab…) y dominios
-  // sueltos. Los externos abren en pestaña nueva; los internos usan <Link>.
-  const linkSt: any = { color: 'var(--brand)', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 2, overflowWrap: 'anywhere' };
+  // Convierte la respuesta de Onyx en texto con enlaces clicables, mostrados como
+  // BOTONES tipo píldora (igual que en el chat). Reconoce markdown [texto](url),
+  // URLs http(s), rutas internas (/pricing, /bot-lab…) y dominios sueltos.
+  // Botón pastilla, mismo estilo que SupportWidget.
+  const pillSt: any = { display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 60%,#06b6d4)', color: '#042f2e', fontWeight: 700, fontSize: 13, padding: '3px 10px', borderRadius: 8, textDecoration: 'none', margin: '3px 3px 0 0', whiteSpace: 'nowrap' };
+  // Alias de slugs en inglés que la IA suele inventar → ruta real.
+  const ALIAS: Record<string, string> = { '/ambassadors': '/embajadores', '/guide': '/guia', '/academy': '/academia', '/contact': '/contacto' };
+  const canon = (h: string) => { h = (h || '').replace(/^https?:\/\/(www\.)?onyxtradinglive\.com/i, '').replace(/^\/(en|es|pt|zh|ja|vi)(?=\/|$)/i, ''); const b = h.split(/[?#]/)[0].replace(/\/+$/, ''); return (ALIAS[b] || b) + (h.slice(b.length) || ''); };
+  const es = lang === 'es';
+  const LABELS: Record<string, [string, string]> = {
+    '/bot-builder': ['Crea tu bot', 'Build a bot'], '/bot-lab': ['Bot Lab', 'Bot Lab'],
+    '/pricing': ['Ver precios', 'See pricing'], '/copy': ['Copy trading', 'Copy trading'],
+    '/guia': ['Abrir la Guía', 'Open the Guide'], '/embajadores': ['Embajadores', 'Ambassadors'],
+    '/academia': ['Academia', 'Academy'], '/login': ['Crear cuenta', 'Create account'],
+    '/contacto': ['Contacto', 'Contact'], '/dashboard': ['Mi panel', 'My dashboard'],
+    '/como-usar': ['Cómo usar', 'How to use'], '/analiza': ['Analiza tu reporte', 'Analyze report'],
+  };
+  const labelFor = (href: string, fallback?: string) => {
+    const base = canon(href).split(/[?#]/)[0];
+    const hit = LABELS[base]; if (hit) return es ? hit[0] : hit[1];
+    if (fallback) return fallback;
+    try { return new URL(/^https?:\/\//i.test(href) ? href : 'https://' + href).hostname.replace(/^www\./, ''); } catch { return es ? 'Abrir enlace' : 'Open link'; }
+  };
   function linkify(text: string): any[] {
     const out: any[] = [];
+    // Quita paréntesis que solo envuelven una ruta "(/dashboard)" → queda el botón suelto.
+    text = (text || '').replace(/\(\s*(\/[a-z0-9\-\/?=&#.]+)\s*\)/gi, ' $1');
     // [1][2] markdown · [3] URL http(s) · [4] ruta interna · [5] dominio suelto
-    const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)|(https?:\/\/[^\s<>()]+)|(\/(?:pricing|bot-lab|copy|carreras|unete-ventas|publicidad|guia|como-usar|dashboard|login|mentores|embajadores)[^\s<>()]*)|([a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\/[^\s<>()]*)?)/gi;
+    const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)|(https?:\/\/[^\s<>()]+)|(\/(?:bot-builder|pricing|bot-lab|copy|carreras|unete-ventas|publicidad|guia|guide|como-usar|dashboard|login|mentores|academia|academy|contacto|contact|analiza|embajadores|ambassadors|blog)[^\s<>()]*)|([a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\/[^\s<>()]*)?)/gi;
     let last = 0, k = 0, m: RegExpExecArray | null;
     while ((m = re.exec(text))) {
       if (m.index > last) out.push(text.slice(last, m.index));
-      const label = m[1];
+      const mdLabel = m[1];
       const raw = (m[2] || m[3] || m[4] || m[5] || '').replace(/[.,;:]+$/, '');
-      const inner = label || raw;
-      if (raw.startsWith('/')) {
-        out.push(<Link key={'l' + k} href={raw} style={linkSt}>{inner}</Link>);
+      const dest = canon(raw);
+      if (dest.startsWith('/')) {
+        out.push(<Link key={'l' + k} href={dest} style={pillSt}>{labelFor(raw, mdLabel)} <span aria-hidden>→</span></Link>);
       } else {
         const ext = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
-        out.push(<a key={'l' + k} href={ext} target="_blank" rel="noopener noreferrer" style={linkSt}>{inner}</a>);
+        out.push(<a key={'l' + k} href={ext} target="_blank" rel="noopener noreferrer" style={pillSt}>{labelFor(raw, mdLabel)} <span aria-hidden>↗</span></a>);
       }
       last = m.index + m[0].length; k++;
     }
