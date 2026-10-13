@@ -1105,10 +1105,12 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             {/* controles: cuenta (menú) + activo/robot (menú, en Rendimiento) + filtro de tiempo */}
             <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
               <div style={isMobile ? { display: 'flex', gap: 8, alignItems: 'stretch', width: '100%' } : { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                {/* Volver al dashboard: a la izquierda del selector de portafolio. */}
+                {view !== 'hub' && <button className="btn" aria-label={L.back} title={L.back} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 'none', whiteSpace: 'nowrap', background: 'var(--card)', border: '1px solid var(--line)', color: 'var(--tx)', fontWeight: 600, ...(isMobile ? { minHeight: 56, padding: '8px 14px' } : {}) }} onClick={() => { setView('hub'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {} }}>{isMobile ? '←' : L.back}</button>}
                 {/* Selector de cuenta CON el balance dentro (una sola tarjeta). */}
                 <PickerMenu search width={280} ph={L.searchAcc} btnStyle={isMobile ? { flex: 1, width: '100%', minHeight: 56, padding: '8px 12px' } : undefined}
                   trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon emoji="💼" size={15} /></span>
+                    <span style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(124,140,255,.16)', color: 'var(--soft-brand)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><OnyxIcon name="money" size={16} /></span>
                     <span style={{ lineHeight: 1.15, textAlign: 'left' }}>
                       <span style={{ display: 'block', fontSize: 18, fontWeight: 800, letterSpacing: '-.5px', color: 'var(--tx)' }}>${(sel === 'all' ? totalBalance : Number(cur?.balance || 0)).toLocaleString()}</span>
                       <span style={{ fontSize: 11, display: 'block', whiteSpace: 'nowrap', color: 'var(--mut)' }}>{sel === 'all' ? L.portfolio : (cur ? accName(cur) : L.portfolio)} · {sel === 'all' ? accounts.length : 1} {L.accountsWord}</span>
@@ -1312,7 +1314,6 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               />
             </>)}
 
-            {view !== 'hub' && <button className="btn" style={{ position: 'sticky', top: 8, zIndex: 20, alignSelf: isMobile ? 'stretch' : 'flex-start', width: isMobile ? '100%' : undefined, justifyContent: 'center', textAlign: 'center', background: 'var(--card)', border: '1px solid var(--line)', color: 'var(--tx)', fontWeight: 600 }} onClick={() => { setView('hub'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {} }}>{L.back}</button>}
 
             {view === 'rendimiento' && (() => {
               const sWR = a.winRate >= 50 ? GREEN : a.winRate >= 40 ? GOLD : RED;
