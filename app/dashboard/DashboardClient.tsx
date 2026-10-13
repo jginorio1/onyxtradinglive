@@ -113,15 +113,9 @@ function EquityCurve({ seq, lang }: { seq: { d: number; v: number }[]; lang: 'es
   const sy = (v: number) => padT + (mx - v) / (mx - mn) * (H - padT - padB);
   const last = vals[n - 1], pos = last >= 0;
   const col = pos ? '#1d9e75' : '#e24b4a', rgb = pos ? '29,158,117' : '226,75,74';
-  // Trazo suave (spline Catmull-Rom → bezier) para una curva profesional, no quebrada.
-  const pts = seq.map((s, i) => [sx(i), sy(s.v)] as [number, number]);
-  let line = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
-    line += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
-  }
+  // Segmentos RECTOS entre puntos reales (equity curve profesional, sin suavizar).
+  let line = '';
+  seq.forEach((s, i) => { const x = sx(i), y = sy(s.v); line += (i ? ' L ' : 'M ') + x.toFixed(1) + ' ' + y.toFixed(1); });
   const area = line + ` L ${sx(n - 1).toFixed(1)} ${sy(mn).toFixed(1)} L ${sx(0).toFixed(1)} ${sy(mn).toFixed(1)} Z`;
   const ticks = [mx, mx * 0.5 + mn * 0.5, mn];
   const fmtAxis = (v: number) => { const a = Math.abs(v); const s = v < 0 ? '-' : v > 0 ? '+' : ''; return a >= 1000 ? s + '$' + (a / 1000).toFixed(1) + 'K' : s + '$' + Math.round(a); };
@@ -132,8 +126,8 @@ function EquityCurve({ seq, lang }: { seq: { d: number; v: number }[]; lang: 'es
       {ticks.map((t, i) => { const y = sy(t); return (<g key={i}><line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--line)" strokeWidth="1" opacity={i === 2 ? 0 : 0.5} /><text x={padL - 6} y={y + 3} textAnchor="end" fontSize="9.5" fill="var(--mut)">{fmtAxis(t)}</text></g>); })}
       <line x1={padL} y1={y0} x2={W - padR} y2={y0} stroke="var(--line)" strokeWidth="1" strokeDasharray="3 3" />
       <path d={area} fill="url(#eqfill)" />
-      <path d={line} fill="none" stroke={col} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={sx(n - 1)} cy={sy(last)} r="3.6" fill={col} stroke="var(--card)" strokeWidth="2" />
+      <path d={line} fill="none" stroke={col} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <circle cx={sx(n - 1)} cy={sy(last)} r="2.8" fill={col} stroke="var(--card)" strokeWidth="1.5" />
       <text x={padL} y={H - 6} textAnchor="start" fontSize="9.5" fill="var(--mut)">{seq[0].d}</text>
       <text x={W - padR} y={H - 6} textAnchor="end" fontSize="9.5" fill="var(--mut)">{seq[n - 1].d}</text>
     </svg>
@@ -881,17 +875,34 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const perDates: Date[] = calPer === 'sem' ? weekDays
     : calPer === 'dias' ? rangeDays
     : Array.from({ length: daysInMonth }, (_, i) => new Date(Date.UTC(calY, calM, i + 1)));
-  // Curva + totales del periodo (mes/semana/días por día; año por mes).
+  // Curva de equity PROFESIONAL del periodo: se construye operación por operación
+  // (cierres ordenados por fecha), acumulando el P&L realizado desde 0 — segmentos
+  // rectos, sin suavizar y SIN cola plana tras la última operación. Totales y
+  // métricas por día (días verdes, racha) se agregan aparte.
   const perCurve = (() => {
-    const es = lang === 'es'; let acc = 0, started = false, tot = 0, tr = 0; const nets: number[] = [];
+    const nets: number[] = []; // P&L por día (para días verdes / racha)
+    let lo = '', hi = '';
+    if (calPer === 'sem') { lo = isoD(weekDays[0]); hi = isoD(weekDays[6]); }
+    else if (calPer === 'mes') { lo = `${calY}-${pad2(calM + 1)}-01`; hi = `${calY}-${pad2(calM + 1)}-${pad2(daysInMonth)}`; }
+    else if (calPer === 'dias') { lo = calD1 && calD2 ? (calD1 < calD2 ? calD1 : calD2) : ''; hi = calD1 && calD2 ? (calD1 < calD2 ? calD2 : calD1) : ''; }
     const seq: { d: number; v: number }[] = [];
+    let tot = 0, tr = 0;
     if (calPer === 'ano') {
-      for (let m = 0; m < 12; m++) { const b = a.byMonth[`${calY}-${pad2(m + 1)}`]; if (b) { acc += b.net; started = true; tot += b.net; tr += b.count; nets.push(b.net); } if (started) seq.push({ d: m + 1, v: acc }); }
-    } else {
-      perDates.forEach((dt, i) => { const b = a.daily[isoD(dt)]; if (b) { acc += b.net; started = true; tot += b.net; tr += b.count; nets.push(b.net); } if (started) seq.push({ d: dt.getUTCDate(), v: acc }); });
+      // Año: un punto por mes con datos (acumulado), recortado al último mes operado.
+      let acc = 0, startDay = 1;
+      for (let m = 0; m < 12; m++) { const b = a.byMonth[`${calY}-${pad2(m + 1)}`]; if (b) { if (!seq.length) { seq.push({ d: m + 1, v: 0 }); startDay = m + 1; } acc += b.net; tot += b.net; tr += b.count; nets.push(b.net); seq.push({ d: m + 1, v: acc }); } }
+      void startDay;
+    } else if (lo && hi) {
+      // Día por día para métricas.
+      for (const dt of perDates) { const b = a.daily[isoD(dt)]; if (b) nets.push(b.net); }
+      // Curva operación por operación (cierres dentro del rango).
+      const ts = filtered.filter((t) => { const k = t.close_time.slice(0, 10); return k >= lo && k <= hi; }).sort((x, y) => x.close_time.localeCompare(y.close_time));
+      tr = groupByPosition(ts).length;
+      let acc = 0;
+      if (ts.length) { seq.push({ d: Number(ts[0].close_time.slice(8, 10)), v: 0 }); ts.forEach((t) => { acc += (+t.net_profit || 0); tot = acc; seq.push({ d: Number(t.close_time.slice(8, 10)), v: acc }); }); }
     }
     let streak = 0, best = 0; nets.forEach((x) => { if (x > 0) { streak++; best = Math.max(best, streak); } else streak = 0; });
-    return { seq, tot, tr, green: nets.filter((x) => x > 0).length, traded: nets.length, best, es };
+    return { seq, tot, tr, green: nets.filter((x) => x > 0).length, traded: nets.length, best, es: lang === 'es' };
   })();
   const perLabel = calPer === 'sem' ? `${weekDays[0].getUTCDate()} ${MOL[lang][weekDays[0].getUTCMonth()].slice(0, 3)} – ${weekDays[6].getUTCDate()} ${MOL[lang][weekDays[6].getUTCMonth()].slice(0, 3)}`
     : calPer === 'ano' ? String(calY)
