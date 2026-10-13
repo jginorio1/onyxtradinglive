@@ -184,7 +184,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // y el visitante percibe los dos temas de un vistazo. Solo afecta a la ruta /demo
   // (que vive dentro de un iframe en el landing, con su propio <html>).
   const isDemo = ['/demo'].some((p) => { const q = path.replace(/^\/en/, '') || '/'; return q === p || q.startsWith(p + '/'); });
-  const htmlTheme = isDemo ? (theme === 'light' ? 'dark' : 'light') : theme;
+  // DEFAULT = OSCURO SIEMPRE. Si el usuario NO ha elegido tema (cookie vacía) forzamos
+  // 'dark' explícito en <html data-theme="dark"> para que NO se siga el tema del sistema
+  // (antes, en un iPhone/Android en modo claro, la app abría en claro). El tema claro
+  // solo se aplica cuando el usuario lo elige a mano (cookie onyx_theme=light). En el
+  // demo del landing seguimos invirtiéndolo para mostrar los dos temas de un vistazo.
+  const htmlTheme = isDemo ? (theme === 'light' ? 'dark' : 'light') : (theme || 'dark');
 
   return (
     <html lang={lang} data-theme={htmlTheme || undefined} className={isAuthScreen ? 'is-auth' : undefined} suppressHydrationWarning>
