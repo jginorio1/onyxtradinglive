@@ -231,6 +231,11 @@ export default function OnyxCopyHub() {
       <div style={{ marginBottom: 14 }}>
         <h2 style={{ fontSize: 24 }}>{T.title}</h2>
         <p className="muted" style={{ fontSize: 14 }}>{T.sub}</p>
+        {/* Puente hacia "Mi tarjeta": quien solo quiere compartir su track record
+            sin entrar al ranking tiene su camino separado y claro. */}
+        <a href="/dashboard/mi-tarjeta" className="muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, marginTop: 2, textDecoration: 'none' }}>
+          <OnyxIcon emoji="🏅" size={14} /> {es ? '¿Solo quieres compartir tu track record sin entrar al ranking? Hazlo desde Mi tarjeta →' : 'Just want to share your track record without joining the ranking? Do it from My card →'}
+        </a>
       </div>
       {!copyLock.on ? (
         <div className="card" style={{ textAlign: 'center', padding: 32 }}>

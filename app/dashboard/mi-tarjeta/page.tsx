@@ -129,7 +129,12 @@ export default function MiTarjeta() {
         </div>
       )}
 
-      <p className="muted" style={{ fontSize: 11.5, marginTop: 18 }}>
+      {/* Puente hacia Onyx Copy: para quien quiere monetizar su track record. */}
+      <Link href="/dashboard/onyx-copy" className="muted" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, marginTop: 18, textDecoration: 'none' }}>
+        <OnyxIcon emoji="💸" size={14} /> {L('¿Quieres que te copien y cobrar por ello? Ofrécela en Onyx Copy →', 'Want people to copy you and earn from it? List it in Onyx Copy →')}
+      </Link>
+
+      <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>
         {L('Tu tarjeta es pública y verificable por cualquiera con el enlace. No entra al ranking de copia a menos que la ofrezcas en Onyx Copy.',
            'Your card is public and verifiable by anyone with the link. It does not enter the copy ranking unless you list it in Onyx Copy.')}
       </p>
