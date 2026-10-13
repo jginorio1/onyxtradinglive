@@ -1037,7 +1037,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <span style={{ width: 1, height: 22, background: 'var(--line)', flex: 'none' }} className="hero-sep" />
                 <div className="row" style={{ gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
                   {heroChips.map((c, i) => (
-                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--tx)', whiteSpace: 'nowrap', padding: '4px 10px', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--bg2)' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--tx)', whiteSpace: 'nowrap', padding: '4px 10px', minHeight: 30, boxSizing: 'border-box', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--bg2)' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>
                   ))}
                 </div>
               </>
