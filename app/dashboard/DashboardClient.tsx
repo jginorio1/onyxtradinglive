@@ -98,6 +98,48 @@ function money2(n: number) { return (n >= 0 ? '+$' : '-$') + Math.abs(n).toLocal
 function money2k(n: number) { const s = n >= 0 ? '+$' : '-$'; const a = Math.abs(n); if (a >= 1000) return s + (a / 1000).toFixed(a >= 10000 ? 0 : 1) + 'K'; return s + a.toFixed(a >= 100 ? 0 : 2); }
 const GREEN = 'var(--green)', RED = 'var(--red)', BLUE = 'var(--brand)', PURPLE = 'var(--purple)', GOLD = 'var(--gold)', CYAN = 'var(--cyan)';
 
+// Curva de equity acumulada del mes (panel de consistencia, al lado del calendario).
+// SVG responsive, con rejilla, línea de cero, área rellena y punto final etiquetado.
+function EquityCurve({ seq, lang }: { seq: { d: number; v: number }[]; lang: 'es' | 'en' }) {
+  if (seq.length < 2) {
+    return <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mut)', fontSize: 13, textAlign: 'center', padding: 12 }}>{lang === 'es' ? 'Aún no hay suficientes días con operaciones este mes.' : 'Not enough trading days this month yet.'}</div>;
+  }
+  const W = 340, H = 184, padL = 42, padR = 10, padT = 12, padB = 20;
+  const vals = seq.map((s) => s.v);
+  let mn = Math.min(0, ...vals), mx = Math.max(0, ...vals);
+  if (mn === mx) { mn -= 1; mx += 1; }
+  const n = seq.length;
+  const sx = (i: number) => padL + (n === 1 ? 0 : i * (W - padL - padR) / (n - 1));
+  const sy = (v: number) => padT + (mx - v) / (mx - mn) * (H - padT - padB);
+  const last = vals[n - 1], pos = last >= 0;
+  const col = pos ? '#1d9e75' : '#e24b4a', rgb = pos ? '29,158,117' : '226,75,74';
+  // Trazo suave (spline Catmull-Rom → bezier) para una curva profesional, no quebrada.
+  const pts = seq.map((s, i) => [sx(i), sy(s.v)] as [number, number]);
+  let line = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    line += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  const area = line + ` L ${sx(n - 1).toFixed(1)} ${sy(mn).toFixed(1)} L ${sx(0).toFixed(1)} ${sy(mn).toFixed(1)} Z`;
+  const ticks = [mx, mx * 0.5 + mn * 0.5, mn];
+  const fmtAxis = (v: number) => { const a = Math.abs(v); const s = v < 0 ? '-' : v > 0 ? '+' : ''; return a >= 1000 ? s + '$' + (a / 1000).toFixed(1) + 'K' : s + '$' + Math.round(a); };
+  const y0 = sy(0);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" preserveAspectRatio="none" role="img" aria-label={lang === 'es' ? 'Curva de equity acumulada del mes' : 'Cumulative equity curve for the month'} style={{ display: 'block' }}>
+      <defs><linearGradient id="eqfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={`rgba(${rgb},0.28)`} /><stop offset="100%" stopColor={`rgba(${rgb},0)`} /></linearGradient></defs>
+      {ticks.map((t, i) => { const y = sy(t); return (<g key={i}><line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--line)" strokeWidth="1" opacity={i === 2 ? 0 : 0.5} /><text x={padL - 6} y={y + 3} textAnchor="end" fontSize="9.5" fill="var(--mut)">{fmtAxis(t)}</text></g>); })}
+      <line x1={padL} y1={y0} x2={W - padR} y2={y0} stroke="var(--line)" strokeWidth="1" strokeDasharray="3 3" />
+      <path d={area} fill="url(#eqfill)" />
+      <path d={line} fill="none" stroke={col} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={sx(n - 1)} cy={sy(last)} r="3.6" fill={col} stroke="var(--card)" strokeWidth="2" />
+      <text x={padL} y={H - 6} textAnchor="start" fontSize="9.5" fill="var(--mut)">{seq[0].d}</text>
+      <text x={W - padR} y={H - 6} textAnchor="end" fontSize="9.5" fill="var(--mut)">{seq[n - 1].d}</text>
+    </svg>
+  );
+}
+
 // Fallback a inglés para cualquier idioma que no sea es/en. Estas tablas de
 // días/meses solo tienen es/en; con pt/zh/ja/vi, `WDS[lang]` sería undefined y
 // al indexar/mapear (WDS[lang][wd], DAYH[lang].map) reventaba el panel. El Proxy
@@ -1326,9 +1368,34 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   <span style={{ fontSize: 14 }}>{L.monthTotal} <b className={monthTotal >= 0 ? 'pos' : 'neg'}>{money2(monthTotal)}</b> <span className="muted">({monthTrades} {L.ops})</span></span>
                 </div>
                 {vw === 'mes' ? (<>
+                  <style>{`@media(max-width:860px){.cal-split{grid-template-columns:1fr!important}}`}</style>
+                  <div className="cal-split" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
                     {DAYH[lang].map((d, i) => <div key={i} style={{ textAlign: 'center', fontSize: 11, color: 'var(--mut)' }}>{d}</div>)}
                     {cells.map((d, i) => { if (d === null) return <div key={i} />; const b = a.daily[dayKey(d)]; const net = b?.net || 0; const inten = b ? Math.min(1, Math.abs(net) / maxDay) : 0; const glowC = net >= 0 ? '52,226,160' : '255,107,125'; const bg = !b ? 'var(--bg2)' : `rgba(${glowC},${.2 + inten * .6})`; const key = dayKey(d); const isSel = key === selDay; return (<div key={i} onClick={() => b && setSelDay(isSel ? null : key)} style={{ minWidth: 0, overflow: 'hidden', background: bg, border: isSel ? '2px solid ' + BLUE : '1px solid var(--line)', borderRadius: 12, minHeight: 56, padding: 7, cursor: b ? 'pointer' : 'default', transition: 'transform .12s, box-shadow .14s', boxShadow: b && inten > 0.28 ? `0 0 14px -3px rgba(${glowC},${0.55})` : 'none' }}><div style={{ fontSize: 11, color: b ? (net >= 0 ? '#04150d' : '#2a060c') : 'var(--mut)', fontWeight: b ? 600 : 400 }}>{d}</div>{b && <div style={{ fontSize: 11, fontWeight: 800, marginTop: 4, color: net >= 0 ? '#04150d' : '#2a060c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'clip', letterSpacing: '-0.02em', maxWidth: '100%' }}>{money2k(net)}</div>}{b && <div style={{ fontSize: 10, color: net >= 0 ? '#04150d' : '#2a060c', opacity: .8, whiteSpace: 'nowrap', overflow: 'hidden' }}>{b.count}</div>}</div>); })}
+                  </div>
+                  {(() => {
+                    const monthSeq: { d: number; v: number }[] = []; let acc = 0, started = false;
+                    const nets: number[] = [];
+                    for (let d = 1; d <= daysInMonth; d++) { const b = a.daily[dayKey(d)]; if (b) { acc += b.net; started = true; nets.push(b.net); } if (started) monthSeq.push({ d, v: acc }); }
+                    const greenD = nets.filter((x) => x > 0).length, tradedN = nets.length;
+                    let streak = 0, best = 0; nets.forEach((x) => { if (x > 0) { streak++; best = Math.max(best, streak); } else streak = 0; });
+                    const es = lang === 'es';
+                    return (
+                      <div style={{ background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                          <b style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 14 }}><OnyxIcon name="performance" size={16} glow={false} /> {es ? 'Consistencia' : 'Consistency'}</b>
+                          <span className={monthTotal >= 0 ? 'pos' : 'neg'} style={{ fontSize: 13, fontWeight: 700 }}>{money2(monthTotal)}</span>
+                        </div>
+                        <div className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{es ? 'Equity acumulada del mes' : 'Cumulative equity this month'}</div>
+                        <div style={{ flex: 1, minHeight: 176 }}><EquityCurve seq={monthSeq} lang={lang} /></div>
+                        <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                          <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px' }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Mejor racha' : 'Best streak'}</div><div style={{ fontSize: 15, fontWeight: 800, color: GREEN }}>{best} {es ? 'días' : 'days'}</div></div>
+                          <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px' }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Días verdes' : 'Green days'}</div><div style={{ fontSize: 15, fontWeight: 800 }}>{greenD} / {tradedN}</div></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   </div>
                   {selDay && (<div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}><b>{L.dayOps} {selDay}</b><table className="jtbl" style={{ marginTop: 8 }}><tbody>{dayTrades.map((t, i) => (<tr key={i} className="jrow"><td style={{ fontWeight: 600 }}>{t.symbol}</td><td><span className={'jside ' + (t.side === 'buy' ? 'buy' : 'sell')}>{t.side}</span></td><td className="muted" style={{ textAlign: 'right' }}>{(+t.volume).toFixed(2)}</td><td className="muted">{new Date(t.close_time).toUTCString().slice(17, 22)}</td><td style={{ textAlign: 'right' }}><span className={'jchip ' + (+t.net_profit >= 0 ? 'pos' : 'neg')}>{money2(+t.net_profit)}</span></td></tr>))}</tbody></table></div>)}
                 </>) : (
