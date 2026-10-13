@@ -1018,14 +1018,14 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             sin encajonarla. Identidad · chips · balance a la derecha. */}
         <div className="hero-row" style={{ marginBottom: 14, padding: '6px 2px', borderBottom: '1px solid var(--line)', paddingBottom: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Fila 1 · identidad (avatar + saludo + check-in). Envuelve sola si no cabe. */}
-          <div style={{ display: 'flex', gap: 11, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: isMobile ? 9 : 11, alignItems: 'center', flexWrap: isMobile ? 'nowrap' : 'wrap', minWidth: 0 }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt="" style={{ width: 38, height: 38, borderRadius: 11, objectFit: 'cover', objectPosition: '50% 30%', flex: 'none', border: '1px solid var(--line)' }} />
               : <div style={{ width: 38, height: 38, borderRadius: 11, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>}
-            <h1 style={{ margin: 0, fontSize: 19, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={19} /></span>
+            <h1 style={{ margin: 0, fontSize: isMobile ? 17 : 19, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: isMobile ? 'nowrap' : 'wrap', minWidth: 0 }}><span style={isMobile ? { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 } : undefined}>{heroTitle}</span> <span style={{ color: 'var(--brand)', display: 'inline-flex', flex: 'none' }}><OnyxIcon name="hand" size={isMobile ? 17 : 19} /></span>
               {checkin?.pending && (
                 <button onClick={() => checkin.open()} title={lang === 'en' ? 'Review your plan today' : 'Revisa tu plan hoy'}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--amber)', background: 'rgba(245,158,11,.12)', color: 'var(--amber)', borderRadius: 16, padding: '4px 11px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', animation: 'onyxGlow 1.9s ease-in-out infinite' }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flex: 'none', whiteSpace: 'nowrap', border: '1px solid var(--amber)', background: 'rgba(245,158,11,.12)', color: 'var(--amber)', borderRadius: 16, padding: '4px 11px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', animation: 'onyxGlow 1.9s ease-in-out infinite' }}>
                   <OnyxIcon emoji="✅" size={13} /> {lang === 'en' ? 'Check-in' : 'Check-in'}{typeof checkin.total === 'number' && checkin.total > 0 ? ` ${checkin.done}/${checkin.total}` : ''}
                 </button>
               )}
@@ -1189,7 +1189,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               {/* Neto AL LADO del portafolio (en hub). En móvil se apila (fila completa). */}
               {view === 'hub' && (
                 <div style={isMobile
-                  ? { width: '100%', display: 'flex', flexDirection: 'column', gap: 1, borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 2 }
+                  ? { width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 1, borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 2 }
                   : { display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1, paddingLeft: 14, borderLeft: '1px solid var(--line)' }}>
                   <span className="muted" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.5px' }}>{L.kNet} · {range === 'custom' ? L.customRange : L.ranges[range as 'd1']}</span>
                   <span style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.05, color: a.net >= 0 ? 'var(--green)' : 'var(--red)' }}>{money2(a.net)}</span>
@@ -1199,9 +1199,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               <div style={{ display: 'flex', gap: 8, alignItems: isMobile ? 'stretch' : 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row', ...(isMobile ? { width: '100%' } : { marginLeft: 'auto' }) }}>
                 {/* Período: en móvil, UNA sola fila deslizable (no envuelve). */}
                 <div style={isMobile
-                  ? { display: 'flex', gap: 6, overflowX: 'auto', flexWrap: 'nowrap', width: '100%', minWidth: 0, WebkitOverflowScrolling: 'touch', paddingBottom: 2 }
+                  ? { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, width: '100%', minWidth: 0 }
                   : { display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {(['d1', 'd7', 'd30', 'mo', 'yr', 'all'] as const).map((r) => <button key={r} className={'btn ' + (range === r ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', whiteSpace: 'nowrap', flex: 'none' }} onClick={() => setRange(r)}>{L.ranges[r]}</button>)}
+                  {(['d1', 'd7', 'd30', 'mo', 'yr', 'all'] as const).map((r) => <button key={r} className={'btn ' + (range === r ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', whiteSpace: 'nowrap', ...(isMobile ? { width: '100%' } : { flex: 'none' }) }} onClick={() => setRange(r)}>{L.ranges[r]}</button>)}
                   {/* En escritorio el calendario va aquí; en móvil se mueve a "Más". */}
                   {!isMobile && <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', flex: 'none' }} onClick={() => setRange(range === 'custom' ? 'all' : 'custom')} title={L.customRange}><OnyxIcon emoji="📅" size={15} /></button>}
                 </div>
