@@ -54,8 +54,12 @@ export async function POST(req: Request) {
     if (!rl.ok) return tooMany(rl.retryAfter, lang === 'en' ? 'en' : 'es');
 
     // Artículos sugeridos para los botones "Abrir: ...".
-    const found = searchArticles(question, lang).slice(0, 5);
-    const pool = found.length ? found : ARTICLES.slice(0, 5);
+    // En iOS ocultamos los artículos del marketplace Bot Lab (comprar/vender robots,
+    // pagar en USDT y el constructor que lleva a su landing): Apple no permite ofrecer
+    // esas compras dentro de la app, y esos artículos llevan al landing externo.
+    const okArt = (a: any) => !iosApp || (a.cat !== 'botlab');
+    const found = searchArticles(question, lang).filter(okArt).slice(0, 5);
+    const pool = found.length ? found : ARTICLES.filter(okArt).slice(0, 5);
     const refs = pool.map((a) => ({ slug: a.slug, title: a.title[lang] || a.title.en }));
 
     // Sin proveedor de IA → modo buscador (nunca rompe).
