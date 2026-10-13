@@ -21,6 +21,7 @@ export default function MiTarjeta() {
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const [copied, setCopied] = useState('');
+  const [refCode, setRefCode] = useState('');   // mi código "Invita y gana"
 
   async function load() {
     try {
@@ -31,6 +32,16 @@ export default function MiTarjeta() {
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+  // Mi código de referido: así cada enlace que comparta capta referido (y me paga).
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch('/api/referral', { cache: 'no-store' });
+        const j = await r.json();
+        if (r.ok && j?.enabled && j?.code) setRefCode(String(j.code));
+      } catch {}
+    })();
+  }, []);
 
   const provFor = (accId: string) => providers.find((p) => p.account_id === accId);
 
@@ -46,7 +57,9 @@ export default function MiTarjeta() {
   }
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const urlFor = (id: string) => `${origin}/copy/t/${id}`;
+  // El enlace compartido lleva mi ?ref para que, si el visitante se registra, se
+  // atribuya a mí (cierra el bucle: comparto tarjeta → amigo entra → gano crédito).
+  const urlFor = (id: string) => `${origin}/copy/t/${id}${refCode ? `?ref=${encodeURIComponent(refCode)}` : ''}`;
 
   async function share(p: Prov) {
     const url = urlFor(p.id);

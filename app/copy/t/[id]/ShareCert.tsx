@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Botones de compartir la tarjeta verificada: Web Share nativo (móvil/app),
@@ -10,7 +10,23 @@ export default function ShareCert({
 }: { url: string; name: string; tier: string; score: number; lang: 'es' | 'en' }) {
   const es = lang === 'es';
   const [copied, setCopied] = useState(false);
+  const [shareUrl, setShareUrl] = useState(url);   // url + mi ?ref si estoy logueado
   const L = (a: string, b: string) => (es ? a : b);
+
+  // Si quien comparte tiene sesión, el enlace lleva su ?ref: compartir cualquier
+  // tarjeta difunde Onyx y, si el visitante se registra, le acredita el referido.
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch('/api/referral', { cache: 'no-store' });
+        const j = await r.json();
+        if (r.ok && j?.enabled && j?.code) {
+          const sep = url.includes('?') ? '&' : '?';
+          setShareUrl(`${url}${sep}ref=${encodeURIComponent(String(j.code))}`);
+        }
+      } catch {}
+    })();
+  }, [url]);
 
   // Texto de presumir (el gancho). Sin cifras de la cuenta, solo score + tier.
   const shareText = es
@@ -20,16 +36,16 @@ export default function ShareCert({
   const canNativeShare = typeof navigator !== 'undefined' && typeof (navigator as any).share === 'function';
 
   async function nativeShare() {
-    try { await (navigator as any).share({ title: `${name} · Onyx`, text: shareText, url }); } catch {}
+    try { await (navigator as any).share({ title: `${name} · Onyx`, text: shareText, url: shareUrl }); } catch {}
   }
   async function copy() {
     try {
-      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(url);
-      else { const t = document.createElement('textarea'); t.value = url; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(shareUrl);
+      else { const t = document.createElement('textarea'); t.value = shareUrl; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
       setCopied(true); setTimeout(() => setCopied(false), 1800);
     } catch {}
   }
-  const xHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(url)}`;
+  const xHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
 
   const btn: React.CSSProperties = { fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px' };
 

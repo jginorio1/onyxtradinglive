@@ -57,14 +57,30 @@ export default async function TraderCertificate({ params }: { params: { id: stri
 
   return (
     <div className="wrap section" style={{ maxWidth: 720 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+      {/* Estilos de impresión: solo el certificado, en una página, sin botones ni
+          barras. Así "Descargar certificado" genera un documento limpio. */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page { size: A4 portrait; margin: 10mm; }
+          html, body { background: #fff !important; }
+          .no-print { display: none !important; }
+          .wrap.section { padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
+          .cert-area { page-break-inside: avoid; break-inside: avoid; }
+          .cert-area .card { box-shadow: none !important; }
+        }
+      ` }} />
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <Link href="/copy" className="muted" style={{ fontSize: 13, textDecoration: 'none' }}>← Onyx Copy</Link>
         <PrintButton label={L('Descargar certificado', 'Download certificate')} />
       </div>
+      <div className="cert-area">
 
       {/* Certificado */}
       <div className="card" style={{ border: `2px solid ${st.br}`, background: st.bg, textAlign: 'center', padding: '30px 24px', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--mut)', marginBottom: 16 }}>◆ Onyx Trading Live · {L('Trader certificado', 'Certified trader')}</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--mut)', marginBottom: 16 }}>
+          <img src="/onyx-symbol.png" alt="Onyx Trading Live" width={18} height={18} style={{ width: 18, height: 18, objectFit: 'contain', display: 'block' }} />
+          <span>Onyx Trading Live · {L('Trader certificado', 'Certified trader')}</span>
+        </div>
         <div style={{ width: 76, height: 76, borderRadius: '50%', background: st.bg, border: `2px solid ${st.br}`, color: st.tx, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 24, margin: '0 auto 14px' }}>{p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : initials}</div>
         <h1 style={{ fontSize: 28, margin: 0 }}>{p.display_name}</h1>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 10, padding: '6px 16px', borderRadius: 999, border: `1px solid ${st.br}`, color: st.tx, fontWeight: 700, fontSize: 16 }}>{tierLabel(p.tier, es ? 'es' : 'en')}{p.verified && <span style={{ color: 'var(--green)', fontSize: 13 }}>✓ {L('verificado', 'verified')}</span>}</div>
@@ -110,9 +126,11 @@ export default async function TraderCertificate({ params }: { params: { id: stri
           {pill(L('Consistencia', 'Consistency'), pl.consistency || 0)}
         </div>
       </div>
+      </div>{/* /cert-area */}
 
       {/* Compartir: Web Share nativo + copiar link + X. El botón de copiar a este
           trader solo aparece si está realmente a la venta (listed). */}
+      <div className="no-print">
       <ShareCert
         url={`${SITE}/copy/t/${p.id}`}
         name={p.display_name}
@@ -123,6 +141,24 @@ export default async function TraderCertificate({ params }: { params: { id: stri
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
         {p.listed && <Link className="btn btn-primary" href="/dashboard/onyx-copy">{L('Copiar a este trader', 'Copy this trader')}</Link>}
         <Link className="btn btn-ghost" href="/copy">{L('Ver el ranking', 'See the ranking')}</Link>
+      </div>
+      </div>
+
+      {/* Conversión: el visitante que llega por un enlace compartido ve un camino
+          claro para unirse gratis (su atribución de referido ya la guardó el
+          middleware desde ?ref). Cierra el bucle: comparten → entran → crecen. */}
+      <div className="card no-print" style={{ marginTop: 18, textAlign: 'center', padding: '22px 20px', border: `1px solid ${st.br}`, background: st.bg }}>
+        <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>
+          {L('¿Quieres tu propia tarjeta verificada?', 'Want your own verified card?')}
+        </div>
+        <p className="muted" style={{ fontSize: 13.5, margin: '0 auto 14px', maxWidth: 480 }}>
+          {L('Conecta tu cuenta, deja que Onyx AI califique tu track record y compártelo. Empieza gratis, sin tarjeta.',
+             'Connect your account, let Onyx AI grade your track record and share it. Start free, no card required.')}
+        </p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link className="btn btn-primary" href="/login?mode=signup">{L('Empieza gratis', 'Start free')}</Link>
+          <Link className="btn btn-ghost" href="/">{L('Conocer Onyx', 'Explore Onyx')}</Link>
+        </div>
       </div>
       <p className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 16, maxWidth: 620, marginInline: 'auto' }}>
         {L('Certificado verificable en', 'Verifiable certificate at')} {SITE}/copy/t/{p.id}. {L('Los resultados pasados no garantizan resultados futuros.', 'Past results do not guarantee future results.')}
