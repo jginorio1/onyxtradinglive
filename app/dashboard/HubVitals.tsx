@@ -55,8 +55,8 @@ function GlowRing({ v }: { v: Vital }) {
   );
 }
 
-export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNet = false, extra }: {
-  net: string; netPos: boolean; netLabel: string; vitals: Vital[]; tiles: Tile[]; hideNet?: boolean; extra?: React.ReactNode;
+export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNet = false, extra, cta = 'Ver →' }: {
+  net: string; netPos: boolean; netLabel: string; vitals: Vital[]; tiles: Tile[]; hideNet?: boolean; extra?: React.ReactNode; cta?: string;
 }) {
   const netColor = netPos ? 'var(--green)' : 'var(--red)';
   return (
@@ -68,11 +68,14 @@ export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNe
         .hv-vitals{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:14px}
         @media(max-width:560px){.hv-vitals{grid-template-columns:repeat(2,1fr)}}
         .navtile{position:relative;cursor:pointer;text-align:left;background:var(--card);border:1px solid var(--line);
-          border-top:2px solid var(--tc);border-radius:13px;padding:13px 13px 14px;transition:box-shadow .18s,transform .12s;overflow:hidden}
+          border-top:2px solid var(--tc);border-radius:13px;padding:13px 13px 14px;transition:box-shadow .18s,transform .12s,background .12s;overflow:hidden}
         .navtile:hover{box-shadow:0 0 0 1px var(--tc),0 0 22px -4px color-mix(in srgb,var(--tc) 65%,transparent);transform:translateY(-2px)}
-        .navtile:active{transform:translateY(0)}
+        .navtile:hover .navtile-cta{background:color-mix(in srgb,var(--tc) 26%,transparent)}
+        .navtile:active{transform:translateY(1px) scale(.985);background:color-mix(in srgb,var(--tc) 8%,var(--card))}
         .navtile-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:18px;color:var(--tc);
           background:color-mix(in srgb,var(--tc) 20%,transparent);filter:drop-shadow(0 0 5px color-mix(in srgb,var(--tc) 55%,transparent))}
+        .navtile-cta{margin-top:11px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--tc);
+          background:color-mix(in srgb,var(--tc) 15%,transparent);border-radius:999px;padding:5px 11px;transition:background .15s}
       `}</style>
 
       {/* Titular del neto: ahora se pinta en la fila de "Onyx te dice" (DashboardClient),
@@ -93,12 +96,13 @@ export default function HubVitals({ net, netPos, netLabel, vitals, tiles, hideNe
       <div className="hv-tiles">
         {tiles.map((t) => (
           <button key={t.key} onClick={t.onClick} onMouseEnter={t.preload} onTouchStart={t.preload} className="navtile" style={{ ['--tc' as any]: t.color }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 34 }}>
               <span className="navtile-ic"><Ic icon={t.icon} size={19} /></span>
-              {t.badge ? t.badge : <span style={{ color: 'var(--mut)', fontSize: 15 }}>→</span>}
+              {t.badge ? t.badge : null}
             </div>
             <div style={{ fontSize: 13.5, color: 'var(--tx)', marginTop: 9, fontWeight: 600 }}>{t.label}</div>
             {t.metric ? <div style={{ fontSize: 16, fontWeight: 800, color: t.mc || 'var(--tx)', marginTop: 1 }}>{t.metric}</div> : null}
+            <div className="navtile-cta">{cta}</div>
           </button>
         ))}
         {extra ? <div className="hv-extra">{extra}</div> : null}

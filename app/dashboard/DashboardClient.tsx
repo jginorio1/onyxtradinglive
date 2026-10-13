@@ -1258,11 +1258,18 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 const semPF = a.profitFactor >= 1.3 ? GREEN : a.profitFactor >= 1 ? GOLD : RED;
                 const semPO = a.payoff >= 1.5 ? GREEN : a.payoff >= 1 ? GOLD : RED;
                 const es = lang === 'es';
+                // Con pocas operaciones los ratios aún no son representativos: pintamos los
+                // anillos en gris neutro (no rojo) para no alarmar en una cuenta nueva.
+                const MIN_OPS = 10;
+                const few = a.n < MIN_OPS;
+                const left = Math.max(0, MIN_OPS - a.n);
+                const NEU = 'var(--mut)';
+                const fewNote = es ? `faltan ${left} ${left === 1 ? 'operación' : 'operaciones'}` : `${left} ${left === 1 ? 'trade' : 'trades'} to go`;
                 const vitals: Vital[] = [
-                  { pct: hs.score / 100, color: hs.color, value: String(hs.score), label: L.health, scale: es ? 'sobre 100' : 'out of 100' },
-                  { pct: a.winRate / 100, color: semWR, value: `${Math.round(a.winRate)}%`, label: L.kWR, scale: es ? 'meta ≥ 45%' : 'target ≥ 45%' },
-                  { pct: Math.min(a.profitFactor, 3) / 3, color: semPF, value: a.profitFactor.toFixed(2), label: L.kPF, scale: es ? 'meta ≥ 1.3' : 'target ≥ 1.3' },
-                  { pct: Math.min(a.payoff, 2) / 2, color: semPO, value: a.payoff.toFixed(2), label: L.rPayoff, scale: es ? 'meta ≥ 1.5' : 'target ≥ 1.5' },
+                  { pct: hs.score / 100, color: few ? NEU : hs.color, value: String(hs.score), label: L.health, scale: few ? fewNote : (es ? 'sobre 100' : 'out of 100') },
+                  { pct: a.winRate / 100, color: few ? NEU : semWR, value: `${Math.round(a.winRate)}%`, label: L.kWR, scale: few ? fewNote : (es ? 'meta ≥ 45%' : 'target ≥ 45%') },
+                  { pct: Math.min(a.profitFactor, 3) / 3, color: few ? NEU : semPF, value: a.profitFactor.toFixed(2), label: L.kPF, scale: few ? fewNote : (es ? 'meta ≥ 1.3' : 'target ≥ 1.3') },
+                  { pct: Math.min(a.payoff, 2) / 2, color: few ? NEU : semPO, value: a.payoff.toFixed(2), label: L.rPayoff, scale: few ? fewNote : (es ? 'meta ≥ 1.5' : 'target ≥ 1.5') },
                 ];
                 const tiles: Tile[] = SECTIONS.map((s) => ({
                   key: s.key, icon: s.icon, label: s.label, metric: s.metric, mc: s.mc, color: s.color,
@@ -1276,7 +1283,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 const edgeCol = !a.rValid ? 'var(--mut)' : (a.rMean || 0) >= 0 ? GREEN : RED;
                 tiles.push({ key: 'edge', icon: '📐', label: lang === 'en' ? 'Edge' : 'Edge', metric: edgeMetric, mc: edgeCol, color: 'var(--brand)', onClick: () => setView('edge') });
                 void es;
-                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />;
+                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet cta={lang === 'en' ? 'See details →' : 'Ver detalle →'} />;
               })()}
 
 
