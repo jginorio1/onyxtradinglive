@@ -1248,21 +1248,24 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               </div>
             )}
             {demo && (() => {
-              const closable = !forceDemo;
-              const closeTxt = lang === 'es' ? 'Cerrar demo' : 'Close demo';
-              // TODO el banner es el botón de salida: tocarlo en cualquier parte apaga
-              // el demo. Dentro lleva su propio texto "✕ Cerrar demo" resaltado para que
-              // quede clarísimo cómo salir (sin depender de un botón aparte).
+              // SIEMPRE ofrecemos una salida del demo:
+              //  · En tu panel (demo encendido a mano) → apaga el demo y muestra tus datos.
+              //  · En el demo PÚBLICO (/demo, forceDemo) → sale a tu panel real (/dashboard;
+              //    si eres invitado, el panel te lleva a iniciar sesión).
+              const exitTxt = forceDemo ? (lang === 'es' ? 'Salir del demo' : 'Exit demo') : (lang === 'es' ? 'Cerrar demo' : 'Close demo');
+              const onExit = () => { if (forceDemo) { try { window.location.href = '/dashboard'; } catch {} } else { setDemo(false); } };
+              // TODO el banner es el botón de salida: tocarlo en cualquier parte sale del
+              // demo. Dentro lleva su propia píldora "✕ Salir/Cerrar demo" resaltada.
               return (
                 <div
-                  role={closable ? 'button' : undefined}
-                  tabIndex={closable ? 0 : undefined}
-                  onClick={closable ? () => setDemo(false) : undefined}
-                  onKeyDown={closable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDemo(false); } } : undefined}
-                  aria-label={closable ? closeTxt : undefined}
-                  style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '10px 14px', fontSize: 13, alignSelf: isMobile ? 'stretch' : 'flex-start', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: isMobile ? 'center' : 'flex-start', gap: 8, cursor: closable ? 'pointer' : 'default' }}>
+                  role="button"
+                  tabIndex={0}
+                  onClick={onExit}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExit(); } }}
+                  aria-label={exitTxt}
+                  style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '10px 14px', fontSize: 13, alignSelf: isMobile ? 'stretch' : 'flex-start', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: isMobile ? 'center' : 'flex-start', gap: 8, cursor: 'pointer' }}>
                   <span style={{ fontWeight: 600 }}>{L.demoOn}</span>
-                  {closable && <span style={{ background: 'var(--amber)', color: '#2a1e02', fontWeight: 800, fontSize: 12.5, padding: '5px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>✕ {closeTxt}</span>}
+                  <span style={{ background: 'var(--amber)', color: '#2a1e02', fontWeight: 800, fontSize: 12.5, padding: '5px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>✕ {exitTxt}</span>
                 </div>
               );
             })()}
