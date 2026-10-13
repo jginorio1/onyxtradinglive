@@ -462,7 +462,7 @@ export default function AccountClient({ email }: { email: string }) {
                   </div>
                 )}
                 <div className="card" style={card}>
-                  <div className="row between" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+                  <div className="row between" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 14, background: 'linear-gradient(135deg, rgba(232,185,35,.12), rgba(232,185,35,.02))', border: '1px solid rgba(232,185,35,.3)', borderRadius: 14, padding: '16px 18px' }}>
                     <div>
                       <div className="row" style={{ gap: 8 }}>
                         <span style={{ fontSize: 20, fontWeight: 800 }}>{planName(myPlan, lang) || 'Free'}</span>
@@ -515,9 +515,9 @@ export default function AccountClient({ email }: { email: string }) {
                     if (list.length < 2) return null;
                     const gold = 'var(--gold, #e8b923)', goldDark = '#3a2a06';
                     return (
-                      <div id="change-plan" style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14, scrollMarginTop: 80 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{L.changePlanT}</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+                      <div id="change-plan" style={{ borderTop: '1px solid var(--line)', paddingTop: 16, marginTop: 14, scrollMarginTop: 80 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 12 }}>{L.changePlanT}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(176px,1fr))', gap: 12 }}>
                           {list.map((pl: any) => {
                             const isCurrent = pl.id === myPlanId;
                             const up = Number(pl.price_month) > curPrice;
@@ -525,23 +525,35 @@ export default function AccountClient({ email }: { email: string }) {
                             const badgeRaw = lang === 'es' ? pl.badge : (pl.badge_en || pl.badge);
                             const isPopular = /popular/i.test(badgeRaw || '');
                             const badgeText = /high[\s-]?ticket|alto\s*valor/i.test(badgeRaw || '') ? (lang === 'es' ? 'El definitivo' : 'The ultimate') : badgeRaw;
+                            const feats = ((lang === 'es' ? pl.features : (pl.features_en || pl.features)) || []).slice(0, 2);
                             const cardStyle: any = isCurrent
-                              ? { border: '2px solid var(--brand)', boxShadow: '0 0 20px rgba(124,140,255,.18)' }
-                              : isPopular ? { border: `2px solid ${gold}`, boxShadow: '0 0 20px rgba(232,185,35,.20)' }
-                              : badgeRaw ? { border: '2px solid var(--brand)', boxShadow: '0 0 20px rgba(124,140,255,.18)' }
-                              : { border: '0.5px solid var(--line)' };
+                              ? { border: `2px solid ${gold}`, background: `linear-gradient(180deg, rgba(232,185,35,.08), transparent)` }
+                              : isPopular ? { border: `2px solid ${gold}`, boxShadow: '0 0 20px rgba(232,185,35,.18)' }
+                              : badgeRaw ? { border: '2px solid var(--brand)', boxShadow: '0 0 20px rgba(124,140,255,.16)' }
+                              : { border: '1px solid var(--line)' };
                             return (
-                              <div key={pl.id} style={{ position: 'relative', borderRadius: 10, padding: 12, ...cardStyle }}>
+                              <div key={pl.id} style={{ position: 'relative', borderRadius: 14, padding: '16px 15px 15px', display: 'flex', flexDirection: 'column', gap: 10, ...cardStyle }}>
                                 {isCurrent
-                                  ? <span style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 9px', borderRadius: 99, whiteSpace: 'nowrap' }}>✓ {lang === 'es' ? 'Tu plan' : 'Your plan'}</span>
+                                  ? <span style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: gold, color: goldDark, fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 99, whiteSpace: 'nowrap' }}>✓ {lang === 'es' ? 'Tu plan' : 'Your plan'}</span>
                                   : badgeRaw && (isPopular
-                                      ? <span style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: gold, color: goldDark, fontSize: 10, fontWeight: 800, padding: '2px 9px', borderRadius: 99, whiteSpace: 'nowrap' }}>★ {badgeText}</span>
-                                      : <span style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '2px 9px', borderRadius: 99, whiteSpace: 'nowrap' }}>◆ {badgeText}</span>)}
-                                <div style={{ fontSize: 13, fontWeight: 600, marginTop: (isCurrent || badgeRaw) ? 4 : 0 }}>{nm}</div>
-                                <div style={{ fontSize: 18, fontWeight: 800 }}>${pl.price_month}<span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{L.chMo}</span></div>
+                                      ? <span style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: gold, color: goldDark, fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 99, whiteSpace: 'nowrap' }}>★ {badgeText}</span>
+                                      : <span style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: 'var(--grad)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 99, whiteSpace: 'nowrap' }}>◆ {badgeText}</span>)}
+                                <div>
+                                  <div style={{ fontSize: 14, fontWeight: 700, marginTop: (isCurrent || badgeRaw) ? 4 : 0 }}>{nm}</div>
+                                  <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1, marginTop: 2 }}>${pl.price_month}<span className="muted" style={{ fontSize: 12, fontWeight: 500 }}>{L.chMo}</span></div>
+                                </div>
+                                {feats.length > 0 && (
+                                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                    {feats.map((f: string, fi: number) => (
+                                      <li key={fi} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 11.5, color: 'var(--mut)' }}>
+                                        <span style={{ color: 'var(--green)', fontWeight: 800, flexShrink: 0 }}>✓</span>{f}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
                                 {isCurrent
-                                  ? <div className="btn btn-ghost" style={{ width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0', textAlign: 'center', opacity: .7, cursor: 'default' }}>{L.chCurrent}</div>
-                                  : <button className={'btn ' + (isPopular ? '' : up ? 'btn-primary' : 'btn-ghost')} style={isPopular ? { width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0', background: gold, color: goldDark, border: 'none', fontWeight: 800 } : { width: '100%', marginTop: 8, fontSize: 12.5, padding: '6px 0' }}
+                                  ? <div style={{ marginTop: 'auto', width: '100%', fontSize: 12.5, fontWeight: 700, padding: '9px 0', textAlign: 'center', border: `1px dashed ${gold}`, color: gold, borderRadius: 9, cursor: 'default' }}>{L.chCurrent}</div>
+                                  : <button className="btn" style={{ marginTop: 'auto', width: '100%', fontSize: 12.5, padding: '9px 0', fontWeight: 700, borderRadius: 9, ...(up ? { background: gold, color: goldDark, border: 'none' } : { background: 'var(--card2,var(--bg2))', color: 'var(--mut)', border: '1px solid var(--line)' }) }}
                                       onClick={() => {
                                         if (pl.id === 'free') { setCancelTick((x) => x + 1); setTimeout(() => document.getElementById('cancel-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60); return; }
                                         setChErr(''); setChTarget({ id: pl.id, name: nm, up });
@@ -552,7 +564,7 @@ export default function AccountClient({ email }: { email: string }) {
                             );
                           })}
                         </div>
-                        <p className="muted" style={{ fontSize: 11.5, marginTop: 10 }}><OnyxIcon emoji="ℹ" size={16} /> {L.chNote}</p>
+                        <p className="muted" style={{ fontSize: 11.5, marginTop: 12 }}><OnyxIcon emoji="ℹ" size={16} /> {L.chNote}</p>
                       </div>
                     );
                   })()}
