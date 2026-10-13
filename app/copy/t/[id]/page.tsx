@@ -5,6 +5,7 @@ import { serverLang, localeAlternates, SITE } from '@/lib/locale';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { tierLabel, type Tier } from '@/lib/copyScore';
 import PrintButton from './PrintButton';
+import ShareCert from './ShareCert';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,9 +18,11 @@ const TIER_STYLE: Record<Tier, { br: string; tx: string; bg: string }> = {
 
 async function getProvider(id: string) {
   try {
+    // Pública si está en el ranking de copia (listed) O si el trader generó su
+    // tarjeta verificada para compartir (showcase). En ambos casos status activo.
     const { data } = await supabaseAdmin.from('strategy_providers')
-      .select('id,display_name,avatar_url,tier,score,pillars,stats,followers,fee_month,perf_fee_pct,verified,scored_at')
-      .eq('id', id).eq('listed', true).eq('status', 'active').maybeSingle();
+      .select('id,display_name,avatar_url,tier,score,pillars,stats,followers,fee_month,perf_fee_pct,verified,scored_at,listed,showcase')
+      .eq('id', id).eq('status', 'active').or('listed.eq.true,showcase.eq.true').maybeSingle();
     return data as any;
   } catch { return null; }
 }
@@ -108,8 +111,17 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 18, flexWrap: 'wrap' }}>
-        <Link className="btn btn-primary" href="/dashboard/onyx-copy">{L('Copiar a este trader', 'Copy this trader')}</Link>
+      {/* Compartir: Web Share nativo + copiar link + X. El botón de copiar a este
+          trader solo aparece si está realmente a la venta (listed). */}
+      <ShareCert
+        url={`${SITE}/copy/t/${p.id}`}
+        name={p.display_name}
+        tier={tierLabel(p.tier, es ? 'es' : 'en')}
+        score={p.score}
+        lang={es ? 'es' : 'en'}
+      />
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+        {p.listed && <Link className="btn btn-primary" href="/dashboard/onyx-copy">{L('Copiar a este trader', 'Copy this trader')}</Link>}
         <Link className="btn btn-ghost" href="/copy">{L('Ver el ranking', 'See the ranking')}</Link>
       </div>
       <p className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 16, maxWidth: 620, marginInline: 'auto' }}>

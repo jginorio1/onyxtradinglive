@@ -13,7 +13,7 @@ export async function GET() {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return NextResponse.json({ error: 'no autorizado', code: 'no_auth' }, { status: 401 });
     const [{ data: providers }, { data: accounts }] = await Promise.all([
-      supabaseAdmin.from('strategy_providers').select('id,account_id,display_name,tier,score,pillars,stats,followers,fee_month,perf_fee_pct,flags,verified,listed,auto_delisted,status,scored_at').eq('user_id', user.id),
+      supabaseAdmin.from('strategy_providers').select('id,account_id,display_name,tier,score,pillars,stats,followers,fee_month,perf_fee_pct,flags,verified,listed,showcase,auto_delisted,status,scored_at').eq('user_id', user.id),
       supabaseAdmin.from('trading_accounts').select('id,nickname,broker,platform,last_sync_at').eq('user_id', user.id),
     ]);
     // Una cuenta está "conectada" si su EA reportó hace poco (últimos 15 min).
@@ -69,7 +69,13 @@ export async function POST(req: Request) {
     const { data: prof } = await supabaseAdmin.from('profiles').select('full_name').eq('id', user.id).maybeSingle();
     const displayName = String(b.display_name || (existing as any)?.display_name || (prof as any)?.full_name || (acc as any).nickname || 'Onyx Trader').slice(0, 40);
     const feeMonth = b.fee_month === undefined ? (existing as any)?.fee_month ?? null : (b.fee_month === '' || b.fee_month == null ? null : Math.max(0, Math.min(999, Number(b.fee_month) || 0)));
-    const listed = b.listed === undefined ? ((existing as any)?.listed ?? true) : !!b.listed;
+    // `showcase` = tarjeta verificada PÚBLICA para compartir, sin entrar al ranking
+    // de copia. Cuando se genera solo la tarjeta (showcase=true sin pedir listar),
+    // `listed` por defecto queda en false para no meter la cuenta al marketplace.
+    const showcase = b.showcase === undefined ? ((existing as any)?.showcase ?? false) : !!b.showcase;
+    const listed = b.listed === undefined
+      ? ((existing as any)?.listed ?? (showcase ? false : true))
+      : !!b.listed;
     const cfg: any = await copyConfig().catch(() => ({}));
     let perfFee = b.perf_fee_pct === undefined ? ((existing as any)?.perf_fee_pct ?? 0) : Math.max(0, Math.min(30, Number(b.perf_fee_pct) || 0));
     if (!cfg?.perfEnabled) perfFee = 0;   // comisión por rendimiento desactivada globalmente
@@ -77,10 +83,10 @@ export async function POST(req: Request) {
     const row: any = {
       user_id: user.id, account_id: accountId, display_name: displayName,
       score: res.score, tier: res.tier, pillars: res.pillars, stats: res.stats, flags: res.flags,
-      fee_month: feeMonth, perf_fee_pct: perfFee, listed, status: (existing as any)?.status || 'active',
+      fee_month: feeMonth, perf_fee_pct: perfFee, listed, showcase, status: (existing as any)?.status || 'active',
       scored_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     };
-    const { data: saved, error } = await supabaseAdmin.from('strategy_providers').upsert(row, { onConflict: 'account_id' }).select('id,account_id,display_name,tier,score,pillars,stats,followers,fee_month,verified,listed,status,scored_at').maybeSingle();
+    const { data: saved, error } = await supabaseAdmin.from('strategy_providers').upsert(row, { onConflict: 'account_id' }).select('id,account_id,display_name,tier,score,pillars,stats,followers,fee_month,verified,listed,showcase,status,scored_at').maybeSingle();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, provider: saved, reasons: res.reasons });
   } catch (e: any) {
@@ -99,6 +105,7 @@ export async function PATCH(req: Request) {
     if (!id) return NextResponse.json({ error: 'falta id', code: 'missing_data' }, { status: 400 });
     const patch: any = { updated_at: new Date().toISOString() };
     if (b.listed !== undefined) patch.listed = !!b.listed;
+    if (b.showcase !== undefined) patch.showcase = !!b.showcase;
     if (b.status !== undefined && ['active', 'paused', 'removed'].includes(b.status)) patch.status = b.status;
     if (b.fee_month !== undefined) patch.fee_month = (b.fee_month === '' || b.fee_month == null) ? null : Math.max(0, Math.min(999, Number(b.fee_month) || 0));
     if (b.display_name !== undefined) patch.display_name = String(b.display_name).slice(0, 40);
