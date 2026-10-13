@@ -923,6 +923,11 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
     const isSel = key === selDay;
     return (<div key={idx} onClick={() => b && setSelDay(isSel ? null : key)} style={{ minWidth: 0, overflow: 'hidden', background: bg, border: isSel ? '2px solid ' + BLUE : '1px solid var(--line)', borderRadius: 12, minHeight: 56, padding: 7, cursor: b ? 'pointer' : 'default', transition: 'transform .12s, box-shadow .14s', boxShadow: b && inten > 0.28 ? `0 0 14px -3px rgba(${glowC},${0.55})` : 'none' }}><div style={{ fontSize: 11, color: b ? (net >= 0 ? '#04150d' : '#2a060c') : 'var(--mut)', fontWeight: b ? 600 : 400 }}>{dt.getUTCDate()}</div>{b && <div style={{ fontSize: 11, fontWeight: 800, marginTop: 4, color: net >= 0 ? '#04150d' : '#2a060c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'clip', letterSpacing: '-0.02em', maxWidth: '100%' }}>{money2k(net)}</div>}{b && <div style={{ fontSize: 10, color: net >= 0 ? '#04150d' : '#2a060c', opacity: .8 }}>{b.count}</div>}</div>);
   };
+  // KPIs: lo del día va en la tarjeta del calendario; los de cuenta en la de la curva.
+  const todayKey = isoD(new Date());
+  const dailyPnl = a.daily[todayKey]?.net || 0;
+  const curBalance = sel === 'all' ? totalBalance : Number(cur?.balance || 0);
+  const startBalance = (sel !== 'all' && cur?.fund_start) ? Number(cur.fund_start) : (curBalance - a.net);
   const cur = accounts.find((x) => x.id === sel);
   const curName = sel === 'all' ? L.portfolio : (cur ? accName(cur) : '');
 
@@ -1440,6 +1445,11 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <div className="cal2" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 14, alignItems: 'stretch' }}>
                   {/* IZQUIERDA · calendario */}
                   <Card title={L.calTitle} icon="🗓️">
+                    {/* KPIs de fechas: lo del día y el total del periodo */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+                      <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px' }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'PNL del día' : 'Daily PNL'}</div><div className={dailyPnl >= 0 ? 'pos' : 'neg'} style={{ fontSize: 16, fontWeight: 800 }}>{money2(dailyPnl)}</div></div>
+                      <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px' }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Total del periodo' : 'Period total'}</div><div className={perCurve.tot >= 0 ? 'pos' : 'neg'} style={{ fontSize: 16, fontWeight: 800 }}>{money2(perCurve.tot)} <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>· {perCurve.tr} {L.ops}</span></div></div>
+                    </div>
                     {calPer === 'ano' ? (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(104px,1fr))', gap: 10 }}>
                         {MOL[lang].map((m, i) => { const key = `${calY}-${String(i + 1).padStart(2, '0')}`; const b = a.byMonth[key]; const net = b?.net || 0; const ac = b ? (net >= 0 ? GREEN : RED) : 'var(--line)'; return (<div key={i} className="statcard" style={{ ['--ac' as any]: ac, padding: 12, minWidth: 0 }}><div className="sc-lbl" style={{ marginTop: 0 }}>{m}</div><div className="sc-val" style={{ fontSize: 15, color: b ? (net >= 0 ? GREEN : RED) : 'var(--mut)' }}>{b ? money2(net) : '—'}</div>{b && <div className="sc-sub">{b.count} {L.ops} · {Math.round(100 * b.wins / b.count)}%</div>}</div>); })}
@@ -1462,6 +1472,12 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
 
                   {/* DERECHA · consistencia (curva) */}
                   <Card title={es ? 'Consistencia' : 'Consistency'} icon="📈">
+                    {/* KPIs de cuenta */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 10 }}>
+                      <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px', minWidth: 0 }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Balance' : 'Balance'}</div><div style={{ fontSize: 15, fontWeight: 800 }}>${curBalance.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div></div>
+                      <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px', minWidth: 0 }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'PNL total' : 'Total PNL'}</div><div className={a.net >= 0 ? 'pos' : 'neg'} style={{ fontSize: 15, fontWeight: 800 }}>{money2(a.net)}</div></div>
+                      <div style={{ background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px', minWidth: 0 }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Balance inicial' : 'Starting balance'}</div><div style={{ fontSize: 15, fontWeight: 800 }}>${startBalance.toLocaleString('en-US', { maximumFractionDigits: 0 })}</div></div>
+                    </div>
                     <div className="muted" style={{ fontSize: 11.5, marginTop: -4, marginBottom: 10 }}>{es ? 'Curva de equity del periodo' : 'Equity curve for the period'}</div>
                     <div style={{ minHeight: 190 }}><EquityCurve seq={perCurve.seq} lang={lang} /></div>
                     <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
