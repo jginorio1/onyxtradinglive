@@ -96,6 +96,11 @@ export default function GuideHome() {
     })();
   }, []);
 
+  // iOS (Apple 3.1.1): nunca llevar a los LANDINGS públicos /bot-builder ni /bot-lab
+  // (sacan de la app). Los enlaces del AI se reescriben a los tabs internos reales.
+  const [isIOS, setIsIOS] = useState(false);
+  useEffect(() => { try { setIsIOS(nativePlatform() === 'ios'); } catch {} }, []);
+
   const found = useMemo(() => (q.trim().length >= 2 && !asked ? searchL(q, lang) : null), [q, lang, asked, arts]);
   const next = (NEXT[lang] || NEXT.en)[state]; // idiomas sin tabla (pt/zh/ja/vi) → inglés, nunca undefined
   const stage = STAGE[state] ?? 0;
@@ -120,7 +125,14 @@ export default function GuideHome() {
   const pillSt: any = { display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle', background: 'linear-gradient(100deg,#22d3ee,#2dd4bf 60%,#06b6d4)', color: '#042f2e', fontWeight: 700, fontSize: 13, padding: '3px 10px', borderRadius: 8, textDecoration: 'none', margin: '3px 3px 0 0', whiteSpace: 'nowrap' };
   // Alias de slugs en inglés que la IA suele inventar → ruta real.
   const ALIAS: Record<string, string> = { '/ambassadors': '/embajadores', '/guide': '/guia', '/academy': '/academia', '/contact': '/contacto' };
-  const canon = (h: string) => { h = (h || '').replace(/^https?:\/\/(www\.)?onyxtradinglive\.com/i, '').replace(/^\/(en|es|pt|zh|ja|vi)(?=\/|$)/i, ''); const b = h.split(/[?#]/)[0].replace(/\/+$/, ''); return (ALIAS[b] || b) + (h.slice(b.length) || ''); };
+  const canon = (h: string) => {
+    h = (h || '').replace(/^https?:\/\/(www\.)?onyxtradinglive\.com/i, '').replace(/^\/(en|es|pt|zh|ja|vi)(?=\/|$)/i, '');
+    const b = h.split(/[?#]/)[0].replace(/\/+$/, '');
+    let base = ALIAS[b] || b;
+    // En iOS reescribimos los landings públicos a los tabs internos (nunca sacar de la app).
+    if (isIOS) { if (base === '/bot-builder') base = '/dashboard/constructor'; else if (base === '/bot-lab') base = '/dashboard/bot-lab'; }
+    return base + (h.slice(b.length) || '');
+  };
   const es = lang === 'es';
   const LABELS: Record<string, [string, string]> = {
     '/bot-builder': ['Crea tu bot', 'Build a bot'], '/bot-lab': ['Bot Lab', 'Bot Lab'],
@@ -130,6 +142,8 @@ export default function GuideHome() {
     '/contacto': ['Contacto', 'Contact'], '/dashboard': ['Mi panel', 'My dashboard'],
     '/como-usar': ['Cómo usar', 'How to use'], '/analiza': ['Analiza tu reporte', 'Analyze report'],
     '/demo': ['Ver el demo', 'See the demo'],
+    // Tabs internos (destino en iOS tras reescribir los landings).
+    '/dashboard/constructor': ['Crear robot', 'Build a robot'], '/dashboard/bot-lab': ['Bot Lab', 'Bot Lab'],
   };
   const labelFor = (href: string, fallback?: string) => {
     const base = canon(href).split(/[?#]/)[0];
