@@ -10,6 +10,16 @@ import GooglePlayBadge from '@/app/components/GooglePlayBadge';
 import AppStoreBadge from '@/app/components/AppStoreBadge';
 import { isNativeApp } from '@/lib/native';
 
+// Dentro de la app nativa, los landings públicos (/bot-builder, /bot-lab) sacan al
+// usuario de la app; los reescribimos a su tab interno real. En web quedan igual.
+function ctaHref(href: string, native: boolean): string {
+  if (!native) return href;
+  const [base, rest = ''] = (href || '').split(/(?=[?#])/);
+  if (base === '/bot-builder') return '/dashboard/constructor' + rest;
+  if (base === '/bot-lab') return '/dashboard/bot-lab' + rest;
+  return href;
+}
+
 const T: any = {
   es: {
     guide: 'Guía', back: '← Volver a la guía',
@@ -89,7 +99,7 @@ export default function ArticleView({ slug }: { slug: string }) {
             ? (!isNative && <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}><GooglePlayBadge size="sm" /><AppStoreBadge size="sm" /></div>)   /* app en las dos tiendas: badges oficiales clicables */
             : authed === false
               ? <Link className="btn btn-primary" href="/login?mode=signup">{t.signup}</Link>
-              : <Link className="btn btn-primary" href={a.cta.href}>{a.cta.label[lang]}</Link>}
+              : <Link className="btn btn-primary" href={ctaHref(a.cta.href, isNative)}>{a.cta.label[lang]}</Link>}
         </div>
       )}
 

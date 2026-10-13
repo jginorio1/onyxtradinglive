@@ -120,7 +120,10 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // y así el campo de escribir queda PEGADO al teclado, sin hueco. Es más fiable que
   // medir el visualViewport dentro del webview.
   useEffect(() => {
-    if (!open || device !== 'mobile' || !isNativeApp()) return;
+    // Solo iOS usa el evento de teclado de Capacitor: su WebView NO encoge el
+    // visualViewport con resize 'none'. En Android el visualViewport SÍ se encoge,
+    // así que ahí usamos la otra vía (más fiable) y no esta.
+    if (!open || device !== 'mobile' || nativePlatform() !== 'ios') return;
     const apply = (h: number) => {
       const H = (typeof window !== 'undefined' ? window.innerHeight : 0);
       setVv(h > 0 ? { h: Math.max(240, H - h), top: 0 } : { h: H, top: 0 });
@@ -131,7 +134,10 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     return () => window.removeEventListener('onyxkb', on as any);
   }, [open, device]);
   useEffect(() => {
-    if (!open || device !== 'mobile' || isNativeApp()) { if (!isNativeApp()) setVv(null); return; }
+    // Web y app de Android: seguimos el visualViewport (en Android se encoge con el
+    // teclado). Solo iOS queda fuera (usa el evento de Capacitor de arriba).
+    const ios = nativePlatform() === 'ios';
+    if (!open || device !== 'mobile' || ios) { if (!ios) setVv(null); return; }
     const vp: any = (typeof window !== 'undefined') ? (window as any).visualViewport : null;
     if (!vp) return;
     const on = () => setVv({ h: Math.round(vp.height), top: Math.round(vp.offsetTop) });
@@ -249,10 +255,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       const j = await r.json();
       setChat([...next, { role: 'assistant', content: j.answer || '…' }]);
       setRefs(j.articles || []);
-      // En iOS no se ofrece Bot Lab ni su landing de constructor (compra de bienes
-      // digitales fuera de Apple): filtramos acciones a /bot-lab y /bot-builder.
-      const acts = Array.isArray(j.actions) ? j.actions : [];
-      setActions(isIOS ? acts.filter((a: any) => !/\/(bot-lab|bot-builder)\b/.test(String(a?.url || ''))) : acts);
+      // En iOS, canonHref reescribe /bot-builder y /bot-lab a sus tabs internos
+      // (nunca al landing), así que las acciones pueden mostrarse tal cual.
+      setActions(Array.isArray(j.actions) ? j.actions : []);
       setPlans(Array.isArray(j.plans) ? j.plans : []);
       if (!loggedIn && j.escalate) openEmail();
     } catch { setChat([...next, { role: 'assistant', content: '…' }]); }
@@ -370,9 +375,16 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     h = h.replace(/^\/(en|es|pt|zh|ja|vi)(?=\/|$)/i, ''); // quita idioma
     if (!h || h === '') h = '/';
     const m = h.match(/^([^?#]*)([?#].*)?$/);
-    const base = (m?.[1] || '/').replace(/\/+$/, '') || '/';
+    let base = (m?.[1] || '/').replace(/\/+$/, '') || '/';
     const rest = m?.[2] || '';
-    return (ROUTE_ALIAS[base] || base) + rest;
+    base = ROUTE_ALIAS[base] || base;
+    // En iOS NUNCA llevamos a los landings públicos de /bot-builder ni /bot-lab
+    // (son marketing y sacan de la app): los reescribimos al tab interno real.
+    if (isIOS) {
+      if (base === '/bot-builder') base = '/dashboard/constructor';
+      else if (base === '/bot-lab') base = '/dashboard/bot-lab';
+    }
+    return base + rest;
   };
   // Detecta si un texto está en español (para que las etiquetas de botón sigan
   // el idioma de LA RESPUESTA, no el del sitio: la IA contesta en el idioma del usuario).

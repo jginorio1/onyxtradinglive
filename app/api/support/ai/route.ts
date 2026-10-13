@@ -54,10 +54,12 @@ export async function POST(req: Request) {
     if (!rl.ok) return tooMany(rl.retryAfter, lang === 'en' ? 'en' : 'es');
 
     // Artículos sugeridos para los botones "Abrir: ...".
-    // En iOS ocultamos los artículos del marketplace Bot Lab (comprar/vender robots,
-    // pagar en USDT y el constructor que lleva a su landing): Apple no permite ofrecer
-    // esas compras dentro de la app, y esos artículos llevan al landing externo.
-    const okArt = (a: any) => !iosApp || (a.cat !== 'botlab');
+    // En iOS ocultamos los artículos de compra/venta del marketplace (Bot Lab) y de
+    // pago en USDT: Apple no permite ofrecer esas compras dentro de la app. El artículo
+    // de "crear robot" sí se permite (es una función del plan; su enlace se reescribe
+    // al tab interno del constructor, nunca al landing).
+    const IOS_BLOCK = new Set(['comprar-robot', 'vender-robot', 'pagar-usdt']);
+    const okArt = (a: any) => !iosApp || !IOS_BLOCK.has(a.slug);
     const found = searchArticles(question, lang).filter(okArt).slice(0, 5);
     const pool = found.length ? found : ARTICLES.filter(okArt).slice(0, 5);
     const refs = pool.map((a) => ({ slug: a.slug, title: a.title[lang] || a.title.en }));
