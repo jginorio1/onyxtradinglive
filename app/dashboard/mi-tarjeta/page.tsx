@@ -146,9 +146,8 @@ export default function MiTarjeta() {
                     </button>
                   ) : (
                     <>
-                      {myId
-                        ? <a className="btn btn-primary" href={`/u/${myId}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="👁" size={14} /> {L('Ver mi tarjeta', 'View my card')}</a>
-                        : <button className="btn btn-primary" disabled style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, opacity: .6 }}><OnyxIcon emoji="👁" size={14} /> {L('Cargando…', 'Loading…')}</button>}
+                      {/* Navega en la misma ventana: target=_blank rompe en el WebView nativo (ErrorPage). */}
+                      <button className="btn btn-primary" disabled={!myId} onClick={() => { if (myId) { try { window.location.assign(`/u/${myId}`); } catch { window.location.href = `/u/${myId}`; } } }} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, opacity: myId ? 1 : .6 }}><OnyxIcon emoji="👁" size={14} /> {myId ? L('Ver mi tarjeta', 'View my card') : L('Cargando…', 'Loading…')}</button>
                       <button className="btn btn-ghost" onClick={() => share(p!)} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📤" size={14} /> {L('Compartir', 'Share')}</button>
                       <button className="btn btn-ghost" onClick={() => copyLink(p!)} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji={copied === p!.id ? '✅' : '🔗'} size={14} /> {copied === p!.id ? L('¡Copiado!', 'Copied!') : L('Copiar link', 'Copy link')}</button>
                       <button className="btn btn-ghost" disabled={busy === a.id} onClick={() => generate(a.id)} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🔄" size={14} /> {L('Actualizar', 'Refresh')}</button>
