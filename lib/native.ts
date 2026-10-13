@@ -13,8 +13,13 @@ type CapWin = Window & { Capacitor?: { isNativePlatform?: () => boolean; getPlat
 // (server.url). En Android y en el navegador esta marca NO existe, así que no cambia
 // nada allí. Es la forma fiable de saber "estoy dentro de la app de iOS".
 const IOS_UA_MARK = 'OnyxiOSApp';
+const ANDROID_UA_MARK = 'OnyxAndroidApp';
 function uaHasIOSMark(): boolean {
   try { return typeof navigator !== 'undefined' && new RegExp(IOS_UA_MARK).test(navigator.userAgent || ''); }
+  catch { return false; }
+}
+function uaHasAndroidMark(): boolean {
+  try { return typeof navigator !== 'undefined' && new RegExp(ANDROID_UA_MARK).test(navigator.userAgent || ''); }
   catch { return false; }
 }
 
@@ -57,5 +62,14 @@ export function nativePlatform(): string {
     const p = cap && cap.getPlatform && cap.getPlatform();
     if (p && p !== 'web') return p;
   } catch {}
-  return uaHasIOSMark() ? 'ios' : 'web';   // respaldo por user-agent
+  if (uaHasIOSMark()) return 'ios';        // respaldo por user-agent (app iOS)
+  if (uaHasAndroidMark()) return 'android';// respaldo por user-agent (app Android)
+  return 'web';
+}
+
+// Fuente de registro: 'web' | 'ios' | 'android'. Se guarda al crear la cuenta
+// para saber desde dónde se registró cada usuario (web, App Store o Play Store).
+export function signupSource(): 'web' | 'ios' | 'android' {
+  const p = nativePlatform();
+  return p === 'ios' ? 'ios' : p === 'android' ? 'android' : 'web';
 }

@@ -20,6 +20,10 @@ const config: CapacitorConfig = {
   // Apple), sin depender de que el bridge JS de Capacitor esté disponible en la
   // página remota. Android NO lleva marca, así que allí no cambia nada.
   ios: { appendUserAgent: 'OnyxiOSApp' },
+  // Marca equivalente para Android: permite saber (desde la web remota) que el
+  // registro viene de la app de Play Store. Requiere un build/publicación nuevos
+  // de Android para que empiece a aplicarse; hasta entonces Android se ve como web.
+  android: { appendUserAgent: 'OnyxAndroidApp' },
   server: {
     url: 'https://www.onyxtradinglive.com',
     androidScheme: 'https',

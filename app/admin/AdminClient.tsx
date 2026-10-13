@@ -72,7 +72,7 @@ import { useLang } from '@/lib/lang';
 import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
-type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean };
+type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean; signup_source?: string | null };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
 type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'nomina' | 'carreras' | 'formacion' | 'embajadores' | 'ventas' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'mtbrokers' | 'tlservers' | 'dxservers' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'comousar' | 'copytraders' | 'botlab' | 'factory' | 'pagos' | 'antifraude' | 'trackrecord' | 'monitor' | 'ads' | 'ajustes';
 
@@ -612,6 +612,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   const [uTo, setUTo] = useState('');       // Usuarios: registrados hasta
   const [uPage, setUPage] = useState(1);    // Usuarios: página actual
   const [uSeg, setUSeg] = useState('');      // Usuarios: filtro por plan/add-on ('' = todos)
+  const [regGran, setRegGran] = useState<'day' | 'week' | 'month' | 'year'>('week'); // granularidad del gráfico de registros
+  const [srcSeg, setSrcSeg] = useState('');  // Usuarios: filtro por fuente de registro ('' = todas)
   const U_PER = 25;                          // usuarios por página
   const [busy, setBusy] = useState('');
   const [uRange, setURange] = useState<Range>(() => defaultRange('month'));
@@ -736,13 +738,65 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   // Búsqueda por email o nombre + rango de fecha de registro (created_at) + segmento.
   const uFromMs = uFrom ? new Date(uFrom + 'T00:00:00').getTime() : 0;
   const uToMs = uTo ? new Date(uTo + 'T23:59:59').getTime() : Infinity;
+  // Fuente de registro normalizada: 'web' | 'ios' | 'android' | 'unknown'.
+  const srcOf = (u: User): 'web' | 'ios' | 'android' | 'unknown' => {
+    const s = (u.signup_source || '').toLowerCase();
+    return s === 'ios' ? 'ios' : s === 'android' ? 'android' : s === 'web' ? 'web' : 'unknown';
+  };
   const filtered = users.filter((u) => {
     const hit = (u.email + ' ' + (u.full_name || '')).toLowerCase().includes(q.toLowerCase());
     if (!hit) return false;
     if (uFrom || uTo) { const t = u.created_at ? new Date(u.created_at).getTime() : 0; if (t < uFromMs || t > uToMs) return false; }
     if (!segMatch(u, uSeg)) return false;
+    if (srcSeg && srcOf(u) !== srcSeg) return false;
     return true;
   });
+  // Desglose de fuente (sobre lo filtrado, para que respete rango/plan/búsqueda).
+  const srcCounts = { web: 0, ios: 0, android: 0, unknown: 0 } as Record<string, number>;
+  filtered.forEach((u) => { srcCounts[srcOf(u)]++; });
+  const srcTotal = filtered.length || 1;
+  // Serie de registros por periodo (día/semana/mes/año), últimos N cubos, apilada por fuente.
+  const regSeries = (() => {
+    const N = regGran === 'day' ? 14 : regGran === 'week' ? 12 : regGran === 'month' ? 12 : 5;
+    const now = new Date();
+    const keyOf = (d: Date) => {
+      if (regGran === 'day') return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (regGran === 'week') { const t = new Date(d); const day = (t.getDay() + 6) % 7; t.setDate(t.getDate() - day); return `w${t.getFullYear()}-${t.getMonth()}-${t.getDate()}`; }
+      if (regGran === 'month') return `m${d.getFullYear()}-${d.getMonth()}`;
+      return `y${d.getFullYear()}`;
+    };
+    const labelOf = (d: Date) => {
+      const MOS = lang === 'en' ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] : ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      if (regGran === 'day') return `${d.getDate()} ${MOS[d.getMonth()]}`;
+      if (regGran === 'week') return `${d.getDate()} ${MOS[d.getMonth()]}`;
+      if (regGran === 'month') return `${MOS[d.getMonth()]}`;
+      return `${d.getFullYear()}`;
+    };
+    const buckets: { key: string; label: string; web: number; ios: number; android: number; unknown: number; total: number }[] = [];
+    for (let i = N - 1; i >= 0; i--) {
+      const d = new Date(now);
+      if (regGran === 'day') d.setDate(now.getDate() - i);
+      else if (regGran === 'week') d.setDate(now.getDate() - i * 7);
+      else if (regGran === 'month') d.setMonth(now.getMonth() - i);
+      else d.setFullYear(now.getFullYear() - i);
+      buckets.push({ key: keyOf(d), label: labelOf(d), web: 0, ios: 0, android: 0, unknown: 0, total: 0 });
+    }
+    const idx: Record<string, number> = {}; buckets.forEach((b, i) => (idx[b.key] = i));
+    users.forEach((u) => {
+      if (!u.created_at) return;
+      const k = keyOf(new Date(u.created_at));
+      const i = idx[k]; if (i === undefined) return;
+      const s = srcOf(u); (buckets[i] as any)[s]++; buckets[i].total++;
+    });
+    return buckets;
+  })();
+  const regMax = Math.max(1, ...regSeries.map((b) => b.total));
+  const SRC_META: Record<string, { label: string; color: string; icon: string }> = {
+    web: { label: lang === 'en' ? 'Web' : 'Web', color: '#7c8cff', icon: '🌐' },
+    ios: { label: 'App Store', color: '#aab3c6', icon: '' },
+    android: { label: 'Play Store', color: '#34c878', icon: '▶' },
+    unknown: { label: lang === 'en' ? 'Unknown' : 'Desconocido', color: 'var(--mut)', icon: '•' },
+  };
   // Métricas de usuarios (con los datos disponibles, sin inventar):
   //  Activos = confirmados y no bloqueados · Nuevos = registrados en los últimos 30 días
   //  Se fueron = bloqueados o sin confirmar (abandonados) · Conectados = con ≥1 cuenta
@@ -958,6 +1012,61 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                   </div>
                 ))}
               </div>
+              {/* Registros por periodo (día/semana/mes/año) con desglose por fuente. */}
+              <div className="card" style={{ marginBottom: 12 }}>
+                <div className="row between" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}><OnyxIcon emoji="📈" size={16} /> {lang === 'en' ? 'Sign-ups over time' : 'Registros por periodo'}</div>
+                  <div className="row" style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 3, gap: 2 }}>
+                    {([['day', lang === 'en' ? 'Day' : 'Día'], ['week', lang === 'en' ? 'Week' : 'Semana'], ['month', lang === 'en' ? 'Month' : 'Mes'], ['year', lang === 'en' ? 'Year' : 'Año']] as const).map(([k, lbl]) => (
+                      <button key={k} type="button" onClick={() => setRegGran(k)} className={'btn ' + (regGran === k ? 'btn-primary' : 'btn-ghost')} style={{ padding: '5px 11px', fontSize: 12.5 }}>{lbl}</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 140, overflowX: 'auto', paddingBottom: 2 }}>
+                  {regSeries.map((b, i) => {
+                    const h = Math.round((b.total / regMax) * 112);
+                    return (
+                      <div key={i} style={{ flex: '1 0 auto', minWidth: 30, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }} title={`${b.total}`}>
+                        <div style={{ fontSize: 10.5, color: 'var(--mut)' }}>{b.total || ''}</div>
+                        <div style={{ width: '70%', height: Math.max(h, b.total ? 3 : 0), display: 'flex', flexDirection: 'column-reverse', borderRadius: '5px 5px 0 0', overflow: 'hidden', background: b.total ? 'transparent' : 'var(--bg2)' }}>
+                          {(['web', 'ios', 'android', 'unknown'] as const).map((s) => {
+                            const seg = (b as any)[s] as number; if (!seg) return null;
+                            return <div key={s} style={{ height: Math.round(seg / b.total * Math.max(h, 3)), background: SRC_META[s].color }} />;
+                          })}
+                        </div>
+                        <div style={{ fontSize: 9.5, color: 'var(--mut)', whiteSpace: 'nowrap' }}>{b.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="row" style={{ gap: 14, marginTop: 10, fontSize: 11.5, color: 'var(--mut)', flexWrap: 'wrap' }}>
+                  {(['web', 'ios', 'android'] as const).map((s) => (
+                    <span key={s}><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 3, background: SRC_META[s].color, marginRight: 5, verticalAlign: 'middle' }} />{SRC_META[s].label}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* ¿De dónde se registraron? Tarjetas por fuente (clic = filtra la lista). */}
+              <div style={{ marginBottom: 12 }}>
+                <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{lang === 'en' ? 'Where they signed up (click to filter)' : '¿De dónde se registraron? (clic para filtrar)'}</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {(['web', 'ios', 'android', 'unknown'] as const).map((s) => {
+                    const on = srcSeg === s; const n = srcCounts[s];
+                    return (
+                      <button key={s} type="button" onClick={() => { setSrcSeg(on ? '' : s); setUPage(1); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderRadius: 10, cursor: 'pointer',
+                          border: on ? '2px solid var(--brand)' : '1px solid var(--line)', background: on ? 'var(--bg2)' : 'transparent' }}>
+                        <span style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, background: 'var(--bg2)', color: SRC_META[s].color }}>{SRC_META[s].icon}</span>
+                        <span style={{ textAlign: 'left' }}>
+                          <span style={{ display: 'block', fontSize: 18, fontWeight: 800 }}>{n}</span>
+                          <span className="muted" style={{ fontSize: 11 }}>{SRC_META[s].label} · {Math.round(n / srcTotal * 100)}%</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Pastillas de conteo por plan y add-ons. Clic = filtra la lista de abajo. */}
               <div style={{ marginBottom: 12 }}>
                 <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>
@@ -1010,7 +1119,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     <span className="muted" style={{ fontSize: 12 }}>{lang === 'en' ? 'Registered' : 'Registro'}</span>
                     <input type="date" value={uFrom} onChange={(e) => { setUFrom(e.target.value); setUPage(1); }} style={{ width: 150, margin: 0 }} title={lang === 'en' ? 'From' : 'Desde'} />
                     <input type="date" value={uTo} onChange={(e) => { setUTo(e.target.value); setUPage(1); }} style={{ width: 150, margin: 0 }} title={lang === 'en' ? 'To' : 'Hasta'} />
-                    {(uFrom || uTo || q || uSeg) && <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => { setQ(''); setUFrom(''); setUTo(''); setUSeg(''); setUPage(1); }}>{lang === 'en' ? 'Clear' : 'Limpiar'}</button>}
+                    {(uFrom || uTo || q || uSeg || srcSeg) && <button className="btn btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => { setQ(''); setUFrom(''); setUTo(''); setUSeg(''); setSrcSeg(''); setUPage(1); }}>{lang === 'en' ? 'Clear' : 'Limpiar'}</button>}
                   </div>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
@@ -1029,6 +1138,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                           <td><div className="row" style={{ gap: 9 }}><span className="avatar-init" style={{ width: 28, height: 28, fontSize: 11 }}>{initials(u.full_name || u.email)}</span><span style={{ minWidth: 0 }}>
                   <span style={{ display: 'block' }}>{u.full_name || u.email}{u.is_admin && <span className="pill brand" style={{ marginLeft: 6 }}>{u.email === meEmail ? (lang === 'en' ? 'Owner' : 'Dueño') : t.u_admin}</span>}</span>
                   {u.full_name && <span className="muted" style={{ fontSize: 12, display: 'block' }}>{u.email}</span>}
+                  {(() => { const s = srcOf(u); const m = SRC_META[s]; return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 3, fontSize: 10.5, padding: '2px 7px', borderRadius: 999, border: '1px solid var(--line)', color: m.color }}>{m.icon} {m.label}</span>; })()}
                 </span></div></td>
                           <td><div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><select value={u.plan} onChange={(e) => { if (e.target.value !== u.plan) askPlanChange(u, e.target.value); }} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select>{planTag(u) === 'paid' ? <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)', fontSize: 11 }}>{lang === 'en' ? 'Paid' : 'Pago'}</span> : planTag(u) === 'comp' ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)', fontSize: 11 }}><OnyxIcon emoji="🎁" size={15} /> {lang === 'en' ? 'Comp' : 'Cortesía'}</span> : null}</div></td>
                           <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : u.email_confirmed === false ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)' }}><OnyxIcon emoji="✉" size={15} /> {lang === 'en' ? 'Unconfirmed' : 'Sin confirmar'}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>

@@ -9,7 +9,7 @@ import TwoFactor from '@/app/TwoFactor';
 import LangToggle from '@/app/LangToggle';
 import Turnstile, { TURNSTILE_KEY, type TurnstileHandle } from '@/app/Turnstile';
 import { setPending } from '@/lib/pendingCheckout';
-import { isNativeApp } from '@/lib/native';
+import { isNativeApp, signupSource } from '@/lib/native';
 import LoginParticles from './LoginParticles';
 
 type Lang = 'es' | 'en';
@@ -262,7 +262,7 @@ function LoginInner() {
         const { data, error } = await sb.auth.signUp({
           email: email.trim(), password: pass, options: {
             emailRedirectTo,
-            data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim(), lang, pending_plan: planParam || null, pending_plan_annual: annualParam, pending_promo: promoParam || null },
+            data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim(), lang, pending_plan: planParam || null, pending_plan_annual: annualParam, pending_promo: promoParam || null, signup_source: signupSource() },
             captchaToken: cap,
           },
         });
