@@ -1123,13 +1123,13 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   onPick={(k) => setSel(k)} />
                 {/* ESCRITORIO: Activo/Robot sueltos, como antes. */}
                 {view === 'rendimiento' && !isMobile && (<>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--mut)', marginLeft: 4 }}><OnyxIcon emoji="🔎" size={13} /> {L.filterBy}:</span>
-                  <PickerMenu search width={230} ph={L.searchAsset} btnStyle={{ borderColor: 'var(--brand)' }} btnClass={nudge ? 'onyx-nudge' : ''}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--mut)', marginLeft: 4 }}><OnyxIcon emoji="🔎" size={16} /> {L.filterBy}:</span>
+                  <PickerMenu search width={230} ph={L.searchAsset} btnStyle={{ borderColor: 'var(--brand)', minHeight: 56 }} btnClass={nudge ? 'onyx-nudge' : ''}
                     trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="💱" size={14} /> <span style={{ color: 'var(--mut)', fontSize: 12 }}>{L.segAsset}:</span> {segSym || L.segAll} <span style={pillCnt}>{perfBk.symbols.length}</span></span>}
                     items={[{ key: '', text: L.segAll, active: !segSym }, ...perfBk.symbols.map((s) => ({ key: s.key, text: s.key, net: s.net, dot: s.net >= 0 ? GREEN : RED, active: segSym === s.key }))]}
                     onPick={(k) => setSegSym(k)} />
                   {perfBk.robots.length > 0 ? (
-                    <PickerMenu search width={290} accent={!!segBot} ph={L.searchRobot} empty={L.noBots} btnStyle={{ borderColor: 'var(--brand)' }} btnClass={nudge ? 'onyx-nudge' : ''}
+                    <PickerMenu search width={290} accent={!!segBot} ph={L.searchRobot} empty={L.noBots} btnStyle={{ borderColor: 'var(--brand)', minHeight: 56 }} btnClass={nudge ? 'onyx-nudge' : ''}
                       trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="🤖" size={14} /> <span style={{ color: segBot ? undefined : 'var(--mut)', fontSize: 12 }}>{L.segRobot}:</span> {segBot ? (segBot === '__manual' ? L.manual : nameOf(segBot, '#' + segBot)) : L.segAll} <span style={pillCnt}>{perfBk.robots.length}</span></span>}
                       items={[
                         { key: '', text: L.segAll, active: !segBot },
@@ -1138,7 +1138,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                       ]}
                       onPick={(k) => setSegBot(k)} />
                   ) : (
-                    <span className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: .5, cursor: 'default', borderColor: 'var(--line)' }} title={L.noRobotsHint}><OnyxIcon emoji="🤖" size={14} /> <span style={{ fontSize: 12, color: 'var(--mut)' }}>{L.segRobot}:</span> {L.noRobots}</span>
+                    <span className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: .5, cursor: 'default', borderColor: 'var(--line)', minHeight: 56 }} title={L.noRobotsHint}><OnyxIcon emoji="🤖" size={14} /> <span style={{ fontSize: 12, color: 'var(--mut)' }}>{L.segRobot}:</span> {L.noRobots}</span>
                   )}
                 </>)}
                 {/* MÓVIL: tarjeta de acciones (Compartir · Filtros · Más) del MISMO tamaño que Portafolio.
