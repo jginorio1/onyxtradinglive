@@ -1037,10 +1037,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <span style={{ width: 1, height: 22, background: 'var(--line)', flex: 'none' }} className="hero-sep" />
                 <div className="row" style={{ gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
                   {heroChips.map((c, i) => (
-                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                      {i > 0 && <span style={{ color: 'var(--mut)', opacity: .5, fontSize: 12 }}>·</span>}
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--mut)', whiteSpace: 'nowrap' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>
-                    </span>
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--tx)', whiteSpace: 'nowrap', padding: '4px 10px', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--bg2)' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>
                   ))}
                 </div>
               </>
@@ -1106,7 +1103,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             <div className="row between" style={{ flexWrap: 'wrap', gap: 10 }}>
               <div style={isMobile ? { display: 'flex', gap: 8, alignItems: 'stretch', width: '100%' } : { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {/* Volver al dashboard: a la izquierda del selector de portafolio. */}
-                {view !== 'hub' && <button className="btn" aria-label={L.back} title={L.back} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 'none', whiteSpace: 'nowrap', background: 'linear-gradient(135deg,#4b3ff0,#7c8cff)', border: 'none', color: '#fff', fontWeight: 700, minHeight: 56, padding: '8px 16px' }} onClick={() => { setView('hub'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {} }}>{isMobile ? '←' : L.back}</button>}
+                {view !== 'hub' && <button className="btn" aria-label={L.back} title={L.back} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 'none', whiteSpace: 'nowrap', background: 'linear-gradient(90deg, rgba(74,110,230,.22), rgba(74,110,230,.42))', border: '1px solid rgba(74,110,230,.75)', boxShadow: '0 0 0 1px rgba(74,110,230,.15)', color: 'var(--tx)', fontWeight: 700, minHeight: 56, padding: '8px 16px' }} onClick={() => { setView('hub'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {} }}>{isMobile ? '←' : L.back}</button>}
                 {/* Selector de cuenta CON el balance dentro (una sola tarjeta). Tono dorado para igualar al botón Volver. */}
                 <PickerMenu search width={280} ph={L.searchAcc} btnStyle={{ background: 'linear-gradient(135deg, rgba(201,162,77,.14), rgba(201,162,77,.05))', border: '1px solid rgba(201,162,77,.38)', minHeight: 56, ...(isMobile ? { flex: 1, width: '100%', padding: '8px 12px' } : { padding: '8px 14px' }) }}
                   trigger={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}>
