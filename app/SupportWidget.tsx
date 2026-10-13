@@ -7,7 +7,7 @@ import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import GooglePlayBadge from '@/app/components/GooglePlayBadge';
 import AppStoreBadge from '@/app/components/AppStoreBadge';
-import { isNativeApp } from '@/lib/native';
+import { isNativeApp, nativePlatform } from '@/lib/native';
 import type { ChatWidget } from '@/lib/settings';
 
 // Textos fijos del flujo (captura de correo/ticket). El resto (marca, saludo,
@@ -43,7 +43,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const [open, setOpen] = useState(false);
   // ¿Dentro de la app nativa? Si es así, no mostramos el badge de descarga en el chat.
   const [isNative, setIsNative] = useState(false);
-  useEffect(() => { try { setIsNative(isNativeApp()); } catch {} }, []);
+  // iOS: ocultamos precios/compra en el chat (regla 3.1.1 de Apple), igual que /pricing.
+  const [isIOS, setIsIOS] = useState(false);
+  useEffect(() => { try { setIsNative(isNativeApp()); setIsIOS(nativePlatform() === 'ios'); } catch {} }, []);
   const [human, setHuman] = useState(false);
   const [chat, setChat] = useState<any[]>([]);
   const [ask, setAsk] = useState('');
@@ -242,7 +244,8 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     const next = [...chat, { role: 'user', content: question }];
     setChat(next); setAsk(''); setBusy(true); setRefs([]); setActions([]); setPlans([]);
     try {
-      const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question, history: chat, lang }) });
+      // platform: en la app de iOS, el servidor oculta precios/planes (regla 3.1.1 de Apple).
+      const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question, history: chat, lang, platform: nativePlatform() }) });
       const j = await r.json();
       setChat([...next, { role: 'assistant', content: j.answer || '…' }]);
       setRefs(j.articles || []);
@@ -647,7 +650,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                 <span className="onyx-d3" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
               </div>
             )}
-            {plans.length > 0 && (
+            {!isIOS && plans.length > 0 && (
               <div style={{ alignSelf: 'flex-start', width: '100%', marginTop: 2 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(135px,1fr))', gap: 8 }}>
                   {plans.map((p) => (

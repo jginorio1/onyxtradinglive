@@ -42,6 +42,10 @@ export async function POST(req: Request) {
     const question = String(b.question || '').slice(0, 2000).trim();
     const lang: Lang = pickLang(b.lang);
     const history: any[] = Array.isArray(b.history) ? b.history.slice(-6) : [];
+    // Dentro de la app de iOS: por la regla 3.1.1 de Apple no se muestran precios de
+    // suscripción ni se envía a comprar. El cliente manda platform:'ios'. No pintamos
+    // tarjetas de planes y la IA responde mandando a la web para precios/suscripción.
+    const iosApp = String(b.platform || '') === 'ios';
     if (!question) return NextResponse.json({ error: 'empty' }, { status: 400 });
 
     // Rate-limit: es público y llama a la IA (cuesta dinero). 20 por minuto por IP
@@ -110,7 +114,7 @@ export async function POST(req: Request) {
       }
     } catch { /* si falla, seguimos sin VPS */ }
 
-    const r = await supportChatReply(question, lang, history, acctContext);
+    const r = await supportChatReply(question, lang, history, acctContext, { hidePricing: iosApp });
 
     // Necesita datos privados de la cuenta → a un humano.
     if (r.declined) {
@@ -129,7 +133,7 @@ export async function POST(req: Request) {
     }
     // Si la pregunta es de precios/planes, adjuntamos los planes para que el
     // widget los pinte como tarjetas (en vez de un párrafo largo). Datos reales.
-    const plans = isPricingQuestion(question) ? await plansForChat(lang) : [];
+    const plans = (!iosApp && isPricingQuestion(question)) ? await plansForChat(lang) : [];
     return NextResponse.json({ answer: r.answer, articles: refs, actions, plans, escalate: false, mode: 'ai' });
   } catch (e: any) {
     await logError('support_ai', e);

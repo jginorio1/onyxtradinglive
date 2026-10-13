@@ -152,10 +152,14 @@ function stripMarkdown(s: string): string {
 // Lee TODO el corpus (guía + Base IA + blog), respeta el prompt editable del admin,
 // escribe en texto plano, admite historial de conversación y un contexto de cuenta.
 // Devuelve la respuesta ya limpia; `declined` = necesita datos privados (→ humano).
-export async function supportChatReply(question: string, lang: Lang, history: any[] = [], acctContext = ''): Promise<{ answer: string; ok: boolean; declined: boolean }> {
+export async function supportChatReply(question: string, lang: Lang, history: any[] = [], acctContext = '', opts: { hidePricing?: boolean } = {}): Promise<{ answer: string; ok: boolean; declined: boolean }> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { answer: '', ok: false, declined: false };
   const en = enBase(lang);
+  // Dentro de la app de iOS no se pueden mostrar precios de suscripción ni enviar a
+  // comprar fuera de Apple (regla 3.1.1). Cuando hidePricing está activo, NO inyectamos
+  // los precios/planes/add-ons/promo al prompt y le decimos a la IA que mande a la web.
+  const hidePricing = !!opts.hidePricing;
 
   // Prompt editable desde el Admin: `brief` reemplaza el conocimiento de marca si el admin
   // lo escribió; `extra` se añade a las instrucciones. Si están vacíos, se usan los del código.
@@ -187,7 +191,13 @@ export async function supportChatReply(question: string, lang: Lang, history: an
 
   // Precios reales (cambian; van FUERA del bloque cacheado para no invalidar la caché).
   let prices = '';
-  try {
+  if (hidePricing) {
+    // Dentro de la app de iOS: NO mostramos precios de suscripción ni enviamos a comprar.
+    prices += en
+      ? `\n\n=== iOS APP (Apple rule 3.1.1) ===\nThe person is inside the iOS app. DO NOT write any figures: no subscription prices, plan costs, trial lengths, discounts or add-on prices (Apple rule). You MAY explain WHAT each plan includes (features, differences, which plan fits their need). When they ask about prices, plans, upgrading or subscribing, point them to the Pricing tab INSIDE the app and share the internal link /pricing so they open it right there — do NOT list dollar amounts and do NOT mention any external website for buying; just send them to the in-app Pricing page.`
+      : `\n\n=== APP DE iOS (regla 3.1.1 de Apple) ===\nLa persona está dentro de la app de iOS. NO escribas cifras: ni precios de suscripción, ni costos de planes, ni días de prueba, ni descuentos, ni precios de add-ons (regla de Apple). SÍ puedes explicar QUÉ incluye cada plan (funciones, diferencias, cuál le conviene). Cuando pregunte por precios, planes, subir de plan o suscribirse, indícale que vea el tab de Precios DENTRO de la app y compártele el enlace interno /pricing para que lo abra ahí mismo — NO escribas cantidades en dólares y NO menciones ninguna web externa para comprar; solo dirígela a la página de Precios dentro de la app.`;
+  }
+  if (!hidePricing) try {
     const { data: plans } = await supabaseAdmin.from('plans')
       .select('name,name_en,price_month,price_year,max_accounts,features,features_en,capabilities')
       .eq('active', true).order('sort', { ascending: true });
@@ -227,7 +237,7 @@ export async function supportChatReply(question: string, lang: Lang, history: an
 
   // ADD-ONS reales (precios y on/off editables en Admin → Planes). En vivo, fuera
   // de la caché. Solo se listan los que están activados; precios mensuales en USD.
-  try {
+  if (!hidePricing) try {
     const a = await addonSettings();
     const lines: string[] = [];
     if (a.extra_account_enabled) lines.push(en ? `extra connected account: $${a.extra_account_price}/mo each` : `cuenta conectada extra: $${a.extra_account_price}/mes cada una`);
@@ -243,7 +253,7 @@ export async function supportChatReply(question: string, lang: Lang, history: an
 
   // PROMO / DESCUENTO ACTIVO (barra del landing, en vivo). Solo si hay una barra
   // encendida ahora mismo; el AI la menciona cuando pregunten por ofertas.
-  try {
+  if (!hidePricing) try {
     const q = await getSetting<PromoQueue | null>('promo_queue', null as any);
     const bars = (q && Array.isArray((q as any).bars)) ? (q as any).bars : [];
     const bar = pickActiveBar(bars, Date.now(), { lang: en ? 'en' : 'es', isLanding: true, isPricing: true, loggedIn: false, plan: 'free' });
