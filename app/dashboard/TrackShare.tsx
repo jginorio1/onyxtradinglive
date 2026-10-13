@@ -93,7 +93,7 @@ export default function TrackShare({ lang = 'es', name = '', demo = false }: { l
   return (
     <>
       <button onClick={() => setOpen(true)} title={es ? 'Compartir mi trackrecord' : 'Share my trackrecord'}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.12)', border: '1px solid rgba(124,140,255,.35)', borderRadius: 999, padding: '4px 11px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.12)', border: '1px solid rgba(124,140,255,.35)', borderRadius: 999, padding: '4px 11px', minHeight: 30, boxSizing: 'border-box', cursor: 'pointer', whiteSpace: 'nowrap' }}>
         <OnyxIcon emoji="📈" size={15} /> {es ? 'Trackrecord' : 'Trackrecord'}
       </button>
 

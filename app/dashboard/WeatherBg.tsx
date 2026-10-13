@@ -108,7 +108,7 @@ export function WeatherCard({ country, lang = 'es', sep = false }: { country?: s
       {sep && <span style={{ width: 1, height: 22, background: 'var(--line)', flex: 'none' }} className="hero-sep" />}
       <span ref={boxRef} onClick={toggle} role="button" tabIndex={0} title={tip}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } }}
-        style={{ position: 'relative', overflow: 'hidden', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--tx)', whiteSpace: 'nowrap', cursor: 'pointer', padding: '4px 10px', borderRadius: 999, border: `1px solid rgba(${rgb},.75)`, background: `linear-gradient(90deg, rgba(${rgb},.22), rgba(${rgb},.42))`, boxShadow: `0 0 0 1px rgba(${rgb},.15)` }}>
+        style={{ position: 'relative', overflow: 'hidden', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--tx)', whiteSpace: 'nowrap', cursor: 'pointer', padding: '4px 10px', minHeight: 30, boxSizing: 'border-box', borderRadius: 999, border: `1px solid rgba(${rgb},.75)`, background: `linear-gradient(90deg, rgba(${rgb},.22), rgba(${rgb},.42))`, boxShadow: `0 0 0 1px rgba(${rgb},.15)` }}>
         {on && <canvas ref={cvRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />}
         <span style={{ position: 'relative', fontSize: 13 }}>{emojiFor(wx)}</span>
         <span style={{ position: 'relative', fontWeight: 700 }}>{wx.temp}°{wx.unit}</span>
