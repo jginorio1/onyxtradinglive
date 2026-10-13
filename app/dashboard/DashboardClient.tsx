@@ -3,6 +3,7 @@ import { dictFor } from '@/lib/i18n';
 import { useEffect, useMemo, useState, Fragment } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { analyze, bestOf, worstOf, topPairs, fmtDur, perfBreakdown, groupByPosition, HOLD_BINS_LABELS, R_BINS_LABELS, type T, type Bucket, type KRow } from '@/lib/analytics';
 import dynamic from 'next/dynamic';
 import { typeMeta } from '@/lib/accountMeta';
@@ -617,6 +618,8 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const [cFrom, setCFrom] = useState('');
   const [cTo, setCTo] = useState('');
   const [demo, setDemo] = useState(!!forceDemo);
+  const [exitingDemo, setExitingDemo] = useState(false); // feedback al salir del demo público
+  const router = useRouter();
   const [expOpen, setExpOpen] = useState(false); // menú Exportar (cierra al tocar fuera)
   const [moreOpen, setMoreOpen] = useState(false); // menú "Más" (móvil): Demo · Calendario · Exportar
   const [filtOpen, setFiltOpen] = useState(false);  // "Filtros" (móvil): Activo · Robot
@@ -1253,9 +1256,21 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               //  · En el demo PÚBLICO (/demo, forceDemo) → sale a tu panel real (/dashboard;
               //    si eres invitado, el panel te lleva a iniciar sesión).
               const exitTxt = forceDemo ? (lang === 'es' ? 'Salir del demo' : 'Exit demo') : (lang === 'es' ? 'Cerrar demo' : 'Close demo');
-              const onExit = () => { if (forceDemo) { try { window.location.href = '/dashboard'; } catch {} } else { setDemo(false); } };
+              const goingTxt = lang === 'es' ? 'Saliendo…' : 'Exiting…';
+              const onExit = () => {
+                if (exitingDemo) return;
+                if (forceDemo) {
+                  // Feedback INMEDIATO: marcamos "Saliendo…" en el mismo toque y navegamos
+                  // con el router (navegación interna, mucho más rápida que recargar toda
+                  // la página). Respaldo a location.href por si el router tardara.
+                  setExitingDemo(true);
+                  try { router.push('/dashboard'); } catch { try { window.location.href = '/dashboard'; } catch {} }
+                  setTimeout(() => { try { if (window.location.pathname.replace(/\/+$/, '') !== '/dashboard') window.location.href = '/dashboard'; } catch {} }, 1200);
+                } else { setDemo(false); }
+              };
               // TODO el banner es el botón de salida: tocarlo en cualquier parte sale del
-              // demo. Dentro lleva su propia píldora "✕ Salir/Cerrar demo" resaltada.
+              // demo. Dentro lleva su propia píldora "✕ Salir/Cerrar demo" resaltada que,
+              // al pulsar, cambia a "Saliendo…" para que se note que sí reaccionó.
               return (
                 <div
                   role="button"
@@ -1263,9 +1278,13 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   onClick={onExit}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onExit(); } }}
                   aria-label={exitTxt}
-                  style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '10px 14px', fontSize: 13, alignSelf: isMobile ? 'stretch' : 'flex-start', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: isMobile ? 'center' : 'flex-start', gap: 8, cursor: 'pointer' }}>
+                  aria-busy={exitingDemo}
+                  style={{ background: 'rgba(255,192,77,.12)', border: '1px solid var(--amber)', color: 'var(--amber)', borderRadius: 10, padding: '10px 14px', fontSize: 13, alignSelf: isMobile ? 'stretch' : 'flex-start', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: isMobile ? 'center' : 'flex-start', gap: 8, cursor: 'pointer', opacity: exitingDemo ? 0.65 : 1, transition: 'opacity .12s, transform .08s', WebkitTapHighlightColor: 'transparent' }}
+                  onPointerDown={(e) => { try { (e.currentTarget as HTMLDivElement).style.transform = 'scale(.985)'; } catch {} }}
+                  onPointerUp={(e) => { try { (e.currentTarget as HTMLDivElement).style.transform = 'none'; } catch {} }}
+                  onPointerLeave={(e) => { try { (e.currentTarget as HTMLDivElement).style.transform = 'none'; } catch {} }}>
                   <span style={{ fontWeight: 600 }}>{L.demoOn}</span>
-                  <span style={{ background: 'var(--amber)', color: '#2a1e02', fontWeight: 800, fontSize: 12.5, padding: '5px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>✕ {exitTxt}</span>
+                  <span style={{ background: 'var(--amber)', color: '#2a1e02', fontWeight: 800, fontSize: 12.5, padding: '5px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>{exitingDemo ? goingTxt : <>✕ {exitTxt}</>}</span>
                 </div>
               );
             })()}
