@@ -923,13 +923,13 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
     const isSel = key === selDay;
     return (<div key={idx} onClick={() => b && setSelDay(isSel ? null : key)} style={{ minWidth: 0, overflow: 'hidden', background: bg, border: isSel ? '2px solid ' + BLUE : '1px solid var(--line)', borderRadius: 12, minHeight: 56, padding: 7, cursor: b ? 'pointer' : 'default', transition: 'transform .12s, box-shadow .14s', boxShadow: b && inten > 0.28 ? `0 0 14px -3px rgba(${glowC},${0.55})` : 'none' }}><div style={{ fontSize: 11, color: b ? (net >= 0 ? '#04150d' : '#2a060c') : 'var(--mut)', fontWeight: b ? 600 : 400 }}>{dt.getUTCDate()}</div>{b && <div style={{ fontSize: 11, fontWeight: 800, marginTop: 4, color: net >= 0 ? '#04150d' : '#2a060c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'clip', letterSpacing: '-0.02em', maxWidth: '100%' }}>{money2k(net)}</div>}{b && <div style={{ fontSize: 10, color: net >= 0 ? '#04150d' : '#2a060c', opacity: .8 }}>{b.count}</div>}</div>);
   };
-  // KPIs: lo del día va en la tarjeta del calendario; los de cuenta en la de la curva.
-  const todayKey = isoD(new Date());
-  const dailyPnl = a.daily[todayKey]?.net || 0;
-  const curBalance = sel === 'all' ? totalBalance : Number(cur?.balance || 0);
-  const startBalance = (sel !== 'all' && cur?.fund_start) ? Number(cur.fund_start) : (curBalance - a.net);
   const cur = accounts.find((x) => x.id === sel);
   const curName = sel === 'all' ? L.portfolio : (cur ? accName(cur) : '');
+  // KPIs: lo del día va en la tarjeta del calendario; los de cuenta en la de la curva.
+  const todayKey = isoD(new Date());
+  const dailyPnl = a.daily?.[todayKey]?.net || 0;
+  const curBalance = sel === 'all' ? totalBalance : Number(cur?.balance || 0);
+  const startBalance = (sel !== 'all' && cur?.fund_start) ? Number(cur.fund_start) : (curBalance - a.net);
 
   const hasAccounts = accounts.length > 0;
   const hasTrades = (demo ? demoTrades.length : tradesS.length) > 0;

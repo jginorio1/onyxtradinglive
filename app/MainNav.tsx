@@ -113,7 +113,7 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
                   {i.icon && <span aria-hidden="true" style={{ marginRight: 6, display: 'inline-flex', verticalAlign: '-3px' }}><OnyxIcon emoji={i.icon} size={16} /></span>}
                   {i.label}
                   {groupDot && <span className="navdotmini on" style={{ marginLeft: 6 }} />}
-                  <span style={{ marginLeft: 5, fontSize: 10, opacity: .6 }}>▾</span>
+                  <span aria-hidden="true" style={{ marginLeft: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: 5, fontSize: 9, lineHeight: 1, color: openGroup === gkey ? '#fff' : 'var(--brand)', background: openGroup === gkey ? 'var(--brand)' : 'color-mix(in srgb, var(--brand) 18%, transparent)', transform: openGroup === gkey ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}>▾</span>
                 </button>
                 {openGroup === gkey && (
                   <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 60, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 6, minWidth: 210, boxShadow: '0 14px 34px -10px rgba(0,0,0,.55)' }}>
