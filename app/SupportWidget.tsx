@@ -140,17 +140,23 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     if (!open || device !== 'mobile' || ios) { if (!ios) setVv(null); return; }
     const vp: any = (typeof window !== 'undefined') ? (window as any).visualViewport : null;
     if (!vp) return;
-    const on = () => setVv({ h: Math.round(vp.height), top: Math.round(vp.offsetTop) });
-    on();
-    // iOS Safari reporta el alto del teclado con retraso: re-medimos varias veces
-    // tras enfocar y al enfocar/desenfocar cualquier campo del panel.
-    const bump = () => { on(); [120, 320, 600].forEach((ms) => setTimeout(on, ms)); };
+    const measure = () => setVv({ h: Math.round(vp.height), top: Math.round(vp.offsetTop) });
+    // DEBOUNCE: en Safari el teclado dispara 'resize' muchas veces MIENTRAS se anima.
+    // Si reajustamos el panel en cada uno, el teclado se queda a medias y queda un
+    // hueco. Esperamos ~110ms a que el viewport se estabilice y medimos UNA vez.
+    let t: any;
+    const on = () => { clearTimeout(t); t = setTimeout(measure, 110); };
+    measure();
+    // Tras enfocar/desenfocar re-medimos a tiempos crecientes: iOS Safari reporta el
+    // alto final del teclado con retraso.
+    const bump = () => { [60, 250, 500, 850].forEach((ms) => setTimeout(measure, ms)); };
     vp.addEventListener('resize', on);
     vp.addEventListener('scroll', on);
     window.addEventListener('focusin', bump);
     window.addEventListener('focusout', bump);
     window.addEventListener('orientationchange', bump);
     return () => {
+      clearTimeout(t);
       vp.removeEventListener('resize', on); vp.removeEventListener('scroll', on);
       window.removeEventListener('focusin', bump); window.removeEventListener('focusout', bump);
       window.removeEventListener('orientationchange', bump);
