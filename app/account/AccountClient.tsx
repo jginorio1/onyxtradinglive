@@ -462,7 +462,9 @@ export default function AccountClient({ email }: { email: string }) {
                   </div>
                 )}
                 <div className="card" style={card}>
-                  <div className="row between" style={{ flexWrap: 'wrap', gap: 12, marginBottom: 14, background: 'linear-gradient(135deg, rgba(232,185,35,.12), rgba(232,185,35,.02))', border: '1px solid rgba(232,185,35,.3)', borderRadius: 14, padding: '16px 18px' }}>
+                  {/* Tarjeta dorada: plan actual + saldo + cambiar tarjeta, todo junto. */}
+                  <div style={{ background: 'linear-gradient(135deg, rgba(232,185,35,.12), rgba(232,185,35,.02))', border: '1px solid rgba(232,185,35,.3)', borderRadius: 14, padding: '16px 18px' }}>
+                  <div className="row between" style={{ flexWrap: 'wrap', gap: 12 }}>
                     <div>
                       <div className="row" style={{ gap: 8 }}>
                         <span style={{ fontSize: 20, fontWeight: 800 }}>{planName(myPlan, lang) || 'Free'}</span>
@@ -484,7 +486,7 @@ export default function AccountClient({ email }: { email: string }) {
 
                   {/* Saldo a favor (crédito Stripe): referidos, embajador o crédito manual del admin. */}
                   {Number(data?.creditBalance) > 0 && (
-                    <div className="row between" style={{ borderTop: '1px solid var(--line)', paddingTop: 12, marginTop: 4, flexWrap: 'wrap', gap: 8 }}>
+                    <div className="row between" style={{ borderTop: '1px solid rgba(232,185,35,.22)', paddingTop: 12, marginTop: 14, flexWrap: 'wrap', gap: 8 }}>
                       <span className="muted" style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5 }}><OnyxIcon name="gift" size={14} glow={false} /> {lang === 'en' ? 'Account credit' : 'Saldo a favor'}</span>
                       <span style={{ fontWeight: 800, color: 'var(--green)' }}>${data.creditBalance}
                         <span className="muted" style={{ fontWeight: 400, fontSize: 12, marginLeft: 8 }}>{lang === 'en' ? 'applied to your next invoice' : 'se descuenta de tu próxima factura'}</span>
@@ -496,7 +498,8 @@ export default function AccountClient({ email }: { email: string }) {
                       Se muestra el aviso para hacerlo en el sitio web. */}
                   {iosApp && <ManageOnWeb lang={lang} planName={planName(myPlan, lang)} />}
 
-                  {!iosApp && sub && <div style={{ borderTop: '1px solid var(--line)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
+                  {!iosApp && sub && <div style={{ borderTop: '1px solid rgba(232,185,35,.22)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
+                  </div>{/* /tarjeta dorada */}
 
                   {/* Cambiar de plan (upgrade / downgrade) sobre la misma suscripción */}
                   {!iosApp && sub && (plans.length > 0 || allPlans.length > 0) && (() => {
@@ -553,7 +556,9 @@ export default function AccountClient({ email }: { email: string }) {
                                 )}
                                 {isCurrent
                                   ? <div style={{ marginTop: 'auto', width: '100%', fontSize: 12.5, fontWeight: 700, padding: '9px 0', textAlign: 'center', border: `1px dashed ${gold}`, color: gold, borderRadius: 9, cursor: 'default' }}>{L.chCurrent}</div>
-                                  : <button className="btn" style={{ marginTop: 'auto', width: '100%', fontSize: 12.5, padding: '9px 0', fontWeight: 700, borderRadius: 9, ...(up ? { background: gold, color: goldDark, border: 'none' } : { background: 'var(--card2,var(--bg2))', color: 'var(--mut)', border: '1px solid var(--line)' }) }}
+                                  : <button className="btn" style={{ marginTop: 'auto', width: '100%', fontSize: 12.5, padding: '9px 0', fontWeight: 700, borderRadius: 9, transition: 'background .15s, color .15s, border-color .15s', ...(up ? { background: gold, color: goldDark, border: 'none' } : { background: 'var(--card2,var(--bg2))', color: 'var(--mut)', border: '1px solid var(--line)' }) }}
+                                      onMouseEnter={(e) => { const el = e.currentTarget; if (up) { el.style.background = '#f4cf4a'; } else { el.style.background = 'rgba(232,185,35,.16)'; el.style.color = gold; el.style.borderColor = 'rgba(232,185,35,.55)'; } }}
+                                      onMouseLeave={(e) => { const el = e.currentTarget; if (up) { el.style.background = gold; } else { el.style.background = 'var(--card2,var(--bg2))'; el.style.color = 'var(--mut)'; el.style.borderColor = 'var(--line)'; } }}
                                       onClick={() => {
                                         if (pl.id === 'free') { setCancelTick((x) => x + 1); setTimeout(() => document.getElementById('cancel-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60); return; }
                                         setChErr(''); setChTarget({ id: pl.id, name: nm, up });

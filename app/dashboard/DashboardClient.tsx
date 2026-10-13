@@ -1016,42 +1016,32 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
         {/* Franja del trader (v472): UNA sola línea, SIN fondo (se apoya en la página),
             con divisores verticales entre bloques y una hairline debajo que la cierra
             sin encajonarla. Identidad · chips · balance a la derecha. */}
-        <div className="row between hero-row" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 12, padding: '6px 2px', borderBottom: '1px solid var(--line)', paddingBottom: 14 }}>
-          <div className="row hero-left" style={{ gap: 11, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="hero-row" style={{ marginBottom: 14, padding: '6px 2px', borderBottom: '1px solid var(--line)', paddingBottom: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Fila 1 · identidad (avatar + saludo + check-in). Envuelve sola si no cabe. */}
+          <div style={{ display: 'flex', gap: 11, alignItems: 'center', flexWrap: 'wrap' }}>
             {profile?.avatar_url
               ? <img src={profile.avatar_url} alt="" style={{ width: 38, height: 38, borderRadius: 11, objectFit: 'cover', objectPosition: '50% 30%', flex: 'none', border: '1px solid var(--line)' }} />
               : <div style={{ width: 38, height: 38, borderRadius: 11, background: 'var(--grad)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flex: 'none' }}>{heroInitials}</div>}
-            <div className="hero-name">
-              <h1 style={{ marginBottom: 2, fontSize: 19, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={19} /></span>
-                {checkin?.pending && (
-                  <button onClick={() => checkin.open()} title={lang === 'en' ? 'Review your plan today' : 'Revisa tu plan hoy'}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--amber)', background: 'rgba(245,158,11,.12)', color: 'var(--amber)', borderRadius: 16, padding: '4px 11px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', animation: 'onyxGlow 1.9s ease-in-out infinite' }}>
-                    <OnyxIcon emoji="✅" size={13} /> {lang === 'en' ? 'Check-in' : 'Check-in'}{typeof checkin.total === 'number' && checkin.total > 0 ? ` ${checkin.done}/${checkin.total}` : ''}
-                  </button>
-                )}
-              </h1>
-            </div>
-            {/* Chips de perfil en la MISMA línea, tras un separador vertical. */}
-            {heroChips.length ? (
-              <>
-                <span style={{ width: 1, height: 22, background: 'var(--line)', flex: 'none' }} className="hero-sep" />
-                <div className="row" style={{ gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {heroChips.map((c, i) => (
-                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--tx)', whiteSpace: 'nowrap', padding: '4px 10px', minHeight: 30, boxSizing: 'border-box', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--bg2)' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>
-                  ))}
-                </div>
-              </>
-            ) : (
+            <h1 style={{ margin: 0, fontSize: 19, lineHeight: 1.15, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{heroTitle} <span style={{ color: 'var(--brand)', display: 'inline-flex' }}><OnyxIcon name="hand" size={19} /></span>
+              {checkin?.pending && (
+                <button onClick={() => checkin.open()} title={lang === 'en' ? 'Review your plan today' : 'Revisa tu plan hoy'}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid var(--amber)', background: 'rgba(245,158,11,.12)', color: 'var(--amber)', borderRadius: 16, padding: '4px 11px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', animation: 'onyxGlow 1.9s ease-in-out infinite' }}>
+                  <OnyxIcon emoji="✅" size={13} /> {lang === 'en' ? 'Check-in' : 'Check-in'}{typeof checkin.total === 'number' && checkin.total > 0 ? ` ${checkin.done}/${checkin.total}` : ''}
+                </button>
+              )}
+            </h1>
+          </div>
+          {/* Fila 2 · píldoras (perfil + clima + trackrecord) en UN grupo que se reacomoda
+              solo según el ancho. Sin divisores verticales; todas con la misma altura. */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {heroChips.length ? heroChips.map((c, i) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--tx)', whiteSpace: 'nowrap', padding: '4px 10px', minHeight: 30, boxSizing: 'border-box', borderRadius: 999, border: '1px solid var(--line)', background: 'var(--bg2)' }}><OnyxIcon emoji={c.icon} size={12} /> {c.label}</span>
+            )) : (
               <Link href="/onboarding" className="pill" style={{ background: 'rgba(124,140,255,.14)', color: 'var(--soft-brand)' }}>{L.completeProfile}</Link>
             )}
-            {/* Clima en vivo (icono + temperatura), tras un divisor (el divisor va dentro
-                del chip para que no quede colgando si el clima no carga). */}
-            {!forceDemo && <WeatherCard country={profile?.country} lang={lang} sep />}
-            <span style={{ width: 1, height: 22, background: 'var(--line)', flex: 'none' }} className="hero-sep" />
+            {!forceDemo && <WeatherCard country={profile?.country} lang={lang} />}
             <TrackShare lang={lang} name={profile?.full_name || ''} demo={forceDemo} />
           </div>
-          {/* El balance del portafolio se movió al lado del selector de cuenta (abajo),
-              para que siga la cuenta elegida. El saludo queda solo con identidad+chips. */}
         </div>
 
         {/* Onboarding grande: solo cuando aún NO hay cuentas — se queda a lo ancho para
