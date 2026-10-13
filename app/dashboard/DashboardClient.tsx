@@ -852,7 +852,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const now = new Date();
   const [calY, setCalY] = useState(now.getUTCFullYear());
   const [calM, setCalM] = useState(now.getUTCMonth());
-  const [vw, setVw] = useState<'mes' | 'ano'>('mes');
+  const [calPer, setCalPer] = useState<'sem' | 'mes' | 'ano' | 'dias'>('mes');
+  const [calWeek, setCalWeek] = useState(() => new Date());
+  const [calD1, setCalD1] = useState('');
+  const [calD2, setCalD2] = useState('');
   const [selDay, setSelDay] = useState<string | null>(null);
   const daysInMonth = new Date(Date.UTC(calY, calM + 1, 0)).getUTCDate();
   const off = (new Date(Date.UTC(calY, calM, 1)).getUTCDay() + 6) % 7;
@@ -866,6 +869,49 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
   const prevM = () => { const m = calM - 1; if (m < 0) { setCalM(11); setCalY(calY - 1); } else setCalM(m); setSelDay(null); };
   const nextM = () => { const m = calM + 1; if (m > 11) { setCalM(0); setCalY(calY + 1); } else setCalM(m); setSelDay(null); };
   const dayTrades = selDay ? filtered.filter((t) => t.close_time.slice(0, 10) === selDay).sort((x, y) => y.close_time.localeCompare(x.close_time)) : [];
+
+  // ── Calendario con periodo: semana / mes / año / días (rango a medida) ──
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+  const isoD = (d: Date) => `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+  // Lunes de la semana que contiene calWeek.
+  const weekMon = (() => { const d = new Date(Date.UTC(calWeek.getUTCFullYear(), calWeek.getUTCMonth(), calWeek.getUTCDate())); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d; })();
+  const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekMon); d.setUTCDate(weekMon.getUTCDate() + i); return d; });
+  const rangeDays = (() => { if (!calD1 || !calD2) return [] as Date[]; let s = new Date(calD1 + 'T00:00:00Z'), e = new Date(calD2 + 'T00:00:00Z'); if (e < s) { const t = s; s = e; e = t; } const out: Date[] = []; for (const d = new Date(s); d <= e && out.length < 370; d.setUTCDate(d.getUTCDate() + 1)) out.push(new Date(d)); return out; })();
+  // Lista de fechas (Date) del periodo activo para calendario + curva (sem/mes/días).
+  const perDates: Date[] = calPer === 'sem' ? weekDays
+    : calPer === 'dias' ? rangeDays
+    : Array.from({ length: daysInMonth }, (_, i) => new Date(Date.UTC(calY, calM, i + 1)));
+  // Curva + totales del periodo (mes/semana/días por día; año por mes).
+  const perCurve = (() => {
+    const es = lang === 'es'; let acc = 0, started = false, tot = 0, tr = 0; const nets: number[] = [];
+    const seq: { d: number; v: number }[] = [];
+    if (calPer === 'ano') {
+      for (let m = 0; m < 12; m++) { const b = a.byMonth[`${calY}-${pad2(m + 1)}`]; if (b) { acc += b.net; started = true; tot += b.net; tr += b.count; nets.push(b.net); } if (started) seq.push({ d: m + 1, v: acc }); }
+    } else {
+      perDates.forEach((dt, i) => { const b = a.daily[isoD(dt)]; if (b) { acc += b.net; started = true; tot += b.net; tr += b.count; nets.push(b.net); } if (started) seq.push({ d: dt.getUTCDate(), v: acc }); });
+    }
+    let streak = 0, best = 0; nets.forEach((x) => { if (x > 0) { streak++; best = Math.max(best, streak); } else streak = 0; });
+    return { seq, tot, tr, green: nets.filter((x) => x > 0).length, traded: nets.length, best, es };
+  })();
+  const perLabel = calPer === 'sem' ? `${weekDays[0].getUTCDate()} ${MOL[lang][weekDays[0].getUTCMonth()].slice(0, 3)} – ${weekDays[6].getUTCDate()} ${MOL[lang][weekDays[6].getUTCMonth()].slice(0, 3)}`
+    : calPer === 'ano' ? String(calY)
+    : calPer === 'dias' ? (calD1 && calD2 ? `${calD1} → ${calD2}` : (lang === 'es' ? 'Elige fechas' : 'Pick dates'))
+    : `${MOL[lang][calM]} ${calY}`;
+  const calNav = (dir: number) => {
+    setSelDay(null);
+    if (calPer === 'sem') { const d = new Date(weekMon); d.setUTCDate(d.getUTCDate() + dir * 7); setCalWeek(d); }
+    else if (calPer === 'ano') setCalY(calY + dir);
+    else { let m = calM + dir, y = calY; if (m < 0) { m = 11; y--; } if (m > 11) { m = 0; y++; } setCalM(m); setCalY(y); }
+  };
+  const calDayCell = (dt: Date | null, idx: number) => {
+    if (!dt) return <div key={idx} />;
+    const key = isoD(dt); const b = a.daily[key]; const net = b?.net || 0;
+    const inten = b ? Math.min(1, Math.abs(net) / maxDay) : 0;
+    const glowC = net >= 0 ? '52,226,160' : '255,107,125';
+    const bg = !b ? 'var(--bg2)' : `rgba(${glowC},${.2 + inten * .6})`;
+    const isSel = key === selDay;
+    return (<div key={idx} onClick={() => b && setSelDay(isSel ? null : key)} style={{ minWidth: 0, overflow: 'hidden', background: bg, border: isSel ? '2px solid ' + BLUE : '1px solid var(--line)', borderRadius: 12, minHeight: 56, padding: 7, cursor: b ? 'pointer' : 'default', transition: 'transform .12s, box-shadow .14s', boxShadow: b && inten > 0.28 ? `0 0 14px -3px rgba(${glowC},${0.55})` : 'none' }}><div style={{ fontSize: 11, color: b ? (net >= 0 ? '#04150d' : '#2a060c') : 'var(--mut)', fontWeight: b ? 600 : 400 }}>{dt.getUTCDate()}</div>{b && <div style={{ fontSize: 11, fontWeight: 800, marginTop: 4, color: net >= 0 ? '#04150d' : '#2a060c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'clip', letterSpacing: '-0.02em', maxWidth: '100%' }}>{money2k(net)}</div>}{b && <div style={{ fontSize: 10, color: net >= 0 ? '#04150d' : '#2a060c', opacity: .8 }}>{b.count}</div>}</div>);
+  };
   const cur = accounts.find((x) => x.id === sel);
   const curName = sel === 'all' ? L.portfolio : (cur ? accName(cur) : '');
 
@@ -1361,50 +1407,62 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
               <Card title={L.byMonth} icon="🗓️">{monthData.length ? monthData.map((d, i) => <BarRow key={i} label={d.label} b={d.b} max={maxM} ops={L.ops} />) : <p className="muted">{L.noData}</p>}</Card>
             </>); })()}
 
-            {view === 'calendario' && (
-              <Card title={L.calTitle} icon="🗓️" right={<div className="row"><button className={'btn ' + (vw === 'mes' ? 'btn-primary' : 'btn-ghost')} onClick={() => setVw('mes')}>{L.month}</button><button className={'btn ' + (vw === 'ano' ? 'btn-primary' : 'btn-ghost')} onClick={() => setVw('ano')}>{L.year}</button></div>}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div className="row"><button className="btn btn-ghost" onClick={prevM}>‹</button><b style={{ minWidth: 130, textAlign: 'center' }}>{MOL[lang][calM]} {calY}</b><button className="btn btn-ghost" onClick={nextM}>›</button></div>
-                  <span style={{ fontSize: 14 }}>{L.monthTotal} <b className={monthTotal >= 0 ? 'pos' : 'neg'}>{money2(monthTotal)}</b> <span className="muted">({monthTrades} {L.ops})</span></span>
+            {view === 'calendario' && (() => {
+              const es = lang === 'es';
+              const seg: Array<[typeof calPer, string]> = [['sem', es ? 'Semana' : 'Week'], ['mes', es ? 'Mes' : 'Month'], ['ano', es ? 'Año' : 'Year'], ['dias', es ? 'Días' : 'Days']];
+              return (<>
+                <style>{`@media(max-width:860px){.cal2{grid-template-columns:1fr!important}}`}</style>
+                {/* Controles de periodo: semana / mes / año / días (rango a medida) */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 14 }}>
+                  <div className="row" style={{ background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 12, padding: 3, gap: 2 }}>
+                    {seg.map(([k, lbl]) => <button key={k} className={'btn ' + (calPer === k ? 'btn-primary' : 'btn-ghost')} style={{ padding: '6px 12px', fontSize: 13 }} onClick={() => { setCalPer(k); setSelDay(null); }}>{lbl}</button>)}
+                  </div>
+                  {calPer === 'dias' && (<div className="row" style={{ gap: 8 }}>
+                    <input type="date" value={calD1} onChange={(e) => setCalD1(e.target.value)} style={{ margin: 0, padding: '6px 8px', fontSize: 13 }} />
+                    <span className="muted">→</span>
+                    <input type="date" value={calD2} onChange={(e) => setCalD2(e.target.value)} style={{ margin: 0, padding: '6px 8px', fontSize: 13 }} />
+                  </div>)}
+                  {calPer !== 'dias' && <div className="row" style={{ gap: 6 }}><button className="btn btn-ghost" onClick={() => calNav(-1)}>‹</button><b style={{ minWidth: 150, textAlign: 'center' }}>{perLabel}</b><button className="btn btn-ghost" onClick={() => calNav(1)}>›</button></div>}
+                  <span style={{ marginLeft: 'auto', fontSize: 14 }}>{es ? 'Total:' : 'Total:'} <b className={perCurve.tot >= 0 ? 'pos' : 'neg'}>{money2(perCurve.tot)}</b> <span className="muted">({perCurve.tr} {L.ops})</span></span>
                 </div>
-                {vw === 'mes' ? (<>
-                  <style>{`@media(max-width:860px){.cal-split{grid-template-columns:1fr!important}}`}</style>
-                  <div className="cal-split" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
-                    {DAYH[lang].map((d, i) => <div key={i} style={{ textAlign: 'center', fontSize: 11, color: 'var(--mut)' }}>{d}</div>)}
-                    {cells.map((d, i) => { if (d === null) return <div key={i} />; const b = a.daily[dayKey(d)]; const net = b?.net || 0; const inten = b ? Math.min(1, Math.abs(net) / maxDay) : 0; const glowC = net >= 0 ? '52,226,160' : '255,107,125'; const bg = !b ? 'var(--bg2)' : `rgba(${glowC},${.2 + inten * .6})`; const key = dayKey(d); const isSel = key === selDay; return (<div key={i} onClick={() => b && setSelDay(isSel ? null : key)} style={{ minWidth: 0, overflow: 'hidden', background: bg, border: isSel ? '2px solid ' + BLUE : '1px solid var(--line)', borderRadius: 12, minHeight: 56, padding: 7, cursor: b ? 'pointer' : 'default', transition: 'transform .12s, box-shadow .14s', boxShadow: b && inten > 0.28 ? `0 0 14px -3px rgba(${glowC},${0.55})` : 'none' }}><div style={{ fontSize: 11, color: b ? (net >= 0 ? '#04150d' : '#2a060c') : 'var(--mut)', fontWeight: b ? 600 : 400 }}>{d}</div>{b && <div style={{ fontSize: 11, fontWeight: 800, marginTop: 4, color: net >= 0 ? '#04150d' : '#2a060c', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'clip', letterSpacing: '-0.02em', maxWidth: '100%' }}>{money2k(net)}</div>}{b && <div style={{ fontSize: 10, color: net >= 0 ? '#04150d' : '#2a060c', opacity: .8, whiteSpace: 'nowrap', overflow: 'hidden' }}>{b.count}</div>}</div>); })}
-                  </div>
-                  {(() => {
-                    const monthSeq: { d: number; v: number }[] = []; let acc = 0, started = false;
-                    const nets: number[] = [];
-                    for (let d = 1; d <= daysInMonth; d++) { const b = a.daily[dayKey(d)]; if (b) { acc += b.net; started = true; nets.push(b.net); } if (started) monthSeq.push({ d, v: acc }); }
-                    const greenD = nets.filter((x) => x > 0).length, tradedN = nets.length;
-                    let streak = 0, best = 0; nets.forEach((x) => { if (x > 0) { streak++; best = Math.max(best, streak); } else streak = 0; });
-                    const es = lang === 'es';
-                    return (
-                      <div style={{ background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                          <b style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 14 }}><OnyxIcon name="performance" size={16} glow={false} /> {es ? 'Consistencia' : 'Consistency'}</b>
-                          <span className={monthTotal >= 0 ? 'pos' : 'neg'} style={{ fontSize: 13, fontWeight: 700 }}>{money2(monthTotal)}</span>
-                        </div>
-                        <div className="muted" style={{ fontSize: 11.5, marginBottom: 10 }}>{es ? 'Equity acumulada del mes' : 'Cumulative equity this month'}</div>
-                        <div style={{ flex: 1, minHeight: 176 }}><EquityCurve seq={monthSeq} lang={lang} /></div>
-                        <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-                          <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px' }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Mejor racha' : 'Best streak'}</div><div style={{ fontSize: 15, fontWeight: 800, color: GREEN }}>{best} {es ? 'días' : 'days'}</div></div>
-                          <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px' }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Días verdes' : 'Green days'}</div><div style={{ fontSize: 15, fontWeight: 800 }}>{greenD} / {tradedN}</div></div>
-                        </div>
+
+                <div className="cal2" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 14, alignItems: 'stretch' }}>
+                  {/* IZQUIERDA · calendario */}
+                  <Card title={L.calTitle} icon="🗓️">
+                    {calPer === 'ano' ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(104px,1fr))', gap: 10 }}>
+                        {MOL[lang].map((m, i) => { const key = `${calY}-${String(i + 1).padStart(2, '0')}`; const b = a.byMonth[key]; const net = b?.net || 0; const ac = b ? (net >= 0 ? GREEN : RED) : 'var(--line)'; return (<div key={i} className="statcard" style={{ ['--ac' as any]: ac, padding: 12, minWidth: 0 }}><div className="sc-lbl" style={{ marginTop: 0 }}>{m}</div><div className="sc-val" style={{ fontSize: 15, color: b ? (net >= 0 ? GREEN : RED) : 'var(--mut)' }}>{b ? money2(net) : '—'}</div>{b && <div className="sc-sub">{b.count} {L.ops} · {Math.round(100 * b.wins / b.count)}%</div>}</div>); })}
                       </div>
-                    );
-                  })()}
-                  </div>
-                  {selDay && (<div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}><b>{L.dayOps} {selDay}</b><table className="jtbl" style={{ marginTop: 8 }}><tbody>{dayTrades.map((t, i) => (<tr key={i} className="jrow"><td style={{ fontWeight: 600 }}>{t.symbol}</td><td><span className={'jside ' + (t.side === 'buy' ? 'buy' : 'sell')}>{t.side}</span></td><td className="muted" style={{ textAlign: 'right' }}>{(+t.volume).toFixed(2)}</td><td className="muted">{new Date(t.close_time).toUTCString().slice(17, 22)}</td><td style={{ textAlign: 'right' }}><span className={'jchip ' + (+t.net_profit >= 0 ? 'pos' : 'neg')}>{money2(+t.net_profit)}</span></td></tr>))}</tbody></table></div>)}
-                </>) : (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: 10 }}>
-                    {MOL[lang].map((m, i) => { const key = `${calY}-${String(i + 1).padStart(2, '0')}`; const b = a.byMonth[key]; const net = b?.net || 0; const ac = b ? (net >= 0 ? GREEN : RED) : 'var(--line)'; return (<div key={i} className="statcard" style={{ ['--ac' as any]: ac, padding: 12, minWidth: 0 }}><div className="sc-lbl" style={{ marginTop: 0 }}>{m}</div><div className="sc-val" style={{ fontSize: 16, color: b ? (net >= 0 ? GREEN : RED) : 'var(--mut)' }}>{b ? money2(net) : '—'}</div>{b && <div className="sc-sub">{b.count} {L.ops} · {Math.round(100 * b.wins / b.count)}%</div>}</div>); })}
-                  </div>
-                )}
-              </Card>
-            )}
+                    ) : calPer === 'sem' ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
+                        {DAYH[lang].map((d, i) => <div key={i} style={{ textAlign: 'center', fontSize: 11, color: 'var(--mut)' }}>{d}</div>)}
+                        {weekDays.map((dt, i) => calDayCell(dt, i))}
+                      </div>
+                    ) : calPer === 'dias' ? (
+                      perDates.length ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(62px,1fr))', gap: 6 }}>{perDates.map((dt, i) => calDayCell(dt, i))}</div>
+                        : <div className="muted" style={{ padding: '36px 0', textAlign: 'center', fontSize: 13 }}>{es ? 'Elige una fecha inicial y final.' : 'Pick a start and end date.'}</div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
+                        {DAYH[lang].map((d, i) => <div key={i} style={{ textAlign: 'center', fontSize: 11, color: 'var(--mut)' }}>{d}</div>)}
+                        {cells.map((d, i) => calDayCell(d === null ? null : new Date(Date.UTC(calY, calM, d)), i))}
+                      </div>
+                    )}
+                  </Card>
+
+                  {/* DERECHA · consistencia (curva) */}
+                  <Card title={es ? 'Consistencia' : 'Consistency'} icon="📈">
+                    <div className="muted" style={{ fontSize: 11.5, marginTop: -4, marginBottom: 10 }}>{es ? 'Curva de equity del periodo' : 'Equity curve for the period'}</div>
+                    <div style={{ minHeight: 190 }}><EquityCurve seq={perCurve.seq} lang={lang} /></div>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                      <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px' }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Mejor racha' : 'Best streak'}</div><div style={{ fontSize: 15, fontWeight: 800, color: GREEN }}>{perCurve.best} {es ? 'días' : 'days'}</div></div>
+                      <div style={{ flex: 1, background: 'var(--bg2)', borderRadius: 10, padding: '8px 10px' }}><div className="muted" style={{ fontSize: 10.5 }}>{es ? 'Días verdes' : 'Green days'}</div><div style={{ fontSize: 15, fontWeight: 800 }}>{perCurve.green} / {perCurve.traded}</div></div>
+                    </div>
+                  </Card>
+                </div>
+
+                {selDay && (<Card title={`${L.dayOps} ${selDay}`} icon="🗓️"><table className="jtbl"><tbody>{dayTrades.map((t, i) => (<tr key={i} className="jrow"><td style={{ fontWeight: 600 }}>{t.symbol}</td><td><span className={'jside ' + (t.side === 'buy' ? 'buy' : 'sell')}>{t.side}</span></td><td className="muted" style={{ textAlign: 'right' }}>{(+t.volume).toFixed(2)}</td><td className="muted">{new Date(t.close_time).toUTCString().slice(17, 22)}</td><td style={{ textAlign: 'right' }}><span className={'jchip ' + (+t.net_profit >= 0 ? 'pos' : 'neg')}>{money2(+t.net_profit)}</span></td></tr>))}</tbody></table></Card>)}
+              </>);
+            })()}
 
             {view === 'operaciones' && (!canJournal ? <ProLock L={L} plan={upJ.name} desc={L.dLock1} price={upJ.price} trial={upJ.trial} preview={<PreviewJournal />} /> : <Journal trades={filtered} lang={lang} focusUndoc={journalUndoc} accounts={accounts} />)}
             {view === 'costes' && <Costs trades={filtered} lang={lang} accounts={accounts} />}
