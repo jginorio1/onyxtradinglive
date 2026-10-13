@@ -6,6 +6,7 @@ import { useLang } from '@/lib/lang';
 import { ARTICLES, CATEGORIES, searchArticles, byCat } from '@/lib/guide';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import GuideAppBadges from './GuideAppBadges';
+import { nativePlatform } from '@/lib/native';
 
 const T: any = {
   es: {
@@ -104,7 +105,7 @@ export default function GuideHome() {
     if (question.length < 2) return;
     setBusy(true); setAsked(question); setAnswer(''); setRefs([]);
     try {
-      const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question, history: [], lang }) });
+      const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question, history: [], lang, platform: nativePlatform() }) });
       const j = await r.json();
       setAnswer(j.answer || '…'); setRefs(j.articles || []);
     } catch { setAnswer('…'); }

@@ -7,6 +7,7 @@ import { useLang } from '@/lib/lang';
 import ChatThread, { type ChatMsg, type Att } from '@/app/components/ChatThread';
 import { useChatRealtime } from '@/lib/chatRealtime';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { nativePlatform } from '@/lib/native';
 
 type Lang = 'es' | 'en';
 
@@ -106,7 +107,8 @@ export default function SupportClient() {
     const next = [...chat, { role: 'user', content: q }];
     setChat(next); setAsk(''); setAiBusy(true); setAiRefs([]);
     try {
-      const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question: q, history: chat, lang }) });
+      // platform: en iOS el servidor oculta precios/planes, Bot Lab y add-ons (regla 3.1.1 de Apple).
+      const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question: q, history: chat, lang, platform: nativePlatform() }) });
       const j = await r.json();
       setChat([...next, { role: 'assistant', content: j.answer || '…', escalate: j.escalate }]);
       setAiRefs(j.articles || []);

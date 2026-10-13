@@ -362,7 +362,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
       </div>
 
       {/* Pestañas: cada una hace UN trabajo */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
         {tabBtn('hoy', t.tabToday, '☀️')}
         {tabBtn('plan', t.tabPlan, '📋')}
         {tabBtn('limites', t.tabLimits, '🛡️')}

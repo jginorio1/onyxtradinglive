@@ -11,6 +11,7 @@ import BrandIcon, { BRAND_COLOR } from '@/app/components/BrandIcon';
 import ShareRow from '@/app/components/ShareRow';
 import StudentBilling from '@/app/components/StudentBilling';
 import { useIsIOSApp, openOnyxWeb } from '@/app/account/ManageOnWeb';
+import { nativePlatform } from '@/lib/native';
 import LangToggle from '@/app/LangToggle';
 import EmailPreview from '@/app/admin/previews/EmailPreview';
 import { COUNTRIES, flagOf, countryName } from '@/app/components/countries';
@@ -4182,7 +4183,7 @@ function MentorGuide({ d, L, onGoto }: { d: any; L: (a: string, b: string) => st
     const question = q.trim(); if (question.length < 2) return;
     setBusy(true); setAns({ q: question, a: '', refs: [] });
     try {
-      const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question, history: [], lang }) });
+      const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question, history: [], lang, platform: nativePlatform() }) });
       const j = await r.json();
       setAns({ q: question, a: j.answer || '…', refs: j.articles || [] });
     } catch { setAns({ q: question, a: '…', refs: [] }); }
