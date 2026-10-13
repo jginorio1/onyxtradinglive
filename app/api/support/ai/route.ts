@@ -8,6 +8,7 @@ import { getSupportContext, contextToPrompt, proactiveRules, suggestActions } fr
 import { chatWidgetSettings } from '@/lib/settings';
 import { vpsInfo } from '@/lib/botlab';
 import { logError } from '@/lib/errlog';
+import { rateLimit, clientIp, tooMany } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -42,6 +43,11 @@ export async function POST(req: Request) {
     const lang: Lang = pickLang(b.lang);
     const history: any[] = Array.isArray(b.history) ? b.history.slice(-6) : [];
     if (!question) return NextResponse.json({ error: 'empty' }, { status: 400 });
+
+    // Rate-limit: es público y llama a la IA (cuesta dinero). 20 por minuto por IP
+    // es holgado para una conversación real y corta de tajo el abuso automatizado.
+    const rl = await rateLimit('support_ai', clientIp(req), 20, 60);
+    if (!rl.ok) return tooMany(rl.retryAfter, lang === 'en' ? 'en' : 'es');
 
     // Artículos sugeridos para los botones "Abrir: ...".
     const found = searchArticles(question, lang).slice(0, 5);

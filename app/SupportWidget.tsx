@@ -347,7 +347,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // Convierte enlaces dentro de una respuesta de la IA en BOTONES clickeables.
   // Reconoce markdown [texto](url), URLs http(s) y rutas internas conocidas (/bot-builder,
   // /pricing, /bot-lab, …). Los internos abren dentro de la app; los externos en otra pestaña.
-  const LINKABLE = '(?:bot-builder|bot-lab|pricing|copy|dashboard|guia|guide|embajadores|ambassadors|academia|academy|login|contacto|contact|analiza|unete-ventas|carreras|blog)';
+  const LINKABLE = '(?:bot-builder|bot-lab|pricing|copy|dashboard|guia|guide|embajadores|ambassadors|academia|academy|login|contacto|contact|analiza|demo|unete-ventas|carreras|blog)';
   // Rutas REALES de la app (slugs en español). Algunos slugs en inglés que la IA
   // suele inventar NO existen como página → los mapeamos a la ruta real.
   const ROUTE_ALIAS: Record<string, string> = {
@@ -384,7 +384,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       '/embajadores': ['Embajadores', 'Ambassadors'], '/ambassadors': ['Embajadores', 'Ambassadors'],
       '/academia': ['Academia', 'Academy'], '/academy': ['Academia', 'Academy'],
       '/login': ['Crear cuenta', 'Create account'], '/contacto': ['Contacto', 'Contact'], '/contact': ['Contacto', 'Contact'],
-      '/analiza': ['Analiza tu reporte', 'Analyze your report'], '/dashboard': ['Mi panel', 'My dashboard'],
+      '/analiza': ['Analiza tu reporte', 'Analyze your report'], '/demo': ['Ver el demo', 'See the demo'], '/dashboard': ['Mi panel', 'My dashboard'],
     };
     const hit = M[base]; if (hit) return esArg ? hit[0] : hit[1];
     try { const u = /^https?:\/\//i.test(href) ? href : 'https://' + href; return new URL(u).hostname.replace(/^www\./, ''); } catch {}

@@ -128,6 +128,7 @@ export default function GuideHome() {
     '/academia': ['Academia', 'Academy'], '/login': ['Crear cuenta', 'Create account'],
     '/contacto': ['Contacto', 'Contact'], '/dashboard': ['Mi panel', 'My dashboard'],
     '/como-usar': ['Cómo usar', 'How to use'], '/analiza': ['Analiza tu reporte', 'Analyze report'],
+    '/demo': ['Ver el demo', 'See the demo'],
   };
   const labelFor = (href: string, fallback?: string) => {
     const base = canon(href).split(/[?#]/)[0];
@@ -140,7 +141,7 @@ export default function GuideHome() {
     // Quita paréntesis que solo envuelven una ruta "(/dashboard)" → queda el botón suelto.
     text = (text || '').replace(/\(\s*(\/[a-z0-9\-\/?=&#.]+)\s*\)/gi, ' $1');
     // [1][2] markdown · [3] URL http(s) · [4] ruta interna · [5] dominio suelto
-    const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)|(https?:\/\/[^\s<>()]+)|(\/(?:bot-builder|pricing|bot-lab|copy|carreras|unete-ventas|publicidad|guia|guide|como-usar|dashboard|login|mentores|academia|academy|contacto|contact|analiza|embajadores|ambassadors|blog)[^\s<>()]*)|([a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\/[^\s<>()]*)?)/gi;
+    const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]*)\)|(https?:\/\/[^\s<>()]+)|(\/(?:bot-builder|pricing|bot-lab|copy|carreras|unete-ventas|publicidad|guia|guide|como-usar|dashboard|login|mentores|academia|academy|contacto|contact|analiza|demo|embajadores|ambassadors|blog)[^\s<>()]*)|([a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\/[^\s<>()]*)?)/gi;
     let last = 0, k = 0, m: RegExpExecArray | null;
     while ((m = re.exec(text))) {
       if (m.index > last) out.push(text.slice(last, m.index));
