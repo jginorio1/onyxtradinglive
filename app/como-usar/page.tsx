@@ -32,6 +32,7 @@ export default function ComoUsar() {
   const [q, setQ] = useState('');
   const [zoom, setZoom] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
+  const [demoTop, setDemoTop] = useState(64);   // el demo arranca justo bajo el menú
   const touchX = useRef<number | null>(null);
   const touchY = useRef<number | null>(null);
 
@@ -67,12 +68,25 @@ export default function ComoUsar() {
     return () => window.removeEventListener('keydown', h);
   }, [total, zoom, showDemo]);
 
-  // Bloquea el scroll del fondo mientras el demo está abierto en la capa.
+  // Bloquea el scroll del fondo mientras el demo está abierto en la capa, y mide
+  // dónde termina el menú superior (.topbar) para que el demo abra JUSTO debajo —
+  // el menú queda visible y usable por encima del demo.
   useEffect(() => {
     if (!showDemo) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    const measure = () => {
+      const bar = document.querySelector('.topbar') as HTMLElement | null;
+      setDemoTop(bar ? Math.max(0, Math.round(bar.getBoundingClientRect().bottom)) : 64);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, { passive: true });
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure);
+    };
   }, [showDemo]);
 
   const ql = q.trim().toLowerCase();
@@ -283,7 +297,7 @@ export default function ComoUsar() {
       {showDemo && (
         <div
           onClick={() => setShowDemo(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 2147483000, background: 'rgba(6,8,13,.92)', WebkitBackdropFilter: 'blur(4px)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', padding: 'calc(14px + env(safe-area-inset-top)) 14px 14px', gap: 10 }}
+          style={{ position: 'fixed', top: demoTop, left: 0, right: 0, bottom: 0, zIndex: 39, background: 'rgba(6,8,13,.92)', WebkitBackdropFilter: 'blur(4px)', backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', padding: '12px 14px 14px', gap: 10 }}
         >
           <div className="row between" style={{ alignItems: 'center', flex: 'none' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 15, color: '#fff' }}>

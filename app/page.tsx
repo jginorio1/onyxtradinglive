@@ -119,30 +119,36 @@ function Counter({ to, prefix = '', suffix = '', compact = true }: { to: number;
     return () => { if (io) io.disconnect(); clearTimeout(timer); };
   }, []);
 
-  // Autoajuste: el número (con su "+"/"%") SIEMPRE cabe dentro de la tarjeta, por
-  // muchos dígitos que tenga. Medimos el ancho real del texto contra el ancho
-  // disponible y lo encogemos con un transform: scale si hiciera falta. Se recalcula
-  // cuando cambia el número (animación / datos reales) y cuando cambia el tamaño.
+  // Autoajuste: el número (con su "+"/"%") SIEMPRE cabe CENTRADO dentro de la
+  // tarjeta, por muchos dígitos que tenga. Medimos el ancho real del texto contra
+  // el ancho disponible y lo encogemos con transform: scale (con un pequeño margen)
+  // si hiciera falta. Se recalcula al animar, al llegar datos reales, al cargar la
+  // fuente y al cambiar el tamaño de pantalla.
   const txtRef = useRef<HTMLSpanElement>(null);
   const [scale, setScale] = useState(1);
+  const fit = () => {
+    const box = ref.current, txt = txtRef.current;
+    if (!box || !txt) return;
+    const avail = box.clientWidth;
+    const w = txt.scrollWidth;        // ancho natural (el transform no lo afecta)
+    if (w > 0 && avail > 0) setScale(Math.min(1, (avail - 2) / w));
+  };
   useEffect(() => {
-    const fit = () => {
-      const box = ref.current, txt = txtRef.current;
-      if (!box || !txt) return;
-      const avail = box.clientWidth;
-      const w = txt.scrollWidth;
-      setScale(w > 0 && avail > 0 ? Math.min(1, avail / w) : 1);
-    };
-    fit();
+    const run = () => requestAnimationFrame(fit);
+    run();
+    const t = setTimeout(run, 1400);                       // tras la animación de conteo
+    (document as any).fonts?.ready?.then?.(run).catch?.(() => {});
     let ro: ResizeObserver | null = null;
-    if (ref.current && typeof ResizeObserver !== 'undefined') { ro = new ResizeObserver(fit); ro.observe(ref.current); }
-    return () => { if (ro) ro.disconnect(); };
+    if (ref.current && typeof ResizeObserver !== 'undefined') { ro = new ResizeObserver(run); ro.observe(ref.current); }
+    window.addEventListener('resize', run);
+    return () => { clearTimeout(t); if (ro) ro.disconnect(); window.removeEventListener('resize', run); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [n, prefix, suffix, compact]);
 
   // Color SÓLIDO de marca (sin background-clip:text, que recortaba el último glifo
   // en WebKit): imposible que recorte el "+"/"%" en cualquier navegador.
   return (
-    <div ref={ref} style={{ width: '100%', overflow: 'hidden' }}>
+    <div ref={ref} style={{ width: '100%', overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
       <span
         ref={txtRef}
         style={{
