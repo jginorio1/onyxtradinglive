@@ -76,8 +76,19 @@ export default function ComoUsar() {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const measure = () => {
-      const bar = document.querySelector('.topbar') as HTMLElement | null;
-      setDemoTop(bar ? Math.max(0, Math.round(bar.getBoundingClientRect().bottom)) : 64);
+      // Hay varias barras fijas arriba (menú principal .topbar, submenú .secnav,
+      // cinta promo). Tomamos el borde inferior MÁS BAJO para que el demo —y su
+      // botón Cerrar— arranque debajo de todas.
+      const sels = ['.topbar', '.secnav', '.promo', '.promo-bar', '.botlab-headwrap', 'header'];
+      let bottom = 0;
+      sels.forEach((s) => {
+        document.querySelectorAll(s).forEach((el) => {
+          const r = (el as HTMLElement).getBoundingClientRect();
+          // Solo barras pegadas arriba (no footers ni secciones lejanas).
+          if (r.top <= 120 && r.bottom > bottom) bottom = r.bottom;
+        });
+      });
+      setDemoTop(Math.max(0, Math.round(bottom)) || 64);
     };
     measure();
     window.addEventListener('resize', measure);
