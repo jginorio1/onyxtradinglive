@@ -1071,9 +1071,10 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
             </button>
             <div className={'rail-body' + (railOpen ? ' open' : '')}>
               {hasAccounts && <SetupGuide />}
-              {/* Siempre mostramos el reloj de mercado dentro del panel: garantiza que el
-                  desplegable nunca esté vacío aunque el plan no incluya Neto ni Coach. */}
-              <MarketClock />
+              {/* El mercado ya se muestra (detallado) en el riel izquierdo; aquí mantenemos
+                  el reloj compacto SOLO en móvil, donde el riel izquierdo no se ve, para no
+                  duplicarlo en escritorio. */}
+              {isMobile && <MarketClock />}
               {caps?.expenses ? <NetRealCard /> : null}
               {(caps?.coach || forceDemo) ? <CoachCard rail from={rangeDates.from} to={rangeDates.to} account={sel} demo={forceDemo} /> : null}
             </div>
@@ -1244,11 +1245,12 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 const semWR = a.winRate >= 50 ? GREEN : a.winRate >= 40 ? GOLD : RED;
                 const semPF = a.profitFactor >= 1.3 ? GREEN : a.profitFactor >= 1 ? GOLD : RED;
                 const semPO = a.payoff >= 1.5 ? GREEN : a.payoff >= 1 ? GOLD : RED;
+                const es = lang === 'es';
                 const vitals: Vital[] = [
-                  { pct: hs.score / 100, color: hs.color, value: String(hs.score), label: L.health },
-                  { pct: a.winRate / 100, color: semWR, value: `${Math.round(a.winRate)}%`, label: L.kWR },
-                  { pct: Math.min(a.profitFactor, 3) / 3, color: semPF, value: a.profitFactor.toFixed(2), label: L.kPF },
-                  { pct: Math.min(a.payoff, 2) / 2, color: semPO, value: a.payoff.toFixed(2), label: L.rPayoff },
+                  { pct: hs.score / 100, color: hs.color, value: String(hs.score), label: L.health, scale: es ? 'sobre 100' : 'out of 100' },
+                  { pct: a.winRate / 100, color: semWR, value: `${Math.round(a.winRate)}%`, label: L.kWR, scale: es ? 'meta ≥ 45%' : 'target ≥ 45%' },
+                  { pct: Math.min(a.profitFactor, 3) / 3, color: semPF, value: a.profitFactor.toFixed(2), label: L.kPF, scale: es ? 'meta ≥ 1.3' : 'target ≥ 1.3' },
+                  { pct: Math.min(a.payoff, 2) / 2, color: semPO, value: a.payoff.toFixed(2), label: L.rPayoff, scale: es ? 'meta ≥ 1.5' : 'target ≥ 1.5' },
                 ];
                 const tiles: Tile[] = SECTIONS.map((s) => ({
                   key: s.key, icon: s.icon, label: s.label, metric: s.metric, mc: s.mc, color: s.color,
@@ -1261,7 +1263,17 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 const edgeMetric = a.rValid ? `${a.rMean >= 0 ? '+' : ''}${(a.rMean || 0).toFixed(2)} R` : '—';
                 const edgeCol = !a.rValid ? 'var(--mut)' : (a.rMean || 0) >= 0 ? GREEN : RED;
                 tiles.push({ key: 'edge', icon: '📐', label: lang === 'en' ? 'Edge' : 'Edge', metric: edgeMetric, mc: edgeCol, color: 'var(--brand)', onClick: () => setView('edge') });
-                return <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />;
+                return (<>
+                  {/* Número héroe: el resultado neto grande que resume todo, con el desglose debajo. */}
+                  <div style={{ background: 'linear-gradient(135deg, rgba(232,185,35,.10), transparent)', border: '1px solid rgba(232,185,35,.28)', borderRadius: 14, padding: '16px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+                    <div>
+                      <div className="muted" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.5px' }}>{L.kNet} · {range === 'custom' ? L.customRange : L.ranges[range as 'd1']}</div>
+                      <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1, marginTop: 4, color: a.net >= 0 ? 'var(--green)' : 'var(--red)' }}>{money2(a.net)}</div>
+                      <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{es ? 'Portafolio' : 'Portfolio'} ${(sel === 'all' ? totalBalance : Number(cur?.balance || 0)).toLocaleString()} · {a.n} {L.ops}{sel === 'all' ? '' : ` · ${curName}`}</div>
+                    </div>
+                  </div>
+                  <HubVitals net={money2(a.net)} netPos={a.net >= 0} netLabel={L.kNet} vitals={vitals} tiles={tiles} hideNet />
+                </>);
               })()}
 
 

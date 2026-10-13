@@ -14,7 +14,7 @@ function Ic({ icon, size = 18 }: { icon: React.ReactNode; size?: number }) {
 // de tema (funciona claro/oscuro).
 // ============================================================
 
-export type Vital = { pct: number; color: string; value: string; label: string };
+export type Vital = { pct: number; color: string; value: string; label: string; scale?: string };
 
 // Tarjeta de estadística moderna: icono en pastilla iluminada, número grande con
 // color, subtítulo opcional y una mini-barra opcional. Usa clases de globals.css
@@ -50,6 +50,7 @@ function GlowRing({ v }: { v: Vital }) {
         <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle" fontSize={v.value.length > 4 ? 16 : 20} fontWeight="800" fill={v.color}>{v.value}</text>
       </svg>
       <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{v.label}</div>
+      {v.scale ? <div className="muted" style={{ fontSize: 10, marginTop: 1, opacity: .75 }}>{v.scale}</div> : null}
     </div>
   );
 }
