@@ -117,8 +117,12 @@ export default function ComoUsar() {
         @media(max-width:1200px){.onyx-guias .gwrap{grid-template-columns:250px minmax(0,1fr)}.onyx-guias .toc{display:none}}
         @media(max-width:900px){.onyx-guias .gwrap{grid-template-columns:1fr}.onyx-guias .side{position:static!important;max-height:none!important}.onyx-guias .inner{padding:22px 15px 60px}}
         .onyx-guias .stepnum{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,#ffcf5c,#ff6a2b);color:#241002;font-weight:800;font-size:20px;display:grid;place-items:center;flex:none;box-shadow:0 8px 20px -6px rgba(255,120,40,.6)}
-        .onyx-guias .shot{position:relative;border-radius:16px;border:1px solid var(--line);overflow:hidden;background:#0c0e15;cursor:zoom-in;box-shadow:0 24px 60px -26px rgba(0,0,0,.75)}
-        .onyx-guias .shot img{display:block;width:100%;height:auto}
+        .onyx-guias .shot{position:relative;border-radius:16px;border:1px solid var(--line);overflow:hidden;background:#0c0e15;cursor:zoom-in;box-shadow:0 24px 60px -26px rgba(0,0,0,.75);display:flex;justify-content:center;align-items:flex-start}
+        /* No estirar la captura más allá de su tamaño real: las imágenes angostas
+           (registro, login) se veían enormes y pixeladas al forzar width:100%. Ahora
+           se muestran a su resolución nativa (nítidas), centradas, y solo se encogen
+           si no caben. Las capturas anchas (panel, robots) siguen llenando el ancho. */
+        .onyx-guias .shot img{display:block;max-width:100%;width:auto;height:auto;margin:0 auto}
         /* Indicador = recuadro resaltado translúcido (no tapa el contenido) + numerito en el borde */
         .onyx-guias .mk{position:absolute;transform:translate(-50%,-50%);z-index:2;border:2px solid var(--brand);border-radius:9px;background:color-mix(in srgb,var(--brand) 12%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 20%,transparent);animation:mkpulse 1.9s ease-in-out infinite;pointer-events:none}
         @keyframes mkpulse{0%,100%{box-shadow:0 0 0 2px color-mix(in srgb,var(--brand) 16%,transparent)}50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--brand) 7%,transparent)}}
