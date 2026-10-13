@@ -175,8 +175,11 @@ export default async function TraderCertificate({ params }: { params: { id: stri
           Solo se ve al imprimir. Marco dorado, sello, firma y métricas del trader. */}
       {(() => {
         const accent = p.tier === 'diamond' ? '#2F6FB0' : p.tier === 'gold' ? '#9C6212' : p.tier === 'silver' ? '#7C828C' : '#2A3550';
-        const ink = '#111827', soft = '#6b7280', line = '#e5e7eb', paper = '#ffffff';
+        const ink = '#15233a', soft = '#8a7a52', line = '#d8cfb8', paper = '#FAF8F1', gold = '#B8860B', goldSoft = '#e7e1d0';
         const certNo = String(p.id).replace(/-/g, '').slice(0, 10).toUpperCase();
+        // Certificado bilingüe: se comparte a cualquiera, así que cada etiqueta
+        // va en ambos idiomas (ES · EN).
+        const bi = (a: string, b: string) => `${a} · ${b}`;
         // Curva (forma normalizada ±1)
         const c: number[] = Array.isArray(s.curve) ? s.curve : [];
         const CW = 560, CH = 92, cp = 6;
@@ -204,9 +207,19 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         return (
           <div className="print-cert">
             <div style={{ position: 'relative', width: '277mm', height: '190mm', margin: '0 auto', background: paper, color: ink, boxSizing: 'border-box', padding: '10mm', fontFamily: 'Georgia, "Times New Roman", serif' }}>
-              {/* Marco doble */}
-              <div style={{ position: 'absolute', inset: '6mm', border: `2px solid ${accent}`, borderRadius: 4 }} />
-              <div style={{ position: 'absolute', inset: '8mm', border: `0.6mm solid ${accent}`, opacity: 0.35, borderRadius: 2 }} />
+              {/* Filigrana tenue de fondo + número de score en marca de agua */}
+              <svg width="100%" height="100%" viewBox="0 0 1040 713" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, opacity: 0.05 }}>
+                <defs><pattern id={`gui-${certNo}`} width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="13" cy="13" r="11" fill="none" stroke={ink} strokeWidth="1" /></pattern></defs>
+                <rect width="1040" height="713" fill={`url(#gui-${certNo})`} />
+              </svg>
+              <div style={{ position: 'absolute', right: '12mm', bottom: '-10mm', fontSize: 340, fontWeight: 800, color: ink, opacity: 0.04, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>{p.score}</div>
+
+              {/* Marco doble dorado + esquinas */}
+              <div style={{ position: 'absolute', inset: '6mm', border: `0.8mm solid ${gold}`, borderRadius: 3 }} />
+              <div style={{ position: 'absolute', inset: '8mm', border: `0.3mm solid ${gold}`, opacity: 0.55 }} />
+              {[['6mm', '6mm', 'left', 'top'], ['6mm', '6mm', 'right', 'top'], ['6mm', '6mm', 'left', 'bottom'], ['6mm', '6mm', 'right', 'bottom']].map((_, i) => (
+                <div key={i} style={{ position: 'absolute', [i % 2 === 0 ? 'left' : 'right']: '6mm', [i < 2 ? 'top' : 'bottom']: '6mm', width: 30, height: 30, [`border${i % 2 === 0 ? 'Left' : 'Right'}`]: `0.9mm solid ${ink}`, [`border${i < 2 ? 'Top' : 'Bottom'}`]: `0.9mm solid ${ink}` }} />
+              ))}
 
               <div style={{ position: 'relative', height: '100%', padding: '6mm 10mm', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
                 {/* Cabecera */}
@@ -216,24 +229,27 @@ export default async function TraderCertificate({ params }: { params: { id: stri
                     <span style={{ fontSize: 13, letterSpacing: 3, textTransform: 'uppercase', color: ink, fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>Onyx Trading Live</span>
                   </div>
                   <div style={{ textAlign: 'right', fontFamily: 'Arial, sans-serif' }}>
-                    <div style={{ fontSize: 8.5, letterSpacing: 1.5, color: soft, textTransform: 'uppercase' }}>{L('Certificado Nº', 'Certificate No.')}</div>
+                    <div style={{ fontSize: 8.5, letterSpacing: 1.5, color: soft, textTransform: 'uppercase' }}>{bi('Certificado Nº', 'Certificate No.')}</div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: ink, letterSpacing: 1 }}>{certNo}</div>
                   </div>
                 </div>
 
                 {/* Título */}
                 <div style={{ textAlign: 'center', marginTop: '3mm' }}>
-                  <div style={{ fontSize: 22, letterSpacing: 2, color: ink, fontWeight: 700 }}>{L('CERTIFICADO DE DESEMPEÑO VERIFICADO', 'CERTIFICATE OF VERIFIED PERFORMANCE')}</div>
-                  <div style={{ width: 120, height: 2, background: accent, margin: '4mm auto 0' }} />
+                  <div style={{ fontSize: 10, letterSpacing: 4, color: gold, textTransform: 'uppercase', fontFamily: 'Arial, sans-serif' }}>{bi('Certificado de desempeño', 'Certificate of performance')}</div>
+                  <div style={{ fontSize: 24, letterSpacing: 1, color: ink, fontWeight: 700, marginTop: 2 }}>{bi('Trader Verificado', 'Verified Trader')}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: '3mm' }}>
+                    <span style={{ width: 90, height: 1, background: gold }} /><span style={{ color: gold, fontSize: 13 }}>❖</span><span style={{ width: 90, height: 1, background: gold }} />
+                  </div>
                 </div>
 
                 {/* Cuerpo: izquierda identidad + score · derecha métricas + curva */}
                 <div style={{ display: 'flex', gap: '12mm', marginTop: '5mm', flex: 1, alignItems: 'center' }}>
                   {/* Izquierda */}
                   <div style={{ width: '38%', textAlign: 'center' }}>
-                    <div style={{ fontSize: 11, color: soft, fontStyle: 'italic' }}>{L('Se certifica que', 'This certifies that')}</div>
+                    <div style={{ fontSize: 10.5, color: soft, fontStyle: 'italic' }}>{bi('Se certifica que', 'This certifies that')}</div>
                     <div style={{ fontSize: 34, fontWeight: 700, color: ink, margin: '2mm 0', lineHeight: 1.1 }}>{p.display_name}</div>
-                    <div style={{ display: 'inline-block', border: `1.5px solid ${accent}`, color: accent, padding: '3px 16px', borderRadius: 999, fontSize: 13, fontWeight: 700, fontFamily: 'Arial, sans-serif', letterSpacing: 1 }}>{tierLabel(p.tier, es ? 'es' : 'en')}</div>
+                    <div style={{ display: 'inline-block', border: `1.5px solid ${accent}`, color: accent, padding: '3px 16px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, fontFamily: 'Arial, sans-serif', letterSpacing: 1 }}>{(() => { const a = tierLabel(p.tier, 'es'); const b = tierLabel(p.tier, 'en'); return a === b ? a : `${a} · ${b}`; })()}</div>
                     {/* Onyx Score grande con anillo */}
                     <div style={{ marginTop: '6mm', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                       <div style={{ position: 'relative', width: 96, height: 96 }}>
@@ -254,12 +270,12 @@ export default async function TraderCertificate({ params }: { params: { id: stri
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${line}`, borderBottom: `1px solid ${line}`, padding: '4mm 0', fontFamily: 'Arial, sans-serif' }}>
                       {stat(`${s.winRate ?? 0}%`, 'Win rate')}
                       {stat(String(s.pf ?? 0), 'Profit factor')}
-                      {stat(`${s.maxDDpct ?? 0}%`, L('Drawdown máx.', 'Max drawdown'))}
-                      {stat(`${s.trades ?? 0}`, L('Operaciones', 'Trades'))}
+                      {stat(`${s.maxDDpct ?? 0}%`, bi('Drawdown máx.', 'Max DD'))}
+                      {stat(`${s.trades ?? 0}`, bi('Operaciones', 'Trades'))}
                     </div>
                     {/* Curva */}
                     <div style={{ marginTop: '4mm' }}>
-                      <div style={{ fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase', color: soft, marginBottom: 2, fontFamily: 'Arial, sans-serif' }}>{L('Curva de resultados', 'Equity curve')}</div>
+                      <div style={{ fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', color: soft, marginBottom: 2, fontFamily: 'Arial, sans-serif' }}>{bi('Curva de resultados', 'Equity curve')}</div>
                       {dLine ? (
                         <svg viewBox={`0 0 ${CW} ${CH}`} width="100%" height="64" preserveAspectRatio="none" style={{ display: 'block' }}>
                           <line x1="0" y1={CH / 2} x2={CW} y2={CH / 2} stroke={line} strokeWidth="1" strokeDasharray="4 4" />
@@ -270,10 +286,10 @@ export default async function TraderCertificate({ params }: { params: { id: stri
                     </div>
                     {/* Pilares */}
                     <div style={{ display: 'flex', gap: 14, marginTop: '4mm', fontFamily: 'Arial, sans-serif' }}>
-                      {pbar(L('Disciplina', 'Discipline'), pl.discipline || 0)}
-                      {pbar(L('Riesgo', 'Risk'), pl.risk || 0)}
-                      {pbar(L('Rendimiento', 'Performance'), pl.performance || 0)}
-                      {pbar(L('Consistencia', 'Consistency'), pl.consistency || 0)}
+                      {pbar(bi('Disciplina', 'Discipline'), pl.discipline || 0)}
+                      {pbar(bi('Riesgo', 'Risk'), pl.risk || 0)}
+                      {pbar(bi('Rendimiento', 'Performance'), pl.performance || 0)}
+                      {pbar(bi('Consistencia', 'Consistency'), pl.consistency || 0)}
                     </div>
                   </div>
                 </div>
@@ -281,23 +297,23 @@ export default async function TraderCertificate({ params }: { params: { id: stri
                 {/* Pie: firma · sello · verificación */}
                 <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: '4mm', fontFamily: 'Arial, sans-serif' }}>
                   <div style={{ textAlign: 'center', width: '32%' }}>
-                    <div style={{ fontSize: 15, color: ink, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>Onyx&nbsp;AI</div>
-                    <div style={{ borderTop: `1px solid ${ink}`, marginTop: 2, paddingTop: 3, fontSize: 9, color: soft }}>{L('Calificación algorítmica verificada', 'Verified algorithmic grading')}</div>
+                    <div style={{ fontSize: 17, color: ink, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>{bi('Equipo Onyx', 'Onyx Team')}</div>
+                    <div style={{ borderTop: `1px solid ${ink}`, marginTop: 2, paddingTop: 3, fontSize: 8.5, color: soft }}>{bi('Verificado por Onyx Trading Live', 'Verified by Onyx Trading Live')}</div>
                   </div>
                   <div style={{ textAlign: 'center', width: '34%' }}>
-                    <div style={{ width: 54, height: 54, margin: '0 auto', borderRadius: '50%', border: `2px solid ${accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: accent }}>
-                      <img src="/onyx-symbol.png" alt="" width={26} height={26} style={{ width: 26, height: 26, objectFit: 'contain' }} />
+                    <div style={{ width: 66, height: 66, margin: '0 auto', borderRadius: '50%', border: `2px solid ${gold}`, boxShadow: `0 0 0 3px ${goldSoft}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: paper }}>
+                      <img src="/onyx-symbol.png" alt="Onyx" width={40} height={40} style={{ width: 40, height: 40, objectFit: 'contain' }} />
                     </div>
-                    <div style={{ fontSize: 8, color: soft, marginTop: 3, letterSpacing: 1 }}>{L('SELLO DE VERIFICACIÓN', 'VERIFICATION SEAL')}</div>
+                    <div style={{ fontSize: 7.5, color: soft, marginTop: 4, letterSpacing: 1 }}>{bi('Sello oficial Onyx', 'Official Onyx seal')}</div>
                   </div>
                   <div style={{ textAlign: 'center', width: '32%' }}>
                     <div style={{ fontSize: 13, color: ink, fontWeight: 700 }}>{issued}</div>
-                    <div style={{ borderTop: `1px solid ${ink}`, marginTop: 2, paddingTop: 3, fontSize: 9, color: soft }}>{L('Fecha de emisión', 'Issue date')}</div>
+                    <div style={{ borderTop: `1px solid ${ink}`, marginTop: 2, paddingTop: 3, fontSize: 8.5, color: soft }}>{bi('Fecha de emisión', 'Issue date')}</div>
                   </div>
                 </div>
 
                 <div style={{ textAlign: 'center', fontSize: 8, color: soft, marginTop: '3mm', fontFamily: 'Arial, sans-serif' }}>
-                  {L('Verificable en', 'Verifiable at')} {SITE}/copy/t/{p.id} · {L('Los resultados pasados no garantizan resultados futuros.', 'Past results do not guarantee future results.')}
+                  {bi('Verificable en', 'Verifiable at')} {SITE}/copy/t/{p.id} · {L('Los resultados pasados no garantizan resultados futuros.', 'Past results do not guarantee future results.')} / Past results do not guarantee future results.
                 </div>
               </div>
             </div>
