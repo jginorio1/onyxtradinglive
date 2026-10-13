@@ -645,7 +645,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
               </div>
             </div>
             {/* Solo el botón de cerrar en la cabecera (sin Expand ni menú de 3 puntos). */}
-            <button onClick={() => setOpen(false)} aria-label="close" style={{ background: 'rgba(0,0,0,.14)', border: 'none', color: CHINK, fontSize: 20, cursor: 'pointer', lineHeight: 1, width: 34, height: 34, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>×</button>
+            <button onClick={() => setOpen(false)} aria-label={es ? 'Cerrar' : 'Close'} title={es ? 'Cerrar' : 'Close'} style={{ background: 'rgba(0,0,0,.42)', border: '1px solid rgba(255,255,255,.35)', color: '#fff', fontSize: 20, fontWeight: 800, cursor: 'pointer', lineHeight: 1, width: 34, height: 34, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', boxShadow: '0 1px 3px rgba(0,0,0,.3)' }}>✕</button>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
