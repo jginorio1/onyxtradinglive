@@ -63,7 +63,7 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         /* El certificado de impresión solo existe al imprimir (landscape, 1 pág). */
         .print-cert { display: none; }
         @media print {
-          @page { size: A4 landscape; margin: 0; }
+          @page { size: letter landscape; margin: 0; }
           html, body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           body * { visibility: hidden !important; }
           .print-cert, .print-cert * { visibility: visible !important; }
@@ -177,9 +177,8 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         const accent = p.tier === 'diamond' ? '#2F6FB0' : p.tier === 'gold' ? '#9C6212' : p.tier === 'silver' ? '#7C828C' : '#2A3550';
         const ink = '#15233a', soft = '#8a7a52', line = '#d8cfb8', paper = '#FAF8F1', gold = '#B8860B', goldSoft = '#e7e1d0';
         const certNo = String(p.id).replace(/-/g, '').slice(0, 10).toUpperCase();
-        // Certificado bilingüe: se comparte a cualquiera, así que cada etiqueta
-        // va en ambos idiomas (ES · EN).
-        const bi = (a: string, b: string) => `${a} · ${b}`;
+        // El certificado se genera en el idioma actual del panel (es/en), no bilingüe.
+        const bi = (a: string, b: string) => (es ? a : b);
         // Curva (forma normalizada ±1)
         const c: number[] = Array.isArray(s.curve) ? s.curve : [];
         const CW = 560, CH = 92, cp = 6;
@@ -206,7 +205,7 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         );
         return (
           <div className="print-cert">
-            <div style={{ position: 'relative', width: '277mm', height: '190mm', margin: '0 auto', background: paper, color: ink, boxSizing: 'border-box', padding: '10mm', fontFamily: 'Georgia, "Times New Roman", serif' }}>
+            <div style={{ position: 'relative', width: '11in', height: '8.5in', margin: '0 auto', background: paper, color: ink, boxSizing: 'border-box', padding: '0.4in', fontFamily: 'Georgia, "Times New Roman", serif' }}>
               {/* Filigrana tenue de fondo + número de score en marca de agua */}
               <svg width="100%" height="100%" viewBox="0 0 1040 713" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, opacity: 0.05 }}>
                 <defs><pattern id={`gui-${certNo}`} width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="13" cy="13" r="11" fill="none" stroke={ink} strokeWidth="1" /></pattern></defs>
@@ -249,7 +248,7 @@ export default async function TraderCertificate({ params }: { params: { id: stri
                   <div style={{ width: '38%', textAlign: 'center' }}>
                     <div style={{ fontSize: 10.5, color: soft, fontStyle: 'italic' }}>{bi('Se certifica que', 'This certifies that')}</div>
                     <div style={{ fontSize: 34, fontWeight: 700, color: ink, margin: '2mm 0', lineHeight: 1.1 }}>{p.display_name}</div>
-                    <div style={{ display: 'inline-block', border: `1.5px solid ${accent}`, color: accent, padding: '3px 16px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, fontFamily: 'Arial, sans-serif', letterSpacing: 1 }}>{(() => { const a = tierLabel(p.tier, 'es'); const b = tierLabel(p.tier, 'en'); return a === b ? a : `${a} · ${b}`; })()}</div>
+                    <div style={{ display: 'inline-block', border: `1.5px solid ${accent}`, color: accent, padding: '3px 16px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, fontFamily: 'Arial, sans-serif', letterSpacing: 1 }}>{tierLabel(p.tier, es ? 'es' : 'en')}</div>
                     {/* Onyx Score grande con anillo */}
                     <div style={{ marginTop: '6mm', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                       <div style={{ position: 'relative', width: 96, height: 96 }}>
@@ -313,7 +312,7 @@ export default async function TraderCertificate({ params }: { params: { id: stri
                 </div>
 
                 <div style={{ textAlign: 'center', fontSize: 8, color: soft, marginTop: '3mm', fontFamily: 'Arial, sans-serif' }}>
-                  {bi('Verificable en', 'Verifiable at')} {SITE}/copy/t/{p.id} · {L('Los resultados pasados no garantizan resultados futuros.', 'Past results do not guarantee future results.')} / Past results do not guarantee future results.
+                  {bi('Verificable en', 'Verifiable at')} {SITE}/copy/t/{p.id} · {L('Los resultados pasados no garantizan resultados futuros.', 'Past results do not guarantee future results.')}
                 </div>
               </div>
             </div>
