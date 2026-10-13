@@ -263,7 +263,7 @@ export type TrackConfig = {
 const TRACK_DEF: TrackConfig = {
   enabled: true, show_money: false, show_accounts: false, show_equity: true,
   show_winrate: true, show_pf: true, show_dd: true, show_bysym: true,
-  show_trades: true, show_avatar: true, verified_badge: true, min_trades: 20,
+  show_trades: true, show_avatar: true, verified_badge: true, min_trades: 5,
 };
 export const trackSettings = () => getSetting<TrackConfig>('trackrecord', TRACK_DEF);
 
