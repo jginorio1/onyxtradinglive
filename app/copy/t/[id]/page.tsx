@@ -63,10 +63,13 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         @media print {
           @page { size: A4 portrait; margin: 10mm; }
           html, body { background: #fff !important; }
-          .no-print { display: none !important; }
-          .wrap.section { padding: 0 !important; max-width: 100% !important; margin: 0 !important; }
-          .cert-area { page-break-inside: avoid; break-inside: avoid; }
+          /* Oculta TODO (incluida la barra superior global de la app) y deja ver
+             solo el certificado, anclado arriba, para que salga en UNA página. */
+          body * { visibility: hidden !important; }
+          .cert-area, .cert-area * { visibility: visible !important; }
+          .cert-area { position: absolute !important; left: 0; top: 0; width: 100% !important; margin: 0 !important; padding: 0 !important; page-break-inside: avoid; break-inside: avoid; }
           .cert-area .card { box-shadow: none !important; }
+          .no-print { display: none !important; }
         }
       ` }} />
       <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
@@ -126,6 +129,10 @@ export default async function TraderCertificate({ params }: { params: { id: stri
           {pill(L('Consistencia', 'Consistency'), pl.consistency || 0)}
         </div>
       </div>
+
+      <p className="muted" style={{ fontSize: 11.5, textAlign: 'center', marginTop: 16, maxWidth: 620, marginInline: 'auto' }}>
+        {L('Certificado verificable en', 'Verifiable certificate at')} {SITE}/copy/t/{p.id}. {L('Los resultados pasados no garantizan resultados futuros.', 'Past results do not guarantee future results.')}
+      </p>
       </div>{/* /cert-area */}
 
       {/* Compartir: Web Share nativo + copiar link + X. El botón de copiar a este
