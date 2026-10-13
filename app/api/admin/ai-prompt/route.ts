@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const g = await requirePerm('soporte', 'manage');
     if (!g.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const b = await req.json().catch(() => ({} as any));
-    const clean = (s: any, n = 8000) => (s == null ? '' : String(s).slice(0, n));
+    const clean = (s: any, n = 20000) => (s == null ? '' : String(s).slice(0, n));
     const val: AiPrompt = {
       brief_es: clean(b.brief_es), brief_en: clean(b.brief_en),
       extra_es: clean(b.extra_es, 4000), extra_en: clean(b.extra_en, 4000),
