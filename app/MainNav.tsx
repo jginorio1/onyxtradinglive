@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import OnyxIcon from '@/app/components/OnyxIcon';
 
-export type NavItem = { href: string; label: string; dot?: 'on' | 'off'; dim?: boolean; icon?: string; dotTitle?: string; full?: boolean; gold?: boolean; tint?: string; sep?: boolean };
+export type NavItem = { href: string; label: string; dot?: 'on' | 'off'; dim?: boolean; icon?: string; dotTitle?: string; full?: boolean; gold?: boolean; tint?: string; sep?: boolean; children?: NavItem[] };
 // Chip dorado (marca Onyx Bot Lab) para destacar un destino distinto en el nav.
 const GOLD_CHIP: any = { background: 'linear-gradient(120deg,#ffd45e,#ffb020)', color: '#4a2b00', borderRadius: 99, padding: '4px 13px', fontWeight: 800, boxShadow: '0 4px 14px rgba(255,176,32,.28)' };
 
@@ -20,12 +20,23 @@ const GOLD_CHIP: any = { background: 'linear-gradient(120deg,#ffd45e,#ffb020)', 
 export default function MainNav({ items, authItems }: { items: NavItem[]; authItems?: NavItem[] }) {
   const pathname = usePathname() || '/';
   const [open, setOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null); // grupo desplegable abierto (desktop)
   const [menuTop, setMenuTop] = useState<number | null>(null);   // top del menú en móvil (px, relativo al bloque contenedor)
   const [menuMaxH, setMenuMaxH] = useState<number | null>(null); // alto máximo disponible en pantalla (px)
   const box = useRef<HTMLDivElement>(null);
 
   // Cierra al navegar
-  useEffect(() => { setOpen(false); }, [pathname]);
+  useEffect(() => { setOpen(false); setOpenGroup(null); }, [pathname]);
+
+  // Cierra el grupo desplegable (desktop) al hacer clic fuera o con Escape.
+  useEffect(() => {
+    if (!openGroup) return;
+    const away = (e: MouseEvent) => { const t = e.target as HTMLElement; if (!t.closest('.navl-group')) setOpenGroup(null); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenGroup(null); };
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc); };
+  }, [openGroup]);
 
   // En móvil, ancla el menú al borde INFERIOR real de la barra (medido en vivo).
   // Así no depende de suponer 64px + alto de promo + muesca: siempre queda pegado
@@ -88,6 +99,41 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
       <div className="navl">
         {items.map((i, idx) => {
           if (i.sep) return <span key={'sep' + idx} className="navsep" aria-hidden="true" />;
+          // Grupo con desplegable: botón que abre un menú con sus hijos.
+          if (i.children && i.children.length) {
+            const gkey = i.label;
+            const kids = i.children;
+            const groupOn = kids.some((c) => isActive(c.href));
+            const groupDot = kids.some((c) => c.dot === 'on');
+            return (
+              <span key={'g' + idx} className="navl-group" style={{ position: 'relative', display: 'inline-flex' }}>
+                <button type="button" className={'navlink' + (groupOn ? ' on' : '')} aria-expanded={openGroup === gkey}
+                  onClick={() => setOpenGroup((g) => (g === gkey ? null : gkey))}
+                  style={{ background: 'transparent', border: 'none', font: 'inherit', cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
+                  {i.icon && <span aria-hidden="true" style={{ marginRight: 6, display: 'inline-flex', verticalAlign: '-3px' }}><OnyxIcon emoji={i.icon} size={16} /></span>}
+                  {i.label}
+                  {groupDot && <span className="navdotmini on" style={{ marginLeft: 6 }} />}
+                  <span style={{ marginLeft: 5, fontSize: 10, opacity: .6 }}>▾</span>
+                </button>
+                {openGroup === gkey && (
+                  <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 60, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 6, minWidth: 210, boxShadow: '0 14px 34px -10px rgba(0,0,0,.55)' }}>
+                    {kids.map((c) => {
+                      const ccls = 'menu-item' + (isActive(c.href) ? ' on' : '');
+                      const cst = c.gold ? { color: 'var(--gold,#ffd45e)', fontWeight: 800 } : c.tint ? { color: c.tint, fontWeight: 700 } : undefined;
+                      const cinner = (<>
+                        {c.icon && <span aria-hidden="true" style={{ marginRight: 8, display: 'inline-flex', verticalAlign: '-3px' }}><OnyxIcon emoji={c.icon} size={16} /></span>}
+                        {c.label}
+                        {c.dot && <span className={'navdotmini ' + c.dot} style={{ marginLeft: 8 }} />}
+                      </>);
+                      return c.full
+                        ? <a key={c.href} className={ccls} href={c.href} style={cst} onClick={() => setOpenGroup(null)}>{cinner}</a>
+                        : <Link key={c.href} className={ccls} href={c.href} style={cst} onClick={() => setOpenGroup(null)}>{cinner}</Link>;
+                    })}
+                  </div>
+                )}
+              </span>
+            );
+          }
           const dt = i.dot ? (i.dotTitle || (i.dot === 'on' ? 'activo' : 'inactivo')) : undefined;
           const cls = 'navlink' + (isActive(i.href) ? ' on' : '') + (i.dim ? ' dim' : '');
           const inner = (<>
@@ -111,6 +157,26 @@ export default function MainNav({ items, authItems }: { items: NavItem[]; authIt
           <div className="menu" style={{ minWidth: 180, ...(menuTop != null ? { top: menuTop + 'px' } : {}), ...(menuMaxH != null ? { maxHeight: menuMaxH + 'px' } : {}) }}>
             {items.map((i, idx) => {
               if (i.sep) return <div key={'sep' + idx} style={{ borderTop: '1px solid var(--line)', margin: '6px 0' }} />;
+              // Grupo: cabecera + hijos (en móvil el menú ya está abierto, no hay 2º nivel).
+              if (i.children && i.children.length) {
+                return (
+                  <div key={'g' + idx}>
+                    <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--mut)', padding: '8px 12px 2px', fontWeight: 700 }}>{i.label}</div>
+                    {i.children.map((c) => {
+                      const ccls = 'menu-item' + (isActive(c.href) ? ' on' : '');
+                      const cst = c.gold ? { color: 'var(--gold,#ffd45e)', fontWeight: 800 } : c.tint ? { color: c.tint, fontWeight: 700 } : undefined;
+                      const cinner = (<>
+                        {c.icon && <span aria-hidden="true" style={{ marginRight: 8, display: 'inline-flex', verticalAlign: '-3px' }}><OnyxIcon emoji={c.icon} size={16} /></span>}
+                        {c.label}
+                        {c.dot && <span className={'navdotmini ' + c.dot} style={{ marginLeft: 8 }} />}
+                      </>);
+                      return c.full
+                        ? <a key={c.href} className={ccls} href={c.href} style={cst}>{cinner}</a>
+                        : <Link key={c.href} className={ccls} href={c.href} style={cst}>{cinner}</Link>;
+                    })}
+                  </div>
+                );
+              }
               const cls = 'menu-item' + (isActive(i.href) ? ' on' : '');
               const inner = (<>
                 {i.icon && <span aria-hidden="true" style={{ marginRight: 8, display: 'inline-flex', verticalAlign: '-3px' }}><OnyxIcon emoji={i.icon} size={16} /></span>}
