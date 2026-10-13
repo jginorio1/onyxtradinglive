@@ -63,8 +63,8 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         /* El certificado de impresión solo existe al imprimir (landscape, 1 pág). */
         .print-cert { display: none; }
         @media print {
-          @page { size: letter landscape; margin: 0.25in; }
-          html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          @page { size: letter landscape; margin: 0; }
+          html, body { background: #0b1020 !important; margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           /* Oculta TODO lo que no contiene ni es el certificado (barra de la app,
              widgets, la vista web). Solo queda el certificado como único contenido
              → exactamente una página Carta landscape. */
@@ -177,8 +177,9 @@ export default async function TraderCertificate({ params }: { params: { id: stri
       {/* ====== CERTIFICADO DE IMPRESIÓN (landscape, 1 página, diseño formal) ======
           Solo se ve al imprimir. Marco dorado, sello, firma y métricas del trader. */}
       {(() => {
-        const accent = p.tier === 'diamond' ? '#2F6FB0' : p.tier === 'gold' ? '#9C6212' : p.tier === 'silver' ? '#7C828C' : '#2A3550';
-        const ink = '#15233a', soft = '#8a7a52', line = '#d8cfb8', paper = '#FAF8F1', gold = '#B8860B', goldSoft = '#e7e1d0';
+        // Certificado en tema OSCURO (fondo onyx a sangre completa).
+        const accent = p.tier === 'diamond' ? '#6BB5F0' : p.tier === 'gold' ? '#E2B84B' : p.tier === 'silver' ? '#C7CCD6' : '#C9A227';
+        const ink = '#e8ecf4', soft = '#8b94a7', line = '#2a3450', paper = '#0b1020', gold = '#C9A227', goldSoft = '#1d2740';
         const certNo = String(p.id).replace(/-/g, '').slice(0, 10).toUpperCase();
         // El certificado se genera en el idioma actual del panel (es/en), no bilingüe.
         const bi = (a: string, b: string) => (es ? a : b);
@@ -203,18 +204,18 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         const pbar = (lbl: string, val: number) => (
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, color: soft, marginBottom: 3 }}><span>{lbl}</span><span style={{ color: ink, fontWeight: 700 }}>{val}</span></div>
-            <div style={{ height: 5, background: '#eef0f3', borderRadius: 4, overflow: 'hidden' }}><div style={{ width: `${Math.max(3, Math.min(100, val))}%`, height: '100%', background: accent }} /></div>
+            <div style={{ height: 5, background: goldSoft, borderRadius: 4, overflow: 'hidden' }}><div style={{ width: `${Math.max(3, Math.min(100, val))}%`, height: '100%', background: gold }} /></div>
           </div>
         );
         return (
           <div className="print-cert">
-            <div style={{ position: 'relative', width: '10in', height: '7.3in', margin: '0 auto', background: paper, color: ink, boxSizing: 'border-box', padding: '0.3in', overflow: 'hidden', fontFamily: 'Georgia, "Times New Roman", serif' }}>
+            <div style={{ position: 'relative', width: '11in', height: '8.5in', margin: '0 auto', background: paper, color: ink, boxSizing: 'border-box', padding: '0.45in', overflow: 'hidden', fontFamily: 'Georgia, "Times New Roman", serif' }}>
               {/* Filigrana tenue de fondo + número de score en marca de agua */}
               <svg width="100%" height="100%" viewBox="0 0 1040 713" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, opacity: 0.05 }}>
-                <defs><pattern id={`gui-${certNo}`} width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="13" cy="13" r="11" fill="none" stroke={ink} strokeWidth="1" /></pattern></defs>
+                <defs><pattern id={`gui-${certNo}`} width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="13" cy="13" r="11" fill="none" stroke={gold} strokeWidth="1" /></pattern></defs>
                 <rect width="1040" height="713" fill={`url(#gui-${certNo})`} />
               </svg>
-              <div style={{ position: 'absolute', right: '12mm', bottom: '-10mm', fontSize: 340, fontWeight: 800, color: ink, opacity: 0.04, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>{p.score}</div>
+              <div style={{ position: 'absolute', right: '12mm', bottom: '-10mm', fontSize: 340, fontWeight: 800, color: gold, opacity: 0.05, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>{p.score}</div>
 
               {/* Marco doble dorado + esquinas */}
               <div style={{ position: 'absolute', inset: '6mm', border: `0.8mm solid ${gold}`, borderRadius: 3 }} />
@@ -256,8 +257,8 @@ export default async function TraderCertificate({ params }: { params: { id: stri
                     <div style={{ marginTop: '6mm', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                       <div style={{ position: 'relative', width: 96, height: 96 }}>
                         <svg viewBox="0 0 96 96" width="96" height="96">
-                          <circle cx="48" cy="48" r="42" fill="none" stroke="#eef0f3" strokeWidth="8" />
-                          <circle cx="48" cy="48" r="42" fill="none" stroke={accent} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(Math.max(0, Math.min(100, p.score)) / 100) * 264} 264`} transform="rotate(-90 48 48)" />
+                          <circle cx="48" cy="48" r="42" fill="none" stroke={goldSoft} strokeWidth="8" />
+                          <circle cx="48" cy="48" r="42" fill="none" stroke={gold} strokeWidth="8" strokeLinecap="round" strokeDasharray={`${(Math.max(0, Math.min(100, p.score)) / 100) * 264} 264`} transform="rotate(-90 48 48)" />
                         </svg>
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                           <div style={{ fontSize: 30, fontWeight: 800, color: ink, lineHeight: 1, fontFamily: 'Arial, sans-serif' }}>{p.score}</div>
@@ -308,9 +309,15 @@ export default async function TraderCertificate({ params }: { params: { id: stri
                     </div>
                     <div style={{ fontSize: 7.5, color: soft, marginTop: 4, letterSpacing: 1 }}>{bi('Sello oficial Onyx', 'Official Onyx seal')}</div>
                   </div>
-                  <div style={{ textAlign: 'center', width: '32%' }}>
-                    <div style={{ fontSize: 13, color: ink, fontWeight: 700 }}>{issued}</div>
-                    <div style={{ borderTop: `1px solid ${ink}`, marginTop: 2, paddingTop: 3, fontSize: 8.5, color: soft }}>{bi('Fecha de emisión', 'Issue date')}</div>
+                  <div style={{ width: '32%', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 13, color: ink, fontWeight: 700 }}>{issued}</div>
+                      <div style={{ borderTop: `1px solid ${ink}`, marginTop: 2, paddingTop: 3, fontSize: 8.5, color: soft }}>{bi('Fecha de emisión', 'Issue date')}</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <img src={`/api/qr?data=${encodeURIComponent(`${SITE}/copy/t/${p.id}`)}&size=200&fmt=png&fg=0b1020&bg=ffffff`} alt="QR" width={52} height={52} style={{ width: 52, height: 52, background: '#fff', borderRadius: 6, padding: 3, display: 'block' }} />
+                      <div style={{ fontSize: 6.5, color: soft, marginTop: 2, letterSpacing: .5 }}>{bi('Escanéame', 'Scan me')}</div>
+                    </div>
                   </div>
                 </div>
 
