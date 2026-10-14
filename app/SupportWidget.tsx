@@ -694,11 +694,26 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             )}
             {actions.length > 0 && (
               <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                {actions.map((a) => (
-                  <Link key={a.url} href={canonHref(a.url)} onClick={() => setOpen(false)} className="btn btn-primary" style={{ padding: '7px 12px', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {a.label} <OnyxIcon name="send" size={13} glow={false} />
-                  </Link>
-                ))}
+                {actions.map((a) => {
+                  const dest = canonHref(a.url);
+                  const stA: any = { padding: '7px 12px', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 };
+                  // Las acciones EXTERNAS (p. ej. el enlace de referido del VPS o del
+                  // bróker) no son rutas internas: deben abrir en una pestaña nueva,
+                  // no pasar por el router de Next (que acababa tirando al /dashboard).
+                  if (!dest.startsWith('/')) {
+                    const ext = /^https?:\/\//i.test(dest) ? dest : 'https://' + dest;
+                    return (
+                      <a key={a.url} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={() => setOpen(false)} className="btn btn-primary" style={stA}>
+                        {a.label} <OnyxIcon name="send" size={13} glow={false} />
+                      </a>
+                    );
+                  }
+                  return (
+                    <Link key={a.url} href={dest} onClick={() => setOpen(false)} className="btn btn-primary" style={stA}>
+                      {a.label} <OnyxIcon name="send" size={13} glow={false} />
+                    </Link>
+                  );
+                })}
               </div>
             )}
             {refs.length > 0 && (
