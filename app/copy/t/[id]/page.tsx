@@ -209,7 +209,7 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         );
         return (
           <div className="print-cert">
-            <div style={{ position: 'relative', width: '10.6in', height: '8in', margin: '0 auto', background: paper, color: ink, boxSizing: 'border-box', padding: '0.4in', overflow: 'hidden', fontFamily: 'Georgia, "Times New Roman", serif' }}>
+            <div style={{ position: 'relative', width: '10in', height: '7.3in', margin: '0 auto', background: paper, color: ink, boxSizing: 'border-box', padding: '0.35in', overflow: 'hidden', fontFamily: 'Georgia, "Times New Roman", serif' }}>
               {/* Filigrana tenue de fondo + número de score en marca de agua */}
               <svg width="100%" height="100%" viewBox="0 0 1040 713" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, opacity: 0.05 }}>
                 <defs><pattern id={`gui-${certNo}`} width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="13" cy="13" r="11" fill="none" stroke={gold} strokeWidth="1" /></pattern></defs>
