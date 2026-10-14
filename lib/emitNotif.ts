@@ -68,11 +68,15 @@ export async function emitNotif(
     // aparte con sus interruptores de Mi cuenta → Avisos.)
     let pref: any = {};
     let planId: string | null = null;
+    let isStaff = false;   // dueño/admin: siempre recibe push, aunque su plan sea Free
     try {
-      const { data } = await supabaseAdmin.from('profiles').select('notif_prefs,plan').eq('id', userId).maybeSingle();
+      const { data } = await supabaseAdmin.from('profiles').select('notif_prefs,plan,is_admin').eq('id', userId).maybeSingle();
       pref = (data as any)?.notif_prefs?.[key] || {};
       planId = (data as any)?.plan || null;
+      isStaff = !!(data as any)?.is_admin;
     } catch { /* si no existe la columna aún, no filtra */ }
+    // El dueño puede no tener is_admin en la BD (solo en ADMIN_EMAILS). Lo cubrimos.
+    if (!isStaff) { try { isStaff = await emailIsOwner(userId); } catch {} }
 
     if (d.bell && pref.bell !== false) { try { await notify(userId, { kind: key, title, body, url }); } catch {} }
     // La categoría define el CANAL de la push nativa (Android) para que el usuario
@@ -82,11 +86,28 @@ export async function emitNotif(
     // Así se hace cumplir el candado que ya muestra la UI, y queda configurable por plan.
     // ignorePlan = envíos del dueño/admin (prueba "Probar ahora", difusión manual):
     // esos no deben respetar el candado de plan, deben poder llegar a cualquiera.
-    if (d.push && pref.push !== false && (opts.ignorePlan || await planAllowsPush(planId))) {
+    if (d.push && pref.push !== false && (opts.ignorePlan || isStaff || await planAllowsPush(planId))) {
       try { await sendPush(userId, { title, body, url, category: notifCategory(key) }); } catch {}
     }
     if (d.telegram) { try { await alertUser(userId, d.tgKind as any, `<b>${title}</b>\n${body}`); } catch {} }
   } catch { /* nunca romper el flujo que llamó */ }
+}
+
+// ¿El email del usuario está en ADMIN_EMAILS (dueño)? Así el dueño recibe push
+// automática aunque su perfil no tenga is_admin ni un plan de pago. Cacheado.
+const _ownerById = new Map<string, boolean>();
+async function emailIsOwner(userId: string): Promise<boolean> {
+  if (_ownerById.has(userId)) return _ownerById.get(userId)!;
+  const admins = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (!admins.length) { _ownerById.set(userId, false); return false; }
+  let owner = false;
+  try {
+    const { data } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const email = ((data as any)?.user?.email || '').toLowerCase();
+    owner = !!email && admins.includes(email);
+  } catch { owner = false; }
+  _ownerById.set(userId, owner);
+  return owner;
 }
 
 // ¿El PLAN del usuario incluye PUSH? Misma regla que la UI de Mi cuenta → Avisos
@@ -107,6 +128,24 @@ async function planAllowsPush(planId: string | null | undefined): Promise<boolea
   } catch { /* si falla, usamos el respaldo por id */ }
   _pushByPlan.set(id, allowed);
   return allowed;
+}
+
+// DIAGNÓSTICO: ¿este usuario recibirá push AUTOMÁTICA? Devuelve plan, si es staff y
+// si el candado de plan lo permite. Lo usa Admin → Notificaciones para explicar por
+// qué llega (o no) una automática, ya que el botón "Probar" salta estos filtros.
+export async function pushDiagForUser(userId: string): Promise<{
+  planId: string; isStaff: boolean; planAllowsPush: boolean; willReceiveAuto: boolean;
+}> {
+  let planId: string | null = null;
+  let isStaff = false;
+  try {
+    const { data } = await supabaseAdmin.from('profiles').select('plan,is_admin').eq('id', userId).maybeSingle();
+    planId = (data as any)?.plan || null;
+    isStaff = !!(data as any)?.is_admin;
+  } catch {}
+  if (!isStaff) { try { isStaff = await emailIsOwner(userId); } catch {} }
+  const planPush = await planAllowsPush(planId);
+  return { planId: planId || 'free', isStaff, planAllowsPush: planPush, willReceiveAuto: isStaff || planPush };
 }
 
 // Reexport útil para precargar la config una vez en bucles (crons).

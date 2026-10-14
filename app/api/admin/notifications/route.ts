@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { getAdmin } from '@/lib/admin';
 import { getSetting, saveSetting } from '@/lib/settings';
 import { NOTIF_CATALOG, type NotifOverride } from '@/lib/notifConfig';
-import { emitNotif } from '@/lib/emitNotif';
-import { broadcastFcm } from '@/lib/fcm';
+import { emitNotif, pushDiagForUser } from '@/lib/emitNotif';
+import { broadcastFcm, fcmEnabled } from '@/lib/fcm';
+import { pushEnabled } from '@/lib/push';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
@@ -18,9 +19,29 @@ const TEST_VARS: Record<string, string | number> = {
 };
 
 // GET · catálogo de avisos + los cambios guardados por el dueño.
-export async function GET() {
+//   ?diag=1 → en lugar del catálogo, devuelve el DIAGNÓSTICO de push de TU cuenta:
+//   si eres staff, tu plan, si el candado lo permite y cuántos dispositivos tienes
+//   registrados (nativo FCM + web). Sirve para entender por qué llega (o no) una
+//   automática, ya que el botón "Probar" salta esos filtros.
+export async function GET(req: Request) {
   const a = await getAdmin();
   if (!a.isAdmin || a.role !== 'owner') return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+
+  if (new URL(req.url).searchParams.get('diag')) {
+    const uid = a.user?.id || '';
+    const diag = await pushDiagForUser(uid);
+    let nativeTokens = 0, webSubs = 0;
+    try { const { count } = await supabaseAdmin.from('native_push_tokens').select('id', { count: 'exact', head: true }).eq('user_id', uid); nativeTokens = count || 0; } catch {}
+    try { const { count } = await supabaseAdmin.from('push_subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', uid); webSubs = count || 0; } catch {}
+    return NextResponse.json({
+      ...diag,
+      fcmEnabled: fcmEnabled(),      // variables FCM_* presentes (push nativa)
+      webPushEnabled: pushEnabled(), // variables VAPID presentes (push web/PWA)
+      nativeTokens,                  // dispositivos de la app (iOS/Android)
+      webSubs,                       // navegadores/PWA suscritos
+    });
+  }
+
   const overrides = await getSetting<Record<string, NotifOverride>>('notif_config', {}) || {};
   return NextResponse.json({ catalog: NOTIF_CATALOG, overrides });
 }

@@ -32,6 +32,16 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
     setBcBusy(false);
   }
 
+  // Diagnóstico de push de TU cuenta (por qué llega o no una automática).
+  const [diag, setDiag] = useState<any>(null);
+  const [diagBusy, setDiagBusy] = useState(false);
+  async function loadDiag() {
+    setDiagBusy(true);
+    try { const r = await fetch('/api/admin/notifications?diag=1'); const j = await r.json(); if (r.ok) setDiag(j); else toast(j.error || 'Error'); }
+    catch { toast('Error'); }
+    setDiagBusy(false);
+  }
+
   async function load() {
     try {
       const r = await fetch('/api/admin/notifications'); const j = await r.json();
@@ -50,7 +60,7 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
       setOv(seed);
     } catch {}
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadDiag(); }, []);
 
   const set = (k: string, f: string, v: any) => setOv((p) => ({ ...p, [k]: { ...p[k], [f]: v } }));
   const [aiKey, setAiKey] = useState('');       // qué tarjeta tiene abierta la IA
@@ -114,6 +124,46 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
           <input value={bc.url} onChange={(e) => setBc({ ...bc, url: e.target.value })} placeholder={es ? 'Enlace al tocar (ej. /dashboard)' : 'Link on tap (e.g. /dashboard)'} style={{ ...inp }} />
         </details>
         <button className="btn btn-primary" onClick={sendBroadcast} disabled={bcBusy}>{bcBusy ? '…' : (es ? 'Enviar a todos' : 'Send to everyone')}</button>
+      </div>
+
+      {/* Diagnóstico de push de TU cuenta: explica por qué llega o no una automática. */}
+      <div className="card" style={{ padding: 14, marginBottom: 18 }}>
+        <div className="row between" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: diag ? 10 : 0 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}><OnyxIcon emoji="🩺" size={14} /> {es ? 'Diagnóstico de push (tu cuenta)' : 'Push diagnostics (your account)'}</div>
+            <p className="muted" style={{ fontSize: 12, margin: '2px 0 0' }}>{es ? 'El botón “Probar” salta los filtros; esto muestra si una automática te llegaría de verdad.' : 'The “Test” button skips the filters; this shows whether an automatic one would actually reach you.'}</p>
+          </div>
+          <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={loadDiag} disabled={diagBusy}>{diagBusy ? '…' : (es ? 'Actualizar' : 'Refresh')}</button>
+        </div>
+        {diag && (() => {
+          const ok = (b: boolean) => b ? { t: es ? 'Sí' : 'Yes', c: 'var(--green)' } : { t: 'No', c: 'var(--red, #e5484d)' };
+          const Row = ({ label, state, hint }: { label: string; state: { t: string; c: string }; hint?: string }) => (
+            <div className="row between" style={{ alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
+              <div style={{ minWidth: 0 }}><div style={{ fontSize: 12.5, fontWeight: 600 }}>{label}</div>{hint && <div className="muted" style={{ fontSize: 11 }}>{hint}</div>}</div>
+              <span className="pill" style={{ fontSize: 11, fontWeight: 700, color: state.c, border: `1px solid ${state.c}`, whiteSpace: 'nowrap' }}>{state.t}</span>
+            </div>
+          );
+          const verdict = !!diag.willReceiveAuto && diag.nativeTokens + diag.webSubs > 0;
+          return (
+            <div>
+              <div style={{ background: verdict ? 'rgba(48,164,108,.12)' : 'rgba(229,72,77,.1)', border: `1px solid ${verdict ? 'var(--green)' : 'var(--red, #e5484d)'}`, borderRadius: 10, padding: '9px 11px', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>
+                {verdict
+                  ? (es ? '✅ Tu cuenta recibirá las push automáticas (de los tipos con push encendido).' : '✅ Your account will receive automatic push (for types with push enabled).')
+                  : (es ? '⚠️ Una automática NO te llegaría todavía. Revisa los puntos en rojo abajo.' : '⚠️ An automatic one would NOT reach you yet. Check the red items below.')}
+              </div>
+              <Row label={es ? 'Eres staff (dueño/admin)' : 'You are staff (owner/admin)'} state={ok(diag.isStaff)} hint={es ? 'El staff recibe push aunque su plan sea Free.' : 'Staff receive push even on a Free plan.'} />
+              <Row label={es ? `Tu plan permite push (plan: ${diag.planId})` : `Your plan allows push (plan: ${diag.planId})`} state={ok(diag.planAllowsPush)} hint={es ? 'Capacidad push del plan. Free no la tiene por defecto.' : 'Plan push capability. Free lacks it by default.'} />
+              <Row label={es ? 'Veredicto del candado (staff o plan)' : 'Gate verdict (staff or plan)'} state={ok(diag.willReceiveAuto)} />
+              <Row label={es ? 'Dispositivos de la app (iOS/Android)' : 'App devices (iOS/Android)'} state={diag.nativeTokens > 0 ? { t: String(diag.nativeTokens), c: 'var(--green)' } : { t: '0', c: 'var(--red, #e5484d)' }} hint={es ? 'Tokens FCM registrados por la app.' : 'FCM tokens registered by the app.'} />
+              <Row label={es ? 'Navegadores/PWA suscritos' : 'Browsers/PWA subscribed'} state={{ t: String(diag.webSubs), c: diag.webSubs > 0 ? 'var(--green)' : 'var(--mut)' }} />
+              <Row label={es ? 'Servidor: push nativa activa (FCM)' : 'Server: native push on (FCM)'} state={ok(diag.fcmEnabled)} hint={es ? 'Variables FCM_* en el servidor.' : 'FCM_* vars on the server.'} />
+              <div className="row between" style={{ alignItems: 'center', gap: 10, padding: '7px 0' }}>
+                <div style={{ minWidth: 0 }}><div style={{ fontSize: 12.5, fontWeight: 600 }}>{es ? 'Servidor: push web activa (VAPID)' : 'Server: web push on (VAPID)'}</div></div>
+                <span className="pill" style={{ fontSize: 11, fontWeight: 700, color: ok(diag.webPushEnabled).c, border: `1px solid ${ok(diag.webPushEnabled).c}`, whiteSpace: 'nowrap' }}>{ok(diag.webPushEnabled).t}</span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {groups.map((g) => (
