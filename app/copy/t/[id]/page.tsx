@@ -72,7 +72,10 @@ export default async function TraderCertificate({ params }: { params: { id: stri
           /* Respaldo para motores sin :has — oculta las superficies conocidas. */
           .no-print, .cert-area { display: none !important; }
           .wrap.section { padding: 0 !important; margin: 0 !important; max-width: none !important; }
-          .print-cert { display: block !important; background: #0b1020 !important; overflow: hidden !important; page-break-inside: avoid !important; break-inside: avoid !important; break-after: avoid !important; page-break-after: avoid !important; }
+          .print-cert { display: block !important; position: relative !important; background: #0b1020 !important; overflow: hidden !important; page-break-inside: avoid !important; break-inside: avoid !important; break-after: avoid !important; page-break-after: avoid !important; }
+          /* Capa oscura fija que cubre TODA la hoja (incluye el espacio bajo el
+             certificado), para que no quede ningún borde blanco al imprimir. */
+          .print-cert::before { content: ''; position: fixed !important; inset: 0 !important; background: #0b1020 !important; z-index: -1 !important; }
         }
       ` }} />
       <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
