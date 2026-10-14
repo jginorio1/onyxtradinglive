@@ -6,7 +6,8 @@ import { useLang } from '@/lib/lang';
 import { ARTICLES, CATEGORIES, searchArticles, byCat } from '@/lib/guide';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import GuideAppBadges from './GuideAppBadges';
-import { nativePlatform } from '@/lib/native';
+import { nativePlatform, isNativeApp } from '@/lib/native';
+import { useVpsInfo } from '@/app/components/VpsCallout';
 
 const T: any = {
   es: {
@@ -78,6 +79,15 @@ export default function GuideHome() {
   const [answer, setAnswer] = useState('');
   const [refs, setRefs] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
+
+  // VPS / bróker recomendados: para que sus enlaces abran SIEMPRE (también en la
+  // app) vía /ir/… y se muestren con su logo, igual que en el chat widget.
+  const vps = useVpsInfo();
+  const [brokerHost, setBrokerHost] = useState('');
+  useEffect(() => { fetch('/api/reco', { cache: 'no-store' }).then((r) => r.json()).then((j) => { try { if (j?.broker?.url) setBrokerHost(new URL(/^https?:\/\//i.test(j.broker.url) ? j.broker.url : 'https://' + j.broker.url).hostname.replace(/^www\./, '')); } catch {} }).catch(() => {}); }, []);
+  const hostOf = (u: string) => { try { return new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+  const goFor = (u: string): string => { const h = hostOf(u); const vh = vps?.url ? hostOf(vps.url) : ''; if (vh && h === vh) return '/ir/vps'; if (brokerHost && h === brokerHost) return '/ir/broker'; return ''; };
+  const onExt = (target: string) => (e: any) => { try { if (isNativeApp()) { e?.preventDefault?.(); window.location.assign(target); } } catch {} };
 
   // Miramos en qué punto está para no darle un consejo genérico
   useEffect(() => {
@@ -166,8 +176,21 @@ export default function GuideHome() {
       if (dest.startsWith('/')) {
         out.push(<Link key={'l' + k} href={dest} style={pillSt}>{labelFor(raw, mdLabel)} <span aria-hidden>→</span></Link>);
       } else {
-        const ext = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
-        out.push(<a key={'l' + k} href={ext} target="_blank" rel="noopener noreferrer" style={pillSt}>{labelFor(raw, mdLabel)} <span aria-hidden>↗</span></a>);
+        const go = goFor(raw);
+        if (go) {
+          // VPS / bróker recomendado: pastilla con logo + abre vía /ir/… (igual que el chat).
+          const logo = go === '/ir/vps' ? '/logos/vps.png' : '/logos/broker.png';
+          const name = go === '/ir/vps' ? (vps?.name || 'VPS') : labelFor(raw, mdLabel);
+          out.push(
+            <a key={'l' + k} href={go} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={onExt(go)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, verticalAlign: 'middle', background: 'var(--card2, rgba(255,255,255,.06))', border: '1px solid var(--line)', borderRadius: 9, padding: '3px 10px', margin: '0 2px', textDecoration: 'none', color: 'var(--tx)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+              <img src={logo} alt="" style={{ height: 16, width: 'auto', maxWidth: 64, objectFit: 'contain', display: 'block' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+              <span>{name}</span><span aria-hidden style={{ color: 'var(--brand)' }}>↗</span>
+            </a>,
+          );
+        } else {
+          const ext = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
+          out.push(<a key={'l' + k} href={ext} target="_blank" rel="noopener noreferrer" onClick={onExt(ext)} style={pillSt}>{labelFor(raw, mdLabel)} <span aria-hidden>↗</span></a>);
+        }
       }
       last = m.index + m[0].length; k++;
     }
