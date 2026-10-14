@@ -375,16 +375,6 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // (/en /es /pt /zh /ja /vi) porque la página correcta vive sin prefijo y el idioma
   // lo decide la cookie, 3) mapea alias de slug inglés al real. Deja intactas las
   // URLs externas y las rutas no reconocidas (no inventa destinos).
-  // Abre un enlace EXTERNO sin romper en la app instalada. En standalone/nativo
-  // (Capacitor WebView / PWA Safari) target="_blank" no abre y acaba tirando al
-  // /dashboard: ahí navegamos en la misma ventana. En navegador normal, pestaña nueva.
-  const openExt = (ext: string) => (e: any) => {
-    try {
-      const standalone = (navigator as any).standalone === true || (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-      if (standalone) { e?.preventDefault?.(); setOpen(false); window.location.assign(ext); return; }
-    } catch {}
-    setOpen(false);
-  };
   const canonHref = (href: string): string => {
     let h = (href || '').trim().replace(/^https?:\/\/(www\.)?onyxtradinglive\.com/i, '');
     if (!h.startsWith('/')) return href;                 // externo: tal cual
@@ -443,7 +433,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     const provBadge = (logo: string, name: string, k2: number) => {
       const ext = /^https?:\/\//i.test(href) ? href : 'https://' + href;
       return (
-        <a key={'pb' + k2} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={openExt(ext)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, verticalAlign: 'middle', background: 'var(--card2, rgba(255,255,255,.06))', border: '1px solid var(--line)', borderRadius: 10, padding: '5px 11px', margin: '4px 4px 0 0', textDecoration: 'none', color: 'var(--tx)', fontWeight: 700, fontSize: 12.5, whiteSpace: 'nowrap' }}>
+        <a key={'pb' + k2} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, verticalAlign: 'middle', background: 'var(--card2, rgba(255,255,255,.06))', border: '1px solid var(--line)', borderRadius: 10, padding: '5px 11px', margin: '4px 4px 0 0', textDecoration: 'none', color: 'var(--tx)', fontWeight: 700, fontSize: 12.5, whiteSpace: 'nowrap' }}>
           <img src={logo} alt={name} style={{ height: 18, width: 'auto', maxWidth: 70, objectFit: 'contain', display: 'block' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
           <span>{name}</span><span aria-hidden style={{ color: 'var(--brand)' }}>↗</span>
         </a>
@@ -462,7 +452,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     // Externo: si viene sin esquema (dominio pelado como play.google.com/…), le
     // anteponemos https:// para que el enlace sea clicable y no relativo.
     const ext = /^https?:\/\//i.test(dest) ? dest : 'https://' + dest;
-    return <a key={'lk' + k} href={ext} target="_blank" rel="noopener noreferrer" onClick={openExt(ext)} style={st}>{inner}</a>;
+    return <a key={'lk' + k} href={ext} target="_blank" rel="noopener noreferrer" style={st}>{inner}</a>;
   };
   const linkify = (text: string): any[] => {
     if (!text) return [text];
@@ -718,7 +708,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                   if (external) {
                     const ext = isAbs ? raw : 'https://' + raw;
                     return (
-                      <a key={a.url} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={openExt(ext)} className="btn btn-primary" style={stA}>
+                      <a key={a.url} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={() => setOpen(false)} className="btn btn-primary" style={stA}>
                         {a.label} <OnyxIcon name="send" size={13} glow={false} />
                       </a>
                     );
