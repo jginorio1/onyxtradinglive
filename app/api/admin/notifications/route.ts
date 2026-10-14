@@ -78,6 +78,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, sent: true });
   }
 
+  // ---- Restablecer a valores de fábrica: borra la config guardada ----
+  // Al dejar notif_config vacío, loadNotifConfig vuelve a usar los defaults del
+  // catálogo (NOTIF_CATALOG) para todos los tipos. No toca las prefs de cada trader.
+  if (b.reset) {
+    await saveSetting('notif_config', {});
+    return NextResponse.json({ ok: true, reset: true });
+  }
+
   // ---- Difusión: push escrita a mano a TODOS los usuarios con dispositivo ----
   if (b.broadcast) {
     const m = b.broadcast || {};

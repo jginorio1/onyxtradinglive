@@ -97,6 +97,20 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
     setBusy(false);
   }
 
+  // Restablecer a valores de fábrica: borra la config guardada y recarga los defaults.
+  async function resetDefaults() {
+    if (!window.confirm(es
+      ? '¿Restablecer todos los avisos a los valores de fábrica? Se perderán los cambios de canales/textos que hayas guardado (las preferencias de cada trader no se tocan).'
+      : 'Reset all alerts to factory defaults? Your saved channel/text changes will be lost (each trader\'s preferences are untouched).')) return;
+    setBusy(true);
+    try {
+      const r = await fetch('/api/admin/notifications', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ reset: true }) });
+      if (r.ok) { toast(es ? 'Restablecido a valores de fábrica' : 'Reset to factory defaults', 'ok'); await load(); }
+      else toast('Error');
+    } catch { toast('Error'); }
+    setBusy(false);
+  }
+
   const groups = Array.from(new Set(cat.map((d) => d.group)));
   const inp = { width: '100%', padding: '7px 9px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 12.5, fontFamily: 'inherit', margin: 0 } as any;
   const chLabel = (c: string) => c === 'bell' ? (es ? 'Campana' : 'Bell') : c === 'push' ? 'Push' : 'Telegram';
@@ -108,7 +122,10 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
           <h2 style={{ fontSize: 18, margin: 0 }}><OnyxIcon emoji="🔔" size={15} /> {es ? 'Notificaciones' : 'Notifications'}</h2>
           <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>{es ? 'Prende/apaga cada aviso, elige sus canales y edita el texto. Usa {llaves} como variables.' : 'Turn each alert on/off, pick its channels and edit the text. Use {braces} as variables.'}</p>
         </div>
-        <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : (es ? 'Guardar cambios' : 'Save changes')}</button>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost" onClick={resetDefaults} disabled={busy} title={es ? 'Volver a la configuración recomendada de fábrica' : 'Return to recommended factory config'}>{es ? 'Valores de fábrica' : 'Factory defaults'}</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : (es ? 'Guardar cambios' : 'Save changes')}</button>
+        </div>
       </div>
 
       {/* Composer: push escrita a mano para TODOS los usuarios (ícono Onyx por defecto). */}
