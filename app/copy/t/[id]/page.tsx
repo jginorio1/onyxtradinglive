@@ -72,9 +72,7 @@ export default async function TraderCertificate({ params }: { params: { id: stri
           /* Respaldo para motores sin :has — oculta las superficies conocidas. */
           .no-print, .cert-area { display: none !important; }
           .wrap.section { padding: 0 !important; margin: 0 !important; max-width: none !important; }
-          /* El contenedor ES la página completa (oscura) y centra el certificado
-             dentro, así no queda ninguna franja blanca arriba ni abajo. */
-          .print-cert { display: flex !important; align-items: center !important; justify-content: center !important; width: 100% !important; height: 100vh !important; background: #0b1020 !important; overflow: hidden !important; page-break-inside: avoid !important; break-inside: avoid !important; break-after: avoid !important; page-break-after: avoid !important; }
+          .print-cert { display: block !important; background: #0b1020 !important; overflow: hidden !important; page-break-inside: avoid !important; break-inside: avoid !important; break-after: avoid !important; page-break-after: avoid !important; }
         }
       ` }} />
       <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
@@ -211,7 +209,7 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         );
         return (
           <div className="print-cert">
-            <div style={{ position: 'relative', width: '10in', height: '7.3in', flex: 'none', background: paper, color: ink, boxSizing: 'border-box', padding: '0.35in', overflow: 'hidden', fontFamily: 'Georgia, "Times New Roman", serif' }}>
+            <div style={{ position: 'relative', width: '10.8in', height: '8.3in', margin: '0 auto', background: paper, color: ink, boxSizing: 'border-box', padding: '0.4in', overflow: 'hidden', fontFamily: 'Georgia, "Times New Roman", serif' }}>
               {/* Filigrana tenue de fondo + número de score en marca de agua */}
               <svg width="100%" height="100%" viewBox="0 0 1040 713" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, opacity: 0.05 }}>
                 <defs><pattern id={`gui-${certNo}`} width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="13" cy="13" r="11" fill="none" stroke={gold} strokeWidth="1" /></pattern></defs>
