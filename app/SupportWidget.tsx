@@ -381,15 +381,17 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // plugin Browser. En web normal dejamos el comportamiento nativo del enlace.
   const openExt = (ext: string) => (e: any) => {
     setOpen(false);
+    // CLAVE: la app carga la web en remoto (server.url), así que el bridge JS de
+    // Capacitor (window.Capacitor) NO existe en la página → por eso detectamos la
+    // app por USER-AGENT (isNativeApp). En la app, un <a target="_blank"> a un host
+    // externo NO abre (Android no activa onCreateWindow; iOS va por otra ruta).
+    // La forma fiable SIN bridge: una navegación top-level (location.assign) al host
+    // externo; el lado NATIVO de Capacitor la intercepta (no está en allowNavigation)
+    // y la abre en el navegador del sistema, dejando la app donde estaba.
     try {
-      const cap: any = (typeof window !== 'undefined') ? (window as any).Capacitor : null;
-      // Solo en la app nativa cambiamos el comportamiento. En web, el <a target="_blank">
-      // abre normal. En nativo: 1) si existe el plugin Browser, lo usamos; 2) si no,
-      // navegamos top-level al host externo, que Capacitor intercepta (no está en
-      // allowNavigation) y abre en el navegador del sistema. `_system`/`window.open`
-      // NO funcionan en Capacitor, por eso usamos location.assign como respaldo.
-      if (cap?.isNativePlatform?.()) {
+      if (isNativeApp()) {
         e?.preventDefault?.();
+        const cap: any = (typeof window !== 'undefined') ? (window as any).Capacitor : null;
         const B = cap?.Plugins?.Browser;
         if (B?.open) { B.open({ url: ext }).catch(() => { try { window.location.assign(ext); } catch {} }); }
         else { try { window.location.assign(ext); } catch {} }
