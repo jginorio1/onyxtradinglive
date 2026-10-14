@@ -375,6 +375,22 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // (/en /es /pt /zh /ja /vi) porque la página correcta vive sin prefijo y el idioma
   // lo decide la cookie, 3) mapea alias de slug inglés al real. Deja intactas las
   // URLs externas y las rutas no reconocidas (no inventa destinos).
+  // Abre un enlace EXTERNO de forma fiable dentro de la app nativa (Capacitor).
+  // En la app, un <a target="_blank"> a un dominio fuera de allowNavigation no
+  // siempre abre y acaba sin hacer nada o tirando al inicio; por eso usamos el
+  // plugin Browser. En web normal dejamos el comportamiento nativo del enlace.
+  const openExt = (ext: string) => (e: any) => {
+    setOpen(false);
+    try {
+      const cap: any = (typeof window !== 'undefined') ? (window as any).Capacitor : null;
+      if (cap?.isNativePlatform?.()) {
+        e?.preventDefault?.();
+        const B = cap?.Plugins?.Browser;
+        if (B?.open) { B.open({ url: ext }).catch(() => { try { window.open(ext, '_system'); } catch {} }); }
+        else { try { window.open(ext, '_system'); } catch { window.location.assign(ext); } }
+      }
+    } catch {}
+  };
   const canonHref = (href: string): string => {
     let h = (href || '').trim().replace(/^https?:\/\/(www\.)?onyxtradinglive\.com/i, '');
     if (!h.startsWith('/')) return href;                 // externo: tal cual
@@ -433,7 +449,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     const provBadge = (logo: string, name: string, k2: number) => {
       const ext = /^https?:\/\//i.test(href) ? href : 'https://' + href;
       return (
-        <a key={'pb' + k2} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, verticalAlign: 'middle', background: 'var(--card2, rgba(255,255,255,.06))', border: '1px solid var(--line)', borderRadius: 10, padding: '5px 11px', margin: '4px 4px 0 0', textDecoration: 'none', color: 'var(--tx)', fontWeight: 700, fontSize: 12.5, whiteSpace: 'nowrap' }}>
+        <a key={'pb' + k2} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={openExt(ext)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, verticalAlign: 'middle', background: 'var(--card2, rgba(255,255,255,.06))', border: '1px solid var(--line)', borderRadius: 10, padding: '5px 11px', margin: '4px 4px 0 0', textDecoration: 'none', color: 'var(--tx)', fontWeight: 700, fontSize: 12.5, whiteSpace: 'nowrap' }}>
           <img src={logo} alt={name} style={{ height: 18, width: 'auto', maxWidth: 70, objectFit: 'contain', display: 'block' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
           <span>{name}</span><span aria-hidden style={{ color: 'var(--brand)' }}>↗</span>
         </a>
@@ -452,7 +468,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     // Externo: si viene sin esquema (dominio pelado como play.google.com/…), le
     // anteponemos https:// para que el enlace sea clicable y no relativo.
     const ext = /^https?:\/\//i.test(dest) ? dest : 'https://' + dest;
-    return <a key={'lk' + k} href={ext} target="_blank" rel="noopener noreferrer" style={st}>{inner}</a>;
+    return <a key={'lk' + k} href={ext} target="_blank" rel="noopener noreferrer" onClick={openExt(ext)} style={st}>{inner}</a>;
   };
   const linkify = (text: string): any[] => {
     if (!text) return [text];
@@ -708,7 +724,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                   if (external) {
                     const ext = isAbs ? raw : 'https://' + raw;
                     return (
-                      <a key={a.url} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={() => setOpen(false)} className="btn btn-primary" style={stA}>
+                      <a key={a.url} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={openExt(ext)} className="btn btn-primary" style={stA}>
                         {a.label} <OnyxIcon name="send" size={13} glow={false} />
                       </a>
                     );
