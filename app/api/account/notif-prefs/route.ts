@@ -14,17 +14,44 @@ export async function GET() {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return NextResponse.json({ error: 'no auth' }, { status: 401 });
     const cfg = await loadNotifConfig();
-    const { data: p } = await supabaseAdmin.from('profiles').select('notif_prefs,lang,plan').eq('id', user.id).maybeSingle();
+    const { data: p } = await supabaseAdmin.from('profiles').select('notif_prefs,lang,plan,is_admin').eq('id', user.id).maybeSingle();
     const prefs = (p as any)?.notif_prefs || {};
     const lang = (p as any)?.lang === 'en' ? 'en' : 'es';
-    // ¿El PLAN del usuario incluye push? (apagado en Free, encendido en pago por defecto).
-    // Así la columna Push no muestra interruptores falsos: si el plan no lo cubre, se bloquea.
+    // ¿El usuario recibe push? MISMA regla que lib/emitNotif.planAllowsPush: cualquier
+    // plan de pago activo (plan != 'free') recibe push; 'free' no. Y el STAFF (dueño/admin)
+    // siempre, aunque esté en Free. Así el panel no muestra el Push bloqueado para quien sí
+    // lo recibe. (Antes dependía de plans.capabilities.push, que ya no gobierna el envío.)
     const planId = (p as any)?.plan || 'free';
-    const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', planId).maybeSingle();
-    const pushCap = (plan as any)?.capabilities?.push;
-    const planHasPush = (pushCap === undefined || pushCap === null) ? (planId !== 'free') : !!pushCap;
+    const admins = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const isStaff = !!(p as any)?.is_admin || admins.includes((user.email || '').toLowerCase());
+    const planHasPush = isStaff || planId !== 'free';
+
+    // FILTRO POR MÓDULO: el trader solo ve los avisos de los módulos que usa (o que su
+    // plan incluye). El staff ve todo. Ante cualquier fallo de detección, se MUESTRA
+    // (nunca ocultamos por un error de consulta). Capacidades del plan + uso real.
+    const uid = user.id;
+    let caps: any = {};
+    try { const { data: pl } = await supabaseAdmin.from('plans').select('capabilities').eq('id', planId).maybeSingle(); caps = (pl as any)?.capabilities || {}; } catch {}
+    const cnt = async (q: any): Promise<boolean> => { try { const { count } = await q; return (count || 0) > 0; } catch { return true; } };
+    const feats = new Set<string>();
+    if (isStaff) {
+      ['academy', 'copy', 'bots', 'botlab'].forEach((f) => feats.add(f));
+    } else {
+      const [acAcademy, acCopyFollow, acCopyProv, acBots, acBotlab] = await Promise.all([
+        cnt(supabaseAdmin.from('academy_memberships').select('id', { count: 'exact', head: true }).or(`student_id.eq.${uid},mentor_id.eq.${uid}`)),
+        cnt(supabaseAdmin.from('copy_follows').select('id', { count: 'exact', head: true }).eq('follower_id', uid)),
+        cnt(supabaseAdmin.from('strategy_providers').select('id', { count: 'exact', head: true }).eq('user_id', uid)),
+        cnt(supabaseAdmin.from('bots').select('user_id', { count: 'exact', head: true }).eq('user_id', uid)),
+        cnt(supabaseAdmin.from('bot_products').select('id', { count: 'exact', head: true }).eq('seller_id', uid)),
+      ]);
+      if (!!caps.academy || acAcademy) feats.add('academy');
+      if (!!caps.copy || acCopyFollow || acCopyProv) feats.add('copy');
+      if (!!caps.algo || acBots) feats.add('bots');
+      if (acBotlab) feats.add('botlab');
+    }
+
     const items = Object.values(cfg)
-      .filter((d: any) => d.on && (d.bell || d.push))
+      .filter((d: any) => d.on && (d.bell || d.push) && (!d.feature || feats.has(d.feature)))
       .map((d: any) => ({
         key: d.key, group: d.group,
         title: d[lang].title, body: d[lang].body,

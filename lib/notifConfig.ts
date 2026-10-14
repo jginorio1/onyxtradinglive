@@ -19,6 +19,10 @@ export type NotifDef = {
   url: string;                   // a dónde lleva al hacer clic
   extra?: boolean;               // opcional (apagado por defecto)
   editableChannels?: NotifChannel[]; // canales que se pueden activar en este aviso
+  // Módulo al que pertenece el aviso. El panel del TRADER (Mi cuenta → Avisos) solo
+  // muestra los tipos cuyo módulo el usuario tiene/usa; sin 'feature' = universal (todos).
+  // El panel del ADMIN siempre muestra todo. 'academy' | 'copy' | 'bots' | 'botlab'.
+  feature?: 'academy' | 'copy' | 'bots' | 'botlab';
 };
 
 // Catálogo por defecto. {vars} se sustituyen al enviar (p. ej. {days}, {name}).
@@ -65,6 +69,7 @@ export const NOTIF_CATALOG: NotifDef[] = [
     en: { title: '🤖 {bot}', body: 'Your robot needs attention (drawdown or divergence).' },
     bell: false, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/bots',
     editableChannels: ['bell', 'push'],
+    feature: 'bots',
   },
   {
     key: 'support_reply', group: 'Soporte',
@@ -81,6 +86,7 @@ export const NOTIF_CATALOG: NotifDef[] = [
     // Afiliado de la ACADEMIA (lib/academyReferral). Lleva al panel de ganancias de la academia.
     bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
     editableChannels: ['bell', 'push'],
+    feature: 'academy',
   },
   {
     key: 'member_reward', group: 'Referidos',
@@ -115,6 +121,7 @@ export const NOTIF_CATALOG: NotifDef[] = [
     // Afiliado de academia · recompensa ya disponible como crédito (lib/academyReferral).
     bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
     editableChannels: ['bell', 'push'],
+    feature: 'academy',
   },
   {
     key: 'academy_reward_paid', group: 'Referidos',
@@ -123,6 +130,7 @@ export const NOTIF_CATALOG: NotifDef[] = [
     // Afiliado de academia · el mentor te liquidó (lib/academyReferral.payReferrer).
     bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
     editableChannels: ['bell', 'push'],
+    feature: 'academy',
   },
 
   // ===== GRUPO 1 · encendidas por defecto (alto valor, baja frecuencia) =====
@@ -190,6 +198,7 @@ export const NOTIF_CATALOG: NotifDef[] = [
     en: { title: '🔴 Live class soon', body: '{title} starts in {mins} min. Join on time.' },
     bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
     editableChannels: ['bell', 'push'],
+    feature: 'academy',
   },
   {
     key: 'academy_activity', group: 'Academia', extra: true,
@@ -197,6 +206,7 @@ export const NOTIF_CATALOG: NotifDef[] = [
     en: { title: '🎓 New in your academy', body: '{body}' },
     bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
     editableChannels: ['bell', 'push'],
+    feature: 'academy',
   },
   {
     key: 'bot_sold', group: 'Ingresos y referidos', extra: true,
@@ -204,6 +214,7 @@ export const NOTIF_CATALOG: NotifDef[] = [
     en: { title: '🛒 You sold a robot!', body: '{name} made a sale. It is in your balance.' },
     bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/bot-lab',
     editableChannels: ['bell', 'push'],
+    feature: 'botlab',
   },
   {
     key: 'new_commission', group: 'Ingresos y referidos', extra: true,
@@ -218,6 +229,7 @@ export const NOTIF_CATALOG: NotifDef[] = [
     en: { title: '⏸️ Copy trading stopped', body: 'Your copy link stopped trading. Check the connection.' },
     bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/copy',
     editableChannels: ['bell', 'push', 'telegram'],
+    feature: 'copy',
   },
 ];
 
