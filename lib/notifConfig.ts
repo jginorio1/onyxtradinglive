@@ -27,7 +27,8 @@ export const NOTIF_CATALOG: NotifDef[] = [
     key: 'checkin', group: 'Plan y hábitos',
     es: { title: '✅ Tu check-in de hoy', body: 'Marca tus hábitos para no perder tu racha.' },
     en: { title: '✅ Your daily check-in', body: 'Mark your habits to keep your streak alive.' },
-    bell: true, push: false, telegram: true, tgKind: 'daily', url: '/dashboard?view=plan',
+    // Único recordatorio rutinario con push de fábrica: un empujón diario por la racha.
+    bell: true, push: true, telegram: true, tgKind: 'daily', url: '/dashboard?view=plan',
     editableChannels: ['bell', 'push', 'telegram'],
   },
   {
@@ -69,14 +70,16 @@ export const NOTIF_CATALOG: NotifDef[] = [
     key: 'support_reply', group: 'Soporte',
     es: { title: '💬 Respondimos tu consulta', body: '{body}' },
     en: { title: '💬 We replied to your ticket', body: '{body}' },
-    bell: true, push: false, telegram: false, tgKind: 'manager', url: '/dashboard/soporte',
+    // Alto valor y poco frecuente: al cliente le sirve enterarse al instante.
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/soporte',
     editableChannels: ['bell', 'push'],
   },
   {
     key: 'referral_reward', group: 'Referidos',
     es: { title: '🎉 Ganaste una recompensa por referido', body: 'Tu invitado pagó. Estará disponible tras la ventana de espera.' },
     en: { title: '🎉 You earned a referral reward', body: 'Your invite paid. It unlocks after the holding window.' },
-    bell: true, push: false, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
+    // Alto valor y poco frecuente ("ganaste dinero"): va con push de fábrica.
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
     editableChannels: ['bell', 'push'],
   },
 
