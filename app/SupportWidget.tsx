@@ -705,21 +705,26 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             {actions.length > 0 && (
               <div style={{ alignSelf: 'flex-start', display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
                 {actions.map((a) => {
-                  const dest = canonHref(a.url);
                   const stA: any = { padding: '7px 12px', fontSize: 12.5, display: 'inline-flex', alignItems: 'center', gap: 6 };
-                  // Las acciones EXTERNAS (p. ej. el enlace de referido del VPS o del
-                  // bróker) no son rutas internas: deben abrir en una pestaña nueva,
-                  // no pasar por el router de Next (que acababa tirando al /dashboard).
-                  if (!dest.startsWith('/')) {
-                    const ext = /^https?:\/\//i.test(dest) ? dest : 'https://' + dest;
+                  const raw = (a.url || '').trim();
+                  // ¿Es un enlace EXTERNO real (p. ej. referido del VPS o del bróker)?
+                  // Se decide con la URL CRUDA: absoluta http(s) cuyo dominio NO es el
+                  // nuestro, o un dominio "pelado" (sin esquema). NO pasamos por
+                  // canonHref, que recorta el dominio y lo volvía ruta interna → /dashboard.
+                  const isAbs = /^https?:\/\//i.test(raw);
+                  const hostR = (() => { try { return new URL(isAbs ? raw : 'https://' + raw).hostname.replace(/^www\./, ''); } catch { return ''; } })();
+                  const bare = !isAbs && !raw.startsWith('/') && /\./.test(raw.split('/')[0]);
+                  const external = (isAbs && hostR && !/(^|\.)onyxtradinglive\.com$/i.test(hostR)) || bare;
+                  if (external) {
+                    const ext = isAbs ? raw : 'https://' + raw;
                     return (
-                      <a key={a.url} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={() => setOpen(false)} className="btn btn-primary" style={stA}>
+                      <a key={a.url} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={openExt(ext)} className="btn btn-primary" style={stA}>
                         {a.label} <OnyxIcon name="send" size={13} glow={false} />
                       </a>
                     );
                   }
                   return (
-                    <Link key={a.url} href={dest} onClick={() => setOpen(false)} className="btn btn-primary" style={stA}>
+                    <Link key={a.url} href={canonHref(raw)} onClick={() => setOpen(false)} className="btn btn-primary" style={stA}>
                       {a.label} <OnyxIcon name="send" size={13} glow={false} />
                     </Link>
                   );
