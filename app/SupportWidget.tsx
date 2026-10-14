@@ -383,11 +383,16 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     setOpen(false);
     try {
       const cap: any = (typeof window !== 'undefined') ? (window as any).Capacitor : null;
+      // Solo en la app nativa cambiamos el comportamiento. En web, el <a target="_blank">
+      // abre normal. En nativo: 1) si existe el plugin Browser, lo usamos; 2) si no,
+      // navegamos top-level al host externo, que Capacitor intercepta (no está en
+      // allowNavigation) y abre en el navegador del sistema. `_system`/`window.open`
+      // NO funcionan en Capacitor, por eso usamos location.assign como respaldo.
       if (cap?.isNativePlatform?.()) {
         e?.preventDefault?.();
         const B = cap?.Plugins?.Browser;
-        if (B?.open) { B.open({ url: ext }).catch(() => { try { window.open(ext, '_system'); } catch {} }); }
-        else { try { window.open(ext, '_system'); } catch { window.location.assign(ext); } }
+        if (B?.open) { B.open({ url: ext }).catch(() => { try { window.location.assign(ext); } catch {} }); }
+        else { try { window.location.assign(ext); } catch {} }
       }
     } catch {}
   };
