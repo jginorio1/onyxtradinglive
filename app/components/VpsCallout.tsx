@@ -52,7 +52,10 @@ export function renderVps(text: string, v: VpsInfo | null): React.ReactNode {
     out.push(<React.Fragment key={'t' + i}>{p}</React.Fragment>);
     if (i < parts.length - 1) {
       out.push(url
-        ? <a key={'l' + i} href={VPS_GO} target="_blank" rel={REL} onClick={onVpsClick} style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'underline' }}>VPS</a>
+        ? <a key={'l' + i} href={VPS_GO} target="_blank" rel={REL} onClick={onVpsClick} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, verticalAlign: 'middle', background: 'var(--card2, rgba(255,255,255,.06))', border: '1px solid var(--line)', borderRadius: 8, padding: '2px 8px', textDecoration: 'none', color: 'var(--tx)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+            <img src="/logos/vps.png" alt="" style={{ height: 15, width: 'auto', maxWidth: 60, objectFit: 'contain', display: 'block' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+            <span>{(v?.name || 'VPS')}</span><span aria-hidden style={{ color: 'var(--brand)' }}>↗</span>
+          </a>
         : <React.Fragment key={'l' + i}>VPS</React.Fragment>);
     }
   });
