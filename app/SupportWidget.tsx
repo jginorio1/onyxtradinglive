@@ -391,12 +391,25 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     try {
       if (isNativeApp()) {
         e?.preventDefault?.();
+        // Rutas internas (p. ej. /ir/vps) → navegación same-origin; el 302 del
+        // servidor al host externo lo reenvía Capacitor al navegador del sistema.
+        if (ext.startsWith('/')) { window.location.assign(ext); return; }
         const cap: any = (typeof window !== 'undefined') ? (window as any).Capacitor : null;
         const B = cap?.Plugins?.Browser;
         if (B?.open) { B.open({ url: ext }).catch(() => { try { window.location.assign(ext); } catch {} }); }
         else { try { window.location.assign(ext); } catch {} }
       }
     } catch {}
+  };
+  // Si una URL externa coincide con el VPS/bróker configurado, devolvemos nuestra
+  // ruta de redirección (/ir/...). Así SIEMPRE abre desde la app (ver app/ir/[slug]).
+  const goFor = (u: string): string => {
+    try {
+      const h = new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, '');
+      if (reco?.vps?.url && h === new URL(/^https?:\/\//i.test(reco.vps.url) ? reco.vps.url : 'https://' + reco.vps.url).hostname.replace(/^www\./, '')) return '/ir/vps';
+      if (reco?.broker?.url && h === new URL(/^https?:\/\//i.test(reco.broker.url) ? reco.broker.url : 'https://' + reco.broker.url).hostname.replace(/^www\./, '')) return '/ir/broker';
+    } catch {}
+    return '';
   };
   const canonHref = (href: string): string => {
     let h = (href || '').trim().replace(/^https?:\/\/(www\.)?onyxtradinglive\.com/i, '');
@@ -454,7 +467,8 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     const hostOf = (u: string) => { try { return new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch { return ''; } };
     const hrefHost = hostOf(href);
     const provBadge = (logo: string, name: string, k2: number) => {
-      const ext = /^https?:\/\//i.test(href) ? href : 'https://' + href;
+      const raw = /^https?:\/\//i.test(href) ? href : 'https://' + href;
+      const ext = goFor(raw) || raw;   // VPS/bróker → /ir/… (abre siempre en la app)
       return (
         <a key={'pb' + k2} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={openExt(ext)} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, verticalAlign: 'middle', background: 'var(--card2, rgba(255,255,255,.06))', border: '1px solid var(--line)', borderRadius: 10, padding: '5px 11px', margin: '4px 4px 0 0', textDecoration: 'none', color: 'var(--tx)', fontWeight: 700, fontSize: 12.5, whiteSpace: 'nowrap' }}>
           <img src={logo} alt={name} style={{ height: 18, width: 'auto', maxWidth: 70, objectFit: 'contain', display: 'block' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
@@ -474,7 +488,8 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     if (dest.startsWith('/')) return <Link key={'lk' + k} href={dest} onClick={() => setOpen(false)} style={st}>{inner}</Link>;
     // Externo: si viene sin esquema (dominio pelado como play.google.com/…), le
     // anteponemos https:// para que el enlace sea clicable y no relativo.
-    const ext = /^https?:\/\//i.test(dest) ? dest : 'https://' + dest;
+    const extRaw = /^https?:\/\//i.test(dest) ? dest : 'https://' + dest;
+    const ext = goFor(extRaw) || extRaw;   // VPS/bróker → /ir/… (abre siempre en la app)
     return <a key={'lk' + k} href={ext} target="_blank" rel="noopener noreferrer" onClick={openExt(ext)} style={st}>{inner}</a>;
   };
   const linkify = (text: string): any[] => {
@@ -729,7 +744,8 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                   const bare = !isAbs && !raw.startsWith('/') && /\./.test(raw.split('/')[0]);
                   const external = (isAbs && hostR && !/(^|\.)onyxtradinglive\.com$/i.test(hostR)) || bare;
                   if (external) {
-                    const ext = isAbs ? raw : 'https://' + raw;
+                    const extRaw2 = isAbs ? raw : 'https://' + raw;
+                    const ext = goFor(extRaw2) || extRaw2;   // VPS/bróker → /ir/… (abre siempre en la app)
                     return (
                       <a key={a.url} href={ext} target="_blank" rel="sponsored nofollow noopener noreferrer" onClick={openExt(ext)} className="btn btn-primary" style={stA}>
                         {a.label} <OnyxIcon name="send" size={13} glow={false} />
