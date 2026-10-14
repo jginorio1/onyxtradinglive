@@ -6,18 +6,18 @@ import { sendMessage } from '@/lib/telegram';
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
 
-export type SalesEv = 'new_client' | 'first_paid' | 'commission' | 'payout' | 'promoted';
+export type SalesEv = 'new_client' | 'first_paid' | 'commission' | 'payout' | 'promoted' | 'bonus' | 'lead_assigned';
 
 // Avisa a un vendedor (por su rep_id) en su idioma, por in-app + correo + Telegram.
 // Respeta los toggles de ajustes. Nunca rompe el flujo si un canal falla.
-export async function notifyRep(repId: string, ev: SalesEv, data: { amount?: number; client?: string } = {}): Promise<void> {
+export async function notifyRep(repId: string, ev: SalesEv, data: { amount?: number; client?: string; reason?: string } = {}): Promise<void> {
   try {
     const s = await salesSettings();
     const on = ev === 'new_client' ? s.notify_new_client
       : ev === 'first_paid' ? s.notify_first_paid
       : ev === 'commission' ? s.notify_commission
       : ev === 'payout' ? s.notify_payout
-      : true; // 'promoted' siempre se avisa
+      : true; // 'promoted' y 'bonus' siempre se avisan
     if (on === false) return;
 
     const { data: rep } = await supabaseAdmin.from('sales_reps').select('user_id').eq('id', repId).maybeSingle();
@@ -34,8 +34,13 @@ export async function notifyRep(repId: string, ev: SalesEv, data: { amount?: num
       commission: { t: es ? '💰 Comisión ganada' : '💰 Commission earned', b: es ? `Ganaste ${amt} de comisión.` : `You earned ${amt} in commission.` },
       payout: { t: es ? '✅ Pago enviado' : '✅ Payout sent', b: es ? `Te pagamos ${amt}. Revisa tu método de cobro.` : `We paid you ${amt}. Check your payout method.` },
       promoted: { t: es ? '⭐ ¡Ascendiste!' : '⭐ You leveled up!', b: data.client ? (es ? `Subiste a ${data.client}. Ahora cobras override por tu equipo.` : `You moved up to ${data.client}. You now earn override on your team.`) : (es ? 'Subiste de nivel en la red.' : 'You leveled up in the network.') },
+      bonus: { t: es ? '🎁 ¡Bono ganado!' : '🎁 Bonus earned!', b: data.reason === 'goal'
+        ? (es ? `Cumpliste tu meta y ganaste un bono de ${amt}.` : `You hit your goal and earned a ${amt} bonus.`)
+        : (es ? `Ganaste un bono de ${amt}.` : `You earned a ${amt} bonus.`) },
+      lead_assigned: { t: es ? '🔥 Lead nuevo asignado' : '🔥 New lead assigned', b: es ? `Se te asignó ${cli}. Contáctalo mientras está en caliente.` : `${cli} was assigned to you. Reach out while it's hot.` },
     };
     const m = M[ev];
+    if (!m) return; // evento desconocido: no romper
     const url = '/dashboard/ventas';
 
     try { await notify(uid, { kind: 'info', title: m.t, body: m.b, url }); } catch { /* opcional */ }

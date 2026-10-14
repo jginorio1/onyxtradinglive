@@ -100,6 +100,6 @@ export async function awardBonusIfMet(repId: string, s: SalesSettings): Promise<
     base_amount: 0, pct: 0, amount: bonus, currency: 'USD', status: 'pending',
     available_at: new Date(Date.now() + hold * 86400000).toISOString(),
   });
-  try { const { notifyRep } = await import('@/lib/salesNotify'); await notifyRep(repId, 'commission', { amount: bonus }); } catch { /* opcional */ }
+  try { const { notifyRep } = await import('@/lib/salesNotify'); await notifyRep(repId, 'bonus', { amount: bonus, reason: 'goal' }); } catch { /* opcional */ }
   return true;
 }

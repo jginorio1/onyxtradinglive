@@ -380,6 +380,13 @@ export async function assignClient(userId: string, repId: string, source: 'manua
   try {
     await supabaseAdmin.from('sales_clients').upsert({ rep_id: repId, user_id: userId, source }, { onConflict: 'user_id' });
     await supabaseAdmin.from('profiles').update({ sales_rep_id: repId }).eq('id', userId);
+    // Aviso al vendedor: lead asignado (campana + push). No rompe la asignación si falla.
+    try {
+      let who = '';
+      try { const { data } = await supabaseAdmin.from('profiles').select('full_name,email').eq('id', userId).maybeSingle(); who = String((data as any)?.full_name || (data as any)?.email || '').trim(); } catch {}
+      const { notifyRep } = await import('@/lib/salesNotify');
+      await notifyRep(repId, 'lead_assigned', { client: who });
+    } catch {}
     return true;
   } catch { return false; }
 }
