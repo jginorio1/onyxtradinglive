@@ -2,7 +2,17 @@
 import { useEffect, useState } from 'react';
 import React from 'react';
 import { useLang } from '@/lib/lang';
+import { isNativeApp } from '@/lib/native';
 import OnyxIcon from '@/app/components/OnyxIcon';
+
+// Abre el enlace del VPS SIEMPRE, también dentro de la app (Capacitor con web
+// remota). Usamos nuestra ruta /ir/vps (mismo dominio → permitida) que hace 302 al
+// enlace externo; ese salto a un host externo lo manda el nativo de Capacitor al
+// navegador del sistema. En la app forzamos navegación top-level; en web, pestaña nueva.
+const VPS_GO = '/ir/vps';
+function onVpsClick(e: any) {
+  try { if (isNativeApp()) { e?.preventDefault?.(); window.location.assign(VPS_GO); } } catch {}
+}
 
 // VPS recomendado (afiliado). Una sola fuente: el admin lo edita en Bot Lab y aquí
 // se lee vía /api/botlab/vps. Si no hay URL, seguimos recomendando VPS pero sin enlace.
@@ -42,7 +52,7 @@ export function renderVps(text: string, v: VpsInfo | null): React.ReactNode {
     out.push(<React.Fragment key={'t' + i}>{p}</React.Fragment>);
     if (i < parts.length - 1) {
       out.push(url
-        ? <a key={'l' + i} href={url} target="_blank" rel={REL} style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'underline' }}>VPS</a>
+        ? <a key={'l' + i} href={VPS_GO} target="_blank" rel={REL} onClick={onVpsClick} style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'underline' }}>VPS</a>
         : <React.Fragment key={'l' + i}>VPS</React.Fragment>);
     }
   });
@@ -69,7 +79,7 @@ export default function VpsCallout({ variant = 'callout', gold = false }: { vari
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: acc, marginTop: 8 }}>
         <span aria-hidden><OnyxIcon emoji="🖥" size={15} />️</span>
         <span>{es ? '24/7 con VPS' : '24/7 on a VPS'}</span>
-        {v.url && <><span aria-hidden style={{ opacity: .6 }}>·</span><a href={v.url} target="_blank" rel={REL} style={{ color: acc, fontWeight: 800, textDecoration: 'underline' }}>{cta}</a></>}
+        {v.url && <><span aria-hidden style={{ opacity: .6 }}>·</span><a href={VPS_GO} target="_blank" rel={REL} onClick={onVpsClick} style={{ color: acc, fontWeight: 800, textDecoration: 'underline' }}>{cta}</a></>}
       </div>
     );
   }
@@ -80,7 +90,7 @@ export default function VpsCallout({ variant = 'callout', gold = false }: { vari
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--tx)', background: 'var(--card2, rgba(255,255,255,.04))', border: '1px solid var(--line)', borderRadius: 8, padding: '6px 10px' }}>
         <span aria-hidden style={{ color: acc }}><OnyxIcon emoji="🖥" size={15} />️</span>
         <span style={{ flex: 1 }}>{title}</span>
-        {v.url && <a href={v.url} target="_blank" rel={REL} style={{ color: acc, fontWeight: 700, textDecoration: 'underline', whiteSpace: 'nowrap' }}>{cta}</a>}
+        {v.url && <a href={VPS_GO} target="_blank" rel={REL} onClick={onVpsClick} style={{ color: acc, fontWeight: 700, textDecoration: 'underline', whiteSpace: 'nowrap' }}>{cta}</a>}
       </div>
     );
   }
@@ -92,7 +102,7 @@ export default function VpsCallout({ variant = 'callout', gold = false }: { vari
         <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>{note}</div>
       </div>
       {v.url && (
-        <a href={v.url} target="_blank" rel={REL} className="btn btn-ghost" style={{ flex: 'none', fontSize: 12.5, padding: '6px 11px', borderColor: acc, color: acc }}>{cta} ↗</a>
+        <a href={VPS_GO} target="_blank" rel={REL} onClick={onVpsClick} className="btn btn-ghost" style={{ flex: 'none', fontSize: 12.5, padding: '6px 11px', borderColor: acc, color: acc }}>{cta} ↗</a>
       )}
     </div>
   );
