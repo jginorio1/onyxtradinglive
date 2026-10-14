@@ -13,7 +13,7 @@ export function notifCategory(key: string): string {
   if (key === 'bot_alert') return 'onyx_robots';
   if (key === 'copy_stopped') return 'onyx_copy';
   if (['live_class', 'academy_activity'].includes(key)) return 'onyx_academia';
-  if (['referral_reward', 'new_commission', 'bot_sold'].includes(key)) return 'onyx_ingresos';
+  if (['referral_reward', 'member_reward', 'became_ambassador', 'ambassador_invite', 'academy_reward_credited', 'academy_reward_paid', 'new_commission', 'bot_sold'].includes(key)) return 'onyx_ingresos';
   if (key === 'payment_failed') return 'onyx_cuenta';
   if (key === 'support_reply') return 'onyx_soporte';
   if (key === 'weekly_summary') return 'onyx_resumen';

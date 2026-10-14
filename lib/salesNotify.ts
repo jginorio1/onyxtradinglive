@@ -39,6 +39,8 @@ export async function notifyRep(repId: string, ev: SalesEv, data: { amount?: num
     const url = '/dashboard/ventas';
 
     try { await notify(uid, { kind: 'info', title: m.t, body: m.b, url }); } catch { /* opcional */ }
+    // Push al móvil del vendedor (no gateado por plan: es staff). Comisiones, leads, metas.
+    try { const { sendPush } = await import('@/lib/push'); await sendPush(uid, { title: m.t, body: m.b, url, category: 'onyx_ingresos' } as any); } catch { /* opcional */ }
     if (p?.email) { try { await sendEmail(p.email, m.t, `${m.b}\n\n${APP_URL}${url}`); } catch { /* opcional */ } }
     if (p?.telegram_chat_id && p.tg_alerts !== false) {
       try { await sendMessage(p.telegram_chat_id, `${m.t}\n\n${m.b}`, { kind: 'sales', userId: uid }); } catch { /* opcional */ }

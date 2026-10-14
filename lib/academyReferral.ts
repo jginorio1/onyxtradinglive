@@ -148,7 +148,7 @@ export async function releaseDueRewards(): Promise<{ released: number; credited:
         } as any);
         await supabaseAdmin.from('academy_reward_events').update({ status: 'paid', paid_method: 'credit', paid_at: new Date().toISOString() }).eq('id', ev.id);
         await supabaseAdmin.from('academy_referral_payouts').insert({ mentor_id: ev.mentor_id, referrer_id: ev.referrer_id, total_cents: ev.amount_cents, currency: ev.currency, method: 'credit', note: 'Crédito automático' });
-        await notify(ev.referrer_id, { kind: 'info', title: '💸 Recompensa acreditada', body: 'Aplicamos tu recompensa como crédito en tu cuenta.', url: '/dashboard/academy' });
+        { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(ev.referrer_id, 'academy_reward_credited', { url: '/dashboard/academy', ignorePlan: true }).catch(() => {}); }
         credited++;
       } catch { /* reintenta en la próxima pasada */ }
     }
@@ -186,7 +186,7 @@ export async function payReferrer(mentorId: string, referrerId: string, method?:
     status: 'paid', paid_method: meth, paid_note: note ? String(note).slice(0, 300) : null,
     paid_at: new Date().toISOString(), payout_id: (payout as any)?.id || null,
   }).eq('mentor_id', mentorId).eq('referrer_id', referrerId).eq('status', 'available');
-  await notify(referrerId, { kind: 'info', title: '💸 Te pagaron tu recompensa', body: `Recibiste ${(total / 100).toLocaleString()} por tus referidos.`, url: '/dashboard/academy' });
+  { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(referrerId, 'academy_reward_paid', { body: `Recibiste ${(total / 100).toLocaleString()} por tus referidos.`, url: '/dashboard/academy', ignorePlan: true }).catch(() => {}); }
   return { ok: true, total_cents: total, currency };
 }
 

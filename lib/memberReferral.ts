@@ -12,7 +12,7 @@ const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive
 // Aviso "ya puedes ser embajador": in-app + correo + Telegram (si lo tiene).
 // Nunca rompe el flujo del webhook si un canal falla.
 async function notifyBridge(userId: string, count: number) {
-  await notify(userId, { kind: 'info', title: '🚀 Puedes hacerte Embajador', body: `Ya trajiste ${count} amigos. Sube a comisión en efectivo recurrente.`, url: '/embajadores' });
+  { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(userId, 'ambassador_invite', { body: `Ya trajiste ${count} amigos. Sube a comisión en efectivo recurrente.`, url: '/embajadores', ignorePlan: true }).catch(() => {}); }
   try {
     const { data: p } = await supabaseAdmin.from('profiles')
       .select('email,lang,full_name,telegram_chat_id,tg_alerts').eq('id', userId).maybeSingle() as any;
@@ -114,14 +114,14 @@ export async function qualifyOnPaid(invoice: any) {
     // Aviso al invitador + puente a Embajador si llega al umbral.
     const { count: qualified } = await supabaseAdmin.from('member_rewards').select('*', { count: 'exact', head: true }).eq('referrer_id', referrerId).eq('kind', 'referrer');
     const q = qualified || 0;
-    await notify(referrerId, { kind: 'info', title: '🎉 ¡Ganaste crédito por un referido!', body: `Tu amigo se suscribió. Tu crédito se aplica en unos días.`, url: '/account#referidos' });
+    { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(referrerId, 'member_reward', { url: '/account#referidos', ignorePlan: true }).catch(() => {}); }
     // Al alcanzar el umbral: AUTO-ASCENSO a embajador (si está activado). Si se
     // ascendió, se le avisa que ya cobra en efectivo; si no (apagado o ya lo era),
     // se le manda la invitación por los 3 canales como antes.
     if (s.bridge_threshold > 0 && q === s.bridge_threshold) {
       const promo = await autoPromote(referrerId).catch(() => ({ promoted: false } as any));
       if (promo?.promoted) {
-        await notify(referrerId, { kind: 'success', title: '🚀 ¡Ya eres Embajador!', body: `Trajiste ${q} amigos. Ahora ganas comisión en efectivo por cada suscriptor. Conecta tu cobro para retirar.`, url: '/account#retiros' });
+        { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(referrerId, 'became_ambassador', { body: `Trajiste ${q} amigos. Ahora ganas comisión en efectivo por cada suscriptor. Conecta tu cobro para retirar.`, url: '/account#retiros', ignorePlan: true }).catch(() => {}); }
       } else {
         await notifyBridge(referrerId, q);
       }

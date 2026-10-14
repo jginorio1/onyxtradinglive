@@ -68,6 +68,8 @@ export async function POST(req: Request) {
     for (const m of mentions as any[]) {
       if (m?.type === 'user' && m.id && m.id !== 'onyx' && m.id !== g.user.id) {
         await notify(m.id, { kind: 'info', title: `${senderName} te mencionó`, body: body.slice(0, 90), url: `/admin?chat=${channel}#chat` });
+        // Push al móvil del compañero mencionado (staff; no gateado por plan).
+        try { const { sendPush } = await import('@/lib/push'); await sendPush(m.id, { title: `${senderName} te mencionó`, body: body.slice(0, 90), url: `/admin?chat=${channel}#chat`, category: 'onyx_soporte' } as any); } catch {}
       }
     }
 

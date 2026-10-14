@@ -76,9 +76,51 @@ export const NOTIF_CATALOG: NotifDef[] = [
   },
   {
     key: 'referral_reward', group: 'Referidos',
-    es: { title: '🎉 Ganaste una recompensa por referido', body: 'Tu invitado pagó. Estará disponible tras la ventana de espera.' },
-    en: { title: '🎉 You earned a referral reward', body: 'Your invite paid. It unlocks after the holding window.' },
-    // Alto valor y poco frecuente ("ganaste dinero"): va con push de fábrica.
+    es: { title: '🎉 Recompensa de afiliado (Academia)', body: 'Tu invitado pagó una membresía. Estará disponible tras la ventana de espera.' },
+    en: { title: '🎉 Affiliate reward (Academy)', body: 'Your invite paid for a membership. It unlocks after the holding window.' },
+    // Afiliado de la ACADEMIA (lib/academyReferral). Lleva al panel de ganancias de la academia.
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'member_reward', group: 'Referidos',
+    es: { title: '🎉 Invita y gana: ¡ganaste crédito!', body: 'Tu amigo se suscribió a Onyx. Tu crédito se aplica en unos días.' },
+    en: { title: '🎉 Invite & earn: you got credit!', body: 'Your friend subscribed to Onyx. Your credit applies in a few days.' },
+    // "Invita y gana" (lib/memberReferral). Lleva a Mi cuenta → Referidos. Crece el
+    // funnel, así que va con push de fábrica (incluye a usuarios Free: ver emitNotif).
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/account#referidos',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'became_ambassador', group: 'Referidos',
+    es: { title: '🚀 ¡Ya eres Embajador!', body: 'Ahora ganas comisión en efectivo por cada suscriptor. Conecta tu cobro para retirar.' },
+    en: { title: '🚀 You are now an Ambassador!', body: 'You now earn cash commission per subscriber. Connect your payout to withdraw.' },
+    // Hito de ascenso (lib/memberReferral). Lleva a Mi cuenta → Retiros. Push de fábrica.
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/account#retiros',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'ambassador_invite', group: 'Referidos', extra: true,
+    es: { title: '🚀 Puedes hacerte Embajador', body: 'Sube a comisión en efectivo recurrente por cada suscriptor que traigas.' },
+    en: { title: '🚀 You can become an Ambassador', body: 'Step up to recurring cash commission for every subscriber you bring.' },
+    // Invitación/puente a Embajador (lib/memberReferral.notifyBridge). El correo y el
+    // Telegram los maneja notifyBridge aparte; aquí solo campana + push (telegram off).
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/embajadores',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'academy_reward_credited', group: 'Referidos',
+    es: { title: '💸 Recompensa acreditada', body: 'Aplicamos tu recompensa como crédito en tu cuenta.' },
+    en: { title: '💸 Reward credited', body: 'We applied your reward as account credit.' },
+    // Afiliado de academia · recompensa ya disponible como crédito (lib/academyReferral).
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'academy_reward_paid', group: 'Referidos',
+    es: { title: '💸 Te pagaron tu recompensa', body: 'Recibiste el pago de tus referidos de academia.' },
+    en: { title: '💸 Your reward was paid', body: 'You received the payout for your academy referrals.' },
+    // Afiliado de academia · el mentor te liquidó (lib/academyReferral.payReferrer).
     bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
     editableChannels: ['bell', 'push'],
   },
