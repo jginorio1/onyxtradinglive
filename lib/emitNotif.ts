@@ -110,24 +110,17 @@ async function emailIsOwner(userId: string): Promise<boolean> {
   return owner;
 }
 
-// ¿El PLAN del usuario incluye PUSH? Misma regla que la UI de Mi cuenta → Avisos
-// (app/api/account/notif-prefs): si plans.capabilities.push está puesto, manda ese
-// valor; si no, el push viene apagado en Free y encendido en los de pago. Así el
-// candado de push NO está quemado en código: depende de las capacidades del plan,
-// y el día que crees/edites un plan, el push se ajusta solo (UI y backend juntos).
-// Cacheamos por planId durante la corrida (los crons avisan a muchos a la vez).
-const _pushByPlan = new Map<string, boolean>();
-async function planAllowsPush(planId: string | null | undefined): Promise<boolean> {
-  const id = planId || 'free';
-  if (_pushByPlan.has(id)) return _pushByPlan.get(id)!;
-  let allowed = id !== 'free';   // respaldo si el plan no define la capacidad
-  try {
-    const { data } = await supabaseAdmin.from('plans').select('capabilities').eq('id', id).maybeSingle();
-    const cap = (data as any)?.capabilities?.push;
-    allowed = (cap === undefined || cap === null) ? (id !== 'free') : !!cap;
-  } catch { /* si falla, usamos el respaldo por id */ }
-  _pushByPlan.set(id, allowed);
-  return allowed;
+// ¿El PLAN del usuario incluye PUSH? Regla simple y robusta: CUALQUIER plan de pago
+// activo (el efectivo profiles.plan != 'free') recibe push automática; 'free' no.
+// profiles.plan ya es el EFECTIVO (lib/entitlements.applyEffectivePlan): combina
+// Stripe, Apple/RevenueCat, prueba de cortesía y el ajuste MANUAL del admin
+// (plan_override) y se queda con el de mayor rango. Así un Black Onyx puesto a mano
+// cuenta igual que uno pagado por Stripe. Antes dependíamos de plans.capabilities.push,
+// lo que cortaba las push a clientes de pago si esa capacidad no estaba definida o
+// quedaba en false por error; el dueño pidió que TODO plan de pago activo las reciba.
+function planAllowsPush(planId: string | null | undefined): boolean {
+  const id = (planId || 'free').toLowerCase();
+  return !!id && id !== 'free';
 }
 
 // DIAGNÓSTICO: ¿este usuario recibirá push AUTOMÁTICA? Devuelve plan, si es staff y
