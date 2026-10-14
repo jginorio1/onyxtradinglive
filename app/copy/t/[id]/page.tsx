@@ -209,7 +209,7 @@ export default async function TraderCertificate({ params }: { params: { id: stri
         );
         return (
           <div className="print-cert">
-            <div style={{ position: 'relative', width: '10.6in', height: '8in', margin: '0 auto', background: paper, color: ink, boxSizing: 'border-box', padding: '0.4in', overflow: 'hidden', fontFamily: 'Georgia, "Times New Roman", serif' }}>
+            <div style={{ position: 'relative', width: '11in', height: '8in', margin: '0 auto', background: paper, color: ink, boxSizing: 'border-box', overflow: 'hidden', fontFamily: 'Georgia, "Times New Roman", serif' }}>
               {/* Filigrana tenue de fondo + número de score en marca de agua */}
               <svg width="100%" height="100%" viewBox="0 0 1040 713" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, opacity: 0.05 }}>
                 <defs><pattern id={`gui-${certNo}`} width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="13" cy="13" r="11" fill="none" stroke={gold} strokeWidth="1" /></pattern></defs>
@@ -217,14 +217,15 @@ export default async function TraderCertificate({ params }: { params: { id: stri
               </svg>
               <div style={{ position: 'absolute', right: '12mm', bottom: '-10mm', fontSize: 340, fontWeight: 800, color: gold, opacity: 0.05, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>{p.score}</div>
 
-              {/* Marco doble dorado + esquinas */}
-              <div style={{ position: 'absolute', inset: '6mm', border: `0.8mm solid ${gold}`, borderRadius: 3 }} />
-              <div style={{ position: 'absolute', inset: '8mm', border: `0.3mm solid ${gold}`, opacity: 0.55 }} />
-              {[['6mm', '6mm', 'left', 'top'], ['6mm', '6mm', 'right', 'top'], ['6mm', '6mm', 'left', 'bottom'], ['6mm', '6mm', 'right', 'bottom']].map((_, i) => (
-                <div key={i} style={{ position: 'absolute', [i % 2 === 0 ? 'left' : 'right']: '6mm', [i < 2 ? 'top' : 'bottom']: '6mm', width: 30, height: 30, [`border${i % 2 === 0 ? 'Left' : 'Right'}`]: `0.9mm solid ${ink}`, [`border${i < 2 ? 'Top' : 'Bottom'}`]: `0.9mm solid ${ink}` }} />
+              {/* Marco doble dorado + esquinas (bien adentro para que la impresora
+                  no recorte el borde) */}
+              <div style={{ position: 'absolute', inset: '12mm', border: `0.8mm solid ${gold}`, borderRadius: 3 }} />
+              <div style={{ position: 'absolute', inset: '14mm', border: `0.3mm solid ${gold}`, opacity: 0.55 }} />
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} style={{ position: 'absolute', [i % 2 === 0 ? 'left' : 'right']: '12mm', [i < 2 ? 'top' : 'bottom']: '12mm', width: 30, height: 30, [`border${i % 2 === 0 ? 'Left' : 'Right'}`]: `0.9mm solid ${ink}`, [`border${i < 2 ? 'Top' : 'Bottom'}`]: `0.9mm solid ${ink}` }} />
               ))}
 
-              <div style={{ position: 'relative', height: '100%', padding: '6mm 10mm', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+              <div style={{ position: 'relative', height: '100%', padding: '14mm 18mm', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
                 {/* Cabecera */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
