@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdmin } from '@/lib/admin';
 import { getSetting, saveSetting } from '@/lib/settings';
-import { NOTIF_CATALOG, type NotifOverride } from '@/lib/notifConfig';
+import { NOTIF_CATALOG, loadNotifConfig, type NotifOverride } from '@/lib/notifConfig';
 import { emitNotif, pushDiagForUser } from '@/lib/emitNotif';
 import { broadcastFcm, fcmEnabled } from '@/lib/fcm';
 import { pushEnabled } from '@/lib/push';
@@ -58,13 +58,18 @@ export async function POST(req: Request) {
   // ---- Prueba: enviar un aviso concreto al admin ----
   if (b.test) {
     const key = String(b.test);
-    const def = NOTIF_CATALOG.find((d) => d.key === key);
+    // Usamos la configuración GUARDADA (catálogo + tus ediciones), no el texto de
+    // fábrica. Así la prueba muestra EXACTAMENTE el mensaje y los iconos que el
+    // trader recibirá de verdad (título, cuerpo y emojis que tú editaste).
+    const all = await loadNotifConfig();
+    const def = (all as any)[key] || NOTIF_CATALOG.find((d) => d.key === key);
     if (!def) return NextResponse.json({ error: 'tipo desconocido' }, { status: 400 });
     let uid = '';
     try { const sb = createSupabaseServer(); const { data } = await sb.auth.getUser(); uid = data?.user?.id || ''; } catch {}
     if (!uid) return NextResponse.json({ error: 'sin sesión' }, { status: 401 });
     // Config forzada SOLO para este envío: prendido, campana + push (sin Telegram
-    // para no molestar a los suscriptores del canal al probar).
+    // para no molestar a los suscriptores del canal al probar). Partimos de tu
+    // config guardada para conservar el texto y los iconos editados.
     const cfg = { [key]: { ...def, on: true, bell: true, push: true, telegram: false } } as any;
     // Idioma de la PRUEBA: el idioma guardado en TU perfil (profiles.lang), para que
     // la prueba llegue igual que un aviso real. Antes usaba el idioma del panel de
