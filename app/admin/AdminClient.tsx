@@ -2445,6 +2445,10 @@ function PlanCard({ plan, isNew, reload, onCancel }: { plan: Plan; isNew?: boole
         <span style={{ fontSize: 13, flex: 1 }}>{lang === 'en' ? 'Free trial days' : 'Días de prueba'} <span className="muted">{lang === 'en' ? '(0 = no trial · card required)' : '(0 = sin prueba · pide tarjeta)'}</span></span>
         <input type="number" min={0} max={90} value={p.capabilities?.trial_days ?? 0} onChange={(e) => setCap('trial_days', Number(e.target.value) || 0)} style={{ margin: 0, width: 80, padding: '6px 8px' }} />
       </div>
+      <div className="row" style={{ gap: 10, alignItems: 'center', margin: '0 0 10px' }}>
+        <span style={{ fontSize: 13, flex: 1 }}>{lang === 'en' ? 'Onyx AI questions / month' : 'Consultas de Onyx AI / mes'} <span className="muted">{lang === 'en' ? '(0 = unlimited · anti-abuse cap)' : '(0 = ilimitado · tope anti-abuso)'}</span></span>
+        <input type="number" min={0} value={p.capabilities?.ai_monthly ?? 0} onChange={(e) => setCap('ai_monthly', Number(e.target.value) || 0)} style={{ margin: 0, width: 80, padding: '6px 8px' }} />
+      </div>
       {CAP_GROUPS.map((g) => (
         <div key={g.es}>
           <div style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--mut)', margin: '12px 0 2px', borderTop: '1px solid var(--line)', paddingTop: 9 }}>{lang === 'en' ? g.en : g.es}</div>

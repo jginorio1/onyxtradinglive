@@ -37,8 +37,19 @@ export async function aiAllowance(userId: string): Promise<Allowance> {
   const plan = (prof as any)?.plan || 'free';
   const staff = !!((prof as any)?.is_admin || (prof as any)?.role);   // el equipo no tiene tope
 
-  const limits = await aiLimitsSetting();
-  const quota = Number(limits[plan] ?? limits['default'] ?? 150);
+  // Tope mensual: vive en las capacidades del plan (capabilities.ai_monthly),
+  // editable en Admin → Planes dentro de cada tarjeta. Si un plan aún no lo tiene,
+  // se cae al ajuste global 'ai_limits' o a 150 por defecto.
+  let quota: number | undefined;
+  try {
+    const { data: pl } = await supabaseAdmin.from('plans').select('capabilities').eq('id', plan).maybeSingle();
+    const v = (pl?.capabilities as any)?.ai_monthly;
+    if (v !== undefined && v !== null && Number.isFinite(Number(v))) quota = Number(v);
+  } catch {}
+  if (quota === undefined) {
+    const limits = await aiLimitsSetting();
+    quota = Number(limits[plan] ?? limits['default'] ?? 150);
+  }
 
   // Paquetes extra COMPRADOS este mes (pago único, consumible). Suma de 'ai_packs'
   // del período en curso; el mes siguiente arranca en 0 (no se arrastra).
