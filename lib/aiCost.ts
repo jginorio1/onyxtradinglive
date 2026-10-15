@@ -16,8 +16,9 @@ function priceFor(prices: AiPrices, model: string) {
 }
 
 // Anota una llamada. Recibe la RESPUESTA cruda de Anthropic (trae model + usage).
+// userId (opcional) permite ver el consumo de IA por usuario en su expediente.
 // Fire-and-forget: nunca rompe la función que llama a la IA.
-export async function logAiUsage(feature: string, resp: any): Promise<void> {
+export async function logAiUsage(feature: string, resp: any, userId?: string | null): Promise<void> {
   try {
     const u = resp?.usage;
     if (!u) return;
@@ -28,11 +29,15 @@ export async function logAiUsage(feature: string, resp: any): Promise<void> {
     const prices = await aiPricesSettings();
     const p = priceFor(prices, model);
     const costCents = Math.round(((inTok / 1e6) * p.in + (outTok / 1e6) * p.out) * 100);
-    await supabaseAdmin.from('ai_usage').insert({
+    const row: any = {
       feature: String(feature || 'otros').slice(0, 30),
       model: model.slice(0, 60),
       input_tokens: inTok, output_tokens: outTok, cost_cents: costCents,
-    });
+    };
+    if (userId) row.user_id = userId;
+    // Si la columna user_id aún no existe, reintenta sin ella (no pierde el gasto).
+    const { error } = await supabaseAdmin.from('ai_usage').insert(row);
+    if (error && userId) { delete row.user_id; await supabaseAdmin.from('ai_usage').insert(row); }
   } catch { /* silencioso: el gasto de IA no debe afectar la respuesta */ }
 }
 

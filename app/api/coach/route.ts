@@ -229,7 +229,7 @@ export async function GET(req: Request) {
     let reviewText: string | undefined;
     try {
       const r: any = await Promise.race([
-        weeklyReview(summary, lang),
+        weeklyReview(summary, lang, user.id),
         new Promise((res) => setTimeout(() => res({ ok: false }), 12000)),
       ]);
       if (r?.ok && r.text) reviewText = r.text;

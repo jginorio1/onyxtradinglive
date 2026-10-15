@@ -12,7 +12,7 @@ import type { Lang } from './navText';
 import { aiLangDirective, enBase, LANG_NAME , dictFor } from '@/lib/i18n';
 
 // Llamada base: contenido como texto o como bloques (imagen/PDF).
-async function aiRaw(system: string, content: any, maxTokens: number, beta?: string): Promise<string | null> {
+async function aiRaw(system: string, content: any, maxTokens: number, beta?: string, userId?: string | null): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
   try {
@@ -25,12 +25,12 @@ async function aiRaw(system: string, content: any, maxTokens: number, beta?: str
     });
     if (!r.ok) return null;
     const d = await r.json();
-    import('@/lib/aiCost').then((m) => m.logAiUsage('coach', d)).catch(() => {});
+    import('@/lib/aiCost').then((m) => m.logAiUsage('coach', d, userId)).catch(() => {});
     return (d?.content || []).map((c: any) => c.text || '').join('\n').trim() || null;
   } catch { return null; }
 }
-async function ai(system: string, user: string, maxTokens = 700): Promise<string | null> {
-  return aiRaw(system, user.slice(0, 6000), maxTokens);
+async function ai(system: string, user: string, maxTokens = 700, userId?: string | null): Promise<string | null> {
+  return aiRaw(system, user.slice(0, 6000), maxTokens, undefined, userId);
 }
 
 const NO_ADVICE = {
@@ -69,7 +69,7 @@ export type CoachSummary = {
     year?: { target: number; net: number; pct: number };
   };
 };
-export async function weeklyReview(s: CoachSummary, lang: Lang): Promise<{ ok: boolean; text?: string; reason?: string }> {
+export async function weeklyReview(s: CoachSummary, lang: Lang, userId?: string | null): Promise<{ ok: boolean; text?: string; reason?: string }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: 'no_key' };
   // Reglas de análisis honesto: el coach da un VEREDICTO primero (¿gana o pierde
   // en este período?) y NUNCA felicita por el volumen de operaciones.
@@ -101,7 +101,7 @@ export async function weeklyReview(s: CoachSummary, lang: Lang): Promise<{ ok: b
     : `Eres Onyx Coach, un coach de rendimiento de trading, tranquilo y honesto. Lee las estadísticas del trader y escribe un repaso corto (máx ~170 palabras) en lenguaje claro, en este orden: (1) nombra el alcance (la cuenta o el portafolio completo) y da un veredicto honesto de ESTE período (gana o pierde dinero, con las fechas y el número de días/operaciones), (2) la 1-2 fugas más grandes con los números, (3) un hábito concreto para corregir. Directo pero de apoyo, nunca duro. Un par de emojis con criterio y párrafos cortos.\n\n${RUBRIC_ES}\n\n${NO_ADVICE.es}`)
     + `\n\n=== ${enBase(lang) ? 'ONYX KNOWLEDGE' : 'CONOCIMIENTO DE ONYX'} ===\n${await brandBrief(lang)}` + aiLangDirective(lang);
   const user = JSON.stringify(s);
-  const text = await ai(system, (enBase(lang) ? 'Stats: ' : 'Estadísticas: ') + user, 600);
+  const text = await ai(system, (enBase(lang) ? 'Stats: ' : 'Estadísticas: ') + user, 600, userId);
   return text ? { ok: true, text } : { ok: false, reason: 'error' };
 }
 
@@ -309,14 +309,14 @@ export function fallbackTradeInsight(t: TradeInsightInput, lang: Lang): string {
   else tail = es ? 'Documenta el porqué para poder repetirlo.' : 'Document the why so you can repeat it.';
   return (head + tail).trim();
 }
-export async function tradeInsight(t: TradeInsightInput, lang: Lang): Promise<{ ok: boolean; text: string }> {
+export async function tradeInsight(t: TradeInsightInput, lang: Lang, userId?: string | null): Promise<{ ok: boolean; text: string }> {
   const fb = fallbackTradeInsight(t, lang);
   if (!process.env.ANTHROPIC_API_KEY) return { ok: true, text: fb };
   const es = !enBase(lang);
   const system = (es
     ? `Eres Onyx Coach. Te doy UNA operación del trader y lo que documentó. Escribe UNA sola frase (máx 30 palabras), honesta y accionable, sobre su PROCESO (disciplina, emoción, gestión), no sobre el mercado. Sin emojis. ${NO_ADVICE.es}`
     : `You are Onyx Coach. I give you ONE of the trader's trades and what they journaled. Write ONE sentence (max 30 words), honest and actionable, about their PROCESS (discipline, emotion, management), not the market. No emojis. ${NO_ADVICE.en}`) + aiLangDirective(lang);
-  const text = await ai(system, JSON.stringify(t), 160);
+  const text = await ai(system, JSON.stringify(t), 160, userId);
   const clean = (text || '').replace(/^["“]|["”]$/g, '').trim();
   return { ok: true, text: clean && clean.length > 4 ? clean : fb };
 }

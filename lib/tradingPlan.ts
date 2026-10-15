@@ -397,7 +397,7 @@ export async function getPlanHistory(userId: string, days = 30): Promise<any[]> 
 }
 
 // Repaso de Onyx AI: cruza el plan con la conducta real y da coaching breve.
-export async function planReview(plan: Plan, stats: PlanStats, lang: 'es' | 'en'): Promise<string> {
+export async function planReview(plan: Plan, stats: PlanStats, lang: 'es' | 'en', userId?: string | null): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return lang === 'en' ? '⚠️ AI not configured: ANTHROPIC_API_KEY missing in Vercel.' : '⚠️ IA no configurada: falta ANTHROPIC_API_KEY en Vercel.';
   const ctx = `Estilo: ${plan.style} · Riesgo/op: ${plan.risk_per_trade}% · Pérdida diaria máx: ${plan.max_daily_loss_pct}% · Máx ops/día: ${plan.max_trades_day || '—'} · Sesiones: ${plan.sessions.join(', ') || '—'}\n`
@@ -442,7 +442,7 @@ Reglas estrictas de formato:
     });
     if (!r.ok) return lang === 'en' ? 'Could not review right now.' : 'No pude repasar ahora mismo.';
     const data = await r.json();
-    import('@/lib/aiCost').then((m) => m.logAiUsage('coach', data)).catch(() => {});
+    import('@/lib/aiCost').then((m) => m.logAiUsage('coach', data, userId)).catch(() => {});
     const raw = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
     // Defensa: quita cualquier markdown que se le escape al modelo (**, #, viñetas -/•).
     const clean = raw

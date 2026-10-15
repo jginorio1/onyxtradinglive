@@ -11,7 +11,11 @@ type Lang = 'es' | 'en';
 const T: any = {
   es: { activity: 'Actividad de la cuenta', emails: 'Correos que le envió el sistema', none: 'Sin registros.', noEmails: 'Ningún correo aún.',
     by: 'por', write: 'Escribirle un correo', subj: 'Asunto', body: 'Mensaje', send: 'Enviar correo', sent: 'Correo enviado.', close: 'Cerrar',
-    sentS: 'enviado', failed: 'falló', tabs: ['Actividad', 'Correos', 'Crédito', 'Compras'],
+    sentS: 'enviado', failed: 'falló', tabs: ['Expediente', 'Actividad', 'Correos', 'Crédito', 'Compras'],
+    exTitle: 'Todo lo que recibe y hace', exNone: 'Sin registros todavía.', exAll: 'Todo', exUrgent: 'Urgentes',
+    exReg: 'Registrado', exConf: 'Confirmó', exOnb: 'Onboarding', exPlan: 'Plan', exDev: 'Dispositivos', exAcc: 'Brókers', exAi: 'IA',
+    exYes: 'Sí', exNo: 'No', exPending: 'Pendiente',
+    themes: { cuenta: 'Cuenta', dispositivo: 'Dispositivo', conexion: 'Bróker', correo: 'Correos', soporte: 'Soporte', admin: 'Admin', ia: 'Onyx AI' },
     puNone: 'Sin compras registradas.', puTerms: 'Términos', puDeliv: 'Entregas', puView: 'Ver en Stripe', puSubmit: 'Enviar evidencia', puDraft: 'Guardar borrador',
     puConfirm: '¿Enviar la evidencia a Stripe ahora? No se puede deshacer.', puDisputed: 'EN DISPUTA', puPaid: 'Pagado', puIp: 'IP',
     crT: 'Crédito en su plan', crAvail: 'Crédito disponible ahora', crAmount: 'Monto a añadir (USD)', crNote: 'Nota (obligatoria)',
@@ -21,7 +25,11 @@ const T: any = {
     act: { plan: 'Cambió el plan', ban: 'Bloqueó la cuenta', unban: 'Desbloqueó la cuenta', admin: 'Cambió rol de admin', delete_user: 'Eliminó la cuenta', email_user: 'Le envió un correo', self_plan: 'Cambió su propio plan', user_credit: 'Le aplicó crédito' } },
   en: { activity: 'Account activity', emails: 'Emails the system sent them', none: 'No records.', noEmails: 'No emails yet.',
     by: 'by', write: 'Write them an email', subj: 'Subject', body: 'Message', send: 'Send email', sent: 'Email sent.', close: 'Close',
-    sentS: 'sent', failed: 'failed', tabs: ['Activity', 'Emails', 'Credit', 'Purchases'],
+    sentS: 'sent', failed: 'failed', tabs: ['Record', 'Activity', 'Emails', 'Credit', 'Purchases'],
+    exTitle: 'Everything they receive and do', exNone: 'No records yet.', exAll: 'All', exUrgent: 'Urgent',
+    exReg: 'Registered', exConf: 'Confirmed', exOnb: 'Onboarding', exPlan: 'Plan', exDev: 'Devices', exAcc: 'Brokers', exAi: 'AI',
+    exYes: 'Yes', exNo: 'No', exPending: 'Pending',
+    themes: { cuenta: 'Account', dispositivo: 'Device', conexion: 'Broker', correo: 'Emails', soporte: 'Support', admin: 'Admin', ia: 'Onyx AI' },
     puNone: 'No purchases recorded.', puTerms: 'Terms', puDeliv: 'Deliveries', puView: 'View in Stripe', puSubmit: 'Submit evidence', puDraft: 'Save draft',
     puConfirm: 'Submit the evidence to Stripe now? This cannot be undone.', puDisputed: 'DISPUTED', puPaid: 'Paid', puIp: 'IP',
     crT: 'Credit on their plan', crAvail: 'Credit available now', crAmount: 'Amount to add (USD)', crNote: 'Note (required)',
@@ -29,6 +37,17 @@ const T: any = {
     crNoteReq: 'The note is required.', crConfT: 'Confirm credit', crYouCredit: 'You will credit', crConfBtn: 'Confirm and credit', crCancel: 'Cancel', crNoteLbl: 'Note',
     crNoCust: 'This user has no Stripe customer yet (never started a payment), so credit cannot be applied yet.',
     act: { plan: 'Changed plan', ban: 'Banned account', unban: 'Unbanned account', admin: 'Changed admin role', delete_user: 'Deleted account', email_user: 'Sent an email', self_plan: 'Changed own plan', user_credit: 'Applied credit' } },
+};
+
+// Estilo por tema del expediente (icono + color), para leer de un vistazo.
+const THEME_STYLE: Record<string, { icon: string; color: string; bg: string }> = {
+  cuenta: { icon: '👤', color: '#c8a24b', bg: 'rgba(200,162,75,.10)' },
+  dispositivo: { icon: '📱', color: '#5e9bd6', bg: 'rgba(94,155,214,.10)' },
+  conexion: { icon: '🔌', color: '#34c778', bg: 'rgba(52,199,120,.10)' },
+  correo: { icon: '✉', color: '#8a7fd6', bg: 'rgba(138,127,214,.10)' },
+  soporte: { icon: '🛟', color: '#d6903e', bg: 'rgba(214,144,62,.10)' },
+  admin: { icon: '🛡', color: '#9aa0a6', bg: 'rgba(154,160,166,.10)' },
+  ia: { icon: '🤖', color: '#49c5c0', bg: 'rgba(73,197,192,.10)' },
 };
 
 export default function UserDrawer({ userId, email, onClose }: { userId: string; email: string; onClose: () => void }) {
@@ -45,6 +64,8 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   const [crConfirm, setCrConfirm] = useState(false); // popup de confirmación
   const [purchases, setPurchases] = useState<any[] | null>(null); // compras/evidencia
   const [pAct, setPAct] = useState('');
+  const [tl, setTl] = useState<any>(null);        // expediente unificado (timeline)
+  const [tlFilter, setTlFilter] = useState<string>(''); // '' = todo, 'urgent', o un tema
 
   useEffect(() => {
     load();
@@ -56,7 +77,8 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   async function load() { try { const r = await fetch('/api/admin/user-activity?id=' + userId); setD(await r.json()); } catch { setD({ activity: [], emails: [] }); } }
   async function loadCredit() { try { const r = await fetch('/api/admin/credit?id=' + userId); setCredit(await r.json()); } catch { setCredit({ hasCustomer: false, balance: 0 }); } }
   async function loadPurchases() { try { const r = await fetch('/api/admin/evidence?userId=' + userId); const j = await r.json(); setPurchases(j.rows || []); } catch { setPurchases([]); } }
-  useEffect(() => { if (tab === 2 && !credit) loadCredit(); if (tab === 3 && !purchases) loadPurchases(); }, [tab]);
+  async function loadTimeline() { try { const r = await fetch('/api/admin/user-timeline?id=' + userId); setTl(await r.json()); } catch { setTl({ summary: {}, events: [] }); } }
+  useEffect(() => { if (tab === 0 && !tl) loadTimeline(); if (tab === 3 && !credit) loadCredit(); if (tab === 4 && !purchases) loadPurchases(); }, [tab]);
 
   // Enviar (o guardar borrador de) la evidencia de una disputa a Stripe.
   async function sendEvidence(disputeId: string, submit: boolean) {
@@ -108,9 +130,73 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
           {t.tabs.map((tt: string, i: number) => <button key={i} className={'btn ' + (tab === i ? 'btn-primary' : 'btn-ghost')} style={{ padding: '6px 14px', fontSize: 13 }} onClick={() => setTab(i)}>{tt}</button>)}
         </div>
 
-        {!d && <div className="muted">…</div>}
+        {tab === 0 && (
+          <div>
+            {!tl && <div className="muted">…</div>}
+            {tl && (() => {
+              const s = tl.summary || {}; const evs: any[] = tl.events || [];
+              const shown = evs.filter((e) => !tlFilter ? true : tlFilter === 'urgent' ? e.urgent : e.theme === tlFilter);
+              const themesPresent = Array.from(new Set(evs.map((e) => e.theme)));
+              const chip = (key: string, label: string) => (
+                <button key={key} className={'btn ' + (tlFilter === key ? 'btn-primary' : 'btn-ghost')} style={{ padding: '4px 10px', fontSize: 11.5 }} onClick={() => setTlFilter(key)}>{label}</button>
+              );
+              return (
+                <>
+                  {/* Resumen de un vistazo */}
+                  <div className="card" style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 10 }}>{t.exTitle}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
+                      {[
+                        [t.exReg, s.plan ? s.plan : '—'],
+                        [t.exConf, s.confirmed ? t.exYes : t.exPending],
+                        [t.exOnb, s.onboarded ? t.exYes : t.exNo],
+                        [t.exDev, (s.devices || []).join(', ') || '—'],
+                        [t.exAcc, String(s.accounts || 0)],
+                        [t.exAi, s.aiCalls ? `${s.aiCalls} · $${((s.aiCents || 0) / 100).toFixed(2)}` : '—'],
+                      ].map(([k, v]: any, i: number) => (
+                        <div key={i} style={{ background: 'var(--bg2)', borderRadius: 8, padding: '7px 9px' }}>
+                          <div className="muted" style={{ fontSize: 10.5 }}>{k}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, marginTop: 1 }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-        {d && tab === 0 && (
+                  {/* Filtros por tema / urgencia */}
+                  <div className="row" style={{ gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                    {chip('', t.exAll)}
+                    {evs.some((e) => e.urgent) && chip('urgent', '⚠ ' + t.exUrgent)}
+                    {themesPresent.map((th: string) => chip(th, (THEME_STYLE[th]?.icon || '') + ' ' + (t.themes[th] || th)))}
+                  </div>
+
+                  {/* Línea de tiempo */}
+                  <div className="card">
+                    {!shown.length && <div className="muted" style={{ fontSize: 13 }}>{t.exNone}</div>}
+                    {shown.map((e: any, i: number) => {
+                      const st = THEME_STYLE[e.theme] || THEME_STYLE.admin;
+                      return (
+                        <div key={i} style={{ borderLeft: `3px solid ${e.urgent ? 'var(--red,#e5484d)' : st.color}`, background: e.urgent ? 'rgba(229,72,77,.08)' : st.bg, borderRadius: '0 8px 8px 0', padding: '8px 10px', marginTop: i ? 6 : 0 }}>
+                          <div className="row between" style={{ gap: 8, alignItems: 'flex-start' }}>
+                            <div style={{ fontSize: 13, color: 'var(--tx)', fontWeight: e.urgent ? 700 : 500 }}>
+                              <span style={{ marginRight: 6 }}>{st.icon}</span>{e.title}
+                              {e.urgent && <span className="pill" style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 800, background: 'rgba(229,72,77,.18)', color: '#c62f26' }}>URGENTE</span>}
+                            </div>
+                          </div>
+                          {e.detail && <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{e.detail}</div>}
+                          <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{e.ts ? fmtDateTime(e.ts, lang) : '—'}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
+
+        {!d && tab !== 0 && <div className="muted">…</div>}
+
+        {d && tab === 1 && (
           <div className="card">
             <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 8 }}>{t.activity}</div>
             {!d.activity?.length && <div className="muted" style={{ fontSize: 13 }}>{t.none}</div>}
@@ -126,7 +212,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
           </div>
         )}
 
-        {d && tab === 1 && (
+        {d && tab === 2 && (
           <>
             <div className="card" style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 8 }}>{t.emails}</div>
@@ -148,7 +234,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
           </>
         )}
 
-        {tab === 2 && (
+        {tab === 3 && (
           <div className="card">
             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}><OnyxIcon emoji="🎁" size={15} /> {t.crT}</div>
             {!credit && <div className="muted">…</div>}
@@ -171,9 +257,9 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
           </div>
         )}
 
-        {tab === 3 && (
+        {tab === 4 && (
           <div className="card">
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}><OnyxIcon emoji="🧾" size={15} /> {t.tabs[3]}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}><OnyxIcon emoji="🧾" size={15} /> {t.tabs[4]}</div>
             {!purchases && <div className="muted">…</div>}
             {purchases && purchases.length === 0 && <div className="muted" style={{ fontSize: 13 }}>{t.puNone}</div>}
             {(purchases || []).map((p: any) => {

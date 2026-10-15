@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       durationMin: (b.durationMin == null || !isFinite(Number(b.durationMin))) ? null : Number(b.durationMin),
       session: b.session ? String(b.session).slice(0, 16) : undefined,
     };
-    const r = await tradeInsight(input, lang);
+    const r = await tradeInsight(input, lang, user.id);
     return NextResponse.json({ ok: true, text: r.text });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', code: 'generic' }, { status: 500 });

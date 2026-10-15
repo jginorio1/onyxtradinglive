@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     const lang = pickLang(b.lang);
     const plan = await getPlan(user.id);
     const stats = await computeStats(user.id, plan);
-    const review = await planReview(plan, stats, lang as any);
+    const review = await planReview(plan, stats, lang as any, user.id);
     return NextResponse.json({ review });
   } catch (e: any) {
     await logError('plan_ai', e);
