@@ -23,6 +23,7 @@ export default function AiLimitNotice({ allowance, lang = 'es', onBought, onClos
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
+  const [needCard, setNeedCard] = useState(false);   // el cliente no tiene tarjeta guardada
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -39,7 +40,11 @@ export default function AiLimitNotice({ allowance, lang = 'es', onBought, onClos
     try {
       const r = await fetch('/api/account/addons/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ qty: 1 }) });
       const j = await r.json();
-      if (!r.ok) { setErr(j?.error || L('No se pudo comprar. Intenta de nuevo.', "Couldn't buy. Try again.")); return; }
+      if (!r.ok) {
+        if (j?.code === 'no_pm' || j?.code === 'no_customer') setNeedCard(true);   // no tiene tarjeta guardada
+        setErr(j?.error || L('No se pudo comprar. Intenta de nuevo.', "Couldn't buy. Try again."));
+        return;
+      }
       setDone(true); onBought && onBought();
     } finally { setBusy(false); }
   }
@@ -72,7 +77,9 @@ export default function AiLimitNotice({ allowance, lang = 'es', onBought, onClos
           </div>
           {err && <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 8 }}>{err}</div>}
           <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" onClick={buy} disabled={busy} style={{ fontSize: 13.5 }}>{busy ? '…' : L(`Comprar +${qty} · $${price}`, `Buy +${qty} · $${price}`)}</button>
+            {needCard
+              ? <a href="/account" className="btn btn-primary" style={{ fontSize: 13.5, textDecoration: 'none' }}>{L('Agregar tarjeta', 'Add a card')}</a>
+              : <button className="btn btn-primary" onClick={buy} disabled={busy} style={{ fontSize: 13.5 }}>{busy ? '…' : L(`Comprar +${qty} · $${price}`, `Buy +${qty} · $${price}`)}</button>}
             <a href="/pricing" className="btn btn-ghost" style={{ fontSize: 13.5, textDecoration: 'none' }}>{L('Subir de plan', 'Upgrade plan')}</a>
           </div>
         </>
