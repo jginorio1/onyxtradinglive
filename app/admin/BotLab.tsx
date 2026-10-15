@@ -395,7 +395,7 @@ function OfficialModal({ es, product, onClose, act }: any) {
     if (r) onClose();
   }
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 20, overflow: 'auto' }}>
+    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (onClose)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 20, overflow: 'auto' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(560px,100%)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18, boxShadow: '0 24px 60px rgba(0,0,0,.5)' }}>
         <div className="row between" style={{ marginBottom: 12 }}>
           <b style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 7 }}><Ic n="spark" s={16} c={GOLD} /> {editing ? (es ? 'Editar robot oficial' : 'Edit official robot') : (es ? 'Publicar robot oficial' : 'Publish official robot')}</b>

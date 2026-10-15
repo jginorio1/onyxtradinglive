@@ -317,7 +317,7 @@ export default function Monitor() {
 
       {/* Rebobinar sesión (modal) */}
       {who && (
-        <div onClick={() => setWho(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(4,8,18,.6)', zIndex: 80, display: 'grid', placeItems: 'center', padding: 16 }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setWho(null))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(4,8,18,.6)', zIndex: 80, display: 'grid', placeItems: 'center', padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, width: 'min(560px,96vw)', maxHeight: '86vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '12px 14px', borderBottom: '1px solid var(--line)' }}>
               <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--grad)', color: '#0b1020', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 12 }}>{initials(who.name)}</span>

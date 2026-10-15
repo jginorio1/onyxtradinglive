@@ -66,7 +66,7 @@ export default function QrPop({ data, title, handle, poster = 'generic', label }
     <>
       <button className="btn btn-ghost" style={{ fontSize: 13 }} onClick={() => setOpen(true)}>📱 {label || 'QR'}</button>
       {open && (
-        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setOpen(false))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 320, width: '100%', textAlign: 'center' }}>
             <div className="row between" style={{ marginBottom: 10 }}>
               <b style={{ fontSize: 14 }}>{es ? 'Tu código QR' : 'Your QR code'}</b>

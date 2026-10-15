@@ -197,7 +197,7 @@ function ApplyModal({ job, settings, L, lang, onClose }: any) {
   );
 
   const overlay = (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16, overflowY: 'auto' }}>
+    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (onClose)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16, overflowY: 'auto' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(600px,100%)', maxHeight: 'calc(100dvh - 32px)', display: 'flex', flexDirection: 'column', background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 16, overflow: 'hidden', margin: 'auto' }}>
         {Header}
 

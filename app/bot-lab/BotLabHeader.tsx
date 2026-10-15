@@ -81,7 +81,7 @@ export default function BotLabHeader({ loggedIn = false }: { loggedIn?: boolean 
                 <button onClick={() => setAcct((o) => !o)} className="btn btn-primary" style={{ background: 'linear-gradient(120deg,var(--gold,#ffd45e),#ffb020)', color: '#3a2a06', border: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>{es ? 'Mi panel' : 'My panel'} <span style={{ fontSize: 10 }}>▾</span></button>
                 {acct && (
                   <>
-                    <div onClick={() => setAcct(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setAcct(false))(); }} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
                     <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', minWidth: 190, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 34px rgba(0,0,0,.4)', padding: 6, zIndex: 41 }}>
                       <a href="/dashboard/bot-lab" onClick={() => (window.location.href = '/dashboard/bot-lab')} style={mi}>{es ? 'Panel de Bot Lab' : 'Bot Lab panel'}</a>
                       <a href="/dashboard" onClick={() => (window.location.href = '/dashboard')} style={mi}>{es ? 'Onyx Trading Live' : 'Onyx Trading Live'}</a>

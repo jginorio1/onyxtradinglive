@@ -151,7 +151,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   }
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 80, display: 'flex', justifyContent: 'flex-end' }}>
+    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (onClose)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 80, display: 'flex', justifyContent: 'flex-end' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(480px,100%)', height: '100%', background: 'var(--bg)', borderLeft: '1px solid var(--line)', overflowY: 'auto', padding: 20 }}>
         <div className="row between" style={{ marginBottom: 12 }}>
           <b style={{ fontSize: 15 }}>{email}</b>
@@ -441,7 +441,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
 
         {/* Popup de confirmación del crédito */}
         {crConfirm && (
-          <div onClick={() => setCrConfirm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setCrConfirm(false))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 340, width: '100%' }}>
               <div style={{ fontWeight: 700, marginBottom: 12 }}><OnyxIcon emoji="🎁" size={15} /> {t.crConfT}</div>
               <div style={{ background: 'rgba(52,226,160,.12)', borderRadius: 10, padding: 12, textAlign: 'center', marginBottom: 12 }}>

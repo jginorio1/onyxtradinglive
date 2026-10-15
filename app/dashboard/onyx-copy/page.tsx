@@ -425,7 +425,7 @@ export default function OnyxCopyHub() {
 
       {/* Modal de configuración de copia */}
       {cfg && (
-        <div onClick={() => setCfg(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', zIndex: 100, overflowY: 'auto' }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setCfg(null))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', zIndex: 100, overflowY: 'auto' }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 460, width: '100%' }}>
             <div className="row between" style={{ marginBottom: 8 }}><h3 style={{ margin: 0 }}>{T.cfgTitle}: {cfg.provider.display_name}</h3><button className="btn btn-ghost" onClick={() => setCfg(null)}>✕</button></div>
             <label className="muted" style={{ fontSize: 12 }}>{T.account}</label>
@@ -461,7 +461,7 @@ export default function OnyxCopyHub() {
 
       {/* Popup: una cuenta = un trader */}
       {block && (
-        <div onClick={() => setBlock(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(6,9,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, zIndex: 200 }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setBlock(null))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(6,9,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18, zIndex: 200 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(94vw,430px)', background: 'var(--card)', border: '1px solid var(--amber)', borderRadius: 18, padding: 22, boxShadow: '0 0 0 1px var(--amber), 0 0 38px -8px var(--amber), 0 24px 60px rgba(0,0,0,.5)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <span style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,192,77,.14)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--amber)' }}><OnyxIcon emoji="⚠" size={20} /></span>

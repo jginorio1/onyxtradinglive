@@ -154,7 +154,7 @@ export default function TwoFactor({ mode, lang, onDone, bare = false }: { mode: 
               </div>
             )}
             {zoom && (
-              <div onClick={() => setZoom(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setZoom(false))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.65)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
                 <div style={{ background: '#fff', borderRadius: 16, padding: 20, width: 320, height: 320, maxWidth: '90vw', maxHeight: '90vw', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {qr.startsWith('<svg') ? <span style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: qr }} /> : <img src={qr} alt="QR" style={{ width: '100%', height: '100%' }} />}
                 </div>

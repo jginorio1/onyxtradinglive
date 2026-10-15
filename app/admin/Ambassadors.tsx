@@ -393,7 +393,7 @@ export default function Ambassadors() {
         const isUsdt = (payM.method || payM.amb_method) === 'usdt';
         const amb = list.find((a) => a.id === payM.ambassador_id);
         return (
-          <div onClick={() => setPayM(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setPayM(null))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 400, width: '100%' }}>
               <h3 style={{ marginBottom: 12 }}>{L('Confirmar pago', 'Confirm payout')}</h3>
               <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>

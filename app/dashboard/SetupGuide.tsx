@@ -227,7 +227,7 @@ export default function SetupGuide() {
       })()}
 
       {open && mounted && createPortal(
-        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflow: 'auto' }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setOpen(false))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflow: 'auto' }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 480, padding: 20 }}>
             <div className="row between" style={{ alignItems: 'center', marginBottom: 4 }}>
               <b style={{ fontSize: 16 }}>{L('Configurar cuenta', 'Configure account')}</b>
@@ -275,7 +275,7 @@ export default function SetupGuide() {
       , document.body)}
 
       {celebrate && mounted && createPortal(
-        <div onClick={dismissCelebrate} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6vh 16px' }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (dismissCelebrate)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6vh 16px' }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 380, padding: 26, textAlign: 'center', border: '2px solid var(--green)', boxShadow: '0 0 40px rgba(52,226,160,.3)' }}>
             <div style={{ fontSize: 40, marginBottom: 6 }}><OnyxIcon emoji="🎉" size={15} /></div>
             <h3 style={{ marginBottom: 8 }}>{L('¡Todo listo!', 'All set!')}</h3>

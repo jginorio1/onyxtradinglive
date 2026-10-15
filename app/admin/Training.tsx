@@ -281,7 +281,7 @@ function ExamPreview({ questions, track, L, onClose }: any) {
   let correct = 0; questions.forEach((q: any) => { if (ans[q.id] === q.correct) correct++; });
   const score = questions.length ? Math.round((correct / questions.length) * 100) : 0;
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '30px 12px' }}>
+    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (onClose)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '30px 12px' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 16, padding: 20, maxWidth: 640, width: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
           <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--tx,#e8ecf5)' }}>{L('Vista previa del examen', 'Exam preview')}</div>
@@ -391,7 +391,7 @@ function MaterialPicker({ kind, post, L, onPick, onClose }: any) {
   const [items, setItems] = useState<any[] | null>(null);
   useEffect(() => { (async () => { const r = await post({ action: 'materials' }); setItems((r?.materials || []).filter((m: any) => m.kind === kind)); })(); }, []);
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 220, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '30px 12px' }}>
+    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (onClose)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 220, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '30px 12px' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ ...box, marginBottom: 0, maxWidth: 520, width: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tx,#e8ecf5)' }}>{L('Elegir de la biblioteca', 'Choose from library')} · {kind === 'video' ? L('videos', 'videos') : L('archivos', 'files')}</div>

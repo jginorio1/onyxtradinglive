@@ -41,7 +41,7 @@ export default function GuideBody({ article, lang }: { article: Any; lang: 'es' 
       {body.map((b, i) => <BlockView key={i} b={b} onZoom={openZoom} />)}
 
       {zoom && (
-        <div onClick={() => setZoom(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: 20 }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setZoom(null))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: 20 }}>
           <img src={zoom.src} alt={zoom.alt} onClick={(e) => { e.stopPropagation(); setFull((f) => !f); }}
             style={full ? { maxWidth: 'none', width: 'auto', height: 'auto', cursor: 'zoom-out' } : { maxWidth: '95vw', maxHeight: '90vh', width: 'auto', height: 'auto', cursor: 'zoom-in', borderRadius: 8 }} />
           <button onClick={() => setZoom(null)} aria-label="Cerrar" style={{ position: 'fixed', top: 16, right: 18, background: 'rgba(255,255,255,.12)', border: 'none', color: '#fff', width: 40, height: 40, borderRadius: '50%', fontSize: 20, cursor: 'pointer' }}>×</button>

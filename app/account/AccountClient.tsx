@@ -622,7 +622,7 @@ export default function AccountClient({ email }: { email: string }) {
 
                   {/* Confirmación de cambio de plan */}
                   {chTarget && (
-                    <div onClick={() => setChTarget(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: 16 }}>
+                    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setChTarget(null))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: 16 }}>
                       <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 420, width: '100%' }}>
                         <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>{(chTarget.up ? L.chCfUp : L.chCfDown)} <b>{chTarget.name}</b></div>
                         <p className="muted" style={{ fontSize: 13, lineHeight: 1.6, margin: '0 0 10px' }}>{chTarget.up ? L.chCfUpNote : L.chCfDownNote}</p>

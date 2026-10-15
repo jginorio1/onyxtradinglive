@@ -129,7 +129,7 @@ function SymbolPicker({ es, current, onPick, onClose }: { es: boolean; current: 
   const typed = q.trim().toUpperCase().replace(/[^A-Z0-9._]/g, '');
   const showCustom = typed.length >= 3 && !INSTRUMENTS.some((i) => i.sym === typed);
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(3,6,14,.72)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px 16px' }}>
+    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (onClose)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(3,6,14,.72)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', zIndex: 2000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px 16px' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(500px,100%)', background: 'var(--card,#141a2b)', border: '1px solid var(--line,#2a3550)', borderRadius: 18, padding: 18, maxHeight: '82vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink)' }}>{L('Elige el instrumento', 'Pick the instrument')}</div>

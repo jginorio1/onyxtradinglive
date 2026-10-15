@@ -473,7 +473,7 @@ export default function Ambassador({ lang, only }: { lang: Lang; only?: 'payout'
 
       {/* Popup: confirmar solicitud de pago (escribir CONFIRMAR) */}
       {reqOpen && (
-        <div onClick={() => setReqOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setReqOpen(false))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 380, width: '100%' }}>
             <h3 style={{ marginBottom: 12 }}>{t.reqTitle}</h3>
             <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>

@@ -122,7 +122,7 @@ export function WeatherCard({ country, lang = 'es', sep = false }: { country?: s
       </span>
       {editing && (
         <>
-          <span onClick={() => setEditing(false)} style={{ position: 'fixed', inset: 0, zIndex: 3000 }} />
+          <span onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setEditing(false))(); }} style={{ position: 'fixed', inset: 0, zIndex: 3000 }} />
           <span onClick={(e) => e.stopPropagation()} style={{ position: 'fixed', top: 64, left: '50%', transform: 'translateX(-50%)', width: 260, maxWidth: 'calc(100vw - 24px)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 12, zIndex: 3001, boxShadow: '0 12px 34px rgba(0,0,0,.45)', display: 'block' }}>
             <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>{lang === 'en' ? 'Your city' : 'Tu ciudad'}</div>
             <div className="muted" style={{ fontSize: 11, marginBottom: 8 }}>{lang === 'en' ? 'Type your city so the weather is yours, not your provider’s.' : 'Escribe tu ciudad para que el clima sea el tuyo, no el de tu proveedor.'}</div>

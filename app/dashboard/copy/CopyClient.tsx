@@ -1223,7 +1223,7 @@ function textToMap(t: string): any { const o: any = {}; String(t || '').split('\
 
 function Modal({ children, onClose, wide }: any) {
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }}>
+    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (onClose)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }}>
       <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: wide ? 560 : 420, width: '100%', maxHeight: '88vh', overflowY: 'auto' }}>{children}</div>
     </div>
   );

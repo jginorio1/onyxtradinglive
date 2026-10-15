@@ -1158,7 +1158,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                       <span style={{ position: 'relative', display: 'inline-flex', flex: 1 }}>
                         <button type="button" aria-label={L.filterBy} className={'btn ' + ((segSym || segBot) ? 'btn-primary' : 'btn-ghost')} style={{ flex: 1, width: '100%', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setFiltOpen((o) => !o)}><OnyxIcon emoji="🔎" size={17} /></button>
                         {filtOpen && (<>
-                          <span onClick={() => setFiltOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
+                          <span onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setFiltOpen(false))(); }} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
                           <div style={{ position: 'absolute', right: 0, left: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, width: 250, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                             <div className="muted" style={{ fontSize: 11 }}>{L.filterBy}</div>
                             <PickerMenu search width={230} ph={L.searchAsset} btnStyle={{ borderColor: 'var(--brand)', width: '100%', justifyContent: 'flex-start' }}
@@ -1185,7 +1185,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                     <span style={{ position: 'relative', display: 'inline-flex', flex: 1 }}>
                       <button type="button" aria-label={lang === 'es' ? 'Más' : 'More'} className={'btn ' + (demo ? 'btn-primary' : 'btn-ghost')} style={{ flex: 1, width: '100%', padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 18 }} onClick={() => setMoreOpen((o) => !o)}>⋯</button>
                       {moreOpen && (<>
-                        <span onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
+                        <span onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setMoreOpen(false))(); }} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
                         <div style={{ position: 'absolute', right: 0, left: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 230, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
                           {!forceDemo && <button className="btn btn-ghost" onClick={() => { setDemo(!demo); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="🎬" size={14} /> {L.demo}{demo ? ' ✓' : ''}</button>}
                           <button className={'btn ' + (range === 'custom' ? 'btn-primary' : 'btn-ghost')} onClick={() => { setRange(range === 'custom' ? 'all' : 'custom'); setMoreOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: canShare ? 6 : 0 }}><OnyxIcon emoji="📅" size={14} /> {L.customRange}{range === 'custom' ? ' ✓' : ''}</button>
@@ -1228,7 +1228,7 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                   <span style={{ position: 'relative', display: 'inline-flex' }}>
                     <button type="button" className="btn btn-ghost" style={{ padding: '7px 12px', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => setExpOpen((o) => !o)}><OnyxIcon emoji="⬇️" size={15} /> {lang === 'es' ? 'Exportar' : 'Export'} <span style={{ fontSize: 11, color: 'var(--mut)' }}>▾</span></button>
                     {expOpen && (<>
-                      <span onClick={() => setExpOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
+                      <span onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setExpOpen(false))(); }} style={{ position: 'fixed', inset: 0, zIndex: 39 }} />
                       <div style={{ position: 'absolute', left: 0, right: 'auto', top: 'calc(100% + 6px)', zIndex: 40, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, width: 220, maxWidth: 'calc(100vw - 24px)', boxShadow: '0 12px 34px rgba(0,0,0,.4)' }}>
                         <div className="muted" style={{ fontSize: 11, padding: '4px 8px 8px' }}>{lang === 'es' ? 'Reporte del período filtrado' : 'Report for the filtered period'}</div>
                         <button className="btn btn-ghost" onClick={() => { setExpOpen(false); openAuthedFile(pdfDlHref, `onyx-reporte-${expFrom}.pdf`); }} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', width: '100%', marginBottom: 6 }}><OnyxIcon emoji="📄" size={14} /> PDF</button>

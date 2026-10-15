@@ -105,7 +105,7 @@ export default function TrackShare({ lang = 'es', name = '', demo = false }: { l
       </button>
 
       {open && (
-        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setOpen(false))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, padding: 18 }}>
             <div className="row between" style={{ marginBottom: 10 }}>
               <div style={{ fontWeight: 700, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="📈" size={15} /> {es ? 'Mi trackrecord público' : 'My public trackrecord'}</div>

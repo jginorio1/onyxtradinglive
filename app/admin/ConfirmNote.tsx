@@ -16,7 +16,7 @@ export default function ConfirmNote({ act, onClose }: {
   const req = act.requireNote !== false; // por defecto la nota es obligatoria
 
   return (
-    <div onClick={() => !busy && onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => !busy && onClose())(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 380, width: '100%', border: act.danger ? '1px solid var(--red)' : undefined }}>
         <div style={{ fontWeight: 700, marginBottom: act.detail ? 6 : 10, color: act.danger ? 'var(--red)' : undefined }}>{act.danger ? '⚠️ ' : ''}{act.title}</div>
         {act.detail && <div className="muted" style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>{act.detail}</div>}

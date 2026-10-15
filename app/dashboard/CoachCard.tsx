@@ -121,7 +121,7 @@ export default function CoachCard({ from, to, account, rail = false, demo = fals
       {/* Repaso EN PANEL CENTRAL (modo riel): el texto es largo y se leería apretado
           en una columna estrecha, así que se abre en un modal ancho y legible. */}
       {rail && txt && open && mounted && createPortal(
-        <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflow: 'auto' }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setOpen(false))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 3000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '6vh 16px', overflow: 'auto' }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 660, padding: 20 }}>
             <div className="row between" style={{ alignItems: 'center', marginBottom: 12 }}>
               <b style={{ fontSize: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}><OnyxIcon emoji="✨" size={18} /> Onyx Coach</b>

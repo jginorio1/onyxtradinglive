@@ -830,7 +830,7 @@ export default function Bots() {
       )}
 
       {addFor && (
-        <div onClick={() => setAddFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setAddFor(null))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 400, width: '100%', border: '1px solid var(--brand)', boxShadow: '0 24px 70px -20px color-mix(in srgb,var(--brand) 55%,transparent)', background: 'linear-gradient(180deg, color-mix(in srgb,var(--brand) 8%, var(--card)) 0%, var(--card) 55%)' }}>
             <h3 style={{ marginBottom: 4 }}><OnyxIcon emoji="🤖" size={15} /> {t.addBotT}</h3>
             <p className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{t.accountL}: <b style={{ color: 'var(--tx)' }}>{addFor.accName}</b></p>

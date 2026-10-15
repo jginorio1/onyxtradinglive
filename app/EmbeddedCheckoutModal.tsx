@@ -65,7 +65,7 @@ export default function EmbeddedCheckoutModal({
   const close = () => { clearPending(); onClose(); };
 
   return (
-    <div onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 80, padding: 16, overflowY: 'auto' }}>
+    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (close)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 80, padding: 16, overflowY: 'auto' }}>
       <div onClick={(e) => e.stopPropagation()} className="card" style={{ maxWidth: 760, width: '100%', marginTop: 24 }}>
         <div className="row between" style={{ marginBottom: 12, alignItems: 'center' }}>
           <b style={{ fontSize: 15 }}>{lang === 'es' ? 'Finaliza tu suscripción' : 'Complete your subscription'}</b>

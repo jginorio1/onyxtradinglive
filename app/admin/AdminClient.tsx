@@ -861,7 +861,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
         const tabRes = flatNav.filter(([, , label]) => !query || String(label).toLowerCase().includes(query)).slice(0, 8);
         const userOpt = query.length >= 2;
         return (
-          <div onClick={() => setPal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '10vh 16px', overflowY: 'auto' }}>
+          <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setPal(false))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '10vh 16px', overflowY: 'auto' }}>
             <div className="card" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, padding: 14 }}>
               <input autoFocus value={palQ} onChange={(e) => setPalQ(e.target.value)} placeholder={lang === 'en' ? 'Jump to a tab or find a user by email…' : 'Saltar a una pestaña o buscar usuario por email…'} style={{ width: '100%', margin: 0 }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10, maxHeight: '52vh', overflowY: 'auto' }}>
@@ -1160,7 +1160,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                               <button className="btn btn-ghost" style={{ padding: '6px 11px', fontSize: 15, lineHeight: 1 }} title={lang === 'en' ? 'More' : 'Más'} onClick={(e) => openRowMenu(e, u.id)}>⋯</button>
                               {menuFor === u.id && menuPos && (
                                 <>
-                                  <div onClick={() => setMenuFor(null)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                                  <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setMenuFor(null))(); }} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
                                   <div style={{ position: 'fixed', left: menuPos.left, top: menuPos.top, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 14px 34px rgba(0,0,0,.4)', zIndex: 41, width: 214, overflow: 'hidden' }}>
                                     {[
                                       { ic: '✏️', label: lang === 'en' ? 'Edit name' : 'Editar nombre', on: () => { setMenuFor(null); const nn = window.prompt(lang === 'en' ? 'Full name for ' + u.email : 'Nombre para ' + u.email, u.full_name || ''); if (nn !== null) userAction(u.id, 'name', nn.trim()); } },
@@ -1248,7 +1248,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {uDrawer && <UserDrawer userId={uDrawer.id} email={uDrawer.email} onClose={() => setUDrawer(null)} />}
             {/* Confirmación con nota obligatoria para acciones críticas */}
             {pendAct && (
-              <div onClick={() => setPendAct(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(4,6,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setPendAct(null))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(4,6,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
                 <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400, width: '100%', borderRadius: 16, padding: '20px 22px',
                   background: 'linear-gradient(180deg, color-mix(in srgb,var(--card) 92%, #fff 8%), var(--card))',
                   border: '2px solid ' + (pendAct.danger ? 'var(--red)' : 'var(--brand)'),
@@ -1291,7 +1291,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               const endStr = endDate.toLocaleDateString(lang === 'en' ? 'en-US' : 'es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
               const presets = [7, 14, 30, 60, 90];
               return (
-                <div onClick={() => setTrialFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(4,6,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', zIndex: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setTrialFor(null))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(4,6,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', zIndex: 210, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
                   <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460, width: '100%', borderRadius: 16, padding: '20px 22px',
                     background: 'linear-gradient(180deg, color-mix(in srgb,var(--card) 92%, #fff 8%), var(--card))',
                     border: '2px solid var(--brand)', boxShadow: '0 0 0 4px color-mix(in srgb,var(--brand) 16%,transparent), 0 24px 60px -18px var(--brand)' }}>
@@ -2018,7 +2018,7 @@ function Modules() {
 
       {/* Popup de confirmación iluminado con PIN */}
       {verModal && ver && (
-        <div onClick={() => !verBusy && setVerModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6vh 16px' }}>
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => !verBusy && setVerModal(null))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6vh 16px' }}>
           <div onClick={(e) => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 400, padding: 22, border: '2px solid var(--brand)', boxShadow: '0 0 40px rgba(124,140,255,.4)' }}>
             <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{verModal === 'promote' ? '🚀 ' : '↩︎ '}{es ? 'Confirmar cambio de versión' : 'Confirm version change'}</div>
             <div className="muted" style={{ fontSize: 12.5, marginBottom: 14 }}>{verModal === 'promote' ? (es ? 'Promover Beta → Production. Cambia lo que ven todos.' : 'Promote Beta → Production. Changes what everyone sees.') : (es ? 'Revertir Production a la versión Stable.' : 'Revert Production to the Stable version.')}</div>
