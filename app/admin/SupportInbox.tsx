@@ -73,6 +73,17 @@ const L: any = {
 
 const kb = (n?: number) => (!n ? '' : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 
+// Interruptor visual (switch con perilla), mismo estilo que el resto del panel.
+// Se usa para Auto-respuesta IA y Soporte remoto, para que se note más que un ON/OFF.
+function Switch({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
+  return (
+    <span role="switch" aria-checked={on} onClick={() => { if (!disabled) onClick(); }} className="toggle"
+      style={{ background: on ? 'var(--green)' : '#556080', opacity: disabled ? 0.5 : 1, cursor: disabled ? 'default' : 'pointer', boxShadow: on ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,.12)' }}>
+      <span className="knob" style={{ left: on ? 21 : 3 }} />
+    </span>
+  );
+}
+
 export default function SupportInbox() {
   const t = useT();
   const { lang } = useLang();
@@ -317,9 +328,7 @@ export default function SupportInbox() {
           <div style={{ fontWeight: 600, fontSize: 13 }}>{l.aiAuto}</div>
           <div className="muted" style={{ fontSize: 12 }}>{aiOn === false ? l.aiAutoOff : l.aiAutoOn}</div>
         </div>
-        <button className={'btn ' + (aiOn ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 13, minWidth: 64 }} onClick={toggleAi} disabled={aiOn === null}>
-          {aiOn === null ? '…' : aiOn ? 'ON' : 'OFF'}
-        </button>
+        <Switch on={!!aiOn} onClick={toggleAi} disabled={aiOn === null} />
       </div>
 
       {/* Soporte remoto de pago: toggle + precio/herramienta/enlace. */}
@@ -331,9 +340,7 @@ export default function SupportInbox() {
             <div className="muted" style={{ fontSize: 12 }}>{rem?.on ? l.remOn : l.remOff}</div>
           </div>
           {remSavedMsg && <span style={{ color: 'var(--green)', fontSize: 12 }}>✓ {l.remSaved}</span>}
-          <button className={'btn ' + (rem?.on ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 13, minWidth: 64 }} onClick={() => saveRemote({ on: !rem?.on })} disabled={!rem}>
-            {!rem ? '…' : rem.on ? 'ON' : 'OFF'}
-          </button>
+          <Switch on={!!rem?.on} onClick={() => saveRemote({ on: !rem?.on })} disabled={!rem} />
         </div>
         {rem?.on && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginTop: 12 }}>

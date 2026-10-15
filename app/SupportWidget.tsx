@@ -713,8 +713,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                     <button key={label} className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12 }} onClick={() => sendAI(q)}>{iconLabel(label)}</button>
                   ))}
                   {!loggedIn && cfg.showHuman && <button className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, gridColumn: '1 / -1' }} onClick={openEmail}>{iconLabel(x.human)}</button>}
-                  {/* Soporte remoto de pago (oculto en iOS por la regla de Apple). */}
-                  {remoteCfg?.on && !isIOS && (
+                  {/* Soporte remoto de pago: solo para usuarios con sesión (no en el
+                      landing para visitantes) y oculto en iOS por la regla de Apple. */}
+                  {loggedIn && remoteCfg?.on && !isIOS && (
                     <button className="btn btn-primary" style={{ padding: '8px 10px', fontSize: 12, gridColumn: '1 / -1' }} onClick={bookRemote} disabled={remoteBusy}>
                       {remoteBusy ? '…' : `🖥️ ${es ? 'Soporte remoto' : 'Remote support'} · $${remoteCfg.price}`}
                     </button>
