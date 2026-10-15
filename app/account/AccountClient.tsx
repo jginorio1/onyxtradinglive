@@ -499,7 +499,10 @@ export default function AccountClient({ email }: { email: string }) {
                       Se muestra el aviso para hacerlo en el sitio web. */}
                   {iosApp && <ManageOnWeb lang={lang} planName={planName(myPlan, lang)} />}
 
-                  {!iosApp && sub && <div style={{ borderTop: '1px solid rgba(232,185,35,.22)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
+                  {/* Método de pago: disponible para CUALQUIER usuario (no solo con
+                      suscripción), para que puedan guardar una tarjeta y comprar el
+                      paquete de IA aunque estén en plan gratis o de cortesía. */}
+                  {!iosApp && <div style={{ borderTop: '1px solid rgba(232,185,35,.22)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
                   </div>{/* /tarjeta dorada */}
 
                   {/* Complementos y límites: consumo de Onyx AI + paquetes comprados.
