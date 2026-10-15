@@ -62,6 +62,19 @@ export async function GET() {
     const addons = await addonSettings();
     const retention = await retentionSettings();
 
+    // Consumo y tope de Onyx AI del mes (para la tarjeta "Complementos y límites").
+    // Incluye los paquetes extra COMPRADOS este mes (consumible, no se arrastra).
+    let ai: any = null;
+    try {
+      const { aiAllowance } = await import('@/lib/aiLimits');
+      ai = await aiAllowance(user.id);
+      const period = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}`;
+      const { data: packs } = await supabaseAdmin.from('ai_packs')
+        .select('qty,cents,created_at').eq('user_id', user.id).eq('period', period)
+        .order('created_at', { ascending: false });
+      ai.packs = packs || [];
+    } catch { /* si falta la tabla/columna, la tarjeta simplemente no muestra IA */ }
+
     // Cambio de plan programado (downgrade diferido): qué, cuándo y qué implica.
     let pending: any = null;
     if (prof?.pending_plan) {
@@ -89,6 +102,7 @@ export async function GET() {
       apiKey: keys?.[0]?.key || null,
       subscription: sub,
       creditBalance,
+      ai,
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

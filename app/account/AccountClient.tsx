@@ -21,6 +21,7 @@ import TelegramCard from './TelegramCard';
 import NotifPrefs from './NotifPrefs';
 import SalesReviewCard from '@/app/components/SalesReviewCard';
 import BillingCard from './BillingCard';
+import AddonsCard from './AddonsCard';
 import ManageOnWeb, { useIsIOSApp } from './ManageOnWeb';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
 import InstallApp from '@/app/dashboard/InstallApp';
@@ -500,6 +501,10 @@ export default function AccountClient({ email }: { email: string }) {
 
                   {!iosApp && sub && <div style={{ borderTop: '1px solid rgba(232,185,35,.22)', paddingTop: 14, marginTop: 14 }}><BillingCard lang={lang} /></div>}
                   </div>{/* /tarjeta dorada */}
+
+                  {/* Complementos y límites: consumo de Onyx AI + paquetes comprados.
+                      En iPhone la propia tarjeta oculta precios/compra (política de Apple). */}
+                  {data.ai && <div style={{ marginTop: 16 }}><AddonsCard ai={data.ai} lang={lang} onBought={load} /></div>}
 
                   {/* Cambiar de plan (upgrade / downgrade) sobre la misma suscripción */}
                   {!iosApp && sub && (plans.length > 0 || allPlans.length > 0) && (() => {
