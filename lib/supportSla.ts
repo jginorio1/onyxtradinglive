@@ -141,7 +141,7 @@ export async function runSupportSla(dry = false): Promise<{ scanned: number; rem
     // --- Esperando al CLIENTE: recordatorio → cierre ---
     if (waitingOnClient) {
       const hrs = (now - new Date(lastAt).getTime()) / 3.6e6;
-      if (hrs >= cfg.closeH) {
+      if (hrs >= cfg.closeH && !hasMarkerAfter(msgs, M.closed, lastAt)) {
         if (!dry) {
           await supabaseAdmin.from('support_tickets').update({ status: 'resolved', updated_at: new Date().toISOString() }).eq('id', t.id);
           await addNote(t.id, `${M.closed} Cerrado automáticamente por inactividad (sin respuesta del cliente en ${cfg.closeH}h). Se reabre solo si el cliente responde el correo.`);

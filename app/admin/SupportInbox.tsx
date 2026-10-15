@@ -303,15 +303,18 @@ export default function SupportInbox() {
           .wa-list{max-height:none;height:calc(100dvh - 215px);min-height:320px}
           .wa-chat{display:none}
           .wa-hide-m{display:none !important}
-          /* En móvil el chat va a PANTALLA COMPLETA, como el widget de soporte. */
-          .wa-fs-m{display:flex !important;position:fixed;inset:0;height:100dvh !important;max-height:100dvh;width:100%;border:none;border-radius:0;z-index:2147483000}
+          /* En móvil el chat va a PANTALLA COMPLETA, como el widget de soporte.
+             padding-top = notch/barra de estado del iPhone para no taparse. */
+          .wa-fs-m{display:flex !important;position:fixed;inset:0;height:100dvh !important;max-height:100dvh;width:100%;border:none;border-radius:0;z-index:2147483000;background:var(--card);padding-top:env(safe-area-inset-top)}
           .wa-back{display:inline-flex !important}
           /* Ajustes (IA, SLA, rango) ocultos tras un botón para no saturar. */
           .wa-cfg{display:none}
           .wa-cfg.wa-cfg-open{display:block}
           .wa-cfg-btn{display:inline-flex !important}
-          .wa-head{padding:10px 12px;position:sticky;top:0}
+          .wa-head{padding:12px 12px;position:sticky;top:0;z-index:5}
           .wa-comp{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+          /* Botón de volver más visible y con buen área de toque. */
+          .wa-back{background:var(--brand) !important;color:#fff !important;border:none !important;width:auto !important;padding:8px 12px !important;gap:6px;font-size:13px;font-weight:600;border-radius:10px}
         }
         .wa-list{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:6px;overflow-y:auto}
         .wa-item{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:12px;cursor:pointer;box-shadow:inset 0 0 0 0 var(--brand)}
@@ -474,7 +477,7 @@ export default function SupportInbox() {
               <>
                 {/* Cabecera WhatsApp */}
                 <div className="wa-head">
-                  <button className="wa-hb wa-back" onClick={() => setMobileOpen(false)} title={es ? 'Volver' : 'Back'}><Icon name="back" size={20} /></button>
+                  <button className="wa-hb wa-back" onClick={() => setMobileOpen(false)} title={es ? 'Volver a la lista' : 'Back to list'}><Icon name="back" size={18} /> {es ? 'Volver' : 'Back'}</button>
                   <span className="wa-av" style={{ background: avatarOf(tk.email).bg, color: avatarOf(tk.email).fg }}>{initials(tk.email || '?')}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tk.email || t.s_visitor}</div>
