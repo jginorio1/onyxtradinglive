@@ -136,10 +136,15 @@ export async function PATCH(req: Request) {
       if (!patch.status) patch.status = 'in_progress';
       const { data: tk } = await supabaseAdmin.from('support_tickets').select('email,subject,user_id').eq('id', ticketId).maybeSingle();
       if (tk?.email && body) {
+        // Reply-To con token del ticket: si el cliente responde el correo, Resend
+        // Inbound lo devuelve al hilo (se ve en Soporte). Sin dominio inbound = '' → normal.
+        let replyTo = '';
+        try { const { ensureTicketToken, replyToForTicket } = await import('@/lib/supportInbound'); const tok = await ensureTicketToken(ticketId); replyTo = replyToForTicket(tok); } catch {}
         emailed = await sendEmail(
           tk.email,
           `Re: ${tk.subject || 'Tu consulta en Onyx'}`,
           `${body}${attachments.length ? `\n\n(${attachments.length} ${attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} en tu Centro de soporte)` : ''}\n\n—\nEquipo de Onyx Trading Live\nResponde a este correo o entra a tu Centro de soporte para seguir la conversación.`,
+          replyTo ? { replyTo } : undefined,
         );
       }
       // Notificación al trader (campana/push según lo que el dueño dejó activo).
