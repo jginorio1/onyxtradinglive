@@ -13,11 +13,20 @@ export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
   const [items, setItems] = useState<any[] | null>(null);
   const [planHasPush, setPlanHasPush] = useState(true);
   const [saved, setSaved] = useState(false);
+  // Rutina: horas de Check-in (mañana) y Check-out (noche), en la zona del trader.
+  const [inAt, setInAt] = useState('08:00');
+  const [outAt, setOutAt] = useState('21:00');
+  const [routSaved, setRoutSaved] = useState(false);
 
   async function load() {
     try { const r = await fetch('/api/account/notif-prefs'); const j = await r.json(); setItems(j.items || []); setPlanHasPush(j.planHasPush !== false); } catch { setItems([]); }
+    try { const r = await fetch('/api/account/routine'); const j = await r.json(); if (j.checkin_at) setInAt(j.checkin_at); if (j.checkout_at) setOutAt(j.checkout_at); } catch {}
   }
   useEffect(() => { load(); }, []);
+
+  async function saveRoutine(ci: string, co: string) {
+    try { await fetch('/api/account/routine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ checkin_at: ci, checkout_at: co }) }); setRoutSaved(true); setTimeout(() => setRoutSaved(false), 1400); } catch {}
+  }
 
   async function save(next: any[]) {
     const prefs: any = {};
@@ -40,6 +49,25 @@ export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
         {saved && <span style={{ color: 'var(--green)', fontSize: 12 }}>{es ? 'Guardado' : 'Saved'}</span>}
       </div>
       <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{es ? 'Elige qué recibir en la campana (dentro de la app) y en el push del móvil.' : 'Choose what to get in the bell (in-app) and mobile push.'}</p>
+
+      {/* Mi rutina diaria: horas de Check-in y Check-out, en la zona horaria del trader. */}
+      <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: '1px solid var(--line)' }}>
+        <div className="row between" style={{ marginBottom: 2 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600 }}>{es ? 'Mi rutina diaria' : 'My daily routine'}</div>
+          {routSaved && <span style={{ color: 'var(--green)', fontSize: 12 }}>{es ? 'Guardado' : 'Saved'}</span>}
+        </div>
+        <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>{es ? 'Te recordamos revisar tu plan en la mañana y cerrar tu día en la noche, a tu hora local.' : 'We remind you to review your plan in the morning and close your day at night, in your local time.'}</p>
+        <div className="grid g2" style={{ gap: 10 }}>
+          <label style={{ fontSize: 12.5 }}><span className="row" style={{ gap: 6, marginBottom: 4 }}><OnyxIcon emoji="🌅" size={14} /> {es ? 'Check-in (mañana)' : 'Check-in (morning)'}</span>
+            <input type="time" value={inAt} onChange={(e) => { setInAt(e.target.value); saveRoutine(e.target.value, outAt); }} style={{ width: '100%', padding: '7px 9px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--tx)', fontSize: 14, fontFamily: 'inherit' }} />
+          </label>
+          <label style={{ fontSize: 12.5 }}><span className="row" style={{ gap: 6, marginBottom: 4 }}><OnyxIcon emoji="🌙" size={14} /> {es ? 'Check-out (noche)' : 'Check-out (night)'}</span>
+            <input type="time" value={outAt} onChange={(e) => { setOutAt(e.target.value); saveRoutine(inAt, e.target.value); }} style={{ width: '100%', padding: '7px 9px', borderRadius: 8, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--tx)', fontSize: 14, fontFamily: 'inherit' }} />
+          </label>
+        </div>
+        <p className="muted" style={{ fontSize: 11, marginTop: 8 }}>{es ? 'Para apagarlos, desactiva “Tu check-in de hoy” y “Cierra tu check-in” abajo.' : 'To turn them off, disable “Your daily check-in” and “Close your check-in” below.'}</p>
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div className="row between" style={{ fontSize: 11, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: '.04em', padding: '0 2px' }}>
           <span>{es ? 'Aviso' : 'Alert'}</span>

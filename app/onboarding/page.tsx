@@ -68,6 +68,9 @@ export default function Onboarding() {
   const [funded, setFunded] = useState('');
   const [prop_firm, setProp] = useState('');
   const [goal, setGoal] = useState('');
+  // Rutina diaria: horas de Check-in (mañana) y Check-out (noche), en la zona del trader.
+  const [inAt, setInAt] = useState('08:00');
+  const [outAt, setOutAt] = useState('21:00');
   const [busy, setBusy] = useState(false);
 
   // Prefill del nombre con lo que puso en el registro (para no volver a pedírselo).
@@ -89,6 +92,9 @@ export default function Onboarding() {
         prop_firm: funded === 'si' ? prop_firm : 'ninguna',
       };
       await fetch('/api/onboarding', { method: 'POST', body: JSON.stringify(body) });
+      // Guarda las horas de Check-in/Check-out que eligió (si no es skip). La zona
+      // horaria se detecta sola al entrar (NativeInit); aquí solo van las horas.
+      if (!skip) { try { await fetch('/api/account/routine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ checkin_at: inAt, checkout_at: outAt }) }); } catch {} }
     } catch { /* aunque falle, no bloqueamos al usuario */ }
     // ¿Venía a comprar un plan? Lo llevamos directo al checkout; si no, al panel.
     // El plan puede venir por la URL (duradero, del correo) o del respaldo local.
@@ -166,6 +172,20 @@ export default function Onboarding() {
             <option value="">{t.choose}</option>
             {t.goals.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
+        </div>
+
+        {/* Rutina diaria: recordatorios de Check-in (mañana) y Check-out (noche), a su hora local. */}
+        <div style={{ marginTop: 16, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600 }}>{lang === 'en' ? 'Your daily routine' : 'Tu rutina diaria'}</div>
+          <p className="muted" style={{ fontSize: 12, margin: '2px 0 10px' }}>{lang === 'en' ? 'We remind you to review your plan in the morning and close your day at night, in your local time. You can change or turn this off anytime.' : 'Te recordamos revisar tu plan en la mañana y cerrar tu día en la noche, a tu hora local. Puedes cambiarlo o apagarlo cuando quieras.'}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <label style={{ fontSize: 12.5 }}>{lang === 'en' ? '🌅 Check-in (morning)' : '🌅 Check-in (mañana)'}
+              <input type="time" value={inAt} onChange={(e) => setInAt(e.target.value)} style={{ width: '100%', marginTop: 4 }} />
+            </label>
+            <label style={{ fontSize: 12.5 }}>{lang === 'en' ? '🌙 Check-out (night)' : '🌙 Check-out (noche)'}
+              <input type="time" value={outAt} onChange={(e) => setOutAt(e.target.value)} style={{ width: '100%', marginTop: 4 }} />
+            </label>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>

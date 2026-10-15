@@ -18,6 +18,20 @@ import { isNativeApp } from '@/lib/native';
 //   login/registro o su panel — nunca la página de ventas. Ayuda además a pasar
 //   la revisión de Apple (regla 4.2).
 export default function NativeInit() {
+  // Auto-captura de ZONA HORARIA (web y app). Una vez por sesión: manda la zona del
+  // navegador/dispositivo al perfil para que el Check-in/Check-out llegue a la hora
+  // local correcta. El backend solo la guarda si el trader aún no tiene una (no pisa
+  // la que haya elegido). Silencioso: si falla o no hay sesión, no pasa nada.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('tz_sent')) return;
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (!tz) return;
+      sessionStorage.setItem('tz_sent', '1');
+      fetch('/api/account/routine', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'include', body: JSON.stringify({ tz }) }).catch(() => {});
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (!isNativeApp()) return;
 
