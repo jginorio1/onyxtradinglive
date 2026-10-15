@@ -305,7 +305,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {!path.startsWith('/admin') && path !== '/demo' && (inBotLab
               ? (botlabCfg && <SupportWidget loggedIn={loggedIn} cfg={botlabCfg} variant="botlab" />)
               : <SupportWidget loggedIn={loggedIn} cfg={chatCfg} />)}
-            {path !== '/demo' && <BackToTop />}
+            {path !== '/demo' && !path.startsWith('/admin') && <BackToTop />}
             {/* Smart banner de la app Android, solo en web móvil (nunca en la app nativa) */}
             {!path.startsWith('/admin') && path !== '/demo' && <AppSmartBanner />}
             {online && online.enabled && path !== '/demo' && (

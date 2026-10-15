@@ -105,6 +105,8 @@ export default function SupportInbox() {
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
+  const [cfgOpen, setCfgOpen] = useState(false);        // en móvil: panel de ajustes plegable
+  const [smallScreen, setSmallScreen] = useState(false);
   // Alto medido: los paneles llenan desde su borde superior hasta el fondo de la
   // ventana → el composer SIEMPRE queda visible pase lo que pase arriba.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -113,6 +115,10 @@ export default function SupportInbox() {
     const f = () => { const top = wrapRef.current?.getBoundingClientRect().top ?? 220; setPaneH(Math.max(440, window.innerHeight - top - 16)); };
     f(); window.addEventListener('resize', f); const iv = setInterval(f, 1000);
     return () => { window.removeEventListener('resize', f); clearInterval(iv); };
+  }, []);
+  useEffect(() => {
+    const f = () => setSmallScreen(window.innerWidth <= 860);
+    f(); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f);
   }, []);
   const [text, setText] = useState('');
   const [atts, setAtts] = useState<Att[]>([]);
@@ -291,13 +297,21 @@ export default function SupportInbox() {
         .wa2{display:grid;grid-template-columns:320px minmax(0,1fr);gap:14px;align-items:stretch}
         .wa-search{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;margin-left:auto;max-width:260px;flex:1;color:var(--mut)}
         .wa-back{display:none}
+        .wa-cfg-btn{display:none}
         @media(max-width:860px){
           .wa2{grid-template-columns:1fr}
-          .wa-list{max-height:none;height:66vh}
+          .wa-list{max-height:none;height:calc(100dvh - 215px);min-height:320px}
           .wa-chat{display:none}
           .wa-hide-m{display:none !important}
-          .wa-fs-m{display:flex !important;min-height:0;height:82vh}
+          /* En móvil el chat va a PANTALLA COMPLETA, como el widget de soporte. */
+          .wa-fs-m{display:flex !important;position:fixed;inset:0;height:100dvh !important;max-height:100dvh;width:100%;border:none;border-radius:0;z-index:2147483000}
           .wa-back{display:inline-flex !important}
+          /* Ajustes (IA, SLA, rango) ocultos tras un botón para no saturar. */
+          .wa-cfg{display:none}
+          .wa-cfg.wa-cfg-open{display:block}
+          .wa-cfg-btn{display:inline-flex !important}
+          .wa-head{padding:10px 12px;position:sticky;top:0}
+          .wa-comp{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
         }
         .wa-list{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:6px;overflow-y:auto}
         .wa-item{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:12px;cursor:pointer;box-shadow:inset 0 0 0 0 var(--brand)}
@@ -314,6 +328,13 @@ export default function SupportInbox() {
         .wa-hb:hover{color:var(--tx);border-color:var(--brand)}
       `}</style>
       <div className="tabhead"><div className="th-row"><span className="th-ic" style={{ display: 'inline-flex' }}><Icon name="ticket" size={18} /></span><span className="th-t">{t.h_soporte_t}</span></div><div className="th-s">{t.h_soporte_s}</div></div>
+      {/* En móvil, los ajustes (rango, IA, SLA) van tras este botón para no saturar. */}
+      <button className="wa-cfg-btn btn btn-ghost" style={{ width: '100%', marginBottom: 10, justifyContent: 'center', gap: 8, alignItems: 'center' }} onClick={() => setCfgOpen((v) => !v)}>
+        <Icon name="sparkles" size={15} /> {es ? 'Ajustes de soporte (IA, tiempos, reportes)' : 'Support settings (AI, times, reports)'}
+        <span style={{ transform: cfgOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s', display: 'inline-flex' }}><Icon name="chevronDown" size={15} /></span>
+      </button>
+
+      <div className={'wa-cfg' + (cfgOpen ? ' wa-cfg-open' : '')}>
       <RangeBar value={range} onChange={setRange}
         pdfUrl={(f, tt) => `/api/admin/support/report?from=${f}&to=${tt}&lang=${lang}`}
         csvUrl={(f, tt) => `/api/admin/support/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
@@ -351,10 +372,22 @@ export default function SupportInbox() {
               <label style={{ fontSize: 12 }}>{es ? 'Aviso (min)' : 'Alert (min)'}<input type="number" min={5} value={sla.ackMin} onChange={(e) => setSla({ ...sla, ackMin: Number(e.target.value) })} style={{ display: 'block', width: 90, marginTop: 3 }} /></label>
               <label style={{ fontSize: 12 }}>{es ? 'Vencido (min)' : 'Overdue (min)'}<input type="number" min={10} value={sla.overdueMin} onChange={(e) => setSla({ ...sla, overdueMin: Number(e.target.value) })} style={{ display: 'block', width: 90, marginTop: 3 }} /></label>
             </div>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--mut)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {es ? 'Horario de silencio (no te avisa de noche)' : 'Quiet hours (no night alerts)'}
+              <Switch on={!!sla.quietOn} onClick={() => setSla({ ...sla, quietOn: !sla.quietOn })} />
+            </div>
+            {sla.quietOn && (
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12, alignItems: 'flex-end' }}>
+                <label style={{ fontSize: 12 }}>{es ? 'Desde (hora)' : 'From (hour)'}<input type="number" min={0} max={23} value={sla.quietStart} onChange={(e) => setSla({ ...sla, quietStart: Number(e.target.value) })} style={{ display: 'block', width: 80, marginTop: 3 }} /></label>
+                <label style={{ fontSize: 12 }}>{es ? 'Hasta (hora)' : 'To (hour)'}<input type="number" min={0} max={23} value={sla.quietEnd} onChange={(e) => setSla({ ...sla, quietEnd: Number(e.target.value) })} style={{ display: 'block', width: 80, marginTop: 3 }} /></label>
+                <span className="muted" style={{ fontSize: 11, maxWidth: 220 }}>{es ? 'Los correos al cliente siguen; solo se callan los avisos a ti. Usa tu zona horaria.' : 'Customer emails still go out; only your alerts go quiet. Uses your timezone.'}</span>
+              </div>
+            )}
             <button className="btn btn-primary" onClick={saveSla}>{es ? 'Guardar tiempos' : 'Save times'}</button>
           </div>
         )}
       </div>
+      </div>{/* /wa-cfg */}
 
       <div className="row" style={{ gap: 7, marginBottom: 12, flexWrap: 'wrap' }}>
         {([['mine', l.fMine, mineCount], ['unassigned', l.fUnassigned, unassignedCount], ['open', t.s_open, counts.open], ['in_progress', t.s_inprogress, counts.in_progress], ['resolved', t.s_resolved, counts.resolved], ['all', t.s_all, null]] as any).map(([k, lab, c]: any) => (
@@ -491,7 +524,8 @@ export default function SupportInbox() {
                 {/* Hilo estilo WhatsApp (burbujas izq/der, palomitas, adjuntos) */}
                 <div className="wa-body">
                   <ChatThread messages={chatMsgs} lang={lang as any} onSend={() => {}} canReply={false} showAuthors
-                    typingLabel={traderTyping ? `${t.sender_trader} ${l.typing}` : ''} height={Math.max(220, paneH - 196)} />
+                    typingLabel={traderTyping ? `${t.sender_trader} ${l.typing}` : ''}
+                    height={(smallScreen && mobileOpen) ? Math.max(260, (typeof window !== 'undefined' ? window.innerHeight : 640) - 230) : Math.max(220, paneH - 196)} />
                 </div>
 
                 {/* Compositor */}

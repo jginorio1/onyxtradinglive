@@ -29,12 +29,17 @@ export async function POST(req: Request) {
     const b = await req.json().catch(() => ({} as any));
     const cur = await getSetting<SupportSla>('support_sla', SLA_DEFAULT);
     const num = (v: any, def: number, min: number) => (v !== undefined ? Math.max(min, Math.round(Number(v) || def)) : def);
+    const hr = (v: any, def: number) => (v !== undefined ? Math.min(23, Math.max(0, Math.round(Number(v) || 0))) : def);
     const next: SupportSla = {
       on: b.on !== undefined ? !!b.on : cur.on,
       reminderH: num(b.reminderH, cur.reminderH, 1),
       closeH: num(b.closeH, cur.closeH, 2),
       ackMin: num(b.ackMin, cur.ackMin, 5),
       overdueMin: num(b.overdueMin, cur.overdueMin, 10),
+      quietOn: b.quietOn !== undefined ? !!b.quietOn : cur.quietOn,
+      quietStart: hr(b.quietStart, cur.quietStart),
+      quietEnd: hr(b.quietEnd, cur.quietEnd),
+      quietTz: b.quietTz !== undefined ? String(b.quietTz).slice(0, 60) : cur.quietTz,
     };
     // Coherencia: cierre siempre después del recordatorio; vencido después del aviso.
     if (next.closeH <= next.reminderH) next.closeH = next.reminderH + 1;

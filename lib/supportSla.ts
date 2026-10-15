@@ -29,9 +29,28 @@ export type SupportSla = {
   closeH: number;      // horas sin respuesta del cliente → cierre automático
   ackMin: number;      // minutos esperando al equipo → avisar al equipo
   overdueMin: number;  // minutos esperando al equipo → marcar vencido + dueño
+  quietOn: boolean;    // horario de silencio: no enviar avisos al equipo de noche
+  quietStart: number;  // hora local de inicio del silencio (0-23), p. ej. 22
+  quietEnd: number;    // hora local de fin del silencio (0-23), p. ej. 8
+  quietTz: string;     // zona horaria IANA; '' = la del dueño (o America/New_York)
 };
 
-export const SLA_DEFAULT: SupportSla = { on: true, reminderH: 24, closeH: 72, ackMin: 30, overdueMin: 120 };
+export const SLA_DEFAULT: SupportSla = { on: true, reminderH: 24, closeH: 72, ackMin: 30, overdueMin: 120, quietOn: true, quietStart: 22, quietEnd: 8, quietTz: '' };
+
+// Hora local (0-23) en una zona horaria IANA. Si falla, usa la del servidor.
+function hourInTz(tz: string): number {
+  try { return parseInt(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', hour12: false }).format(new Date()), 10) % 24; }
+  catch { return new Date().getHours(); }
+}
+
+// ¿Estamos ahora dentro del horario de silencio? (admite tramos que cruzan medianoche)
+function inQuietHours(cfg: SupportSla, tz: string): boolean {
+  if (!cfg.quietOn) return false;
+  const h = hourInTz(tz);
+  const s = cfg.quietStart, e = cfg.quietEnd;
+  if (s === e) return false;
+  return s < e ? (h >= s && h < e) : (h >= s || h < e);   // 22→8 cruza medianoche
+}
 
 export function slaConfig(): Promise<SupportSla> {
   return getSetting<SupportSla>('support_sla', SLA_DEFAULT).then((c) => ({ ...SLA_DEFAULT, ...(c || {}) }));
@@ -97,6 +116,14 @@ export async function runSupportSla(dry = false): Promise<{ scanned: number; rem
   const byTicket: Record<string, any[]> = {};
   (allMsgs || []).forEach((m: any) => { (byTicket[m.ticket_id] ||= []).push(m); });
 
+  // Horario de silencio: usamos la zona del dueño (profiles.tz del primer admin) o la configurada.
+  let tz = (cfg.quietTz || '').trim();
+  if (!tz) {
+    try { const { data } = await supabaseAdmin.from('profiles').select('tz').eq('is_admin', true).not('tz', 'is', null).limit(1).maybeSingle(); tz = (data as any)?.tz || 'America/New_York'; }
+    catch { tz = 'America/New_York'; }
+  }
+  const quiet = inQuietHours(cfg, tz);
+
   const now = Date.now();
   for (const t of tickets) {
     const msgs = byTicket[t.id] || [];
@@ -147,24 +174,28 @@ export async function runSupportSla(dry = false): Promise<{ scanned: number; rem
       const link = `${SITE}/admin?tab=soporte&ticket=${t.id}`;
       if (mins >= cfg.overdueMin && !hasMarkerAfter(msgs, M.overdue, lastAt)) {
         if (!dry) {
+          // Marcar prioridad alta se hace siempre (silencioso, no molesta a nadie).
           await supabaseAdmin.from('support_tickets').update({ priority: 'high', updated_at: new Date().toISOString() }).eq('id', t.id).then((r: any) => {
-            // priority puede no existir aún: no romper.
             if (r?.error) return supabaseAdmin.from('support_tickets').update({ updated_at: new Date().toISOString() }).eq('id', t.id);
           });
-          await addNote(t.id, `${M.overdue} SLA incumplido: el cliente lleva más de ${Math.round(cfg.overdueMin)} min esperando sin respuesta del equipo.`);
-          const subj = (t.subject || 'Sin asunto').slice(0, 100);
-          await pingTeamTelegram(`🔴 <b>Ticket VENCIDO</b> (SLA incumplido)\n<b>${subj}</b>\nDe: ${who}\nLleva +${Math.round(mins)} min esperando. Respóndanlo ya.`);
-          await bellTeam({ title: 'Ticket vencido (SLA)', body: `${subj} · esperando +${Math.round(mins)} min`, url: link }, true);
+          // El aviso ruidoso (Telegram + campana) solo fuera del horario de silencio.
+          // En silencio no escribimos el marcador, así que al terminar la noche sí avisa.
+          if (!quiet) {
+            await addNote(t.id, `${M.overdue} SLA incumplido: el cliente lleva más de ${Math.round(cfg.overdueMin)} min esperando sin respuesta del equipo.`);
+            const subj = (t.subject || 'Sin asunto').slice(0, 100);
+            await pingTeamTelegram(`🔴 <b>Ticket VENCIDO</b> (SLA incumplido)\n<b>${subj}</b>\nDe: ${who}\nLleva +${Math.round(mins)} min esperando. Respóndanlo ya.`);
+            await bellTeam({ title: 'Ticket vencido (SLA)', body: `${subj} · esperando +${Math.round(mins)} min`, url: link }, true);
+          }
         }
-        out.overdue++;
+        if (!quiet) out.overdue++;
       } else if (mins >= cfg.ackMin && !hasMarkerAfter(msgs, M.ack, lastAt) && !hasMarkerAfter(msgs, M.overdue, lastAt)) {
-        if (!dry) {
+        if (!dry && !quiet) {
           await addNote(t.id, `${M.ack} Aviso al equipo: cliente esperando hace ${Math.round(cfg.ackMin)} min.`);
           const subj = (t.subject || 'Sin asunto').slice(0, 100);
           await pingTeamTelegram(`⏰ <b>Cliente esperando</b>\n<b>${subj}</b>\nDe: ${who}\nSin respuesta hace ${Math.round(mins)} min. Ábranlo en Admin → Soporte.`);
           await bellTeam({ title: 'Cliente esperando respuesta', body: `${subj} · hace ${Math.round(mins)} min`, url: link });
         }
-        out.acked++;
+        if (!quiet) out.acked++;
       }
     }
   }
