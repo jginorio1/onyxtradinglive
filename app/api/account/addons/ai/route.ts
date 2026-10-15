@@ -30,19 +30,36 @@ export async function POST(req: Request) {
     const amountCents = Math.round(price * 100 * qty);
     const consultas = perPack * qty;
 
-    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id,plan').eq('id', user.id).maybeSingle();
+    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id,plan,stripe_subscription_id').eq('id', user.id).maybeSingle();
     const customer = (prof as any)?.stripe_customer_id;
     if (!customer) return NextResponse.json({ error: 'No payment method on file. Add a card first.', code: 'no_customer' }, { status: 400 });
+
+    // Método de pago a usar: el por defecto del cliente; si no, el de su
+    // suscripción; si no, la primera tarjeta guardada. Stripe exige uno explícito
+    // cuando el cliente no tiene default fijado (si no, "no default_payment_method").
+    let pm: string | undefined;
+    try {
+      const cust: any = await stripe.customers.retrieve(customer);
+      pm = cust?.invoice_settings?.default_payment_method || undefined;
+      if (!pm && (prof as any)?.stripe_subscription_id) {
+        try { const sub: any = await stripe.subscriptions.retrieve((prof as any).stripe_subscription_id); pm = sub?.default_payment_method || undefined; } catch {}
+      }
+      if (!pm) {
+        const list: any = await stripe.paymentMethods.list({ customer, type: 'card', limit: 1 });
+        pm = list?.data?.[0]?.id || undefined;
+      }
+    } catch {}
+    if (!pm) return NextResponse.json({ error: 'No tienes una tarjeta guardada. Agrega una primero.', code: 'no_pm' }, { status: 400 });
 
     // Cobro único a la tarjeta guardada (sin redirección). Factura inmediata.
     // IMPORTANTE: creamos la factura PRIMERO y colgamos el cargo DE esa factura
     // (invoice: inv.id). Si se crea el invoiceItem suelto y luego la factura sin
     // incluirlo, la factura sale en $0 y el cobro queda huérfano (bug anterior).
     try {
-      const inv: any = await stripe.invoices.create({ customer, collection_method: 'charge_automatically', auto_advance: false } as any);
+      const inv: any = await stripe.invoices.create({ customer, collection_method: 'charge_automatically', auto_advance: false, default_payment_method: pm } as any);
       await stripe.invoiceItems.create({ customer, invoice: inv.id, amount: amountCents, currency: 'usd', description: `Onyx AI · +${consultas} consultas` } as any);
       await stripe.invoices.finalizeInvoice(inv.id);
-      const paid: any = await stripe.invoices.pay(inv.id);
+      const paid: any = await stripe.invoices.pay(inv.id, { payment_method: pm } as any);
       if (paid?.status !== 'paid') return NextResponse.json({ error: 'Payment not completed.', code: 'not_paid', status: paid?.status }, { status: 402 });
       // Red de seguridad: si por lo que sea el total quedó en 0, NO acreditamos.
       if (Number(paid?.amount_paid || 0) < amountCents) return NextResponse.json({ error: 'Charged amount did not match.', code: 'amount_mismatch', paid: paid?.amount_paid }, { status: 402 });
