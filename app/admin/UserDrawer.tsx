@@ -75,6 +75,18 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   const [tl, setTl] = useState<any>(null);        // expediente unificado (timeline)
   const [tlFilter, setTlFilter] = useState<string>(''); // '' = todo, 'urgent', o un tema
   const [tlAll, setTlAll] = useState(false);      // "mostrar más"
+  const [aiQty, setAiQty] = useState(100);        // consultas de IA a dar (cortesía)
+  const [aiBusy, setAiBusy] = useState('');       // '' | 'grant' | 'clear'
+
+  // Dar (regalo) o reiniciar las consultas de Onyx AI del usuario del mes en curso.
+  async function aiCredits(action: 'grant' | 'clear') {
+    if (action === 'grant' && (!Number.isFinite(aiQty) || aiQty === 0)) return;
+    setAiBusy(action);
+    try {
+      const r = await fetch('/api/admin/ai-credits', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: userId, action, qty: aiQty }) });
+      if (r.ok) await loadTimeline();   // refresca el tope/uso en el expediente
+    } finally { setAiBusy(''); }
+  }
 
   useEffect(() => {
     load();
@@ -232,6 +244,16 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
                             </div>
                           </div>
                         )}
+
+                        {/* Gestión manual: dar consultas de cortesía o reiniciar las extra del mes */}
+                        <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 9 }}>
+                          <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>{lang === 'en' ? 'Give or reset AI questions (this month, no charge)' : 'Dar o reiniciar consultas de IA (este mes, sin cobro)'}</div>
+                          <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <input type="number" value={aiQty} onChange={(e) => setAiQty(Number(e.target.value) || 0)} style={{ margin: 0, width: 90, padding: '5px 8px', fontSize: 13 }} />
+                            <button className="btn btn-primary" onClick={() => aiCredits('grant')} disabled={!!aiBusy} style={{ fontSize: 12.5, padding: '5px 10px' }}>{aiBusy === 'grant' ? '…' : (lang === 'en' ? `Give +${aiQty}` : `Dar +${aiQty}`)}</button>
+                            <button className="btn btn-ghost" onClick={() => aiCredits('clear')} disabled={!!aiBusy} style={{ fontSize: 12.5, padding: '5px 10px' }}>{aiBusy === 'clear' ? '…' : (lang === 'en' ? 'Reset extra' : 'Reiniciar extra')}</button>
+                          </div>
+                        </div>
                       </div>
                     );
                   })()}
