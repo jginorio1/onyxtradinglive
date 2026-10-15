@@ -67,6 +67,7 @@ export async function GET() {
     };
     const addonDefs = Object.keys(ad)
       .filter((k) => k.endsWith('_price_id'))
+      .filter((k) => k !== 'ai_pack_price_id')   // el AI pack NO usa Price ID (cobro único inline)
       .map((k) => {
         const base = k.replace(/_price_id$/, '');
         const nice = NICE[base] || base.replace(/_/g, ' ');
@@ -78,6 +79,8 @@ export async function GET() {
       if (!a.on && !a.id) { addonRows.push({ plan: a.label, period: 'addon', appAmount: a.amt, priceId: '', active: false, status: 'ok', note: 'Desactivado' }); continue; }
       addonRows.push(await checkPrice(a.label, 'addon', a.amt, a.id, a.on));
     }
+    // AI pack: cobro único a la tarjeta guardada (sin Stripe Price ID). Fila informativa, siempre OK.
+    addonRows.push({ plan: 'Add-on · Consultas de Onyx AI', period: 'addon', appAmount: Number(ad.ai_pack_price) || 5, priceId: '—', active: ad.ai_pack_enabled !== false, status: 'ok', note: 'Pago único · no requiere Price ID' });
 
     // --- Checklist anti-chargeback ---
     const bl = await botLabSettings();

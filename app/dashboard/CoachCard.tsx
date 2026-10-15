@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLang } from '@/lib/lang';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import AiLimitNotice from '@/app/components/AiLimitNotice';
 
 // Convierte el texto de la IA (con **negrita**, # títulos, - listas) en JSX real,
 // para que NO se vean los asteriscos ni las almohadillas.
@@ -41,11 +42,12 @@ export default function CoachCard({ from, to, account, rail = false, demo = fals
   const [open, setOpen] = useState(true);
   const [sum, setSum] = useState<any>(null);
   const [actions, setActions] = useState<{ label: string; href: string }[]>([]);
+  const [aiLimit, setAiLimit] = useState<any>(null);   // allowance si alcanzó el tope de IA
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
   async function gen() {
-    setBusy(true); setMsg(''); setTxt(''); setSum(null); setActions([]);
+    setBusy(true); setMsg(''); setTxt(''); setSum(null); setActions([]); setAiLimit(null);
     // Demo público: sin sesión no hay IA (ni gasto de créditos). Mostramos un
     // repaso de ejemplo en vez de llamar al endpoint.
     if (demo) {
@@ -69,6 +71,8 @@ export default function CoachCard({ from, to, account, rail = false, demo = fals
       if (j.empty) { setMsg(L('Necesitas unas cuantas operaciones cerradas en este período para tu repaso.', 'You need a few closed trades in this period for your review.')); return; }
       if (!j.ok) { setMsg(L('No se pudo generar ahora. Inténtalo de nuevo.', "Couldn't generate now. Try again.")); return; }
       setTxt(j.review || ''); setSum(j.summary || null); setActions(Array.isArray(j.actions) ? j.actions : []); setOpen(true);
+      if (j.aiLimit) setAiLimit(j.allowance || {});   // alcanzó el tope del mes → aviso de comprar/subir
+    } catch { /* red/parse */
     } finally { setBusy(false); }
   }
 
@@ -84,6 +88,7 @@ export default function CoachCard({ from, to, account, rail = false, demo = fals
   // Cuerpo del repaso (se usa inline en modo normal, o dentro del modal en modo riel).
   const reviewBody = (
     <>
+      {aiLimit && <div style={{ marginBottom: 10 }}><AiLimitNotice allowance={aiLimit} lang={lang} /></div>}
       {windowLine && <div className="muted" style={{ fontSize: 11.5, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📅" size={13} /> {windowLine}</div>}
       <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', fontSize: 14, lineHeight: 1.6 }}><RichText text={txt} /></div>
       {actions.length > 0 && (

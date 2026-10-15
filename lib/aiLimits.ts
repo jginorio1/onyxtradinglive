@@ -27,6 +27,9 @@ export type Allowance = {
   plan: string; quota: number; extra: number; limit: number;
   used: number; remaining: number; unlimited: boolean; staff: boolean;
   periodStart: string;
+  // Info del add-on (para el aviso de "compra más"):
+  canBuy: boolean;       // solo planes de pago pueden comprar el paquete
+  packOn: boolean; packQty: number; packPrice: number;
 };
 
 // Cuánto puede y cuánto lleva este usuario ESTE mes.
@@ -59,6 +62,16 @@ export async function aiAllowance(userId: string): Promise<Allowance> {
     const { data } = await supabaseAdmin.from('ai_packs').select('qty').eq('user_id', userId).eq('period', period);
     extra = (data || []).reduce((s: number, r: any) => s + Number(r.qty || 0), 0);
   } catch { /* si la tabla no existe aún, extra = 0 */ }
+
+  // Info del add-on para el aviso de "compra más": solo los planes de pago pueden
+  // comprarlo (requiere tarjeta). Un Gratis ve "sube de plan" en vez de comprar.
+  let packOn = false, packQty = 100, packPrice = 5;
+  try {
+    const { addonSettings } = await import('@/lib/settings');
+    const a = await addonSettings();
+    packOn = a.ai_pack_enabled !== false; packQty = Number(a.ai_pack_qty || 100); packPrice = Number(a.ai_pack_price || 5);
+  } catch {}
+  const canBuy = plan !== 'free' && !staff && packOn;
 
   const unlimited = staff || quota === 0;
   const limit = quota + extra;

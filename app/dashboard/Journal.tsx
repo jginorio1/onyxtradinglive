@@ -5,6 +5,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { errMsg } from '@/lib/i18nErrors';
 import { StatCard } from './HubVitals';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import AiLimitNotice from '@/app/components/AiLimitNotice';
 
 type TT = { id: string; account_id: string; symbol: string; side: string; volume: number; open_time: string | null; close_time: string; net_profit: number; commission?: number; swap?: number; profit?: number };
 type Acc = { id: string; nickname?: string | null; broker?: string; platform?: string; fund_max_daily?: number | null; fund_max_total?: number | null };
@@ -530,6 +531,7 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
   const [zoom, setZoom] = useState('');  // url que se está viendo en grande
   const [coach, setCoach] = useState('');
   const [coaching, setCoaching] = useState(false);
+  const [aiLimit, setAiLimit] = useState<any>(null);   // allowance si alcanzó el tope de IA
   const fileEntry = useRef<HTMLInputElement>(null);
   const fileExit = useRef<HTMLInputElement>(null);
 
@@ -568,7 +570,7 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
     if (j.url) { slot === 'exit' ? setImgExit(j.url) : setImg(j.url); } else toast(errMsg(j, lang));
   }
   async function askCoach() {
-    setCoaching(true); setCoach('');
+    setCoaching(true); setCoach(''); setAiLimit(null);
     try {
       const r = await fetch('/api/journal/coach', { method: 'POST', body: JSON.stringify({
         trade_id: trade.id, symbol: trade.symbol, side: trade.side, net,
@@ -576,7 +578,8 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
         rMultiple, durationMin: durMin, session: sess, lang,
       }) });
       const j = await r.json();
-      setCoach(j?.text || t.coachErr);
+      if (j?.aiLimit) { setAiLimit(j.allowance || {}); }   // alcanzó el tope del mes
+      else setCoach(j?.text || t.coachErr);
     } catch { setCoach(t.coachErr); }
     setCoaching(false);
   }
@@ -666,6 +669,7 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
             {/* Coach IA por trade */}
             <div style={{ marginTop: 12 }}>
               <button className="btn btn-ghost" onClick={askCoach} disabled={coaching} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>{coaching ? t.coaching : (<><OnyxIcon emoji="✨" size={15} /> {t.coach}</>)}</button>
+              {aiLimit && <div style={{ marginTop: 8 }}><AiLimitNotice allowance={aiLimit} lang={lang} /></div>}
               {coach && (
                 <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 12, background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', fontSize: 13.5, lineHeight: 1.6, color: 'var(--tx)' }}>{coach}</div>
               )}

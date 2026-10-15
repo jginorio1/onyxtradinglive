@@ -3,6 +3,7 @@ import { dictFor } from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { useIsIOSApp } from '@/app/account/ManageOnWeb';
+import AiLimitNotice from '@/app/components/AiLimitNotice';
 import { toast as flashToast } from '@/lib/toast';
 
 type Lang = 'es' | 'en';
@@ -177,6 +178,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
   const [newHabit, setNewHabit] = useState('');
   const [busy, setBusy] = useState('');
   const [review, setReview] = useState('');
+  const [aiLimit, setAiLimit] = useState<any>(null);   // allowance si alcanzó el tope de IA
   // Editor de límites EN LÍNEA (sin modal): dos números + alcance.
   const [lim, setLim] = useState<any>({ dl: 3, mt: 0, mode: 'all', accountId: '', accType: 'challenge' });
   const [limBusy, setLimBusy] = useState(false);
@@ -274,7 +276,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
     if (j.ok) { setD({ ...d, plan: j.plan, stats: j.stats }); setEditing(false); }
   }
   async function runAI() {
-    setBusy('ai'); setReview('');
+    setBusy('ai'); setReview(''); setAiLimit(null);
     // Demo público: repaso de ejemplo (sin sesión no hay IA real).
     if (demo) {
       setTimeout(() => {
@@ -287,6 +289,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
     }
     const r = await fetch('/api/plan/ai', { method: 'POST', body: JSON.stringify({ lang }) });
     const j = await r.json(); setBusy('');
+    if (j.aiLimit) { setAiLimit(j.allowance || {}); return; }   // alcanzó el tope del mes
     if (j.review) setReview(j.review);
   }
   async function saveScope(next: { scope?: string; primary_account_id?: string | null }) {
@@ -484,6 +487,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
                 {s.winRateRespect != null && `${t.winR}: ${s.winRateRespect}%`}{s.winRateBroken != null && ` · ${t.winB}: ${s.winRateBroken}%`}{s.overtradingDays > 0 && ` · ${t.overtr}: ${s.overtradingDays}`}
               </p>
             )}
+            {aiLimit && <div style={{ marginTop: 8 }}><AiLimitNotice allowance={aiLimit} lang={lang} /></div>}
             {review && <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', marginTop: 8 }}><ReviewText text={review} /></div>}
           </div>
         </div>
