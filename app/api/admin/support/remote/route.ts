@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm, logAdmin } from '@/lib/admin';
 import { getSetting, saveSetting } from '@/lib/settings';
+import { REMOTE_DEFAULT, type RemoteSupport } from '@/lib/remoteSupport';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -10,23 +11,8 @@ export const runtime = 'nodejs';
 // Soporte remoto DE PAGO (toggle + precio configurable).
 // Guardado en app_settings bajo 'remote_support'. La burbuja/soporte ofrece
 // una sesión remota pagada (pago único por Stripe) cuando está encendido.
+// El modelo y los valores por defecto viven en lib/remoteSupport.ts.
 // ============================================================
-export type RemoteSupport = {
-  on: boolean;          // encendido/apagado
-  price: number;        // USD por sesión
-  minutes: number;      // duración estimada
-  tool: string;         // herramienta (AnyDesk / TeamViewer…)
-  link: string;         // enlace de descarga de la herramienta
-  note_es: string;      // instrucción corta para el cliente (ES)
-  note_en: string;      // instrucción corta para el cliente (EN)
-};
-
-export const REMOTE_DEFAULT: RemoteSupport = {
-  on: false, price: 25, minutes: 30, tool: 'AnyDesk',
-  link: 'https://anydesk.com/download',
-  note_es: 'Descarga AnyDesk, ábrelo y comparte con el agente el código de 9 dígitos que te muestra. No cierres la ventana durante la sesión.',
-  note_en: 'Download AnyDesk, open it and share the 9-digit code it shows with the agent. Keep the window open during the session.',
-};
 
 export async function GET() {
   try {

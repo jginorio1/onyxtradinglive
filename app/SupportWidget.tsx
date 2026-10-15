@@ -57,6 +57,10 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // menciona su enlace. Se carga una vez; si falla, el chat sigue normal.
   const [reco, setReco] = useState<{ broker: { enabled: boolean; name: string; url: string }; vps: { enabled: boolean; name: string; url: string } } | null>(null);
   useEffect(() => { fetch('/api/reco', { cache: 'no-store' }).then((r) => r.json()).then(setReco).catch(() => {}); }, []);
+  // Soporte remoto DE PAGO (si el dueño lo activó). En iOS no se ofrece el cobro
+  // (regla de Apple): se oculta el botón. En web/Android lleva a Stripe Checkout.
+  const [remoteCfg, setRemoteCfg] = useState<{ on: boolean; price: number; minutes: number } | null>(null);
+  const [remoteBusy, setRemoteBusy] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState('');
   const [leadMsg, setLeadMsg] = useState('');
@@ -227,6 +231,18 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   }, [open]);
 
   useEffect(() => { fetch('/api/support/availability').then((r) => r.json()).then((j) => setHuman(!!j.online)).catch(() => {}); }, [open]);
+  // ¿Está activo el soporte remoto de pago? (para mostrar el botón con su precio)
+  useEffect(() => { if (!open) return; fetch('/api/support/remote').then((r) => r.json()).then(setRemoteCfg).catch(() => {}); }, [open]);
+  // Pagar/agendar la sesión remota → Stripe Checkout. Invitado sin correo → pide correo.
+  async function bookRemote() {
+    if (remoteBusy) return; setRemoteBusy(true);
+    try {
+      const r = await fetch('/api/support/remote/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lang, email: loggedIn ? undefined : email.trim() }) });
+      const j = await r.json();
+      if (j.url) { window.location.href = j.url; return; }
+      if (j.code === 'need_email') { openEmail(); }
+    } catch {} finally { setRemoteBusy(false); }
+  }
   // Al abrir con sesión: trae rol + nombre para personalizar saludo y temas rápidos.
   useEffect(() => {
     if (!open || !loggedIn) return;
@@ -697,6 +713,12 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                     <button key={label} className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12 }} onClick={() => sendAI(q)}>{iconLabel(label)}</button>
                   ))}
                   {!loggedIn && cfg.showHuman && <button className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, gridColumn: '1 / -1' }} onClick={openEmail}>{iconLabel(x.human)}</button>}
+                  {/* Soporte remoto de pago (oculto en iOS por la regla de Apple). */}
+                  {remoteCfg?.on && !isIOS && (
+                    <button className="btn btn-primary" style={{ padding: '8px 10px', fontSize: 12, gridColumn: '1 / -1' }} onClick={bookRemote} disabled={remoteBusy}>
+                      {remoteBusy ? '…' : `🖥️ ${es ? 'Soporte remoto' : 'Remote support'} · $${remoteCfg.price}`}
+                    </button>
+                  )}
                 </div>
               </div>
             )}

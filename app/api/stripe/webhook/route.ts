@@ -173,6 +173,21 @@ export async function POST(req: Request) {
       const s: any = event.data.object;
       // Evidencia anti-chargeback: ata el payment_intent a la fila y marca pagado.
       await markPaid(s.id, { payment_intent: typeof s.payment_intent === 'string' ? s.payment_intent : (s.payment_intent?.id || null), charge_id: null });
+      // Sesión de SOPORTE REMOTO pagada (pago único): deja el ticket en la bandeja,
+      // avisa al equipo y le manda al cliente el enlace de la herramienta.
+      if (s.metadata?.kind === 'remote_support') {
+        try {
+          const { fulfillRemoteSession } = await import('@/lib/remoteSupport');
+          await fulfillRemoteSession({
+            sessionId: s.id,
+            email: s.metadata?.email || s.customer_details?.email || s.customer_email || '',
+            userId: s.metadata?.userId || null,
+            lang: s.metadata?.lang || 'es',
+            amount: Number(s.metadata?.amount) || undefined,
+          });
+        } catch (e) { console.error('remote_support fulfill', e); }
+        return NextResponse.json({ received: true });
+      }
       const g = guardianMeta(s.metadata);
       if (g && g.userId && s.subscription) {
         // Guardian de academia: activa el nivel, guarda la suscripción, NO toca el plan.
