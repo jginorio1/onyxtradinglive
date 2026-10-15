@@ -77,6 +77,17 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   const [tlAll, setTlAll] = useState(false);      // "mostrar más"
   const [aiQty, setAiQty] = useState(100);        // consultas de IA a dar (cortesía)
   const [aiBusy, setAiBusy] = useState('');       // '' | 'grant' | 'clear'
+  const [ua, setUa] = useState<any>(null);        // add-ons recurrentes de la suscripción
+  const [uaBusy, setUaBusy] = useState('');       // key en proceso
+
+  async function loadAddons() { try { const r = await fetch('/api/admin/user-addons?id=' + userId); setUa(await r.json()); } catch { setUa({ hasSub: false, addons: [] }); } }
+  async function setAddon(key: string, action: 'add' | 'remove') {
+    setUaBusy(key);
+    try {
+      const r = await fetch('/api/admin/user-addons', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: userId, key, action }) });
+      if (r.ok) await loadAddons();
+    } finally { setUaBusy(''); }
+  }
 
   // Dar (regalo) o reiniciar las consultas de Onyx AI del usuario del mes en curso.
   async function aiCredits(action: 'grant' | 'clear') {
@@ -99,7 +110,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   async function loadCredit() { try { const r = await fetch('/api/admin/credit?id=' + userId); setCredit(await r.json()); } catch { setCredit({ hasCustomer: false, balance: 0 }); } }
   async function loadPurchases() { try { const r = await fetch('/api/admin/evidence?userId=' + userId); const j = await r.json(); setPurchases(j.rows || []); } catch { setPurchases([]); } }
   async function loadTimeline() { try { const r = await fetch('/api/admin/user-timeline?id=' + userId); setTl(await r.json()); } catch { setTl({ summary: {}, events: [] }); } }
-  useEffect(() => { if (tab === 0 && !tl) loadTimeline(); if (tab === 3 && !credit) loadCredit(); if (tab === 4 && !purchases) loadPurchases(); }, [tab]);
+  useEffect(() => { if (tab === 0 && !tl) loadTimeline(); if (tab === 0 && !ua) loadAddons(); if (tab === 3 && !credit) loadCredit(); if (tab === 4 && !purchases) loadPurchases(); }, [tab]);
 
   // Enviar (o guardar borrador de) la evidencia de una disputa a Stripe.
   async function sendEvidence(disputeId: string, submit: boolean) {
@@ -257,6 +268,28 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
                       </div>
                     );
                   })()}
+
+                  {/* Add-ons recurrentes de la suscripción (cuenta/esclava/master/robots).
+                      Lectura + añadir/quitar a mano si una activación falló. */}
+                  {ua?.hasSub && Array.isArray(ua.addons) && (
+                    <div className="card" style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 2 }}>{lang === 'en' ? 'Plan add-ons (subscription)' : 'Complementos del plan (suscripción)'}</div>
+                      <div className="muted" style={{ fontSize: 11, marginBottom: 10 }}>{lang === 'en' ? 'Add manually if an activation failed · prorated on next invoice' : 'Añádelos a mano si falló una activación · se prorratea en la próxima factura'}</div>
+                      {ua.addons.map((x: any) => (
+                        <div key={x.key} className="row between" style={{ padding: '7px 0', borderTop: '1px solid var(--line)', alignItems: 'center', gap: 8 }}>
+                          <div style={{ fontSize: 12.5 }}>
+                            {x.label}
+                            {x.qty > 0 && <span style={{ color: 'var(--green,#34c778)', fontWeight: 700 }}> · ×{x.qty}</span>}
+                            {!x.priceId && <span className="muted" style={{ fontSize: 11 }}> · {lang === 'en' ? 'no Price ID' : 'sin Price ID'}</span>}
+                          </div>
+                          <div className="row" style={{ gap: 5 }}>
+                            <button className="btn btn-ghost" onClick={() => setAddon(x.key, 'remove')} disabled={!x.priceId || x.qty <= 0 || !!uaBusy} style={{ fontSize: 13, padding: '2px 9px' }}>−</button>
+                            <button className="btn btn-primary" onClick={() => setAddon(x.key, 'add')} disabled={!x.priceId || !!uaBusy} style={{ fontSize: 13, padding: '2px 9px' }}>{uaBusy === x.key ? '…' : '+'}</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Filtros por tema / urgencia */}
                   <div className="row" style={{ gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
