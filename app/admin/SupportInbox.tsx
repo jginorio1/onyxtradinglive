@@ -47,6 +47,8 @@ const L: any = {
     invTitle: 'Invitar a un compañero', online: 'En línea', lastSeen: 'Última vez', never: 'Sin actividad aún', allIn: 'Todo el equipo ya está en esta conversación.',
     saveKb: 'Guardar como conocimiento', saveKbOk: 'Guardado en la Base IA. La IA lo reutilizará.', saveKbNone: 'No hay una respuesta que guardar todavía.',
     online5: 'en línea', ficha: 'Ficha', online2: 'activo ahora', typing: 'está escribiendo…', attach: 'Adjuntar', emoji: 'Emojis',
+    rShorten: 'Acortar', rFormal: 'Más formal', rTranslate: 'Traducir', rBusy: 'Puliendo…', aiErr: 'La IA no pudo redactar ahora. Intenta otra vez.',
+    suggested: 'Sugerida', slashHint: 'Escribe / para respuestas guardadas', triageAuto: 'Clasificado por IA',
   },
   en: {
     fMine: 'Mine', fUnassigned: 'Unassigned', needsReply: 'Awaiting reply',
@@ -60,6 +62,8 @@ const L: any = {
     invTitle: 'Invite a teammate', online: 'Online', lastSeen: 'Last seen', never: 'No activity yet', allIn: 'The whole team is already in this conversation.',
     saveKb: 'Save as knowledge', saveKbOk: 'Saved to the Knowledge Base. The AI will reuse it.', saveKbNone: 'There is no answer to save yet.',
     online5: 'online', ficha: 'Profile', online2: 'active now', typing: 'is typing…', attach: 'Attach', emoji: 'Emojis',
+    rShorten: 'Shorten', rFormal: 'More formal', rTranslate: 'Translate', rBusy: 'Polishing…', aiErr: "The AI couldn't draft right now. Try again.",
+    suggested: 'Suggested', slashHint: 'Type / for saved replies', triageAuto: 'AI-classified',
   },
 };
 
@@ -147,6 +151,23 @@ export default function SupportInbox() {
     setAtts([]);
   }, [openId, msgs.length]);
 
+  // Auto-borrador al abrir: si el último mensaje es del cliente y el compositor
+  // está vacío, pide un borrador a la IA UNA vez por ticket (el agente solo revisa
+  // y envía). Para seguimientos puede volver a pulsar "Redactar con IA".
+  const autoDrafted = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!openId) return;
+    if (autoDrafted.current.has(openId)) return;
+    const tm = msgs.filter((m) => m.ticket_id === openId);
+    if (!tm.length) return;                                  // aún sin hilo cargado
+    const last = tm[tm.length - 1];
+    if (last?.sender !== 'user') return;                      // ya respondió el equipo
+    if (text.trim()) return;                                  // no pisar lo que escribe
+    autoDrafted.current.add(openId);
+    draft(openId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openId, msgs]);
+
   // Subir foto/documento adjunto a la respuesta.
   async function uploadAtt(files: FileList) {
     for (const f of Array.from(files).slice(0, 5)) {
@@ -176,10 +197,30 @@ export default function SupportInbox() {
     setBusy(''); await load();
     if (patch.body !== undefined) { setAtts([]); ping(); }
   }
-  async function draft(id: string, firstUserMsg: string) {
+  // Borrador CON CONTEXTO: la IA ve la ficha del trader + el hilo completo (no solo
+  // el primer mensaje), así que el borrador sale personalizado y casi listo.
+  async function draft(id: string) {
     setBusy('ai' + id);
-    try { const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question: firstUserMsg, lang }) }); const j = await r.json(); setText(j.answer || ''); setMode('reply'); } catch {}
+    try {
+      const r = await fetch('/api/admin/support/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ticket_id: id, lang, mode: 'draft' }) });
+      const j = await r.json();
+      if (j.answer) { setText(j.answer); setMode('reply'); }
+      else toast(l.aiErr);
+    } catch { toast(l.aiErr); }
     setBusy('');
+  }
+  // Retoca el borrador YA escrito en un clic (acortar / más formal / traducir).
+  const [refining, setRefining] = useState('');
+  async function refine(op: 'shorten' | 'formal' | 'translate') {
+    const current = text.trim();
+    if (!current) return;
+    setRefining(op);
+    try {
+      const r = await fetch('/api/admin/support/draft', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'refine', op, current, lang }) });
+      const j = await r.json();
+      if (j.answer) setText(j.answer); else toast(l.aiErr);
+    } catch { toast(l.aiErr); }
+    setRefining('');
   }
   async function saveCanned() {
     if (!newC || !newC.title.trim() || !newC.body.trim()) return;
@@ -330,6 +371,17 @@ export default function SupportInbox() {
             const parts = participants.filter((p) => p.ticket_id === tk.id);
             const cannedForLang = canned.filter((c) => c.lang === lang);
             const cannedList = cannedForLang.length ? cannedForLang : canned;
+            // Respuesta guardada SUGERIDA: la más parecida al ticket por palabras en
+            // común (instantáneo, sin IA). Se resalta para usarla de un clic.
+            const norm = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+            const qWords = new Set(norm(`${tk.subject || ''} ${firstUser || ''}`).split(/[^a-z0-9]+/).filter((w) => w.length > 3));
+            let suggestedCanned: any = null; let bestScore = 0;
+            if (qWords.size) for (const c of cannedList) {
+              const cw = norm(`${c.title} ${c.body}`).split(/[^a-z0-9]+/).filter((w) => w.length > 3);
+              let s = 0; for (const w of cw) if (qWords.has(w)) s++;
+              if (s > bestScore) { bestScore = s; suggestedCanned = c; }
+            }
+            if (bestScore < 2) suggestedCanned = null;   // exige coincidencia real
             const chatMsgs: ChatMsg[] = tm.map((m) => ({
               id: m.id,
               mine: m.sender === 'admin' || m.sender === 'ai',
@@ -348,7 +400,9 @@ export default function SupportInbox() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tk.email || t.s_visitor}</div>
                     <div className="muted" style={{ fontSize: 11.5 }}>
-                      {CATS[tk.category] || tk.category} · {CH[tk.channel] || tk.channel}{tk.is_lead ? ' · Lead' : ''}
+                      {/* Triage automático: categoría (coloreada si es prioridad alta) + canal. */}
+                      <span title={l.triageAuto} style={tk.priority === 'high' ? { color: 'var(--red)', fontWeight: 700 } : undefined}>{CATS[tk.category] || tk.category}</span>
+                      {' · '}{CH[tk.channel] || tk.channel}{tk.is_lead ? ' · Lead' : ''}
                       {traderTyping && <span style={{ color: 'var(--soft-green)' }}> · {l.typing}</span>}
                     </div>
                   </div>
@@ -403,8 +457,23 @@ export default function SupportInbox() {
                     </div>
                     {mode === 'reply' && (
                       <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                        {/* Respuesta guardada sugerida (coincide con el ticket): un clic la usa. */}
+                        {suggestedCanned && !text.trim() && (
+                          <button className="wa-chip" title={suggestedCanned.title} onClick={() => setText(suggestedCanned.body)}
+                            style={{ borderColor: 'var(--green)', color: 'var(--green)', background: 'rgba(52,226,160,.10)', maxWidth: 230 }}>
+                            <Icon name="bulb" size={14} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.suggested}: {suggestedCanned.title}</span>
+                          </button>
+                        )}
                         <button className="wa-chip" onClick={() => setShowCanned((v) => !v)}><Icon name="plus" size={14} /> {l.canned}</button>
-                        <button className="wa-chip" onClick={() => draft(tk.id, firstUser)} disabled={busy === 'ai' + tk.id}><Icon name="sparkles" size={14} /> {busy === 'ai' + tk.id ? '…' : t.s_aiDraft}</button>
+                        <button className="wa-chip" onClick={() => draft(tk.id)} disabled={busy === 'ai' + tk.id}><Icon name="sparkles" size={14} /> {busy === 'ai' + tk.id ? '…' : t.s_aiDraft}</button>
+                        {/* Retocar el borrador YA escrito en un clic. */}
+                        {text.trim() && (
+                          <>
+                            <button className="wa-chip" onClick={() => refine('shorten')} disabled={!!refining}><Icon name="resize" size={14} /> {refining === 'shorten' ? l.rBusy : l.rShorten}</button>
+                            <button className="wa-chip" onClick={() => refine('formal')} disabled={!!refining}><Icon name="shield" size={14} /> {refining === 'formal' ? l.rBusy : l.rFormal}</button>
+                            <button className="wa-chip" onClick={() => refine('translate')} disabled={!!refining}><Icon name="message" size={14} /> {refining === 'translate' ? l.rBusy : l.rTranslate}</button>
+                          </>
+                        )}
                         <button className="wa-chip" title={l.saveKb} onClick={() => saveKnowledge(tk.subject, tm)}><Icon name="bulb" size={15} /></button>
                       </div>
                     )}
@@ -475,8 +544,12 @@ export default function SupportInbox() {
                         </label>
                       </>}
                       <textarea value={text} onChange={(e) => { setText(e.target.value); if (mode === 'reply') sendTyping(); }}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (mode === 'reply') { if (text.trim() || atts.length) act(tk.id, { body: text, attachments: atts }); } else if (text.trim()) act(tk.id, { note: text }); } }}
-                        rows={1} placeholder={mode === 'note' ? t.s_notePh : t.s_replyPh} style={{ flex: 1, margin: 0, resize: 'none', minHeight: 36, maxHeight: 120, padding: '9px 6px', border: 'none', background: 'transparent', fontSize: 14, color: mode === 'note' ? 'var(--tx)' : '#15181f' }} />
+                        onKeyDown={(e) => {
+                          // "/" en el compositor vacío abre las respuestas guardadas.
+                          if (e.key === '/' && mode === 'reply' && !text) { e.preventDefault(); setShowCanned(true); return; }
+                          // Enter (o Cmd/Ctrl+Enter) envía; Shift+Enter hace salto de línea.
+                          if (e.key === 'Enter' && (!e.shiftKey || e.metaKey || e.ctrlKey)) { e.preventDefault(); if (mode === 'reply') { if (text.trim() || atts.length) act(tk.id, { body: text, attachments: atts }); } else if (text.trim()) act(tk.id, { note: text }); } }}
+                        rows={1} placeholder={mode === 'note' ? t.s_notePh : `${t.s_replyPh} · ${l.slashHint}`} style={{ flex: 1, margin: 0, resize: 'none', minHeight: 36, maxHeight: 120, padding: '9px 6px', border: 'none', background: 'transparent', fontSize: 14, color: mode === 'note' ? 'var(--tx)' : '#15181f' }} />
                     </div>
                     <button onClick={() => mode === 'reply' ? act(tk.id, { body: text, attachments: atts }) : act(tk.id, { note: text })}
                       disabled={busy === tk.id || (mode === 'reply' ? (!text.trim() && !atts.length) : !text.trim())} title={mode === 'reply' ? t.s_sendReply : t.s_saveNote}

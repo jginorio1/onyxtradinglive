@@ -344,6 +344,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     help: p(cfg.helpLabel_es, cfg.helpLabel_en),
     title: p(cfg.name_es, cfg.name_en), humanTitle: p(cfg.humanName_es, cfg.humanName_en),
     online: p(cfg.subOn_es, cfg.subOn_en),
+    offline: p(cfg.subOff_es, cfg.subOff_en),
     hi: p(cfg.greeting_es, cfg.greeting_en), topicsT: p(cfg.topicsTitle_es, cfg.topicsTitle_en),
     ph: p(cfg.placeholder_es, cfg.placeholder_en), human: p(cfg.humanLabel_es, cfg.humanLabel_en),
     proactive: p(cfg.proactive_es, cfg.proactive_en),
@@ -678,8 +679,8 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 800, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? x.humanTitle : x.title}</div>
               <div style={{ fontSize: 12, opacity: .85, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                {cfg.showPulse && <span className="onyx-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: '#128a4f', flex: 'none' }} />}
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.online}</span>
+                {cfg.showPulse && <span className={human ? 'onyx-pulse' : ''} style={{ width: 7, height: 7, borderRadius: '50%', background: human ? '#128a4f' : 'rgba(255,255,255,.4)', flex: 'none' }} />}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? x.online : (x.offline || x.online)}</span>
               </div>
             </div>
             {/* Solo el botón de cerrar en la cabecera (sin Expand ni menú de 3 puntos). */}
