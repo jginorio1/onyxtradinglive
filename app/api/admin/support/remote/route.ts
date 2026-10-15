@@ -38,8 +38,6 @@ export async function POST(req: Request) {
       minutes: b.minutes !== undefined ? Math.max(5, Math.round(Number(b.minutes) || 30)) : cur.minutes,
       tool: b.tool !== undefined ? String(b.tool).slice(0, 40) : cur.tool,
       link: b.link !== undefined ? String(b.link).slice(0, 300) : cur.link,
-      note_es: b.note_es !== undefined ? String(b.note_es).slice(0, 600) : cur.note_es,
-      note_en: b.note_en !== undefined ? String(b.note_en).slice(0, 600) : cur.note_en,
     };
     await saveSetting('remote_support', next);
     await logAdmin(g.user?.email || '', 'remote_support', 'remote_support', { on: next.on, price: next.price });

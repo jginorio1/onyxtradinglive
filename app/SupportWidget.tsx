@@ -65,6 +65,10 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const [email, setEmail] = useState('');
   const [leadMsg, setLeadMsg] = useState('');
   const [sent, setSent] = useState(false);
+  // Token del hilo del invitado (sin sesión). Con él, el widget sigue mostrando y
+  // respondiendo la conversación aquí mismo (ya no solo por correo). Vive en el navegador.
+  const [leadToken, setLeadToken] = useState('');
+  useEffect(() => { try { const tkn = localStorage.getItem('onyx_support_token'); if (tkn) setLeadToken(tkn); } catch {} }, []);
   const [err, setErr] = useState('');
   const [attach, setAttach] = useState<{ data: string; name: string; type: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -267,7 +271,30 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   function dismissTease() { setTease(false); try { sessionStorage.setItem('onyx_chat_tease', '1'); } catch {} }
   function launch() { setOpen(true); dismissTease(); }
 
+  // Sondeo del hilo del invitado: trae las respuestas del agente (y de la IA) al
+  // widget mientras está abierto. El servidor es la verdad del hilo.
+  async function loadThread() {
+    if (!leadToken) return;
+    try {
+      const r = await fetch('/api/support/thread?token=' + encodeURIComponent(leadToken), { cache: 'no-store' });
+      const j = await r.json();
+      if (j?.ok && Array.isArray(j.messages)) setChat(j.messages.map((m: any) => ({ role: m.role, content: m.content })));
+    } catch {}
+  }
+  useEffect(() => { if (!open || !leadToken) return; loadThread(); const iv = setInterval(loadThread, 6000); return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, leadToken]);
+  // El invitado responde en el widget → va al hilo (no a la IA).
+  async function sendThread(raw?: string) {
+    const body = (raw ?? ask).trim(); if (!body || busy) return;
+    setChat((c) => [...c, { role: 'user', content: body }]); setAsk(''); setBusy(true);
+    try { await fetch('/api/support/thread', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: leadToken, body }) }); } catch {}
+    setBusy(false); loadThread();
+  }
+
   async function sendAI(q?: string) {
+    // Si ya hay un hilo humano (invitado), sus mensajes van al hilo, no a la IA.
+    if (leadToken) { sendThread(q); return; }
     const question = (q ?? ask).trim(); if (!question || busy) return;
     const next = [...chat, { role: 'user', content: question }];
     setChat(next); setAsk(''); setBusy(true); setRefs([]); setActions([]); setPlans([]);
@@ -341,8 +368,17 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     if (!msg && !attach) { setErr(t.errMsg); return; }
     setErr(''); setBusy(true);
     const history = chat.filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({ role: m.role, content: m.content }));
-    await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ email: e, message: msg, history, lang, attachment: attach ? { data: attach.data, name: attach.name, type: attach.type } : null }) });
-    setBusy(false); setSent(true); setShowEmail(false); setAttach(null);
+    const lr = await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ email: e, message: msg, history, lang, attachment: attach ? { data: attach.data, name: attach.name, type: attach.type } : null }) });
+    const lj = await lr.json().catch(() => ({} as any));
+    setBusy(false); setShowEmail(false); setAttach(null);
+    // Si el servidor nos dio token, seguimos la conversación EN EL WIDGET (no solo
+    // por correo): guardamos el token y el sondeo traerá las respuestas del agente.
+    if (lj?.token) {
+      setLeadToken(lj.token); try { localStorage.setItem('onyx_support_token', lj.token); } catch {}
+      setChat((c) => [...c, { role: 'assistant', content: es ? 'Listo ✅ Te respondemos aquí mismo y también por correo. Puedes seguir escribiendo.' : "Done ✅ We'll reply right here and by email. Feel free to keep writing." }]);
+    } else {
+      setSent(true);
+    }
   }
 
   const bubble = (role: string) => role === 'user'

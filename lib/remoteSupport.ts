@@ -1,22 +1,21 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSetting } from '@/lib/settings';
-import { sendEmail } from '@/lib/mail';
 import { notifyNewTicket } from '@/lib/supportNotify';
 
 // ============================================================
-// Soporte remoto DE PAGO. La config (on/precio/herramienta/enlace/instrucción)
-// vive en app_settings bajo 'remote_support' (la edita Admin → Soporte).
+// Soporte remoto DE PAGO. La config OPERATIVA (on/precio/minutos/herramienta/
+// enlace) vive en app_settings bajo 'remote_support' (la edita Admin → Soporte).
+// El TEXTO del correo de confirmación vive en el sistema de plantillas
+// (emailTemplates: 'remote_support'), editable y testeable desde Admin → Correos.
 // Tras pagar (Stripe Checkout), fulfillRemoteSession deja el ticket en la
-// bandeja, avisa al equipo y le manda al cliente el enlace de la herramienta.
+// bandeja, avisa al equipo y le manda al cliente el correo de la plantilla.
 // ============================================================
 export type RemoteSupport = {
-  on: boolean; price: number; minutes: number; tool: string; link: string; note_es: string; note_en: string;
+  on: boolean; price: number; minutes: number; tool: string; link: string;
 };
 
 export const REMOTE_DEFAULT: RemoteSupport = {
   on: false, price: 25, minutes: 30, tool: 'AnyDesk', link: 'https://anydesk.com/download',
-  note_es: 'Descarga AnyDesk, ábrelo y comparte con el agente el código de 9 dígitos que te muestra. No cierres la ventana durante la sesión.',
-  note_en: 'Download AnyDesk, open it and share the 9-digit code it shows with the agent. Keep the window open during the session.',
 };
 
 export async function getRemoteConfig(): Promise<RemoteSupport> {
@@ -56,14 +55,14 @@ export async function fulfillRemoteSession(opts: { sessionId: string; email: str
   // Aviso al equipo (Telegram) de que entró una sesión remota pagada.
   try { await notifyNewTicket({ email, subject, isLead: !opts.userId }); } catch {}
 
-  // Correo al cliente con la herramienta + instrucción.
+  // Correo al cliente desde la PLANTILLA editable (Admin → Correos → 'remote_support').
   if (email) {
-    const note = en ? cfg.note_en : cfg.note_es;
-    const subj = en ? 'Your Onyx remote support session' : 'Tu sesión de soporte remoto de Onyx';
-    const bodyTxt = en
-      ? `Thanks — your remote support session is booked (${cfg.minutes} min).\n\nStep 1 — Download ${cfg.tool}: ${cfg.link}\nStep 2 — ${note}\n\nAn agent will contact you shortly to agree a time. Reply to this email if you need anything.`
-      : `¡Gracias! Tu sesión de soporte remoto quedó reservada (${cfg.minutes} min).\n\nPaso 1 — Descarga ${cfg.tool}: ${cfg.link}\nPaso 2 — ${note}\n\nUn agente te contactará en breve para acordar la hora. Responde a este correo si necesitas algo.`;
-    try { await sendEmail(email, subj, bodyTxt, { kind: 'support' }); } catch {}
+    try {
+      const { emailTplLive } = await import('@/lib/emailTemplates');
+      const { sendEmail } = await import('@/lib/mail');
+      const em = await emailTplLive('remote_support', en ? 'en' : 'es', { minutos: cfg.minutes, tool: cfg.tool, link: cfg.link });
+      if (em.subject) await sendEmail(email, em.subject, em.text, { kind: 'support', htmlBody: em.html || undefined });
+    } catch {}
   }
 
   return { ok: true, ticketId };

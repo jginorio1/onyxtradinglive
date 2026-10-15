@@ -1,4 +1,5 @@
 import { pickLang, langFromCookie } from '@/lib/i18n';
+import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail } from '@/lib/mail';
@@ -54,10 +55,21 @@ export async function POST(req: Request) {
     const firstUserMsg = history.find((m) => m?.role === 'user' && m?.content)?.content || message;
     const subject = (firstUserMsg || (lang === 'en' ? 'Question from the website' : 'Consulta desde la web')).slice(0, 120);
 
-    const { data: ticket, error } = await supabaseAdmin
-      .from('support_tickets')
-      .insert({ user_id: null, email, subject, category: 'general', status: 'open', is_lead: true })
-      .select('id').single();
+    // Token público para que el invitado (sin sesión) siga viendo y respondiendo
+    // la conversación en el widget. Si la columna aún no existe, el insert reintenta sin ella.
+    const publicToken = randomUUID();
+    let ticket: any = null; let error: any = null;
+    {
+      const r = await supabaseAdmin.from('support_tickets')
+        .insert({ user_id: null, email, subject, category: 'general', status: 'open', is_lead: true, public_token: publicToken })
+        .select('id').single();
+      if (r.error) {
+        const r2 = await supabaseAdmin.from('support_tickets')
+          .insert({ user_id: null, email, subject, category: 'general', status: 'open', is_lead: true })
+          .select('id').single();
+        ticket = r2.data; error = r2.error;
+      } else { ticket = r.data; }
+    }
     if (error || !ticket) return NextResponse.json({ error: error?.message || 'error' }, { status: 500 });
 
     // Adjunto opcional: una sola imagen (captura). Se sube server-side.
@@ -110,7 +122,8 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true, answered });
+    // Devolvemos el id y el token para que el widget siga la conversación en vivo.
+    return NextResponse.json({ ok: true, answered, ticketId: ticket.id, token: publicToken });
   } catch (e: any) {
     await logError('support_lead', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

@@ -13,8 +13,11 @@ export default function Addons() {
   const t = useT();
   const [a, setA] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  // Soporte remoto de pago (servicio) — vive en su propia clave de ajustes.
+  const [rem, setRem] = useState<any>(null);
+  const [remBusy, setRemBusy] = useState(false);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadRemote(); }, []);
   async function load() {
     const r = await fetch('/api/admin/retention');
     const j = await r.json();
@@ -26,6 +29,14 @@ export default function Addons() {
     const j = await r.json(); setBusy(false);
     if (!r.ok) { toastErr(j); return; }
     toast(t.re_saveAddon, 'ok'); load();
+  }
+  async function loadRemote() { try { const r = await fetch('/api/admin/support/remote'); setRem(await r.json()); } catch {} }
+  async function saveRemote() {
+    setRemBusy(true);
+    const r = await fetch('/api/admin/support/remote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(rem) });
+    const j = await r.json(); setRemBusy(false);
+    if (!r.ok) { toastErr(j); return; }
+    toast(t.re_saveAddon, 'ok'); loadRemote();
   }
 
   if (!a) return null;
@@ -94,6 +105,25 @@ export default function Addons() {
 
       <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={save} disabled={busy}>{t.re_saveAddon}</button>
       <p className="muted" style={{ fontSize: 12, marginTop: 14, lineHeight: 1.5 }}>El tope mensual de consultas de Onyx AI de cada plan se configura en cada tarjeta de plan, arriba (campo "Consultas de Onyx AI / mes").</p>
+
+      {/* Soporte remoto de pago (sesión 1 a 1). Guardado aparte, con su propio botón.
+          El texto del correo de confirmación se edita en Admin → Correos ('remote_support'). */}
+      {rem && (
+        <div style={{ borderTop: '1px solid var(--line)', marginTop: 18, paddingTop: 14 }}>
+          <h3 style={{ marginBottom: 4, fontSize: 15 }}><OnyxIcon emoji="🖥️" size={15} /> Soporte remoto (sesión de pago)</h3>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>Sesión 1 a 1 por pantalla compartida (pago único). No se ofrece en iPhone (regla de Apple). El correo de confirmación se edita en Admin → Correos → “Soporte remoto · sesión reservada”.</p>
+          <div className="grid g2" style={{ gap: 12 }}>
+            <div><span style={lbl}>Precio (USD)</span><input type="number" value={rem.price ?? 25} onChange={(e) => setRem({ ...rem, price: Number(e.target.value) })} style={num} /></div>
+            <div><span style={lbl}>Duración (min)</span><input type="number" value={rem.minutes ?? 30} onChange={(e) => setRem({ ...rem, minutes: Number(e.target.value) })} style={num} /></div>
+            <div><span style={lbl}>Herramienta</span><input value={rem.tool || ''} onChange={(e) => setRem({ ...rem, tool: e.target.value })} placeholder="AnyDesk" style={{ margin: 0 }} /></div>
+            <div><span style={lbl}>Enlace de descarga</span><input value={rem.link || ''} onChange={(e) => setRem({ ...rem, link: e.target.value })} placeholder="https://anydesk.com/download" style={{ margin: 0 }} /></div>
+          </div>
+          <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!rem.on} onChange={(e) => setRem({ ...rem, on: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.re_addonOn}
+          </label>
+          <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={saveRemote} disabled={remBusy}>{t.re_saveAddon}</button>
+        </div>
+      )}
     </div>
   );
 }

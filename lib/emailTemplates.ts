@@ -89,6 +89,11 @@ const TEMPLATES: Record<string, Entry> = {
     es: { subject: 'Prueba de correo · Onyx', body: 'Si ves este correo, el envío con Resend funciona. — Onyx Trading Live' },
     en: { subject: 'Test email · Onyx', body: 'If you can read this, sending with Resend works. — Onyx Trading Live' },
   },
+  // Confirmación de una sesión de soporte remoto pagada. Variables: {minutos} {tool} {link}.
+  remote_support: {
+    es: { subject: 'Tu sesión de soporte remoto · Onyx', body: '¡Gracias! Tu sesión de soporte remoto quedó reservada (**{minutos} min**).\n\nPaso 1 — Descarga {tool}:\n{link}\n\nPaso 2 — Ábrelo y comparte con el agente el código de 9 dígitos que te muestra. No cierres la ventana durante la sesión.\n\nUn agente te contactará en breve para acordar la hora. Responde a este correo si necesitas algo.\n\n— El equipo de Onyx Trading Live' },
+    en: { subject: 'Your remote support session · Onyx', body: 'Thanks! Your remote support session is booked (**{minutos} min**).\n\nStep 1 — Download {tool}:\n{link}\n\nStep 2 — Open it and share the 9-digit code it shows with the agent. Keep the window open during the session.\n\nAn agent will contact you shortly to agree a time. Reply to this email if you need anything.\n\n— The Onyx Trading Live team' },
+  },
 };
 
 function fill(s: string, vars: Record<string, string | number>): string {
@@ -137,6 +142,7 @@ export const TEMPLATE_META: { id: string; cat: string; es: string; en: string; v
   { id: 'security_locked', cat: 'security', es: 'Cuenta bloqueada por PIN (al admin)', en: 'Account locked by PIN (to admin)', vars: [], to: 'admin' },
   { id: 'dispute_alert', cat: 'security', es: 'Disputa de tarjeta (al admin)', en: 'Card dispute (to admin)', vars: ['id'], to: 'admin' },
   { id: 'mail_test', cat: 'security', es: 'Correo de prueba', en: 'Test email', vars: [], to: 'admin' },
+  { id: 'remote_support', cat: 'billing', es: 'Soporte remoto · sesión reservada', en: 'Remote support · session booked', vars: ['minutos', 'tool', 'link'], to: 'usuario' },
 ];
 
 export function defaultTemplates(): Record<string, Entry> { return TEMPLATES; }

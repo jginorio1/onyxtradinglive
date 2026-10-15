@@ -8,6 +8,7 @@ import { planFacts, trialLine } from '@/lib/planFacts';
 import { botLabSettings, clampPct, listMarketplace, vpsInfo } from '@/lib/botlab';
 import { academyFeeSettings } from '@/lib/settings';
 import { pickActiveBar, type PromoQueue } from '@/lib/promo';
+import { getRemoteConfig } from '@/lib/remoteSupport';
 import { catalogKey, CATALOG_DEFAULTS, type CatalogItem } from '@/lib/catalogDefaults';
 
 // ============================================================
@@ -248,6 +249,19 @@ export async function supportChatReply(question: string, lang: Lang, history: an
       prices += en
         ? `\n\n=== ADD-ONS (current, monthly, do not invent prices) ===\n${lines.map((l) => '- ' + l).join('\n')}\nAdd-ons are extras on top of the plan, managed from My account → Subscription.`
         : `\n\n=== ADD-ONS (actuales, mensuales, no inventes precios) ===\n${lines.map((l) => '- ' + l).join('\n')}\nLos add-ons son extras que se suman al plan; se gestionan desde Mi cuenta → Suscripción.`;
+    }
+  } catch {}
+
+  // SOPORTE REMOTO DE PAGO (si el dueño lo activó). La IA puede OFRECERLO cuando la
+  // persona necesita ayuda práctica (instalar el EA/cBot, configurar, conectar la
+  // cuenta, un error que no logra resolver). En iOS NO se ofrece (hidePricing): es un
+  // cobro fuera de Apple, así que ahí ni se menciona el precio ni se empuja.
+  if (!hidePricing) try {
+    const rs = await getRemoteConfig();
+    if (rs.on && rs.price > 0) {
+      prices += en
+        ? `\n\n=== PAID REMOTE SUPPORT (live) ===\nOnyx offers a paid 1-on-1 remote session ($${rs.price} for ~${rs.minutes} min, screen-share with ${rs.tool}) for hands-on help. Offer it ONLY when the person clearly needs practical help you can't fully solve in chat — installing the EA/cBot, setting it up, connecting the account, or an error they're stuck on — and only after trying to help first. When you offer it: logged-in users can tap the "Remote support" button in this chat; a visitor should leave their email so an agent sets it up. Mention it once, briefly; don't push it on general questions and don't invent a different price.`
+        : `\n\n=== SOPORTE REMOTO DE PAGO (en vivo) ===\nOnyx ofrece una sesión remota 1 a 1 de pago ($${rs.price} por ~${rs.minutes} min, compartiendo pantalla con ${rs.tool}) para ayuda práctica. Ofrécela SOLO cuando la persona claramente necesita ayuda de manos que no puedes resolver del todo por chat — instalar el EA/cBot, configurarlo, conectar la cuenta, o un error en el que está atascada — y solo después de intentar ayudar primero. Cuando la ofrezcas: los usuarios con sesión pueden tocar el botón "Soporte remoto" en este chat; un visitante que deje su correo para que un agente la coordine. Menciónala una vez, breve; no la empujes en preguntas generales ni inventes otro precio.`;
     }
   } catch {}
 
