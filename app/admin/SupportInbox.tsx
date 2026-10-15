@@ -120,7 +120,25 @@ export default function SupportInbox() {
     const f = () => setSmallScreen(window.innerWidth <= 860);
     f(); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f);
   }, []);
+  // visualViewport: al abrir el teclado del móvil, ajustamos la altura real del
+  // chat a pantalla completa para que el compositor NO quede tapado por el teclado.
+  const [vv, setVv] = useState<{ h: number; top: number } | null>(null);
+  useEffect(() => {
+    if (!(smallScreen && mobileOpen)) { setVv(null); return; }
+    const vp: any = typeof window !== 'undefined' ? (window as any).visualViewport : null;
+    if (!vp) return;
+    const on = () => setVv({ h: Math.round(vp.height), top: Math.round(vp.offsetTop || 0) });
+    on(); vp.addEventListener('resize', on); vp.addEventListener('scroll', on);
+    return () => { vp.removeEventListener('resize', on); vp.removeEventListener('scroll', on); };
+  }, [smallScreen, mobileOpen]);
   const [text, setText] = useState('');
+  // Compositor que crece con el texto (como WhatsApp): hasta ~5 líneas y luego scroll.
+  const taRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = taRef.current; if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(120, Math.max(36, el.scrollHeight)) + 'px';
+  }, [text]);
   const [atts, setAtts] = useState<Att[]>([]);
   const [mode, setMode] = useState<'reply' | 'note'>('reply');
   const [showEmoji, setShowEmoji] = useState(false);
@@ -304,8 +322,10 @@ export default function SupportInbox() {
           .wa-chat{display:none}
           .wa-hide-m{display:none !important}
           /* En móvil el chat va a PANTALLA COMPLETA, como el widget de soporte.
+             La altura real la fija visualViewport (--wa-h) para que, al abrir el
+             teclado, el compositor quede SIEMPRE visible encima del teclado.
              padding-top = notch/barra de estado del iPhone para no taparse. */
-          .wa-fs-m{display:flex !important;position:fixed;inset:0;height:100dvh !important;max-height:100dvh;width:100%;border:none;border-radius:0;z-index:2147483000;background:var(--card);padding-top:env(safe-area-inset-top)}
+          .wa-fs-m{display:flex !important;position:fixed;left:0;right:0;top:var(--wa-top,0);height:var(--wa-h,100dvh) !important;max-height:var(--wa-h,100dvh);width:100%;border:none;border-radius:0;z-index:2147483000;background:var(--card);padding-top:env(safe-area-inset-top)}
           .wa-back{display:inline-flex !important}
           /* Ajustes (IA, SLA, rango) ocultos tras un botón para no saturar. */
           .wa-cfg{display:none}
@@ -445,7 +465,8 @@ export default function SupportInbox() {
         </div>
 
         {/* Panel de conversación */}
-        <div className={'wa-chat' + (mobileOpen ? ' wa-fs-m' : ' wa-hide-m')} style={{ height: paneH }}>
+        <div className={'wa-chat' + (mobileOpen ? ' wa-fs-m' : ' wa-hide-m')}
+          style={(smallScreen && mobileOpen && vv) ? ({ ['--wa-h' as any]: vv.h + 'px', ['--wa-top' as any]: vv.top + 'px' } as any) : { height: paneH }}>
           {!tk && <div className="muted" style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', fontSize: 14, textAlign: 'center', padding: 20 }}>{t.s_pickOne}</div>}
           {tk && (() => {
             const tm = msgs.filter((m) => m.ticket_id === tk.id);
@@ -528,7 +549,7 @@ export default function SupportInbox() {
                 <div className="wa-body">
                   <ChatThread messages={chatMsgs} lang={lang as any} onSend={() => {}} canReply={false} showAuthors
                     typingLabel={traderTyping ? `${t.sender_trader} ${l.typing}` : ''}
-                    height={(smallScreen && mobileOpen) ? Math.max(260, (typeof window !== 'undefined' ? window.innerHeight : 640) - 230) : Math.max(220, paneH - 196)} />
+                    height={(smallScreen && mobileOpen) ? Math.max(160, (vv?.h ?? (typeof window !== 'undefined' ? window.innerHeight : 640)) - 220) : Math.max(220, paneH - 196)} />
                 </div>
 
                 {/* Compositor */}
