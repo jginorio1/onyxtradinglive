@@ -356,9 +356,12 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
           const uj = await up.json().catch(() => ({}));
           if (up.ok && uj.url) atts = [{ url: uj.url, name: uj.name, type: uj.type }];
         }
+        const firstQ = chat.find((m) => m.role === 'user')?.content || '';
         const lastQ = [...chat].reverse().find((m) => m.role === 'user')?.content || msg;
-        const subject = (lastQ || msg || (es ? 'Consulta desde el chat' : 'Chat question')).slice(0, 120);
-        await fetch('/api/support/tickets', { method: 'POST', body: JSON.stringify({ subject, body: msg, category: 'general', attachments: atts }) });
+        const subject = (firstQ || lastQ || msg || (es ? 'Consulta desde el chat' : 'Chat question')).slice(0, 120);
+        // Mandamos TODO el hilo con la IA para que el equipo vea el primer mensaje, no solo la caja.
+        const history = chat.filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({ role: m.role, content: m.content }));
+        await fetch('/api/support/tickets', { method: 'POST', body: JSON.stringify({ subject, body: msg, category: 'general', attachments: atts, history }) });
       } catch {}
       setBusy(false); setSent(true); setShowEmail(false); setAttach(null);
       return;

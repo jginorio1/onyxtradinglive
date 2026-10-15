@@ -40,11 +40,14 @@ export async function ensureTicketToken(ticketId: string): Promise<string> {
 // "El ... escribió:", firmas, etc.) para guardar solo lo que el cliente escribió.
 export function cleanReply(text: string): string {
   let s = String(text || '').replace(/\r/g, '');
+  // Marcadores de cita. Los de "On ... wrote:" / "El ... escribió:" NO van anclados a
+  // inicio de línea, porque cuando el cuerpo viene del HTML (sin saltos) quedan en
+  // medio de un párrafo. Se corta en la primera coincidencia.
   const markers: RegExp[] = [
-    /^On .+ wrote:\s*$/im,
-    /^El .+ escribi[oó]:\s*$/im,
-    /^-{2,}\s*Original Message\s*-{2,}/im,
-    /^_{5,}/m,
+    /On\s[\s\S]{0,160}?\swrote:/i,
+    /El\s[\s\S]{0,160}?\sescribi[oó]:/i,
+    /-{2,}\s*Original Message\s*-{2,}/i,
+    /_{5,}/,
     /^From:\s.+$/im,
     /^De:\s.+$/im,
     /Responde a este correo/i,

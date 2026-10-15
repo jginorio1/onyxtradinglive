@@ -56,8 +56,12 @@ export async function POST(req: Request) {
     // Adjuntos (URLs ya subidas por /api/chat/upload). Máx 3.
     const attachments = (Array.isArray(b.attachments) ? b.attachments : []).slice(0, 3)
       .filter((a: any) => a && typeof a.url === 'string');
-    // Se permite un ticket con solo captura (sin texto) siempre que haya asunto.
-    if (!subject || (!body && !attachments.length)) return NextResponse.json({ error: 'faltan datos', code: 'missing' }, { status: 400 });
+    // Conversación previa con la IA del widget (para que el equipo vea el hilo completo,
+    // incluido el PRIMER mensaje del cliente, no solo lo que escribió en la caja).
+    const history: any[] = Array.isArray(b.history) ? b.history.slice(-20) : [];
+    const hasHistory = history.some((m) => m && (m.role === 'user' || m.role === 'assistant') && String(m.content || '').trim());
+    // Se permite un ticket con solo captura o solo historial siempre que haya asunto.
+    if (!subject || (!body && !attachments.length && !hasHistory)) return NextResponse.json({ error: 'faltan datos', code: 'missing' }, { status: 400 });
 
     const { data: ticket, error } = await supabaseAdmin
       .from('support_tickets')
@@ -65,10 +69,21 @@ export async function POST(req: Request) {
       .select('id').single();
     if (error || !ticket) return NextResponse.json({ error: error?.message || 'error' }, { status: 500 });
 
-    const firstMsg: any = { ticket_id: ticket.id, sender: 'user', body };
-    if (attachments.length) firstMsg.attachments = attachments;
-    const im = await supabaseAdmin.from('support_messages').insert(firstMsg);
-    if ((im as any)?.error && attachments.length) await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'user', body });
+    // 1) Guardamos TODO el hilo previo con la IA (usuario e IA), en orden.
+    if (hasHistory) {
+      const rows = history
+        .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && String(m.content || '').trim())
+        .map((m) => ({ ticket_id: ticket.id, sender: m.role === 'assistant' ? 'ai' : 'user', body: String(m.content).slice(0, 4000) }));
+      if (rows.length) await supabaseAdmin.from('support_messages').insert(rows);
+    }
+    // 2) El mensaje de la caja de contacto (si escribió algo o adjuntó captura).
+    //    Si solo había historial sin texto nuevo, no insertamos un mensaje vacío.
+    if (body || attachments.length) {
+      const firstMsg: any = { ticket_id: ticket.id, sender: 'user', body };
+      if (attachments.length) firstMsg.attachments = attachments;
+      const im = await supabaseAdmin.from('support_messages').insert(firstMsg);
+      if ((im as any)?.error && attachments.length) await supabaseAdmin.from('support_messages').insert({ ticket_id: ticket.id, sender: 'user', body });
+    }
     // Nota interna con roles/plan/estado del usuario (solo la ve el equipo, no el trader).
     try {
       const ctx = await getSupportContext(user.id);
@@ -78,10 +93,13 @@ export async function POST(req: Request) {
     } catch { /* la nota es opcional */ }
     await notifyNewTicket({ email: user.email || '', subject, isLead: false });
 
-    // Triage + auto-respuesta con IA, en el idioma del trader
+    // Triage + auto-respuesta con IA, en el idioma del trader. La "pregunta" es lo
+    // que escribió en la caja o, si solo venía del chat, el primer mensaje del cliente.
+    const firstUserMsg = (history.find((m) => m?.role === 'user' && String(m?.content || '').trim())?.content as string) || '';
+    const question = body || firstUserMsg;
     const { data: prof } = await supabaseAdmin.from('profiles').select('lang').eq('id', user.id).maybeSingle();
     const lang = pickLang((prof as any)?.lang);
-    await autoHandleTicket({ ticketId: ticket.id, question: body, lang, email: user.email, subject });
+    await autoHandleTicket({ ticketId: ticket.id, question, lang, email: user.email, subject });
 
     return NextResponse.json({ ok: true, id: ticket.id });
   } catch (e: any) {
