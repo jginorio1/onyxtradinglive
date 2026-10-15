@@ -43,9 +43,9 @@ export async function notifyRep(repId: string, ev: SalesEv, data: { amount?: num
     if (!m) return; // evento desconocido: no romper
     const url = '/dashboard/ventas';
 
-    try { await notify(uid, { kind: 'info', title: m.t, body: m.b, url }); } catch { /* opcional */ }
-    // Push al móvil del vendedor (no gateado por plan: es staff). Comisiones, leads, metas.
-    try { const { sendPush } = await import('@/lib/push'); await sendPush(uid, { title: m.t, body: m.b, url, category: 'onyx_ingresos' } as any); } catch { /* opcional */ }
+    // Campana + push por el catálogo editable en Admin (tipo 'sales_alert'). El
+    // título/cuerpo del evento van como {title}/{body}; on-off y urgente se editan en Admin.
+    try { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(uid, 'sales_alert', { lang: es ? 'es' : 'en', vars: { title: m.t, body: m.b }, url, ignorePlan: true }); } catch { /* opcional */ }
     if (p?.email) { try { await sendEmail(p.email, m.t, `${m.b}\n\n${APP_URL}${url}`); } catch { /* opcional */ } }
     if (p?.telegram_chat_id && p.tg_alerts !== false) {
       try { await sendMessage(p.telegram_chat_id, `${m.t}\n\n${m.b}`, { kind: 'sales', userId: uid }); } catch { /* opcional */ }

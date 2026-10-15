@@ -9,13 +9,13 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 // cada push muestra su nombre de canal (Plan, Robots, Soporte…).
 export function notifCategory(key: string): string {
   if (['checkin', 'checkin_evening', 'no_trade', 'journal_reminder'].includes(key)) return 'onyx_plan';
-  if (['ea_down', 'goal_reached', 'funding_near', 'challenge_violation', 'challenge_passed', 'big_trade', 'news_high'].includes(key)) return 'onyx_trading';
+  if (['ea_down', 'goal_reached', 'funding_near', 'challenge_violation', 'challenge_passed', 'big_trade', 'news_high', 'challenge_alert'].includes(key)) return 'onyx_trading';
   if (key === 'bot_alert') return 'onyx_robots';
   if (key === 'copy_stopped') return 'onyx_copy';
-  if (['live_class', 'academy_activity'].includes(key)) return 'onyx_academia';
-  if (['referral_reward', 'member_reward', 'became_ambassador', 'ambassador_invite', 'academy_reward_credited', 'academy_reward_paid', 'new_commission', 'bot_sold'].includes(key)) return 'onyx_ingresos';
-  if (key === 'payment_failed') return 'onyx_cuenta';
-  if (key === 'support_reply') return 'onyx_soporte';
+  if (['live_class', 'academy_activity', 'academy_announcement', 'academy_dm', 'academy_win', 'academy_class'].includes(key)) return 'onyx_academia';
+  if (['referral_reward', 'member_reward', 'became_ambassador', 'ambassador_invite', 'academy_reward_credited', 'academy_reward_paid', 'new_commission', 'bot_sold', 'sales_alert'].includes(key)) return 'onyx_ingresos';
+  if (['payment_failed', 'plan_change'].includes(key)) return 'onyx_cuenta';
+  if (['support_reply', 'team_mention'].includes(key)) return 'onyx_soporte';
   if (key === 'weekly_summary') return 'onyx_resumen';
   return 'onyx_default';
 }

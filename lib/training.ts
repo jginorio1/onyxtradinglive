@@ -267,10 +267,10 @@ export async function submitExam(userId: string, trackId: string, answers: Recor
     certIssued = true;
     // Aviso in-app (no bloquea si falla).
     try {
-      const { notify } = await import('@/lib/notify');
-      const trTitle = en ? 'Course passed' : 'Curso aprobado'; const trBody = `${T(t, 'title', lang)} · ${score}/100`;
-      await notify(userId, { kind: 'training', title: trTitle, body: trBody, url: '/entrenamiento' });
-      try { const { sendPush } = await import('@/lib/push'); await sendPush(userId, { title: trTitle, body: trBody, url: '/entrenamiento', category: 'onyx_default' } as any); } catch {}
+      const trBody = `${T(t, 'title', lang)} · ${score}/100`;
+      // Campana + push por el catálogo editable en Admin (tipo 'course_passed').
+      const { emitNotif } = await import('@/lib/emitNotif');
+      await emitNotif(userId, 'course_passed', { lang, vars: { body: trBody }, ignorePlan: true });
     } catch {}
     // Correo con enlace de descarga del certificado.
     if (s.email_cert) {
@@ -658,7 +658,7 @@ export async function runTrainingReminders(): Promise<{ pending: number; expirin
     for (const p of r) {
       if (!p.active) continue;
       if (p.tracksTotal > 0 && (p.progress < 100 || p.passed < p.tracksTotal)) {
-        try { await notify(p.user_id, { kind: 'training', title: 'Formación pendiente', body: `Tienes cursos por completar (${p.progress}%).`, url: '/entrenamiento' }); try { const { sendPush } = await import('@/lib/push'); await sendPush(p.user_id, { title: 'Formación pendiente', body: `Tienes cursos por completar (${p.progress}%).`, url: '/entrenamiento', category: 'onyx_default' } as any); } catch {} pending++; } catch {}
+        try { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(p.user_id, 'training_pending', { vars: { body: `Tienes cursos por completar (${p.progress}%).` }, ignorePlan: true }); pending++; } catch {}
       }
     }
   }
@@ -672,7 +672,7 @@ export async function runTrainingReminders(): Promise<{ pending: number; expirin
       if ((c.remind_level || 0) >= 1) continue; // ya avisado
       const days = Math.max(0, Math.ceil((new Date(c.expires_at).getTime() - Date.now()) / 86400000));
       try {
-        { const cBody = `Vence en ${days} día(s). Vuelve a certificarte para no perder acceso a leads.`; await notify(c.user_id, { kind: 'training', title: 'Certificado por vencer', body: cBody, url: '/entrenamiento' }); try { const { sendPush } = await import('@/lib/push'); await sendPush(c.user_id, { title: 'Certificado por vencer', body: cBody, url: '/entrenamiento', category: 'onyx_default' } as any); } catch {} }
+        { const cBody = `Vence en ${days} día(s). Vuelve a certificarte para no perder acceso a leads.`; try { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(c.user_id, 'cert_expiring', { vars: { body: cBody }, ignorePlan: true }); } catch {} }
         await supabaseAdmin.from('training_certificates').update({ remind_level: 1 }).eq('id', c.id);
         expiring++;
       } catch {}
@@ -682,7 +682,7 @@ export async function runTrainingReminders(): Promise<{ pending: number; expirin
     for (const c of (expired || []) as any[]) {
       if ((c.remind_level || 0) >= 2) continue;
       try {
-        { const xBody = s.gating_enabled ? 'Tu certificado venció: no recibirás leads hasta recertificarte.' : 'Tu certificado venció. Recertifícate cuanto antes.'; await notify(c.user_id, { kind: 'training', title: 'Certificado vencido', body: xBody, url: '/entrenamiento' }); try { const { sendPush } = await import('@/lib/push'); await sendPush(c.user_id, { title: 'Certificado vencido', body: xBody, url: '/entrenamiento', category: 'onyx_default' } as any); } catch {} }
+        { const xBody = s.gating_enabled ? 'Tu certificado venció: no recibirás leads hasta recertificarte.' : 'Tu certificado venció. Recertifícate cuanto antes.'; try { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(c.user_id, 'cert_expired', { vars: { body: xBody }, ignorePlan: true }); } catch {} }
         await supabaseAdmin.from('training_certificates').update({ remind_level: 2 }).eq('id', c.id);
         expiring++;
       } catch {}

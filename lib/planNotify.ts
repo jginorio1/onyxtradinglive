@@ -1,7 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendMessage } from '@/lib/telegram';
 import { sendEmail } from '@/lib/mail';
-import { sendPush } from '@/lib/push';
+import { emitNotif } from '@/lib/emitNotif';
 
 // ============================================================
 // Cambio de plan: avisos + aplicación de límites al bajar de plan.
@@ -32,7 +32,9 @@ export async function notifyPlanChange(userId: string, subject: BiText, body: Bi
     if (p.telegram_chat_id && p.tg_alerts !== false && p.tg_billing !== false) {
       try { await sendMessage(p.telegram_chat_id, `💳 ${subject[lang]}\n\n${body[lang]}`, { kind: 'billing', userId }); } catch { /* opcional */ }
     }
-    try { await sendPush(userId, { title: subject[lang], body: body[lang], url: '/account' }); } catch { /* push opcional */ }
+    // Push + campana por el catálogo editable en Admin (tipo 'plan_change'). El
+    // detalle dinámico va como {body}; el título/encendido/urgente se editan en Admin.
+    try { await emitNotif(userId, 'plan_change', { lang, vars: { body: body[lang] }, ignorePlan: true }); } catch { /* push opcional */ }
   } catch { /* nunca romper el flujo por un aviso */ }
 }
 

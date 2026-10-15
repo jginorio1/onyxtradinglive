@@ -235,6 +235,117 @@ export const NOTIF_CATALOG: NotifDef[] = [
     editableChannels: ['bell', 'push', 'telegram'],
     feature: 'copy',
   },
+  {
+    // Activación: se registró y abrió la app (tiene dispositivo), para encaminarlo.
+    key: 'welcome', group: 'Activación',
+    es: { title: '👋 Bienvenido a Onyx, {name}', body: 'Entra y arma tu plan de trading. Tu panel te espera.' },
+    en: { title: '👋 Welcome to Onyx, {name}', body: 'Jump in and set up your trading plan. Your dashboard is ready.' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    // Activación: lleva días registrado y aún NO conectó una cuenta de bróker.
+    key: 'connect_reminder', group: 'Activación',
+    es: { title: '🔌 Te falta un paso para empezar', body: 'Conecta tu cuenta de bróker y Onyx empieza a cuidarte. Son 2 minutos.' },
+    en: { title: '🔌 One step left to start', body: 'Connect your broker account and Onyx starts protecting you. Takes 2 minutes.' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/keys',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    // Reenganche: no entra hace varios días (last_seen_at).
+    key: 'comeback', group: 'Activación',
+    es: { title: '👋 Te extrañamos, {name}', body: 'Tu plan y tus métricas te esperan. Vuelve cuando quieras.' },
+    en: { title: '👋 We miss you, {name}', body: 'Your plan and your stats are waiting. Come back anytime.' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard',
+    editableChannels: ['bell', 'push'],
+  },
+  // ── Avisos que antes iban con texto fijo en código; ahora editables en Admin.
+  // El cuerpo lleva {body} (contenido dinámico que llega al enviar). Puedes
+  // cambiar el prefijo/título y encender/apagar o marcar urgente.
+  {
+    key: 'challenge_alert', group: 'Trading y reto',
+    es: { title: '⚠️ Tu reto · {name}', body: '{body}' },
+    en: { title: '⚠️ Your challenge · {name}', body: '{body}' },
+    bell: true, push: true, telegram: false, tgKind: 'challenge', url: '/dashboard?view=reto',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'plan_change', group: 'Cuenta y pagos',
+    es: { title: '💳 Cambio en tu plan', body: '{body}' },
+    en: { title: '💳 Your plan is changing', body: '{body}' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/account',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'team_mention', group: 'Equipo',
+    es: { title: '💬 {name} te mencionó', body: '{body}' },
+    en: { title: '💬 {name} mentioned you', body: '{body}' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/admin',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'course_passed', group: 'Capacitación',
+    es: { title: '🎓 Curso aprobado', body: '{body}' },
+    en: { title: '🎓 Course passed', body: '{body}' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/entrenamiento',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'training_pending', group: 'Capacitación',
+    es: { title: '📚 Formación pendiente', body: '{body}' },
+    en: { title: '📚 Training pending', body: '{body}' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/entrenamiento',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'cert_expiring', group: 'Capacitación',
+    es: { title: '⏳ Certificado por vencer', body: '{body}' },
+    en: { title: '⏳ Certificate expiring', body: '{body}' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/entrenamiento',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'cert_expired', group: 'Capacitación',
+    es: { title: '❌ Certificado vencido', body: '{body}' },
+    en: { title: '❌ Certificate expired', body: '{body}' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/entrenamiento',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'sales_alert', group: 'Ventas (equipo)',
+    es: { title: '{title}', body: '{body}' },
+    en: { title: '{title}', body: '{body}' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/sales',
+    editableChannels: ['bell', 'push'],
+  },
+  {
+    key: 'academy_announcement', group: 'Academia',
+    es: { title: '📣 {name}', body: '{body}' },
+    en: { title: '📣 {name}', body: '{body}' },
+    bell: false, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
+    editableChannels: ['bell', 'push'], feature: 'academy',
+  },
+  {
+    key: 'academy_dm', group: 'Academia',
+    es: { title: '💬 {name}', body: '{body}' },
+    en: { title: '💬 {name}', body: '{body}' },
+    bell: false, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
+    editableChannels: ['bell', 'push'], feature: 'academy',
+  },
+  {
+    key: 'academy_win', group: 'Academia',
+    es: { title: '🏆 Logro', body: '{body}' },
+    en: { title: '🏆 Achievement', body: '{body}' },
+    bell: false, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
+    editableChannels: ['bell', 'push'], feature: 'academy',
+  },
+  {
+    key: 'academy_class', group: 'Academia',
+    es: { title: '🔴 Clase en vivo pronto', body: '{body}' },
+    en: { title: '🔴 Live class soon', body: '{body}' },
+    bell: false, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/academy',
+    editableChannels: ['bell', 'push'], feature: 'academy',
+  },
 ];
 
 export type NotifOverride = { on?: boolean; title_es?: string; title_en?: string; body_es?: string; body_en?: string; bell?: boolean; push?: boolean; telegram?: boolean; urgent?: boolean };
