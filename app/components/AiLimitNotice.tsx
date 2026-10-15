@@ -110,8 +110,10 @@ export default function AiLimitNotice({ allowance, lang = 'es', onBought, onClos
   // --- Modal: popup centrado con fondo oscurecido y botón de cerrar ---
   if (!mounted) return null;
   return createPortal(
-    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (onClose)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 4000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 420, position: 'relative' }}>
+    // Fondo oscurecido. OJO: no cierra al hacer clic fuera (para no perder el
+    // formulario de tarjeta por error); solo cierra con la ✕.
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 4000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5vh 20px', overflowY: 'auto' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: needCard ? 620 : 440, position: 'relative' }}>
         {onClose && (
           <button onClick={onClose} aria-label="Cerrar" style={{ position: 'absolute', top: -10, right: -10, width: 30, height: 30, borderRadius: 999, border: '1px solid var(--line)', background: 'var(--bg)', color: 'var(--tx)', cursor: 'pointer', fontSize: 15, lineHeight: 1, zIndex: 1 }}>✕</button>
         )}
