@@ -169,6 +169,20 @@ export async function GET(req: Request) {
   let allowance: any = null;
   try { const { aiAllowance } = await import('@/lib/aiLimits'); allowance = await aiAllowance(id); } catch {}
 
+  // ---- Compras de paquetes de consultas de IA (add-on de pago único / cortesía) ----
+  // Cada fila de 'ai_packs' = una compra (o regalo del admin, si cents = 0).
+  try {
+    const { data } = await supabaseAdmin.from('ai_packs').select('qty,cents,period,created_at').eq('user_id', id).order('created_at', { ascending: false }).limit(40);
+    (data || []).forEach((p: any) => {
+      const free = Number(p.cents || 0) <= 0;
+      events.push({
+        ts: p.created_at || null, theme: 'ia', icon: 'coins',
+        title: free ? 'Le dieron consultas de IA (cortesía)' : 'Compró un paquete de consultas de IA',
+        detail: `+${p.qty} consultas${free ? '' : ` · $${(Number(p.cents) / 100).toFixed(2)}`}`,
+      });
+    });
+  } catch { /* si la tabla no existe aún, no hay compras que mostrar */ }
+
   // Ordena por fecha (los sin fecha, al final).
   events.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
 
