@@ -89,6 +89,11 @@ const TEMPLATES: Record<string, Entry> = {
     es: { subject: 'Prueba de correo · Onyx', body: 'Si ves este correo, el envío con Resend funciona. — Onyx Trading Live' },
     en: { subject: 'Test email · Onyx', body: 'If you can read this, sending with Resend works. — Onyx Trading Live' },
   },
+  // Recordatorio cuando un ticket lleva horas sin respuesta del cliente. Variables: {asunto} {enlace}.
+  support_followup: {
+    es: { subject: '¿Seguimos ayudándote? · {asunto}', body: 'Hola:\n\nTe escribimos hace un tiempo sobre tu consulta "{asunto}" y aún no tenemos tu respuesta.\n\n¿Pudimos resolverlo? Si todavía necesitas ayuda, responde a este correo o entra a tu Centro de soporte y seguimos desde donde lo dejamos:\n{enlace}\n\nSi no respondes, cerraremos el caso en un par de días (podrás reabrirlo cuando quieras respondiendo a este mismo correo).\n\n— El equipo de Onyx Trading Live' },
+    en: { subject: 'Still need a hand? · {asunto}', body: 'Hi,\n\nWe reached out a while ago about your question "{asunto}" and haven\'t heard back.\n\nDid we get it sorted? If you still need help, just reply to this email or open your Support Center and we\'ll pick up where we left off:\n{enlace}\n\nIf we don\'t hear from you, we\'ll close the case in a couple of days (you can reopen it anytime by replying to this email).\n\n— The Onyx Trading Live team' },
+  },
   // Confirmación de una sesión de soporte remoto pagada. Variables: {minutos} {tool} {link}.
   remote_support: {
     es: { subject: 'Tu sesión de soporte remoto · Onyx', body: '¡Gracias! Tu sesión de soporte remoto quedó reservada (**{minutos} min**).\n\nPaso 1 — Descarga {tool}:\n{link}\n\nPaso 2 — Ábrelo y comparte con el agente el código de 9 dígitos que te muestra. No cierres la ventana durante la sesión.\n\nUn agente te contactará en breve para acordar la hora. Responde a este correo si necesitas algo.\n\n— El equipo de Onyx Trading Live' },
@@ -143,6 +148,7 @@ export const TEMPLATE_META: { id: string; cat: string; es: string; en: string; v
   { id: 'dispute_alert', cat: 'security', es: 'Disputa de tarjeta (al admin)', en: 'Card dispute (to admin)', vars: ['id'], to: 'admin' },
   { id: 'mail_test', cat: 'security', es: 'Correo de prueba', en: 'Test email', vars: [], to: 'admin' },
   { id: 'remote_support', cat: 'billing', es: 'Soporte remoto · sesión reservada', en: 'Remote support · session booked', vars: ['minutos', 'tool', 'link'], to: 'usuario' },
+  { id: 'support_followup', cat: 'account', es: 'Soporte · recordatorio sin respuesta', en: 'Support · no-reply reminder', vars: ['asunto', 'enlace'], to: 'usuario' },
 ];
 
 export function defaultTemplates(): Record<string, Entry> { return TEMPLATES; }

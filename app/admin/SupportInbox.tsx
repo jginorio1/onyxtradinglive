@@ -131,6 +131,11 @@ export default function SupportInbox() {
   const [aiOn, setAiOn] = useState<boolean | null>(null);
   async function loadAi() { try { const r = await fetch('/api/admin/support/settings'); const j = await r.json(); setAiOn(!!j.enabled); } catch {} }
   async function toggleAi() { const next = !aiOn; setAiOn(next); try { await fetch('/api/admin/support/settings', { method: 'POST', body: JSON.stringify({ enabled: next }) }); } catch {} }
+  // SLA: recordatorio/cierre al cliente inactivo + aviso/vencido cuando el equipo tarda.
+  const [sla, setSla] = useState<any>(null);
+  const [slaOpen, setSlaOpen] = useState(false);
+  async function loadSla() { try { const r = await fetch('/api/admin/support/sla'); setSla(await r.json()); } catch {} }
+  async function saveSla() { try { const r = await fetch('/api/admin/support/sla', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(sla) }); setSla(await r.json()); } catch {} }
 
   async function load() {
     try {
@@ -140,7 +145,7 @@ export default function SupportInbox() {
     } catch {}
   }
   async function loadCanned() { try { const r = await fetch('/api/admin/support/canned'); const j = await r.json(); setCanned(j.canned || []); } catch {} }
-  useEffect(() => { load(); loadCanned(); loadAi(); const iv = setInterval(load, 8000); return () => clearInterval(iv); }, []);
+  useEffect(() => { load(); loadCanned(); loadAi(); loadSla(); const iv = setInterval(load, 8000); return () => clearInterval(iv); }, []);
   // Si llega con ?ticket=ID (desde el aviso sticky), abre esa conversación.
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('ticket');
@@ -321,6 +326,34 @@ export default function SupportInbox() {
           <div className="muted" style={{ fontSize: 12 }}>{aiOn === false ? l.aiAutoOff : l.aiAutoOn}</div>
         </div>
         <Switch on={!!aiOn} onClick={toggleAi} disabled={aiOn === null} />
+      </div>
+
+      {/* SLA de soporte: tiempos de recordatorio/cierre al cliente y de aviso/vencido al equipo. */}
+      <div className="card" style={{ padding: '10px 14px', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ width: 30, height: 30, borderRadius: 9, flex: 'none', background: 'linear-gradient(135deg,#f7b955,#ef5a5a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17' }}><Icon name="clock" size={17} /></span>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>{es ? 'Tiempos de respuesta (SLA)' : 'Response times (SLA)'}</div>
+            <div className="muted" style={{ fontSize: 12 }}>{es ? 'Recuerda y cierra al cliente inactivo; avisa y marca vencido si el equipo tarda.' : 'Reminds/closes idle customers; alerts and flags overdue when the team is slow.'}</div>
+          </div>
+          {sla && <Switch on={!!sla.on} onClick={() => { const n = { ...sla, on: !sla.on }; setSla(n); fetch('/api/admin/support/sla', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(n) }).catch(() => {}); }} />}
+          <button className="wa-hb" onClick={() => setSlaOpen((v) => !v)} title={es ? 'Ajustar tiempos' : 'Tune times'} style={{ transform: slaOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><Icon name="chevronDown" size={16} /></button>
+        </div>
+        {slaOpen && sla && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--mut)' }}>{es ? 'Cliente que no responde' : 'Customer not replying'}</div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+              <label style={{ fontSize: 12 }}>{es ? 'Recordatorio (horas)' : 'Reminder (hours)'}<input type="number" min={1} value={sla.reminderH} onChange={(e) => setSla({ ...sla, reminderH: Number(e.target.value) })} style={{ display: 'block', width: 90, marginTop: 3 }} /></label>
+              <label style={{ fontSize: 12 }}>{es ? 'Cierre (horas)' : 'Close (hours)'}<input type="number" min={2} value={sla.closeH} onChange={(e) => setSla({ ...sla, closeH: Number(e.target.value) })} style={{ display: 'block', width: 90, marginTop: 3 }} /></label>
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: 'var(--mut)' }}>{es ? 'Equipo que tarda' : 'Team too slow'}</div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+              <label style={{ fontSize: 12 }}>{es ? 'Aviso (min)' : 'Alert (min)'}<input type="number" min={5} value={sla.ackMin} onChange={(e) => setSla({ ...sla, ackMin: Number(e.target.value) })} style={{ display: 'block', width: 90, marginTop: 3 }} /></label>
+              <label style={{ fontSize: 12 }}>{es ? 'Vencido (min)' : 'Overdue (min)'}<input type="number" min={10} value={sla.overdueMin} onChange={(e) => setSla({ ...sla, overdueMin: Number(e.target.value) })} style={{ display: 'block', width: 90, marginTop: 3 }} /></label>
+            </div>
+            <button className="btn btn-primary" onClick={saveSla}>{es ? 'Guardar tiempos' : 'Save times'}</button>
+          </div>
+        )}
       </div>
 
       <div className="row" style={{ gap: 7, marginBottom: 12, flexWrap: 'wrap' }}>
