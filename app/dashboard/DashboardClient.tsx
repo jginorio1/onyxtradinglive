@@ -1,6 +1,6 @@
 'use client';
 import { dictFor } from '@/lib/i18n';
-import { useEffect, useMemo, useState, Fragment } from 'react';
+import { useEffect, useMemo, useState, useRef, Fragment } from 'react';
 import { useLang } from '@/lib/lang';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -579,6 +579,18 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
       if (v && (ok as string[]).includes(v)) setView(v as View);
     } catch {}
   }, []);
+
+  // Deep-link del push de Check-in/Check-out: /dashboard?checkin=open abre directo el
+  // POPUP para marcar hábitos. Espera a que el popup esté montado (checkin.open listo) y
+  // lo abre una sola vez. Útil cuando el trader toca la notificación en el móvil.
+  const checkinAutoRef = useRef(false);
+  useEffect(() => {
+    if (checkinAutoRef.current) return;
+    try {
+      const q = new URLSearchParams(window.location.search).get('checkin');
+      if ((q === 'open' || q === '1') && checkin?.open) { checkinAutoRef.current = true; checkin.open(); }
+    } catch {}
+  }, [checkin]);
 
   // El botón "Panel" de la barra (estando ya en /dashboard) pide volver al hub.
   useEffect(() => {

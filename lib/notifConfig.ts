@@ -32,14 +32,15 @@ export const NOTIF_CATALOG: NotifDef[] = [
     es: { title: '✅ Tu check-in de hoy', body: 'Marca tus hábitos para no perder tu racha.' },
     en: { title: '✅ Your daily check-in', body: 'Mark your habits to keep your streak alive.' },
     // Único recordatorio rutinario con push de fábrica: un empujón diario por la racha.
-    bell: true, push: true, telegram: true, tgKind: 'daily', url: '/dashboard?view=plan',
+    // ?checkin=open → al tocar la notificación se abre directo el popup del check-in.
+    bell: true, push: true, telegram: true, tgKind: 'daily', url: '/dashboard?view=plan&checkin=open',
     editableChannels: ['bell', 'push', 'telegram'],
   },
   {
     key: 'checkin_evening', group: 'Plan y hábitos', extra: true,
     es: { title: '🌙 Cierra tu check-in', body: 'Antes de terminar el día, marca los hábitos que te falten y guarda tu racha.' },
     en: { title: '🌙 Close your check-in', body: 'Before the day ends, tick your remaining habits and keep your streak.' },
-    bell: true, push: false, telegram: false, tgKind: 'daily', url: '/dashboard?view=plan',
+    bell: true, push: false, telegram: false, tgKind: 'daily', url: '/dashboard?view=plan&checkin=open',
     editableChannels: ['bell', 'push', 'telegram'],
   },
   {
