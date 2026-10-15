@@ -487,7 +487,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
                 {s.winRateRespect != null && `${t.winR}: ${s.winRateRespect}%`}{s.winRateBroken != null && ` · ${t.winB}: ${s.winRateBroken}%`}{s.overtradingDays > 0 && ` · ${t.overtr}: ${s.overtradingDays}`}
               </p>
             )}
-            {aiLimit && <div style={{ marginTop: 8 }}><AiLimitNotice allowance={aiLimit} lang={lang} /></div>}
+            {aiLimit && <AiLimitNotice allowance={aiLimit} lang={lang} onClose={() => setAiLimit(null)} />}
             {review && <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', marginTop: 8 }}><ReviewText text={review} /></div>}
           </div>
         </div>

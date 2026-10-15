@@ -88,8 +88,7 @@ export default function CoachCard({ from, to, account, rail = false, demo = fals
   // Cuerpo del repaso (se usa inline en modo normal, o dentro del modal en modo riel).
   const reviewBody = (
     <>
-      {aiLimit && <div style={{ marginBottom: 10 }}><AiLimitNotice allowance={aiLimit} lang={lang} /></div>}
-      {windowLine && <div className="muted" style={{ fontSize: 11.5, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📅" size={13} /> {windowLine}</div>}
+      {windowLine &&<div className="muted" style={{ fontSize: 11.5, marginBottom: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}><OnyxIcon emoji="📅" size={13} /> {windowLine}</div>}
       <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '12px 14px', fontSize: 14, lineHeight: 1.6 }}><RichText text={txt} /></div>
       {actions.length > 0 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
@@ -132,6 +131,9 @@ export default function CoachCard({ from, to, account, rail = false, demo = fals
           </div>
         </div>
       , document.body)}
+
+      {/* Popup notable cuando se alcanza el tope mensual de Onyx AI. */}
+      {aiLimit && <AiLimitNotice allowance={aiLimit} lang={lang} onBought={gen} onClose={() => setAiLimit(null)} />}
     </div>
   );
 }

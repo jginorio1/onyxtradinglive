@@ -669,7 +669,7 @@ function TradeModal({ trade, entry, acc, allTrades, lang, customTags, onAddTag, 
             {/* Coach IA por trade */}
             <div style={{ marginTop: 12 }}>
               <button className="btn btn-ghost" onClick={askCoach} disabled={coaching} style={{ fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6 }}>{coaching ? t.coaching : (<><OnyxIcon emoji="✨" size={15} /> {t.coach}</>)}</button>
-              {aiLimit && <div style={{ marginTop: 8 }}><AiLimitNotice allowance={aiLimit} lang={lang} /></div>}
+              {aiLimit && <AiLimitNotice allowance={aiLimit} lang={lang} onClose={() => setAiLimit(null)} />}
               {coach && (
                 <div style={{ marginTop: 8, padding: '10px 12px', borderRadius: 12, background: 'rgba(124,140,255,.10)', border: '1px solid var(--brand)', fontSize: 13.5, lineHeight: 1.6, color: 'var(--tx)' }}>{coach}</div>
               )}
