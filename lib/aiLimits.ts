@@ -86,7 +86,7 @@ export async function aiAllowance(userId: string): Promise<Allowance> {
   } catch { /* si falta la columna user_id, used = 0 */ }
 
   const remaining = unlimited ? Infinity : Math.max(0, limit - used);
-  return { plan, quota, extra, limit, used, remaining, unlimited, staff, periodStart };
+  return { plan, quota, extra, limit, used, remaining, unlimited, staff, periodStart, canBuy, packOn, packQty, packPrice };
 }
 
 // Portero: ¿puede hacer una consulta más? Úsalo ANTES de llamar a la IA en las
