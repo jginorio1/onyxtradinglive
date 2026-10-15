@@ -28,6 +28,11 @@ export async function GET(req: Request) {
   try { const r = await supabaseAdmin.from('profiles').select('*').eq('id', id).maybeSingle(); prof = r.data; } catch {}
   const email = prof?.email || '';
 
+  // Mapa id→nombre visible de los planes, para mostrar "Onyx Builder" en vez de "trader".
+  const planName: Record<string, string> = {};
+  try { const { data } = await supabaseAdmin.from('plans').select('id,name'); (data || []).forEach((p: any) => { planName[p.id] = p.name || p.id; }); } catch {}
+  const pName = (idv: any) => idv ? (planName[idv] || String(idv)) : '—';
+
   // ---- Auth (registro, confirmación, último login, baneo) ----
   let au: any = null;
   try { const r = await (supabaseAdmin.auth as any).admin.getUserById(id); au = r?.data?.user || null; } catch {}
@@ -67,39 +72,67 @@ export async function GET(req: Request) {
 
   // ---- Correos que le envió el sistema ----
   if (email) {
+    const KIND: Record<string, string> = {
+      admin: 'Aviso del equipo', billing: 'Facturación', onboarding: 'Bienvenida', campaign: 'Campaña',
+      campaigns: 'Campaña', training_cert: 'Certificado de capacitación', password_reset: 'Restablecer contraseña',
+      ticket: 'Soporte', support: 'Soporte', scholarship: 'Beca (academia)', academy: 'Academia',
+      botlab_promo: 'Promo Bot Lab', botlab: 'Bot Lab', confirm: 'Confirmación de registro', signup: 'Confirmación de registro',
+    };
+    const ST: Record<string, string> = { sent: 'enviado', failed: 'falló', queued: 'en cola' };
     try {
       const { data } = await supabaseAdmin.from('email_log').select('subject,kind,status,created_at').eq('to_email', email).order('created_at', { ascending: false }).limit(60);
-      (data || []).forEach((m: any) => events.push({ ts: m.created_at || null, theme: 'correo', icon: 'mail', title: `Correo: ${S(m.subject, 60)}`, detail: [m.kind, m.status].filter(Boolean).join(' · ') || undefined }));
+      (data || []).forEach((m: any) => {
+        const k = m.kind ? (KIND[m.kind] || m.kind.replace(/_/g, ' ')) : '';
+        const st = m.status ? (ST[m.status] || m.status) : '';
+        events.push({ ts: m.created_at || null, theme: 'correo', icon: 'mail', title: `Correo: ${S(m.subject, 60)}`, detail: [k, st].filter(Boolean).join(' · ') || undefined });
+      });
     } catch {}
   }
 
   // ---- Tickets de soporte ----
+  const TST: Record<string, string> = { open: 'abierto', closed: 'cerrado', pending: 'pendiente', resolved: 'resuelto', answered: 'respondido', new: 'nuevo' };
   try {
     const { data } = await supabaseAdmin.from('support_tickets').select('*').eq('user_id', id).order('created_at', { ascending: false }).limit(30);
-    (data || []).forEach((t: any) => events.push({ ts: t.created_at || null, theme: 'soporte', urgent: (t.priority === 'high' || t.priority === 'urgent'), icon: 'lifebuoy', title: `Ticket: ${S(t.subject || t.title || 'consulta', 60)}`, detail: S(t.status, 24) || undefined }));
+    (data || []).forEach((t: any) => events.push({ ts: t.created_at || null, theme: 'soporte', urgent: (t.priority === 'high' || t.priority === 'urgent'), icon: 'lifebuoy', title: `Ticket: ${S(t.subject || t.title || 'consulta', 60)}`, detail: t.status ? (TST[t.status] || S(t.status, 24)) : undefined }));
   } catch {}
 
   // ---- Acciones de admin sobre el usuario ----
   try {
     const { data } = await supabaseAdmin.from('admin_log').select('admin_email,action,meta,created_at').eq('target', id).order('created_at', { ascending: false }).limit(60);
+    // Etiquetas de las acciones REALES que se registran sobre un usuario
+    // (ver app/api/admin/users, /credit, /user-activity, /security).
     const ADM: Record<string, string> = {
-      plan: 'Cambió de plan', self_plan: 'Cambió su propio plan', ban: 'Bloqueó la cuenta', unban: 'Desbloqueó la cuenta',
-      admin: 'Cambió rol de admin', delete_user: 'Eliminó la cuenta', email_user: 'Le envió un correo',
-      user_credit: 'Le aplicó crédito', resend_confirm: 'Reenvió el correo de confirmación',
-      comp_grant: 'Recibió una beca de competencia', comp_revoke: 'Se le quitó la beca',
-      pin_fail: 'Falló el PIN de copia', pin_set: 'Cambió su PIN de copia',
-      guardian_grant: 'Se le activó Onyx Guardian', guardian_revoke: 'Se le quitó Onyx Guardian',
-      verify: 'Fue verificado', unverify: 'Se le quitó la verificación', note: 'Nota del equipo',
+      plan: 'Le cambiaron el plan (manual)', self_plan: 'Cambió su propio plan',
+      ban: 'Bloquearon la cuenta', unban: 'Desbloquearon la cuenta',
+      admin: 'Cambiaron su rol de admin', name: 'Le cambiaron el nombre',
+      delete_user: 'Eliminaron la cuenta', email_user: 'Le enviaron un correo',
+      user_credit: 'Le aplicaron crédito', resend_confirm: 'Le reenviaron el correo de confirmación',
+      comp_grant: 'Le dieron días de cortesía', comp_revoke: 'Le quitaron la cortesía',
+      pin_fail: 'Falló el PIN de seguridad', pin_lockout: 'PIN bloqueado por intentos',
+      '2fa_backup_generate': 'Generó códigos de respaldo 2FA', '2fa_backup_used': 'Usó un código de respaldo 2FA',
     };
     // Convierte un código crudo ("algo_raro") en texto legible como último recurso.
     const pretty = (a: string) => a ? (a.charAt(0).toUpperCase() + a.slice(1)).replace(/_/g, ' ') : 'Acción';
     (data || []).forEach((l: any) => {
       const m: any = l.meta || {};
-      // Detalle: lo que cambió (p. ej. plan: Free → Trader) si viene en meta.
+      // Detalle: lo que cambió, según el tipo de acción (sin inventar).
       let detail = '';
-      if ((l.action === 'plan' || l.action === 'self_plan')) detail = [m.from, m.to].filter(Boolean).length ? `${S(m.from || '—', 20)} → ${S(m.to || '—', 20)}` : '';
-      else if (m.amount != null) detail = `$${m.amount}`;
-      else if (m.note) detail = S(m.note, 50);
+      if (l.action === 'plan' || l.action === 'self_plan') {
+        if (m.from || m.to) detail = `${pName(m.from)} → ${pName(m.to)}`;
+      } else if (l.action === 'comp_grant') {
+        const until = m.until ? `hasta ${String(m.until).slice(0, 10)}` : '';
+        detail = [m.days ? `${m.days} días` : '', m.plan ? `plan ${pName(m.plan)}` : '', until].filter(Boolean).join(' · ');
+      } else if (l.action === 'user_credit' && m.amount != null) {
+        detail = `$${m.amount}${m.note ? ' · ' + S(m.note, 40) : ''}`;
+      } else if (l.action === 'admin') {
+        detail = m.value ? 'ahora es admin' : 'ya no es admin';
+      } else if (l.action === 'name' && m.name) {
+        detail = S(m.name, 40);
+      } else if (l.action === 'email_user' && m.subject) {
+        detail = S(m.subject, 50);
+      } else if (m.note) {
+        detail = S(m.note, 50);
+      }
       const by = l.admin_email ? `por ${S(l.admin_email, 40)}` : '';
       events.push({ ts: l.created_at || null, theme: 'admin', icon: 'shield', title: (ADM[l.action] || pretty(l.action)), detail: [detail, by].filter(Boolean).join(' · ') || undefined });
     });
@@ -143,7 +176,7 @@ export async function GET(req: Request) {
   const presence = await userPresence(id);
 
   const summary = {
-    email, plan: prof?.plan || null,
+    email, plan: prof?.plan ? pName(prof.plan) : null,
     confirmed: !!confirmed,
     onboarded: !!prof?.onboarded_at,
     lastSeen: presence.lastSeen || prof?.last_seen_at || au?.last_sign_in_at || null,

@@ -93,10 +93,9 @@ export default function Addons() {
 
       <div style={{ borderTop: '1px solid var(--line)', marginTop: 16, paddingTop: 14 }}>
         <h3 style={{ marginBottom: 4, fontSize: 15 }}><OnyxIcon emoji="⚡" size={15} /> Paquete de consultas de Onyx AI</h3>
-        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>Add-on que suma consultas de IA al tope mensual del usuario. Define cuántas da cada paquete y su precio.</p>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>Pago único (no recurrente): suma consultas al tope del mes en curso. Se cobra una vez a la tarjeta guardada; el mes siguiente arranca sin extra. Define cuántas consultas da cada paquete y su precio.</p>
         <div className="grid g2" style={{ gap: 12 }}>
-          <div><span style={lbl}>Precio/mes</span><input type="number" value={a.ai_pack_price ?? 5} onChange={(e) => setA({ ...a, ai_pack_price: Number(e.target.value) })} style={num} /></div>
-          <div><span style={lbl}>Price ID Stripe</span><input value={a.ai_pack_price_id || ''} onChange={(e) => setA({ ...a, ai_pack_price_id: e.target.value })} placeholder="price_..." style={{ margin: 0 }} /></div>
+          <div><span style={lbl}>Precio (pago único)</span><input type="number" value={a.ai_pack_price ?? 5} onChange={(e) => setA({ ...a, ai_pack_price: Number(e.target.value) })} style={num} /></div>
           <div><span style={lbl}>Consultas por paquete</span><input type="number" value={a.ai_pack_qty ?? 100} onChange={(e) => setA({ ...a, ai_pack_qty: Number(e.target.value) })} style={num} /></div>
         </div>
         <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer' }}>

@@ -6,7 +6,8 @@ import { getSetting } from '@/lib/settings';
 // Objetivo: evitar abuso y poder vender un paquete extra. La unidad es el nº de
 // consultas (una llamada a la IA = una consulta), que es lo que el usuario entiende.
 //   · Tope por plan  → ajuste 'ai_limits' (editable en admin). 0 = ilimitado.
-//   · Paquete extra  → profiles.ai_packs × addons.ai_pack_qty (se suma al tope).
+//   · Paquete extra  → PAGO ÚNICO: filas en 'ai_packs' del mes en curso (consumible,
+//     no recurre, no se arrastra). Se suman al tope solo ese mes.
 // El consumo se cuenta de ai_usage (por user_id) desde el 1 del mes en curso.
 // ============================================================
 
@@ -32,20 +33,21 @@ export type Allowance = {
 export async function aiAllowance(userId: string): Promise<Allowance> {
   const periodStart = monthStartISO();
   const { data: prof } = await supabaseAdmin.from('profiles')
-    .select('plan,is_admin,role,ai_packs').eq('id', userId).maybeSingle();
+    .select('plan,is_admin,role').eq('id', userId).maybeSingle();
   const plan = (prof as any)?.plan || 'free';
   const staff = !!((prof as any)?.is_admin || (prof as any)?.role);   // el equipo no tiene tope
 
   const limits = await aiLimitsSetting();
   const quota = Number(limits[plan] ?? limits['default'] ?? 150);
 
-  // Paquete extra comprado (consultas por paquete × nº de paquetes).
+  // Paquetes extra COMPRADOS este mes (pago único, consumible). Suma de 'ai_packs'
+  // del período en curso; el mes siguiente arranca en 0 (no se arrastra).
   let extra = 0;
   try {
-    const { addonSettings } = await import('@/lib/settings');
-    const a = await addonSettings();
-    extra = Math.max(0, Number((prof as any)?.ai_packs || 0)) * Math.max(0, Number(a.ai_pack_qty || 0));
-  } catch {}
+    const period = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}`;
+    const { data } = await supabaseAdmin.from('ai_packs').select('qty').eq('user_id', userId).eq('period', period);
+    extra = (data || []).reduce((s: number, r: any) => s + Number(r.qty || 0), 0);
+  } catch { /* si la tabla no existe aún, extra = 0 */ }
 
   const unlimited = staff || quota === 0;
   const limit = quota + extra;
