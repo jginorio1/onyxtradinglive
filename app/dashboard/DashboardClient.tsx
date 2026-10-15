@@ -1262,7 +1262,9 @@ export default function DashboardClient({ email = '', plan = 'free', capOverride
                 <button onClick={() => setRange('all')} title={lang === 'es' ? 'Cerrar' : 'Close'} aria-label={lang === 'es' ? 'Cerrar' : 'Close'} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--soft-brand2)', cursor: 'pointer', fontSize: 15, lineHeight: 1, display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>✕ {lang === 'es' ? 'Cerrar' : 'Close'}</button>
               </div>
             )}
-            {demo && (() => {
+            {demo && isMobile && (() => {
+              // Solo en MÓVIL: en PC el banner de salir del demo no se muestra
+              // (en escritorio se sale con el botón de la cabecera / cerrando la vista).
               // SIEMPRE ofrecemos una salida del demo:
               //  · En tu panel (demo encendido a mano) → apaga el demo y muestra tus datos.
               //  · En el demo PÚBLICO (/demo, forceDemo) → sale a tu panel real (/dashboard;
