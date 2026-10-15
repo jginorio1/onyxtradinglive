@@ -49,6 +49,8 @@ const L: any = {
     online5: 'en línea', ficha: 'Ficha', online2: 'activo ahora', typing: 'está escribiendo…', attach: 'Adjuntar', emoji: 'Emojis',
     rShorten: 'Acortar', rFormal: 'Más formal', rTranslate: 'Traducir', rBusy: 'Puliendo…', aiErr: 'La IA no pudo redactar ahora. Intenta otra vez.',
     suggested: 'Sugerida', slashHint: 'Escribe / para respuestas guardadas', triageAuto: 'Clasificado por IA',
+    remTitle: 'Soporte remoto (de pago)', remOn: 'Los clientes pueden pagar y agendar una sesión remota.', remOff: 'Apagado: no se ofrece sesión remota de pago.',
+    remPrice: 'Precio (USD)', remMin: 'Minutos', remTool: 'Herramienta', remLink: 'Enlace de descarga', remNote: 'Instrucción al cliente', remSave: 'Guardar', remSaved: 'Guardado',
   },
   en: {
     fMine: 'Mine', fUnassigned: 'Unassigned', needsReply: 'Awaiting reply',
@@ -64,6 +66,8 @@ const L: any = {
     online5: 'online', ficha: 'Profile', online2: 'active now', typing: 'is typing…', attach: 'Attach', emoji: 'Emojis',
     rShorten: 'Shorten', rFormal: 'More formal', rTranslate: 'Translate', rBusy: 'Polishing…', aiErr: "The AI couldn't draft right now. Try again.",
     suggested: 'Suggested', slashHint: 'Type / for saved replies', triageAuto: 'AI-classified',
+    remTitle: 'Remote support (paid)', remOn: 'Clients can pay and book a remote session.', remOff: 'Off: no paid remote session offered.',
+    remPrice: 'Price (USD)', remMin: 'Minutes', remTool: 'Tool', remLink: 'Download link', remNote: 'Instruction to client', remSave: 'Save', remSaved: 'Saved',
   },
 };
 
@@ -116,6 +120,14 @@ export default function SupportInbox() {
   const [aiOn, setAiOn] = useState<boolean | null>(null);
   async function loadAi() { try { const r = await fetch('/api/admin/support/settings'); const j = await r.json(); setAiOn(!!j.enabled); } catch {} }
   async function toggleAi() { const next = !aiOn; setAiOn(next); try { await fetch('/api/admin/support/settings', { method: 'POST', body: JSON.stringify({ enabled: next }) }); } catch {} }
+  // Soporte remoto de pago (toggle + precio/herramienta/enlace).
+  const [rem, setRem] = useState<any>(null);
+  const [remSavedMsg, setRemSavedMsg] = useState(false);
+  async function loadRemote() { try { const r = await fetch('/api/admin/support/remote'); setRem(await r.json()); } catch {} }
+  async function saveRemote(patch: any) {
+    const next = { ...(rem || {}), ...patch }; setRem(next);
+    try { await fetch('/api/admin/support/remote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(next) }); setRemSavedMsg(true); setTimeout(() => setRemSavedMsg(false), 1800); } catch {}
+  }
 
   async function load() {
     try {
@@ -125,7 +137,7 @@ export default function SupportInbox() {
     } catch {}
   }
   async function loadCanned() { try { const r = await fetch('/api/admin/support/canned'); const j = await r.json(); setCanned(j.canned || []); } catch {} }
-  useEffect(() => { load(); loadCanned(); loadAi(); const iv = setInterval(load, 8000); return () => clearInterval(iv); }, []);
+  useEffect(() => { load(); loadCanned(); loadAi(); loadRemote(); const iv = setInterval(load, 8000); return () => clearInterval(iv); }, []);
   // Si llega con ?ticket=ID (desde el aviso sticky), abre esa conversación.
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('ticket');
@@ -308,6 +320,35 @@ export default function SupportInbox() {
         <button className={'btn ' + (aiOn ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 13, minWidth: 64 }} onClick={toggleAi} disabled={aiOn === null}>
           {aiOn === null ? '…' : aiOn ? 'ON' : 'OFF'}
         </button>
+      </div>
+
+      {/* Soporte remoto de pago: toggle + precio/herramienta/enlace. */}
+      <div className="card" style={{ padding: '10px 14px', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ width: 30, height: 30, borderRadius: 9, flex: 'none', background: 'linear-gradient(135deg,#7c8cff,#5ecfff)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17' }}><Icon name="window" size={17} /></span>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>{l.remTitle}{rem?.on ? <span className="muted" style={{ fontWeight: 500 }}> · ${rem.price} · {rem.minutes}′</span> : null}</div>
+            <div className="muted" style={{ fontSize: 12 }}>{rem?.on ? l.remOn : l.remOff}</div>
+          </div>
+          {remSavedMsg && <span style={{ color: 'var(--green)', fontSize: 12 }}>✓ {l.remSaved}</span>}
+          <button className={'btn ' + (rem?.on ? 'btn-primary' : 'btn-ghost')} style={{ fontSize: 13, minWidth: 64 }} onClick={() => saveRemote({ on: !rem?.on })} disabled={!rem}>
+            {!rem ? '…' : rem.on ? 'ON' : 'OFF'}
+          </button>
+        </div>
+        {rem?.on && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginTop: 12 }}>
+            <label style={{ fontSize: 12 }}><span className="muted">{l.remPrice}</span>
+              <input type="text" inputMode="numeric" value={String(rem.price ?? '')} onChange={(e) => setRem({ ...rem, price: e.target.value.replace(/[^0-9]/g, '') })} onBlur={() => saveRemote({ price: rem.price })} style={{ margin: '4px 0 0', fontSize: 13, width: '100%' }} /></label>
+            <label style={{ fontSize: 12 }}><span className="muted">{l.remMin}</span>
+              <input type="text" inputMode="numeric" value={String(rem.minutes ?? '')} onChange={(e) => setRem({ ...rem, minutes: e.target.value.replace(/[^0-9]/g, '') })} onBlur={() => saveRemote({ minutes: rem.minutes })} style={{ margin: '4px 0 0', fontSize: 13, width: '100%' }} /></label>
+            <label style={{ fontSize: 12 }}><span className="muted">{l.remTool}</span>
+              <input value={rem.tool || ''} onChange={(e) => setRem({ ...rem, tool: e.target.value })} onBlur={() => saveRemote({ tool: rem.tool })} style={{ margin: '4px 0 0', fontSize: 13, width: '100%' }} /></label>
+            <label style={{ fontSize: 12, gridColumn: '1 / -1' }}><span className="muted">{l.remLink}</span>
+              <input value={rem.link || ''} onChange={(e) => setRem({ ...rem, link: e.target.value })} onBlur={() => saveRemote({ link: rem.link })} style={{ margin: '4px 0 0', fontSize: 13, width: '100%' }} /></label>
+            <label style={{ fontSize: 12, gridColumn: '1 / -1' }}><span className="muted">{l.remNote} ({es ? 'ES' : 'EN'})</span>
+              <textarea value={(es ? rem.note_es : rem.note_en) || ''} onChange={(e) => setRem({ ...rem, [es ? 'note_es' : 'note_en']: e.target.value })} onBlur={() => saveRemote(es ? { note_es: rem.note_es } : { note_en: rem.note_en })} rows={2} style={{ margin: '4px 0 0', fontSize: 13, width: '100%' }} /></label>
+          </div>
+        )}
       </div>
 
       <div className="row" style={{ gap: 7, marginBottom: 12, flexWrap: 'wrap' }}>
