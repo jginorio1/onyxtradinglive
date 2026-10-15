@@ -39,11 +39,15 @@ async function chargeOne(f: any): Promise<{ status: string; profit: number }> {
   let status = 'failed'; let invoiceId: string | null = null;
   if (f.stripe_customer_id && providerAccount && (provProf as any)?.copy_charges_enabled && feeTotalCents > 0) {
     try {
-      await stripe.invoiceItems.create({ customer: f.stripe_customer_id, amount: feeTotalCents, currency: 'usd', description: 'Onyx Copy · comisión por rendimiento' });
-      const inv = await stripe.invoices.create({ customer: f.stripe_customer_id, application_fee_amount: onyxCents, transfer_data: { destination: providerAccount }, on_behalf_of: providerAccount, auto_advance: true, collection_method: 'charge_automatically', metadata: { onyx_kind: 'copyperf', onyx_follow: f.id, onyx_provider: f.provider_id } });
+      // Factura PRIMERO; el cargo se cuelga DE esta factura (invoice: inv.id) para
+      // que nunca salga en $0 con el cobro huérfano. Luego se finaliza y se cobra.
+      const inv = await stripe.invoices.create({ customer: f.stripe_customer_id, application_fee_amount: onyxCents, transfer_data: { destination: providerAccount }, on_behalf_of: providerAccount, auto_advance: false, collection_method: 'charge_automatically', metadata: { onyx_kind: 'copyperf', onyx_follow: f.id, onyx_provider: f.provider_id } });
       invoiceId = inv.id;
-      try { await stripe.invoices.finalizeInvoice(inv.id); } catch {}
-      status = 'charged';
+      await stripe.invoiceItems.create({ customer: f.stripe_customer_id, invoice: inv.id, amount: feeTotalCents, currency: 'usd', description: 'Onyx Copy · comisión por rendimiento' });
+      await stripe.invoices.finalizeInvoice(inv.id);
+      const paid: any = await stripe.invoices.pay(inv.id);
+      // Solo cuenta como cobrado si de verdad se pagó el importe esperado.
+      status = (paid?.status === 'paid' && Number(paid?.amount_paid || 0) >= feeTotalCents) ? 'charged' : 'failed';
     } catch { status = 'failed'; }
   }
 

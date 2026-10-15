@@ -35,11 +35,17 @@ export async function POST(req: Request) {
     if (!customer) return NextResponse.json({ error: 'No payment method on file. Add a card first.', code: 'no_customer' }, { status: 400 });
 
     // Cobro único a la tarjeta guardada (sin redirección). Factura inmediata.
+    // IMPORTANTE: creamos la factura PRIMERO y colgamos el cargo DE esa factura
+    // (invoice: inv.id). Si se crea el invoiceItem suelto y luego la factura sin
+    // incluirlo, la factura sale en $0 y el cobro queda huérfano (bug anterior).
     try {
-      await stripe.invoiceItems.create({ customer, amount: amountCents, currency: 'usd', description: `Onyx AI · +${consultas} consultas` } as any);
-      const inv: any = await stripe.invoices.create({ customer, collection_method: 'charge_automatically', auto_advance: true } as any);
+      const inv: any = await stripe.invoices.create({ customer, collection_method: 'charge_automatically', auto_advance: false } as any);
+      await stripe.invoiceItems.create({ customer, invoice: inv.id, amount: amountCents, currency: 'usd', description: `Onyx AI · +${consultas} consultas` } as any);
+      await stripe.invoices.finalizeInvoice(inv.id);
       const paid: any = await stripe.invoices.pay(inv.id);
       if (paid?.status !== 'paid') return NextResponse.json({ error: 'Payment not completed.', code: 'not_paid', status: paid?.status }, { status: 402 });
+      // Red de seguridad: si por lo que sea el total quedó en 0, NO acreditamos.
+      if (Number(paid?.amount_paid || 0) < amountCents) return NextResponse.json({ error: 'Charged amount did not match.', code: 'amount_mismatch', paid: paid?.amount_paid }, { status: 402 });
     } catch (e: any) {
       return NextResponse.json({ error: `Stripe: ${e?.message || 'charge failed'}`, code: 'charge' }, { status: 402 });
     }
