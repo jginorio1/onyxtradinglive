@@ -18,10 +18,10 @@ const T: any = {
     saving: 'Saving…', ok: '✓ Card updated', noKey: 'Stripe publishable key is not configured.', err: 'Could not save the card.' },
 };
 
-export default function BillingCard({ lang }: { lang: 'es' | 'en' }) {
+export default function BillingCard({ lang, autoOpen = false, onSaved }: { lang: 'es' | 'en'; autoOpen?: boolean; onSaved?: () => void }) {
   const t = dictFor(T, lang);
   const ios = useIsIOSApp();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -60,6 +60,7 @@ export default function BillingCard({ lang }: { lang: 'es' | 'en' }) {
       const pm = setupIntent?.payment_method;
       if (pm) await fetch('/api/stripe/default-pm', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ paymentMethodId: pm }) });
       setMsg(t.ok); setOpen(false); setTimeout(() => setMsg(''), 3000);
+      onSaved && onSaved();   // avisa a quien lo usó (p. ej. para reintentar la compra)
     } catch { setErr(t.err); } finally { setBusy(false); }
   }
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import OnyxIcon from '@/app/components/OnyxIcon';
 import { nativePlatform } from '@/lib/native';
+import BillingCard from '@/app/account/BillingCard';
 
 // Aviso que aparece cuando el usuario alcanzó su tope mensual de Onyx AI.
 // Se adapta al plan: los de pago pueden COMPRAR un paquete extra (pago único);
@@ -76,12 +77,22 @@ export default function AiLimitNotice({ allowance, lang = 'es', onBought, onClos
             <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{L('Pago único. Se usan solo este mes, sin suscripción.', 'One-time. Used this month only, no subscription.')}</div>
           </div>
           {err && <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 8 }}>{err}</div>}
-          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            {needCard
-              ? <a href="/account" className="btn btn-primary" style={{ fontSize: 13.5, textDecoration: 'none' }}>{L('Agregar tarjeta', 'Add a card')}</a>
-              : <button className="btn btn-primary" onClick={buy} disabled={busy} style={{ fontSize: 13.5 }}>{busy ? '…' : L(`Comprar +${qty} · $${price}`, `Buy +${qty} · $${price}`)}</button>}
-            <a href="/pricing" className="btn btn-ghost" style={{ fontSize: 13.5, textDecoration: 'none' }}>{L('Subir de plan', 'Upgrade plan')}</a>
-          </div>
+          {needCard ? (
+            <>
+              <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{L('Agrega una tarjeta para completar la compra:', 'Add a card to finish the purchase:')}</div>
+              {/* Formulario de tarjeta de Stripe aquí mismo (auto-abierto). Al guardar,
+                  reintenta la compra automáticamente. */}
+              <BillingCard lang={en ? 'en' : 'es'} autoOpen onSaved={() => { setNeedCard(false); setErr(''); buy(); }} />
+              <div style={{ marginTop: 8 }}>
+                <a href="/pricing" className="btn btn-ghost" style={{ fontSize: 13.5, textDecoration: 'none' }}>{L('Subir de plan', 'Upgrade plan')}</a>
+              </div>
+            </>
+          ) : (
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn btn-primary" onClick={buy} disabled={busy} style={{ fontSize: 13.5 }}>{busy ? '…' : L(`Comprar +${qty} · $${price}`, `Buy +${qty} · $${price}`)}</button>
+              <a href="/pricing" className="btn btn-ghost" style={{ fontSize: 13.5, textDecoration: 'none' }}>{L('Subir de plan', 'Upgrade plan')}</a>
+            </div>
+          )}
         </>
       ) : (
         <div className="row" style={{ gap: 8, marginTop: 16 }}>
