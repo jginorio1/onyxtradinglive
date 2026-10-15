@@ -67,8 +67,17 @@ export default function NotifBell() {
           </div>
           <div style={{ maxHeight: 380, overflowY: 'auto' }}>
             {!items.length && <div className="muted" style={{ fontSize: 13, padding: '18px 14px', textAlign: 'center' }}>{L('No tienes mensajes.', 'No messages yet.')}</div>}
-            {items.map((n) => (
-              <div key={n.id} onClick={() => openOne(n)} style={{ display: 'flex', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', cursor: n.url ? 'pointer' : 'default', background: n.read_at ? 'transparent' : 'rgba(124,140,255,.07)' }}>
+            {items.map((n) => {
+              // Fondo base: sin leer lleva un tinte suave; leído, transparente.
+              const base = n.read_at ? 'transparent' : 'rgba(124,140,255,.07)';
+              const hover = n.read_at ? 'rgba(255,255,255,.055)' : 'rgba(124,140,255,.14)';
+              return (
+              <div key={n.id} onClick={() => openOne(n)}
+                onMouseEnter={(e) => { e.currentTarget.style.background = hover; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = base; e.currentTarget.style.transform = 'none'; }}
+                onPointerDown={(e) => { if (n.url) { e.currentTarget.style.transform = 'scale(.985)'; e.currentTarget.style.background = n.read_at ? 'rgba(255,255,255,.085)' : 'rgba(124,140,255,.2)'; } }}
+                onPointerUp={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = hover; }}
+                style={{ display: 'flex', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', cursor: n.url ? 'pointer' : 'default', background: base, transition: 'background .12s ease, transform .08s ease', WebkitTapHighlightColor: 'transparent' }}>
                 <span style={{ flex: 'none', color: 'var(--soft-brand)', display: 'inline-flex', marginTop: 1 }}><OnyxIcon emoji={ICON[n.kind] || ICON.info} size={17} glow={false} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{n.title}</div>
@@ -77,7 +86,8 @@ export default function NotifBell() {
                 </div>
                 {!n.read_at && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--soft-brand)', flex: 'none', marginTop: 5 }} />}
               </div>
-            ))}
+              );
+            })}
           </div>
           {!!items.length && (
             <div className="row between" style={{ padding: '9px 14px' }}>

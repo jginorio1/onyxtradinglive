@@ -26,9 +26,13 @@ export async function GET(req: Request) {
     const planIds = Array.from(new Set((plans || []).map((p: any) => p.user_id).filter(Boolean)));
     if (!planIds.length) return NextResponse.json({ ok: true, checkin: 0, checkout: 0 });
 
-    // Perfiles con su zona, horas y último envío + idioma.
+    // Perfiles con su zona, horas y último envío + idioma. Usamos '*' a propósito:
+    // si el SQL (tz/checkin_at/checkout_at/checkin_sent_on/checkout_sent_on) aún NO
+    // está aplicado, con columnas sueltas el select fallaría y no enviaría nada.
+    // Con '*' nunca falla; los campos que falten quedan undefined y caen a su valor
+    // por defecto (zona/horas) y al candado por historial (anti-duplicado).
     const { data: profs } = await supabaseAdmin.from('profiles')
-      .select('id,lang,tz,checkin_at,checkout_at,checkin_sent_on,checkout_sent_on')
+      .select('*')
       .in('id', planIds);
 
     // Quién ya hizo check-in hoy (se guarda por día UTC; cubrimos UTC de hoy y ayer
@@ -42,6 +46,25 @@ export async function GET(req: Request) {
       (done || []).forEach((d: any) => { if (d.day === utcToday || d.day === utcYday) doneSet.add(d.user_id); });
     } catch {}
 
+    // Cinturón y tirantes: aunque el SQL (checkin_sent_on/checkout_sent_on) NO esté
+    // aplicado, NO reenviamos cada 15 min. Miramos el historial de avisos (campana):
+    // si ya se mandó un 'checkin' / 'checkin_evening' en las últimas ~14 h, no repetimos.
+    // Así el anti-duplicado funciona incluso sin las columnas nuevas.
+    const sentCheckin = new Set<string>();
+    const sentCheckout = new Set<string>();
+    try {
+      const since = new Date(now.getTime() - 14 * 3600 * 1000).toISOString();
+      const { data: recent } = await supabaseAdmin.from('notifications')
+        .select('user_id,kind,created_at')
+        .in('user_id', planIds)
+        .in('kind', ['checkin', 'checkin_evening'])
+        .gte('created_at', since);
+      (recent || []).forEach((r: any) => {
+        if (r.kind === 'checkin') sentCheckin.add(r.user_id);
+        else if (r.kind === 'checkin_evening') sentCheckout.add(r.user_id);
+      });
+    } catch {}
+
     const cfg = await loadNotifConfig();
     let ci = 0, co = 0;
     for (const p of (profs || []) as any[]) {
@@ -52,14 +75,14 @@ export async function GET(req: Request) {
       const checkoutAt = p.checkout_at || DEFAULT_CHECKOUT;
       const didToday = doneSet.has(p.id);
 
-      // Check-in de la mañana
-      if (p.checkin_sent_on !== localToday && timeReached(hhmm, checkinAt) && !didToday) {
+      // Check-in de la mañana. Dos candados: columna por día (si existe) + historial reciente.
+      if (p.checkin_sent_on !== localToday && !sentCheckin.has(p.id) && timeReached(hhmm, checkinAt) && !didToday) {
         try { await emitNotif(p.id, 'checkin', { lang, cfg }); } catch {}
         try { await supabaseAdmin.from('profiles').update({ checkin_sent_on: localToday }).eq('id', p.id); } catch {}
         ci++;
       }
-      // Check-out de la noche
-      if (p.checkout_sent_on !== localToday && timeReached(hhmm, checkoutAt) && !didToday) {
+      // Check-out de la noche. Mismos dos candados.
+      if (p.checkout_sent_on !== localToday && !sentCheckout.has(p.id) && timeReached(hhmm, checkoutAt) && !didToday) {
         try { await emitNotif(p.id, 'checkin_evening', { lang, cfg }); } catch {}
         try { await supabaseAdmin.from('profiles').update({ checkout_sent_on: localToday }).eq('id', p.id); } catch {}
         co++;
