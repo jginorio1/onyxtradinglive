@@ -3,6 +3,7 @@ import { getAdmin, logAdmin, requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { grantComp, revokeComp } from '@/lib/compTrial';
 import { setPlanOverride } from '@/lib/entitlements';
+import { presenceFor } from '@/lib/monitor';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -35,11 +36,16 @@ export async function GET() {
     }
   } catch { /* si Auth no responde, no marcamos a nadie como sin confirmar */ }
 
+  // Presencia (en línea / fuera de línea + sección + IP/ciudad) de todos de golpe.
+  let presence: Record<string, any> = {};
+  try { presence = await presenceFor((profiles || []).map((p: any) => p.id)); } catch {}
+
   const users = (profiles || []).map((p: any) => ({
     ...p,
     accounts: byUser[p.id]?.accounts || 0,
     lastSync: byUser[p.id]?.lastSync || null,
     email_confirmed: confirmed[p.id] !== false, // desconocido → se asume confirmado
+    presence: presence[p.id] || null,
   }));
 
   // Bajas: cuentas que el usuario borró desde "Mi cuenta" (lápidas). Como el perfil

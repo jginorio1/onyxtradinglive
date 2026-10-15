@@ -23,15 +23,18 @@ export type ActivityRow = {
   path?: string | null;
   label?: string | null;           // texto legible corto ("compró Guardian PRO")
   country?: string | null;
+  ip?: string | null;              // IP desde donde entró (se contabiliza desde que se active)
+  city?: string | null;            // ciudad (cabecera de Vercel)
   meta?: any;
 };
 
 const HOUR = 3600 * 1000;
+const MIN = 60 * 1000;
 
 // Registra un evento de actividad. NUNCA lanza (no debe tumbar la petición real).
 export async function logActivity(r: ActivityRow): Promise<void> {
   try {
-    await supabaseAdmin.from('activity_events').insert({
+    const row: any = {
       actor_id: r.actor_id || null,
       actor_email: (r.actor_email || '').toLowerCase() || null,
       actor_name: r.actor_name || null,
@@ -40,9 +43,78 @@ export async function logActivity(r: ActivityRow): Promise<void> {
       path: r.path ? String(r.path).split('?')[0].slice(0, 200) : null,
       label: r.label ? String(r.label).slice(0, 200) : null,
       country: r.country ? String(r.country).slice(0, 4) : null,
-      meta: r.meta || {},
-    });
+    };
+    if (r.ip) row.ip = String(r.ip).slice(0, 60);
+    if (r.city) row.city = String(r.city).slice(0, 60);
+    row.meta = r.meta || {};
+    // Si las columnas ip/city aún no existen, reintenta sin ellas (no pierde el evento).
+    const { error } = await supabaseAdmin.from('activity_events').insert(row);
+    if (error && (r.ip || r.city)) { delete row.ip; delete row.city; await supabaseAdmin.from('activity_events').insert(row); }
   } catch { /* silencioso */ }
+}
+
+// Nombre legible de la sección de la app a partir de la ruta (con o sin ?view=).
+// Sirve para decir "en qué parte está" el usuario en el panel admin.
+export function sectionLabel(full: string, lang: 'es' | 'en' = 'es'): string {
+  const en = lang === 'en';
+  const [p, q = ''] = String(full || '/').split('?');
+  const view = new URLSearchParams(q).get('view') || '';
+  const VIEW: Record<string, [string, string]> = {
+    plan: ['Mi plan y hábitos', 'My plan & habits'], copy: ['Onyx Copy', 'Onyx Copy'],
+    robots: ['Mis robots', 'My robots'], reto: ['Mi reto', 'My challenge'],
+    neto: ['Ganancia neta', 'Net profit'], journal: ['Diario', 'Journal'],
+    coach: ['Onyx AI (coach)', 'Onyx AI (coach)'], manager: ['Gestor', 'Manager'],
+  };
+  if (/^\/dashboard/.test(p) && VIEW[view]) return en ? VIEW[view][1] : VIEW[view][0];
+  const R: Record<string, [string, string]> = {
+    '/dashboard': ['Dashboard', 'Dashboard'], '/': ['Inicio', 'Home'],
+    '/conectar': ['Conectar cuenta', 'Connect account'], '/academy': ['Academia', 'Academy'],
+    '/bot-lab': ['Bot Lab', 'Bot Lab'], '/copy': ['Onyx Copy', 'Onyx Copy'],
+    '/pricing': ['Precios', 'Pricing'], '/soporte': ['Soporte', 'Support'],
+    '/contacto': ['Contacto', 'Contact'], '/como-usar': ['Guías', 'Guides'],
+    '/account': ['Mi cuenta', 'My account'], '/mi-cuenta': ['Mi cuenta', 'My account'],
+  };
+  for (const k of Object.keys(R)) { if (p === k || p.startsWith(k + '/')) return en ? R[k][1] : R[k][0]; }
+  return p.replace(/^\//, '').split('/')[0] || (en ? 'App' : 'App');
+}
+
+// PRESENCIA de UN usuario: ¿está en línea?, ¿en qué sección?, última vez, IP/ciudad.
+// "En línea" = tuvo actividad en los últimos ~3 minutos.
+export async function userPresence(userId: string, lang: 'es' | 'en' = 'es') {
+  try {
+    const { data } = await supabaseAdmin.from('activity_events')
+      .select('path,label,created_at,ip,city,country')
+      .eq('actor_id', userId).order('created_at', { ascending: false }).limit(1);
+    const last: any = (data || [])[0];
+    if (!last) return { online: false, lastSeen: null, section: null, ip: null, city: null, country: null };
+    const online = Date.now() - new Date(last.created_at).getTime() < 3 * MIN;
+    const section = last.label || sectionLabel(last.path || '/', lang);
+    return { online, lastSeen: last.created_at, section, ip: last.ip || null, city: last.city || null, country: last.country || null };
+  } catch { return { online: false, lastSeen: null, section: null, ip: null, city: null, country: null }; }
+}
+
+// PRESENCIA de VARIOS usuarios a la vez (para la lista). Una sola lectura del
+// historial reciente; se queda con el evento más nuevo de cada usuario.
+export async function presenceFor(userIds: string[], lang: 'es' | 'en' = 'es') {
+  const out: Record<string, any> = {};
+  if (!userIds.length) return out;
+  try {
+    const since = new Date(Date.now() - 30 * 24 * HOUR).toISOString();
+    const { data } = await supabaseAdmin.from('activity_events')
+      .select('actor_id,path,label,created_at,ip,city,country')
+      .in('actor_id', userIds).gte('created_at', since)
+      .order('created_at', { ascending: false }).limit(5000);
+    for (const r of (data || []) as any[]) {
+      if (!r.actor_id || out[r.actor_id]) continue;   // ya tenemos el más nuevo
+      out[r.actor_id] = {
+        online: Date.now() - new Date(r.created_at).getTime() < 3 * MIN,
+        lastSeen: r.created_at,
+        section: r.label || sectionLabel(r.path || '/', lang),
+        ip: r.ip || null, city: r.city || null, country: r.country || null,
+      };
+    }
+  } catch {}
+  return out;
 }
 
 // Feed reciente (para el flujo en vivo y el historial). Filtros opcionales.

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { logActivity } from '@/lib/monitor';
+import { logActivity, sectionLabel } from '@/lib/monitor';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,13 +17,22 @@ export async function POST(req: Request) {
     if (!user) return new NextResponse(null, { status: 204 });   // anónimos ya los cuenta /api/track
 
     const b = await req.json().catch(() => ({} as any));
-    const path = String(b.path || '/').split('?')[0].slice(0, 200);
+    const full = String(b.path || '/');
+    const path = full.split('?')[0].slice(0, 200);
     if (/^\/api\//.test(path)) return new NextResponse(null, { status: 204 });
 
     // Perfil: nombre + si es del equipo (empleado) o trader.
     const { data: p } = await supabaseAdmin.from('profiles').select('full_name,is_admin,role').eq('id', user.id).maybeSingle();
     const role = (p?.is_admin || p?.role) ? 'employee' : 'trader';
-    const country = headers().get('x-vercel-ip-country') || headers().get('cf-ipcountry') || '';
+    const h = headers();
+    const country = h.get('x-vercel-ip-country') || h.get('cf-ipcountry') || '';
+    const ip = (h.get('x-forwarded-for') || '').split(',')[0].trim() || h.get('x-real-ip') || '';
+    let city = h.get('x-vercel-ip-city') || '';
+    try { city = city ? decodeURIComponent(city) : ''; } catch {}
+
+    // Si el cliente no mandó una etiqueta, derivamos la sección legible de la ruta
+    // (incluye ?view=…) para poder decir "en qué parte de la app está".
+    const label = b.label ? String(b.label).slice(0, 200) : sectionLabel(full, 'es');
 
     await logActivity({
       actor_id: user.id,
@@ -32,8 +41,8 @@ export async function POST(req: Request) {
       actor_role: role,
       kind: String(b.kind || 'page').slice(0, 40),
       path,
-      label: b.label ? String(b.label).slice(0, 200) : null,
-      country,
+      label,
+      country, ip, city,
       meta: b.meta || {},
     });
     return new NextResponse(null, { status: 204 });

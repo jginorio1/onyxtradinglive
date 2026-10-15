@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { userPresence } from '@/lib/monitor';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -81,8 +82,27 @@ export async function GET(req: Request) {
   // ---- Acciones de admin sobre el usuario ----
   try {
     const { data } = await supabaseAdmin.from('admin_log').select('admin_email,action,meta,created_at').eq('target', id).order('created_at', { ascending: false }).limit(60);
-    const ADM: Record<string, string> = { plan: 'Cambió el plan', ban: 'Bloqueó la cuenta', unban: 'Desbloqueó la cuenta', admin: 'Cambió rol de admin', delete_user: 'Eliminó la cuenta', email_user: 'Le envió un correo', user_credit: 'Le aplicó crédito', resend_confirm: 'Reenvió confirmación' };
-    (data || []).forEach((l: any) => events.push({ ts: l.created_at || null, theme: 'admin', icon: 'shield', title: (ADM[l.action] || l.action), detail: l.admin_email ? `por ${S(l.admin_email, 40)}` : undefined }));
+    const ADM: Record<string, string> = {
+      plan: 'Cambió de plan', self_plan: 'Cambió su propio plan', ban: 'Bloqueó la cuenta', unban: 'Desbloqueó la cuenta',
+      admin: 'Cambió rol de admin', delete_user: 'Eliminó la cuenta', email_user: 'Le envió un correo',
+      user_credit: 'Le aplicó crédito', resend_confirm: 'Reenvió el correo de confirmación',
+      comp_grant: 'Recibió una beca de competencia', comp_revoke: 'Se le quitó la beca',
+      pin_fail: 'Falló el PIN de copia', pin_set: 'Cambió su PIN de copia',
+      guardian_grant: 'Se le activó Onyx Guardian', guardian_revoke: 'Se le quitó Onyx Guardian',
+      verify: 'Fue verificado', unverify: 'Se le quitó la verificación', note: 'Nota del equipo',
+    };
+    // Convierte un código crudo ("algo_raro") en texto legible como último recurso.
+    const pretty = (a: string) => a ? (a.charAt(0).toUpperCase() + a.slice(1)).replace(/_/g, ' ') : 'Acción';
+    (data || []).forEach((l: any) => {
+      const m: any = l.meta || {};
+      // Detalle: lo que cambió (p. ej. plan: Free → Trader) si viene en meta.
+      let detail = '';
+      if ((l.action === 'plan' || l.action === 'self_plan')) detail = [m.from, m.to].filter(Boolean).length ? `${S(m.from || '—', 20)} → ${S(m.to || '—', 20)}` : '';
+      else if (m.amount != null) detail = `$${m.amount}`;
+      else if (m.note) detail = S(m.note, 50);
+      const by = l.admin_email ? `por ${S(l.admin_email, 40)}` : '';
+      events.push({ ts: l.created_at || null, theme: 'admin', icon: 'shield', title: (ADM[l.action] || pretty(l.action)), detail: [detail, by].filter(Boolean).join(' · ') || undefined });
+    });
   } catch {}
 
   // ---- Consumo de IA del usuario (requiere ai_usage.user_id) ----
@@ -99,16 +119,20 @@ export async function GET(req: Request) {
   // Ordena por fecha (los sin fecha, al final).
   events.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
 
+  // Presencia: ¿en línea?, ¿en qué sección?, IP/ciudad (ver monitor.ts).
+  const presence = await userPresence(id);
+
   const summary = {
     email, plan: prof?.plan || null,
     confirmed: !!confirmed,
     onboarded: !!prof?.onboarded_at,
-    lastSeen: prof?.last_seen_at || au?.last_sign_in_at || null,
+    lastSeen: presence.lastSeen || prof?.last_seen_at || au?.last_sign_in_at || null,
     emails: events.filter((e) => e.theme === 'correo').length,
     tickets: events.filter((e) => e.theme === 'soporte').length,
     devices: Object.keys(platSet),
     accounts: events.filter((e) => e.theme === 'conexion').length,
     aiCents, aiTokens, aiCalls,
+    presence,
   };
 
   return NextResponse.json({ summary, events });

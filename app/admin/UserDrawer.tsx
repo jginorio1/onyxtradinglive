@@ -15,6 +15,9 @@ const T: any = {
     exTitle: 'Todo lo que recibe y hace', exNone: 'Sin registros todavía.', exAll: 'Todo', exUrgent: 'Urgentes',
     exReg: 'Registrado', exConf: 'Confirmó', exOnb: 'Onboarding', exPlan: 'Plan', exDev: 'Dispositivos', exAcc: 'Brókers', exAi: 'IA',
     exYes: 'Sí', exNo: 'No', exPending: 'Pendiente',
+    exMore: 'Mostrar más', exLess: 'Mostrar menos', exTimes: 'veces', exHist: 'Ver historial',
+    exOnline: 'En línea', exOffline: 'Fuera de línea', exIn: 'en', exLast: 'última vez',
+    exNever: 'Nunca ha entrado', exAiNote: 'Se contabiliza desde que se active',
     themes: { cuenta: 'Cuenta', dispositivo: 'Dispositivo', conexion: 'Bróker', correo: 'Correos', soporte: 'Soporte', admin: 'Admin', ia: 'Onyx AI' },
     puNone: 'Sin compras registradas.', puTerms: 'Términos', puDeliv: 'Entregas', puView: 'Ver en Stripe', puSubmit: 'Enviar evidencia', puDraft: 'Guardar borrador',
     puConfirm: '¿Enviar la evidencia a Stripe ahora? No se puede deshacer.', puDisputed: 'EN DISPUTA', puPaid: 'Pagado', puIp: 'IP',
@@ -29,6 +32,9 @@ const T: any = {
     exTitle: 'Everything they receive and do', exNone: 'No records yet.', exAll: 'All', exUrgent: 'Urgent',
     exReg: 'Registered', exConf: 'Confirmed', exOnb: 'Onboarding', exPlan: 'Plan', exDev: 'Devices', exAcc: 'Brokers', exAi: 'AI',
     exYes: 'Yes', exNo: 'No', exPending: 'Pending',
+    exMore: 'Show more', exLess: 'Show less', exTimes: 'times', exHist: 'See history',
+    exOnline: 'Online', exOffline: 'Offline', exIn: 'in', exLast: 'last seen',
+    exNever: 'Never signed in', exAiNote: 'Counted from when you enable it',
     themes: { cuenta: 'Account', dispositivo: 'Device', conexion: 'Broker', correo: 'Emails', soporte: 'Support', admin: 'Admin', ia: 'Onyx AI' },
     puNone: 'No purchases recorded.', puTerms: 'Terms', puDeliv: 'Deliveries', puView: 'View in Stripe', puSubmit: 'Submit evidence', puDraft: 'Save draft',
     puConfirm: 'Submit the evidence to Stripe now? This cannot be undone.', puDisputed: 'DISPUTED', puPaid: 'Paid', puIp: 'IP',
@@ -66,6 +72,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   const [pAct, setPAct] = useState('');
   const [tl, setTl] = useState<any>(null);        // expediente unificado (timeline)
   const [tlFilter, setTlFilter] = useState<string>(''); // '' = todo, 'urgent', o un tema
+  const [tlAll, setTlAll] = useState(false);      // "mostrar más"
 
   useEffect(() => {
     load();
@@ -135,28 +142,56 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
             {!tl && <div className="muted">…</div>}
             {tl && (() => {
               const s = tl.summary || {}; const evs: any[] = tl.events || [];
-              const shown = evs.filter((e) => !tlFilter ? true : tlFilter === 'urgent' ? e.urgent : e.theme === tlFilter);
+              const pr = s.presence || {};
+              const filtered = evs.filter((e) => !tlFilter ? true : tlFilter === 'urgent' ? e.urgent : e.theme === tlFilter);
+              // Agrupa eventos repetidos seguidos (p. ej. "Cambió de plan" ×8) en una
+              // sola línea con su conteo, para que la lista no crezca sin fin.
+              const groups: any[] = [];
+              for (const e of filtered) {
+                const last = groups[groups.length - 1];
+                if (last && last.title === e.title && last.theme === e.theme && !e.urgent && !last.urgent) { last.count++; last.lastTs = last.lastTs || last.ts; last.ts = last.ts; last.firstTs = e.ts; }
+                else groups.push({ ...e, count: 1, firstTs: e.ts });
+              }
+              const LIMIT = 6;
+              const visible = tlAll ? groups : groups.slice(0, LIMIT);
               const themesPresent = Array.from(new Set(evs.map((e) => e.theme)));
               const chip = (key: string, label: string) => (
-                <button key={key} className={'btn ' + (tlFilter === key ? 'btn-primary' : 'btn-ghost')} style={{ padding: '4px 10px', fontSize: 11.5 }} onClick={() => setTlFilter(key)}>{label}</button>
+                <button key={key} className={'btn ' + (tlFilter === key ? 'btn-primary' : 'btn-ghost')} style={{ padding: '4px 10px', fontSize: 11.5 }} onClick={() => { setTlFilter(key); setTlAll(false); }}>{label}</button>
               );
+              const aiVal = s.aiCalls ? `${s.aiCalls} · $${((s.aiCents || 0) / 100).toFixed(2)}` : t.exAiNote;
               return (
                 <>
+                  {/* Presencia: en línea / fuera de línea + sección + IP/ciudad */}
+                  <div className="card" style={{ marginBottom: 12, borderLeft: `3px solid ${pr.online ? 'var(--green,#34c778)' : 'var(--line)'}` }}>
+                    <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                      <span style={{ width: 9, height: 9, borderRadius: '50%', background: pr.online ? 'var(--green,#34c778)' : 'var(--mut,#888)', flexShrink: 0 }} />
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: pr.online ? 'var(--green,#1f9d57)' : 'var(--tx)' }}>
+                        {pr.online ? `${t.exOnline}${pr.section ? ` · ${t.exIn} ${pr.section}` : ''}`
+                          : pr.lastSeen ? `${t.exOffline} · ${t.exLast} ${fmtDateTime(pr.lastSeen, lang)}` : t.exNever}
+                      </div>
+                    </div>
+                    {(pr.ip || pr.city || pr.country) && (
+                      <div className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>
+                        {[pr.ip ? `IP ${pr.ip}` : '', [pr.city, pr.country].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </div>
+
                   {/* Resumen de un vistazo */}
                   <div className="card" style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 10 }}>{t.exTitle}</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8 }}>
                       {[
-                        [t.exReg, s.plan ? s.plan : '—'],
-                        [t.exConf, s.confirmed ? t.exYes : t.exPending],
-                        [t.exOnb, s.onboarded ? t.exYes : t.exNo],
-                        [t.exDev, (s.devices || []).join(', ') || '—'],
-                        [t.exAcc, String(s.accounts || 0)],
-                        [t.exAi, s.aiCalls ? `${s.aiCalls} · $${((s.aiCents || 0) / 100).toFixed(2)}` : '—'],
-                      ].map(([k, v]: any, i: number) => (
+                        [t.exReg, s.plan ? s.plan : '—', false],
+                        [t.exConf, s.confirmed ? t.exYes : t.exPending, false],
+                        [t.exOnb, s.onboarded ? t.exYes : t.exNo, false],
+                        [t.exDev, (s.devices || []).join(', ') || '—', false],
+                        [t.exAcc, String(s.accounts || 0), false],
+                        [t.exAi, aiVal, !s.aiCalls],
+                      ].map(([k, v, note]: any, i: number) => (
                         <div key={i} style={{ background: 'var(--bg2)', borderRadius: 8, padding: '7px 9px' }}>
                           <div className="muted" style={{ fontSize: 10.5 }}>{k}</div>
-                          <div style={{ fontSize: 13, fontWeight: 600, marginTop: 1 }}>{v}</div>
+                          <div style={{ fontSize: note ? 10.5 : 13, fontWeight: note ? 400 : 600, marginTop: 1, color: note ? 'var(--mut)' : 'var(--tx)', lineHeight: note ? 1.3 : 1.2 }}>{v}</div>
                         </div>
                       ))}
                     </div>
@@ -169,24 +204,35 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
                     {themesPresent.map((th: string) => chip(th, (THEME_STYLE[th]?.icon || '') + ' ' + (t.themes[th] || th)))}
                   </div>
 
-                  {/* Línea de tiempo */}
+                  {/* Línea de tiempo (agrupada + acotada) */}
                   <div className="card">
-                    {!shown.length && <div className="muted" style={{ fontSize: 13 }}>{t.exNone}</div>}
-                    {shown.map((e: any, i: number) => {
+                    {!visible.length && <div className="muted" style={{ fontSize: 13 }}>{t.exNone}</div>}
+                    {visible.map((e: any, i: number) => {
                       const st = THEME_STYLE[e.theme] || THEME_STYLE.admin;
+                      const many = e.count > 1;
                       return (
                         <div key={i} style={{ borderLeft: `3px solid ${e.urgent ? 'var(--red,#e5484d)' : st.color}`, background: e.urgent ? 'rgba(229,72,77,.08)' : st.bg, borderRadius: '0 8px 8px 0', padding: '8px 10px', marginTop: i ? 6 : 0 }}>
-                          <div className="row between" style={{ gap: 8, alignItems: 'flex-start' }}>
-                            <div style={{ fontSize: 13, color: 'var(--tx)', fontWeight: e.urgent ? 700 : 500 }}>
-                              <span style={{ marginRight: 6 }}>{st.icon}</span>{e.title}
-                              {e.urgent && <span className="pill" style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 800, background: 'rgba(229,72,77,.18)', color: '#c62f26' }}>URGENTE</span>}
-                            </div>
+                          <div style={{ fontSize: 13, color: 'var(--tx)', fontWeight: e.urgent ? 700 : 500 }}>
+                            <span style={{ marginRight: 6 }}>{st.icon}</span>{e.title}
+                            {many && <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}> · {e.count} {t.exTimes}</span>}
+                            {e.urgent && <span className="pill" style={{ marginLeft: 6, fontSize: 9.5, fontWeight: 800, background: 'rgba(229,72,77,.18)', color: '#c62f26' }}>URGENTE</span>}
                           </div>
-                          {e.detail && <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{e.detail}</div>}
-                          <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{e.ts ? fmtDateTime(e.ts, lang) : '—'}</div>
+                          {!many && e.detail && <div className="muted" style={{ fontSize: 11.5, marginTop: 3 }}>{e.detail}</div>}
+                          <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+                            {many && e.firstTs && e.firstTs !== e.ts
+                              ? `${fmtDateTime(e.firstTs, lang)} – ${fmtDateTime(e.ts, lang)}`
+                              : (e.ts ? fmtDateTime(e.ts, lang) : '—')}
+                          </div>
                         </div>
                       );
                     })}
+                    {groups.length > LIMIT && (
+                      <div style={{ textAlign: 'center', marginTop: 10 }}>
+                        <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }} onClick={() => setTlAll(!tlAll)}>
+                          {tlAll ? t.exLess : `${t.exMore} (${groups.length - LIMIT})`}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </>
               );
