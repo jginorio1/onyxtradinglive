@@ -105,16 +105,36 @@ export async function GET(req: Request) {
     });
   } catch {}
 
-  // ---- Consumo de IA del usuario (requiere ai_usage.user_id) ----
-  let aiCents = 0, aiTokens = 0, aiCalls = 0; const aiByFeat: Record<string, number> = {};
+  // ---- Consumo de IA del usuario, DESGLOSADO POR MÓDULO (requiere ai_usage.user_id) ----
+  // feature = de dónde salió (coach, soporte, análisis, academia, bot lab…).
+  let aiCents = 0, aiTokens = 0, aiCalls = 0;
+  const aiByFeat: Record<string, { calls: number; cents: number }> = {};
   try {
     const { data } = await supabaseAdmin.from('ai_usage').select('feature,input_tokens,output_tokens,cost_cents,created_at').eq('user_id', id);
-    (data || []).forEach((u: any) => { aiCents += Number(u.cost_cents || 0); aiTokens += Number(u.input_tokens || 0) + Number(u.output_tokens || 0); aiCalls++; aiByFeat[u.feature || 'otros'] = (aiByFeat[u.feature || 'otros'] || 0) + 1; });
+    (data || []).forEach((u: any) => {
+      const f = u.feature || 'otros';
+      aiCents += Number(u.cost_cents || 0); aiTokens += Number(u.input_tokens || 0) + Number(u.output_tokens || 0); aiCalls++;
+      (aiByFeat[f] ||= { calls: 0, cents: 0 }); aiByFeat[f].calls++; aiByFeat[f].cents += Number(u.cost_cents || 0);
+    });
   } catch { /* si la columna user_id no existe aún, queda en 0 */ }
+  // Nombres legibles de cada módulo para el panel.
+  const FEAT_LABEL: Record<string, string> = {
+    coach: 'Coach', soporte: 'Soporte', academia: 'Academia', academy: 'Academia', botlab: 'Bot Lab',
+    equipo: 'Equipo', correos: 'Correos', campanas: 'Campañas', embajadores: 'Embajadores',
+    ventas: 'Ventas', carreras: 'Carreras', seo: 'SEO', blog: 'Blog', moderacion: 'Moderación',
+    training: 'Capacitación', socios: 'Socios', resenas: 'Reseñas', guide: 'Guías', factory: 'Fábrica', otros: 'Otros',
+  };
+  const aiFeatures = Object.entries(aiByFeat)
+    .map(([feature, v]) => ({ feature, label: FEAT_LABEL[feature] || feature, calls: v.calls, cents: v.cents }))
+    .sort((a, b) => b.calls - a.calls);
   if (aiCalls > 0) {
-    const topFeat = Object.entries(aiByFeat).sort((a, b) => b[1] - a[1]).map(([f, n]) => `${f} ×${n}`).slice(0, 3).join(' · ');
+    const topFeat = aiFeatures.slice(0, 3).map((f) => `${f.label} ×${f.calls}`).join(' · ');
     events.push({ ts: null, theme: 'ia', icon: 'robot', title: `Usó Onyx AI · ${aiCalls} consultas`, detail: `${(aiTokens / 1000).toFixed(0)}k tokens · $${(aiCents / 100).toFixed(2)}${topFeat ? ' · ' + topFeat : ''}` });
   }
+
+  // Tope mensual del usuario (límite por plan + paquete extra) para mostrarlo.
+  let allowance: any = null;
+  try { const { aiAllowance } = await import('@/lib/aiLimits'); allowance = await aiAllowance(id); } catch {}
 
   // Ordena por fecha (los sin fecha, al final).
   events.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
@@ -131,7 +151,7 @@ export async function GET(req: Request) {
     tickets: events.filter((e) => e.theme === 'soporte').length,
     devices: Object.keys(platSet),
     accounts: events.filter((e) => e.theme === 'conexion').length,
-    aiCents, aiTokens, aiCalls,
+    aiCents, aiTokens, aiCalls, aiFeatures, aiAllowance: allowance,
     presence,
   };
 

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { weeklyReview, fallbackReview, type CoachSummary } from '@/lib/coachAI';
+import { checkAiLimit } from '@/lib/aiLimits';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -224,18 +225,24 @@ export async function GET(req: Request) {
     if (losing && !capsObj.manager) actions.push(A('Desbloquear Onyx Guardian', 'Unlock Onyx Guardian', '/pricing'));
     if (!actions.length) actions.push(A('Ir a Mi plan y hábitos', 'Go to My plan & habits', '/dashboard?view=plan'));
 
+    // Tope de IA del mes: si lo alcanzó, NO gastamos una consulta de IA (mostramos
+    // el repaso determinista) y avisamos para que pueda comprar el paquete extra.
+    const gate = await checkAiLimit(user.id);
+
     // La IA con red de seguridad: si falla, no responde o tarda >12s, devolvemos
     // un repaso determinista con los mismos números → la cápsula SIEMPRE funciona.
     let reviewText: string | undefined;
-    try {
-      const r: any = await Promise.race([
-        weeklyReview(summary, lang, user.id),
-        new Promise((res) => setTimeout(() => res({ ok: false }), 12000)),
-      ]);
-      if (r?.ok && r.text) reviewText = r.text;
-    } catch { /* caemos al repaso determinista */ }
+    if (gate.ok) {
+      try {
+        const r: any = await Promise.race([
+          weeklyReview(summary, lang, user.id),
+          new Promise((res) => setTimeout(() => res({ ok: false }), 12000)),
+        ]);
+        if (r?.ok && r.text) reviewText = r.text;
+      } catch { /* caemos al repaso determinista */ }
+    }
     if (!reviewText) reviewText = fallbackReview(summary, lang);
-    return NextResponse.json({ ok: true, review: reviewText, summary, actions });
+    return NextResponse.json({ ok: true, review: reviewText, summary, actions, aiLimit: !gate.ok, allowance: gate.allowance });
   } catch (e: any) {
     await logError('coach_get', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

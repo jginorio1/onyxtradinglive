@@ -18,6 +18,7 @@ const T: any = {
     exMore: 'Mostrar más', exLess: 'Mostrar menos', exTimes: 'veces', exHist: 'Ver historial',
     exOnline: 'En línea', exOffline: 'Fuera de línea', exIn: 'en', exLast: 'última vez',
     exNever: 'Nunca ha entrado', exAiNote: 'Se contabiliza desde que se active',
+    exAiTitle: 'Consumo de Onyx AI · por módulo', exAiCap: 'Tope del mes', exAiPlan: 'Plan', exAiExtra: 'extra', exAiUnlim: 'Ilimitado (equipo o plan sin tope)',
     themes: { cuenta: 'Cuenta', dispositivo: 'Dispositivo', conexion: 'Bróker', correo: 'Correos', soporte: 'Soporte', admin: 'Admin', ia: 'Onyx AI' },
     puNone: 'Sin compras registradas.', puTerms: 'Términos', puDeliv: 'Entregas', puView: 'Ver en Stripe', puSubmit: 'Enviar evidencia', puDraft: 'Guardar borrador',
     puConfirm: '¿Enviar la evidencia a Stripe ahora? No se puede deshacer.', puDisputed: 'EN DISPUTA', puPaid: 'Pagado', puIp: 'IP',
@@ -35,6 +36,7 @@ const T: any = {
     exMore: 'Show more', exLess: 'Show less', exTimes: 'times', exHist: 'See history',
     exOnline: 'Online', exOffline: 'Offline', exIn: 'in', exLast: 'last seen',
     exNever: 'Never signed in', exAiNote: 'Counted from when you enable it',
+    exAiTitle: 'Onyx AI usage · by module', exAiCap: 'Monthly cap', exAiPlan: 'Plan', exAiExtra: 'extra', exAiUnlim: 'Unlimited (staff or uncapped plan)',
     themes: { cuenta: 'Account', dispositivo: 'Device', conexion: 'Broker', correo: 'Emails', soporte: 'Support', admin: 'Admin', ia: 'Onyx AI' },
     puNone: 'No purchases recorded.', puTerms: 'Terms', puDeliv: 'Deliveries', puView: 'View in Stripe', puSubmit: 'Submit evidence', puDraft: 'Save draft',
     puConfirm: 'Submit the evidence to Stripe now? This cannot be undone.', puDisputed: 'DISPUTED', puPaid: 'Paid', puIp: 'IP',
@@ -196,6 +198,43 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
                       ))}
                     </div>
                   </div>
+
+                  {/* Consumo de IA desglosado por módulo + tope del plan */}
+                  {(() => { const af = s.aiFeatures || []; const al = s.aiAllowance; if (!af.length && !al) return null;
+                    const max = Math.max(1, ...af.map((f: any) => f.calls));
+                    return (
+                      <div className="card" style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 10 }}>{t.exAiTitle}</div>
+                        {af.map((f: any, i: number) => (
+                          <div key={i} style={{ marginTop: i ? 8 : 0 }}>
+                            <div className="row between" style={{ fontSize: 12.5 }}>
+                              <span>{f.label}</span>
+                              <span className="muted">{f.calls} · ${(f.cents / 100).toFixed(2)}</span>
+                            </div>
+                            <div style={{ height: 5, background: 'var(--bg2)', borderRadius: 3, marginTop: 3 }}>
+                              <div style={{ width: `${Math.round((f.calls / max) * 100)}%`, height: '100%', background: 'var(--brand,#c8a24b)', borderRadius: 3 }} />
+                            </div>
+                          </div>
+                        ))}
+                        {al && (
+                          <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 9 }}>
+                            <div className="row between" style={{ fontSize: 12.5, fontWeight: 600 }}>
+                              <span>{t.exAiCap}</span>
+                              <span>{al.unlimited ? '∞' : `${al.used} / ${al.limit}`}</span>
+                            </div>
+                            {!al.unlimited && (
+                              <div style={{ height: 7, background: 'var(--bg2)', borderRadius: 4, marginTop: 5 }}>
+                                <div style={{ width: `${Math.min(100, Math.round((al.used / Math.max(1, al.limit)) * 100))}%`, height: '100%', background: al.used >= al.limit ? 'var(--red,#e5484d)' : al.used / Math.max(1, al.limit) > 0.85 ? 'var(--amber,#e0a73e)' : 'var(--green,#34c778)', borderRadius: 4 }} />
+                              </div>
+                            )}
+                            <div className="muted" style={{ fontSize: 11, marginTop: 5 }}>
+                              {al.unlimited ? t.exAiUnlim : `${t.exAiPlan} ${al.plan}${al.extra ? ` · +${al.extra} ${t.exAiExtra}` : ''}`}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Filtros por tema / urgencia */}
                   <div className="row" style={{ gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>

@@ -36,6 +36,10 @@ export async function POST(req: Request) {
     const { data: plan } = await supabaseAdmin.from('plans').select('capabilities').eq('id', planId).maybeSingle();
     if (!((plan?.capabilities as any) || {}).coach) return NextResponse.json({ locked: true });
 
+    const { checkAiLimit } = await import('@/lib/aiLimits');
+    const gate = await checkAiLimit(user.id);
+    if (!gate.ok) return NextResponse.json({ aiLimit: true, allowance: gate.allowance });
+
     const lang = pickLang(b.lang);
     const clamp = (a: any) => (Array.isArray(a) ? a.map((x) => String(x || '').slice(0, 40)).filter(Boolean).slice(0, 8) : undefined);
     const input: TradeInsightInput = {

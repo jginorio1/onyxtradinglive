@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin, requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { retentionSettings, addonSettings, saveSetting } from '@/lib/settings';
+import { aiLimitsSetting } from '@/lib/aiLimits';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -31,6 +32,7 @@ export async function GET() {
       byReason, saved, canceled, saveRate, total: list.length,
       retention: await retentionSettings(),
       addons: await addonSettings(),
+      aiLimits: await aiLimitsSetting(),
     });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
@@ -44,9 +46,16 @@ export async function PATCH(req: Request) {
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const _p = await requirePerm('retencion', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const b = await req.json();
-    if (b.key !== 'retention' && b.key !== 'addons') return NextResponse.json({ error: 'clave desconocida' }, { status: 400 });
-    const current = b.key === 'retention' ? await retentionSettings() : await addonSettings();
-    await saveSetting(b.key, { ...current, ...(b.value || {}) });
+    if (!['retention', 'addons', 'ai_limits'].includes(b.key)) return NextResponse.json({ error: 'clave desconocida' }, { status: 400 });
+    // ai_limits se reemplaza entero (mapa plan→tope); los otros dos se fusionan.
+    if (b.key === 'ai_limits') {
+      const clean: Record<string, number> = {};
+      for (const [k, v] of Object.entries(b.value || {})) { const n = Math.max(0, Math.floor(Number(v) || 0)); if (k) clean[k.slice(0, 40)] = n; }
+      await saveSetting('ai_limits', clean);
+    } else {
+      const current = b.key === 'retention' ? await retentionSettings() : await addonSettings();
+      await saveSetting(b.key, { ...current, ...(b.value || {}) });
+    }
     await logAdmin(user.email, 'settings_' + b.key, b.key, b.value);
     return NextResponse.json({ ok: true });
   } catch (e: any) {

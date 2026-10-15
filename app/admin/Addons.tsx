@@ -12,17 +12,28 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 export default function Addons() {
   const t = useT();
   const [a, setA] = useState<any>(null);
+  const [limits, setLimits] = useState<any>(null);   // topes de IA por plan
+  const [plans, setPlans] = useState<any[]>([]);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadPlans(); }, []);
   async function load() {
     const r = await fetch('/api/admin/retention');
     const j = await r.json();
     setA(j.addons || {});
+    setLimits(j.aiLimits || { free: 20, default: 150 });
   }
+  async function loadPlans() { try { const r = await fetch('/api/admin/plans'); const j = await r.json(); setPlans(j.plans || j || []); } catch {} }
   async function save() {
     setBusy(true);
     const r = await fetch('/api/admin/retention', { method: 'PATCH', body: JSON.stringify({ key: 'addons', value: a }) });
+    const j = await r.json(); setBusy(false);
+    if (!r.ok) { toastErr(j); return; }
+    toast(t.re_saveAddon, 'ok'); load();
+  }
+  async function saveLimits() {
+    setBusy(true);
+    const r = await fetch('/api/admin/retention', { method: 'PATCH', body: JSON.stringify({ key: 'ai_limits', value: limits }) });
     const j = await r.json(); setBusy(false);
     if (!r.ok) { toastErr(j); return; }
     toast(t.re_saveAddon, 'ok'); load();
@@ -80,7 +91,36 @@ export default function Addons() {
         </label>
       </div>
 
+      <div style={{ borderTop: '1px solid var(--line)', marginTop: 16, paddingTop: 14 }}>
+        <h3 style={{ marginBottom: 4, fontSize: 15 }}><OnyxIcon emoji="⚡" size={15} /> Paquete de consultas de Onyx AI</h3>
+        <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>Add-on que suma consultas de IA al tope mensual del usuario. Define cuántas da cada paquete y su precio.</p>
+        <div className="grid g2" style={{ gap: 12 }}>
+          <div><span style={lbl}>Precio/mes</span><input type="number" value={a.ai_pack_price ?? 5} onChange={(e) => setA({ ...a, ai_pack_price: Number(e.target.value) })} style={num} /></div>
+          <div><span style={lbl}>Price ID Stripe</span><input value={a.ai_pack_price_id || ''} onChange={(e) => setA({ ...a, ai_pack_price_id: e.target.value })} placeholder="price_..." style={{ margin: 0 }} /></div>
+          <div><span style={lbl}>Consultas por paquete</span><input type="number" value={a.ai_pack_qty ?? 100} onChange={(e) => setA({ ...a, ai_pack_qty: Number(e.target.value) })} style={num} /></div>
+        </div>
+        <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer' }}>
+          <input type="checkbox" checked={a.ai_pack_enabled !== false} onChange={(e) => setA({ ...a, ai_pack_enabled: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.re_addonOn}
+        </label>
+      </div>
+
       <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={save} disabled={busy}>{t.re_saveAddon}</button>
+
+      {limits && (
+        <div style={{ borderTop: '2px solid var(--line)', marginTop: 20, paddingTop: 16 }}>
+          <h3 style={{ marginBottom: 4, fontSize: 15 }}><OnyxIcon emoji="🧮" size={15} /> Tope de consultas de IA por plan</h3>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>Máximo de consultas de Onyx AI al mes por plan (anti-abuso). 0 = ilimitado. El equipo nunca tiene tope.</p>
+          <div className="grid g2" style={{ gap: 10 }}>
+            {(plans.length ? plans.map((p: any) => p.id) : ['free']).concat(['default']).filter((v, i, arr) => arr.indexOf(v) === i).map((pid: string) => (
+              <div key={pid} className="row between" style={{ gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 13 }}>{pid === 'default' ? 'Otros (default)' : (plans.find((p: any) => p.id === pid)?.name || pid)}</span>
+                <input type="number" value={limits[pid] ?? (pid === 'free' ? 20 : 150)} onChange={(e) => setLimits({ ...limits, [pid]: Number(e.target.value) })} style={num} />
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={saveLimits} disabled={busy}>{t.re_saveAddon}</button>
+        </div>
+      )}
     </div>
   );
 }

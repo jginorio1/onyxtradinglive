@@ -15,6 +15,8 @@ export type Addons = {
   extra_slave_enabled: boolean; extra_slave_price: number; extra_slave_price_id: string;
   extra_master_enabled: boolean; extra_master_price: number; extra_master_price_id: string;
   algo_enabled: boolean; algo_price: number; algo_price_id: string;
+  // Paquete de consultas extra de Onyx AI (se suma al tope mensual del plan).
+  ai_pack_enabled: boolean; ai_pack_price: number; ai_pack_price_id: string; ai_pack_qty: number;
 };
 
 const R: Retention = {
@@ -26,6 +28,7 @@ const A: Addons = {
   extra_slave_enabled: false, extra_slave_price: 9, extra_slave_price_id: '',
   extra_master_enabled: false, extra_master_price: 15, extra_master_price_id: '',
   algo_enabled: true, algo_price: 15, algo_price_id: '',
+  ai_pack_enabled: true, ai_pack_price: 5, ai_pack_price_id: '', ai_pack_qty: 100,
 };
 
 // ¿El usuario tiene el módulo de bots? Por plan (capabilities.algo) o por add-on.
