@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 // Limpieza de la campanita: una vez que el trader YA LA VIO (read_at puesto),
 // la notificación desaparece sola a las ~24 h. Así la bandeja se mantiene limpia
 // sin riesgo de perder algo por un toque accidental (tiene un día de margen).
-// Además borra las MUY viejas sin leer (90 días) para no acumular basura.
+// Las que siguen SIN LEER se conservan 30 días y luego se borran.
 // Corre cada hora (vercel.json). Protegido con CRON_SECRET.
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -23,9 +23,9 @@ export async function GET(req: Request) {
   try {
     const now = Date.now();
     const read24h = new Date(now - 24 * 3600 * 1000).toISOString();
-    const old90d = new Date(now - 90 * 864e5).toISOString();
+    const unread30d = new Date(now - 30 * 864e5).toISOString();
 
-    // Leídas con más de 24 h → fuera.
+    // Leídas con más de 24 h → fuera (ya las viste).
     let readDeleted = 0;
     try {
       const { data } = await supabaseAdmin.from('notifications')
@@ -33,15 +33,15 @@ export async function GET(req: Request) {
       readDeleted = (data || []).length;
     } catch (e) { await logError('notifications_prune_read', e); }
 
-    // Sin leer pero muy viejas (90 días) → fuera también.
-    let oldDeleted = 0;
+    // Sin leer → se conservan 30 días (todas por igual) y luego se borran.
+    let unreadDeleted = 0;
     try {
       const { data } = await supabaseAdmin.from('notifications')
-        .delete().is('read_at', null).lt('created_at', old90d).select('id');
-      oldDeleted = (data || []).length;
-    } catch (e) { await logError('notifications_prune_old', e); }
+        .delete().is('read_at', null).lt('created_at', unread30d).select('id');
+      unreadDeleted = (data || []).length;
+    } catch (e) { await logError('notifications_prune_unread', e); }
 
-    return NextResponse.json({ ok: true, readDeleted, oldDeleted });
+    return NextResponse.json({ ok: true, readDeleted, unreadDeleted });
   } catch (e: any) {
     await logError('notifications_prune', e);
     return NextResponse.json({ ok: false, error: e?.message || 'error' }, { status: 500 });

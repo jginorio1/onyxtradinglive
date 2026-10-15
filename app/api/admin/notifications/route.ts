@@ -113,6 +113,7 @@ export async function POST(req: Request) {
     clean[k] = {
       on: !!o.on,
       bell: !!o.bell, push: !!o.push, telegram: !!o.telegram,
+      urgent: !!o.urgent,
       title_es: o.title_es != null ? String(o.title_es).slice(0, 140) : undefined,
       title_en: o.title_en != null ? String(o.title_en).slice(0, 140) : undefined,
       body_es: o.body_es != null ? String(o.body_es).slice(0, 300) : undefined,

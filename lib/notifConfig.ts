@@ -23,6 +23,9 @@ export type NotifDef = {
   // muestra los tipos cuyo módulo el usuario tiene/usa; sin 'feature' = universal (todos).
   // El panel del ADMIN siempre muestra todo. 'academy' | 'copy' | 'bots' | 'botlab'.
   feature?: 'academy' | 'copy' | 'bots' | 'botlab';
+  // Urgente: lo marca el dueño en Admin. Los urgentes se resaltan en rojo en la
+  // campanita (y pueden tratarse distinto). Por defecto, false.
+  urgent?: boolean;
 };
 
 // Catálogo por defecto. {vars} se sustituyen al enviar (p. ej. {days}, {name}).
@@ -234,7 +237,7 @@ export const NOTIF_CATALOG: NotifDef[] = [
   },
 ];
 
-export type NotifOverride = { on?: boolean; title_es?: string; title_en?: string; body_es?: string; body_en?: string; bell?: boolean; push?: boolean; telegram?: boolean };
+export type NotifOverride = { on?: boolean; title_es?: string; title_en?: string; body_es?: string; body_en?: string; bell?: boolean; push?: boolean; telegram?: boolean; urgent?: boolean };
 
 // Carga el catálogo con los cambios del dueño aplicados encima.
 export async function loadNotifConfig(): Promise<Record<string, NotifDef & { on: boolean }>> {
@@ -248,6 +251,7 @@ export async function loadNotifConfig(): Promise<Record<string, NotifDef & { on:
       bell: o.bell ?? d.bell,
       push: o.push ?? d.push,
       telegram: o.telegram ?? d.telegram,
+      urgent: o.urgent ?? d.urgent ?? false,
       es: { title: o.title_es || d.es.title, body: o.body_es ?? d.es.body },
       en: { title: o.title_en || d.en.title, body: o.body_en ?? d.en.body },
     };

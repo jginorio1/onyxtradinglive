@@ -12,7 +12,14 @@ export async function GET() {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return NextResponse.json({ items: [], unread: 0 });
     const { data } = await supabaseAdmin.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(30);
-    const items = data || [];
+    let items = data || [];
+    // Marcamos como "urgente" los avisos cuyo TIPO el dueño marcó urgente en Admin
+    // (notif_config). Así la campanita puede resaltarlos en rojo.
+    try {
+      const { loadNotifConfig } = await import('@/lib/notifConfig');
+      const cfg = await loadNotifConfig();
+      items = items.map((n: any) => ({ ...n, urgent: !!(cfg as any)[n.kind]?.urgent }));
+    } catch {}
     const unread = items.filter((n: any) => !n.read_at).length;
     return NextResponse.json({ items, unread });
   } catch {

@@ -44,6 +44,8 @@ export default function NotifBell() {
     if (n.url) window.location.href = n.url; else load();
   }
   const ago = (iso: string) => { const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000); if (s < 60) return L('ahora', 'now'); const m = Math.floor(s / 60); if (m < 60) return `${m} min`; const h = Math.floor(m / 60); if (h < 24) return `${h} h`; return `${Math.floor(h / 24)} d`; };
+  // Día y hora exactos en que llegó (zona del dispositivo). P.ej. "15 oct, 9:00 a. m."
+  const fullDate = (iso: string) => { try { return new Date(iso).toLocaleString(lang === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); } catch { return ''; } };
 
   return (
     <div ref={box} style={{ position: 'relative' }}>
@@ -77,21 +79,23 @@ export default function NotifBell() {
                 onMouseLeave={(e) => { e.currentTarget.style.background = base; e.currentTarget.style.transform = 'none'; }}
                 onPointerDown={(e) => { if (n.url) { e.currentTarget.style.transform = 'scale(.985)'; e.currentTarget.style.background = n.read_at ? 'rgba(255,255,255,.085)' : 'rgba(124,140,255,.2)'; } }}
                 onPointerUp={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = hover; }}
-                style={{ display: 'flex', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', cursor: n.url ? 'pointer' : 'default', background: base, opacity: n.read_at ? 0.72 : 1, transition: 'background .12s ease, transform .08s ease, opacity .12s ease', WebkitTapHighlightColor: 'transparent' }}>
-                <span style={{ flex: 'none', color: n.read_at ? 'var(--mut)' : 'var(--soft-brand)', display: 'inline-flex', marginTop: 1 }}><OnyxIcon emoji={ICON[n.kind] || ICON.info} size={17} glow={false} /></span>
+                style={{ display: 'flex', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', borderLeft: n.urgent ? '3px solid var(--red)' : '3px solid transparent', cursor: n.url ? 'pointer' : 'default', background: base, opacity: n.read_at ? 0.72 : 1, transition: 'background .12s ease, transform .08s ease, opacity .12s ease', WebkitTapHighlightColor: 'transparent' }}>
+                <span style={{ flex: 'none', color: n.urgent ? 'var(--red)' : (n.read_at ? 'var(--mut)' : 'var(--soft-brand)'), display: 'inline-flex', marginTop: 1 }}><OnyxIcon emoji={ICON[n.kind] || ICON.info} size={17} glow={false} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {/* Sin leer: título en blanco y en negrita. Leído: gris y normal. */}
                   <div style={{ fontSize: 13, fontWeight: n.read_at ? 500 : 700, color: n.read_at ? 'var(--mut)' : 'var(--tx)' }}>{n.title}</div>
                   {n.body && <div className="muted" style={{ fontSize: 12 }}>{n.body}</div>}
-                  <div className="row" style={{ gap: 6, marginTop: 2 }}>
-                    <span className="muted" style={{ fontSize: 11 }}>{ago(n.created_at)}</span>
+                  <div className="row" style={{ gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+                    {/* Día y hora exactos en que llegó + cuánto hace. */}
+                    <span className="muted" style={{ fontSize: 11 }}>{fullDate(n.created_at)} · {ago(n.created_at)}</span>
+                    {n.urgent && <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: 'var(--red)', padding: '1px 6px', borderRadius: 999, letterSpacing: '.02em' }}>{L('URGENTE', 'URGENT')}</span>}
                     {n.read_at
                       ? <span className="muted" style={{ fontSize: 10.5, display: 'inline-flex', alignItems: 'center', gap: 2 }}>· {L('Leído', 'Read')} ✓</span>
-                      : <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.16)', padding: '1px 6px', borderRadius: 999 }}>{L('Nuevo', 'New')}</span>}
+                      : !n.urgent && <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.16)', padding: '1px 6px', borderRadius: 999 }}>{L('Nuevo', 'New')}</span>}
                   </div>
                 </div>
-                {/* Punto azul solo mientras esté sin leer. */}
-                {!n.read_at && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--soft-brand)', flex: 'none', marginTop: 5 }} />}
+                {/* Punto (rojo si urgente, azul si nuevo) solo mientras esté sin leer. */}
+                {!n.read_at && <span style={{ width: 8, height: 8, borderRadius: '50%', background: n.urgent ? 'var(--red)' : 'var(--soft-brand)', flex: 'none', marginTop: 5 }} />}
               </div>
               );
             })}

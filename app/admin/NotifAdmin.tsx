@@ -53,6 +53,7 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
         seed[d.key] = {
           on: o.on ?? !d.extra,
           bell: o.bell ?? d.bell, push: o.push ?? d.push, telegram: o.telegram ?? d.telegram,
+          urgent: o.urgent ?? d.urgent ?? false,
           title_es: o.title_es ?? d.es.title, title_en: o.title_en ?? d.en.title,
           body_es: o.body_es ?? d.es.body, body_en: o.body_en ?? d.en.body,
         };
@@ -196,10 +197,13 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
                     <b style={{ fontSize: 13.5 }}>{es ? o.title_es : o.title_en} {d.extra && <span className="pill" style={{ fontSize: 10, background: 'rgba(124,140,255,.15)', color: 'var(--soft-brand)' }}>{es ? 'extra' : 'extra'}</span>}</b>
                     <label className="row" style={{ gap: 6, fontSize: 12, cursor: 'pointer' }}><Toggle on={!!o.on} onClick={() => set(d.key, 'on', !o.on)} /> {o.on ? (es ? 'Activo' : 'On') : (es ? 'Apagado' : 'Off')}</label>
                   </div>
-                  <div className="row" style={{ gap: 14, margin: '8px 0 2px', flexWrap: 'wrap' }}>
+                  <div className="row" style={{ gap: 14, margin: '8px 0 2px', flexWrap: 'wrap', alignItems: 'center' }}>
                     {chans.map((c) => (
                       <label key={c} className="row" style={{ gap: 6, fontSize: 12, cursor: 'pointer' }}><Toggle on={!!o[c]} onClick={() => set(d.key, c, !o[c])} /> {chLabel(c)}</label>
                     ))}
+                    <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--line)' }} />
+                    {/* Urgente: lo marcas aquí. En la campanita el aviso se resalta en rojo. */}
+                    <label className="row" style={{ gap: 6, fontSize: 12, cursor: 'pointer' }} title={es ? 'Lo resalta en rojo en la campanita del trader.' : 'Highlights it in red in the trader’s bell.'}><Toggle on={!!o.urgent} onClick={() => set(d.key, 'urgent', !o.urgent)} /> <span style={{ color: o.urgent ? 'var(--red)' : 'inherit', fontWeight: o.urgent ? 700 : 400 }}>{es ? 'Urgente' : 'Urgent'}</span></label>
                   </div>
                   <div style={{ marginTop: 8, background: 'rgba(124,140,255,.08)', border: '1px solid rgba(124,140,255,.25)', borderRadius: 8, padding: 8 }}>
                     {aiKey === d.key ? (
