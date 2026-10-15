@@ -59,8 +59,14 @@ export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onSta
         const auto = j.auto || {};
         for (const k of Object.keys(auto)) if (auto[k] && it[k] === undefined) it[k] = true;
         setD(j); setItems(it); setNote(j.checkin?.note || '');
+        // ¿Llegó desde el push de Check-in/Check-out? (/dashboard?checkin=open|1)
+        // En ese caso SIEMPRE abrimos el popup, aunque ya lo hubiera cerrado hoy.
+        // Lo hacemos aquí (y no en el dashboard) porque el popup solo puede mostrarse
+        // una vez que el plan (d) está cargado; si se forzara antes, se perdería.
+        let forceOpen = false;
+        try { const q = new URLSearchParams(window.location.search).get('checkin'); forceOpen = q === 'open' || q === '1'; } catch {}
         // Primera vez del día → popup; si ya lo cerró hoy → solo la píldora.
-        setPhase(localStorage.getItem('onyx_checkin_skip') === todayLocal() ? 'bar' : 'popup');
+        setPhase(forceOpen ? 'popup' : (localStorage.getItem('onyx_checkin_skip') === todayLocal() ? 'bar' : 'popup'));
       } catch { /* silencioso */ }
     })();
   }, []);
