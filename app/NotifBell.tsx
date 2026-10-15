@@ -47,7 +47,7 @@ export default function NotifBell() {
 
   return (
     <div ref={box} style={{ position: 'relative' }}>
-      <button onClick={() => { const n = !open; setOpen(n); if (n && unread) markAll(); }} title={L('Mensajes', 'Messages')}
+      <button onClick={() => setOpen(!open)} title={L('Mensajes', 'Messages')}
         style={{ position: 'relative', background: 'transparent', border: 'none', cursor: 'pointer', lineHeight: 1, padding: 4, color: 'var(--tx)', display: 'inline-flex', alignItems: 'center' }}>
         <OnyxIcon name="bell" size={19} />
         {unread > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: 'var(--red)', color: '#fff', fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>{unread > 9 ? '9+' : unread}</span>}
@@ -77,13 +77,20 @@ export default function NotifBell() {
                 onMouseLeave={(e) => { e.currentTarget.style.background = base; e.currentTarget.style.transform = 'none'; }}
                 onPointerDown={(e) => { if (n.url) { e.currentTarget.style.transform = 'scale(.985)'; e.currentTarget.style.background = n.read_at ? 'rgba(255,255,255,.085)' : 'rgba(124,140,255,.2)'; } }}
                 onPointerUp={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.background = hover; }}
-                style={{ display: 'flex', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', cursor: n.url ? 'pointer' : 'default', background: base, transition: 'background .12s ease, transform .08s ease', WebkitTapHighlightColor: 'transparent' }}>
-                <span style={{ flex: 'none', color: 'var(--soft-brand)', display: 'inline-flex', marginTop: 1 }}><OnyxIcon emoji={ICON[n.kind] || ICON.info} size={17} glow={false} /></span>
+                style={{ display: 'flex', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', cursor: n.url ? 'pointer' : 'default', background: base, opacity: n.read_at ? 0.72 : 1, transition: 'background .12s ease, transform .08s ease, opacity .12s ease', WebkitTapHighlightColor: 'transparent' }}>
+                <span style={{ flex: 'none', color: n.read_at ? 'var(--mut)' : 'var(--soft-brand)', display: 'inline-flex', marginTop: 1 }}><OnyxIcon emoji={ICON[n.kind] || ICON.info} size={17} glow={false} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{n.title}</div>
+                  {/* Sin leer: título en blanco y en negrita. Leído: gris y normal. */}
+                  <div style={{ fontSize: 13, fontWeight: n.read_at ? 500 : 700, color: n.read_at ? 'var(--mut)' : 'var(--tx)' }}>{n.title}</div>
                   {n.body && <div className="muted" style={{ fontSize: 12 }}>{n.body}</div>}
-                  <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{ago(n.created_at)}</div>
+                  <div className="row" style={{ gap: 6, marginTop: 2 }}>
+                    <span className="muted" style={{ fontSize: 11 }}>{ago(n.created_at)}</span>
+                    {n.read_at
+                      ? <span className="muted" style={{ fontSize: 10.5, display: 'inline-flex', alignItems: 'center', gap: 2 }}>· {L('Leído', 'Read')} ✓</span>
+                      : <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--soft-brand)', background: 'rgba(124,140,255,.16)', padding: '1px 6px', borderRadius: 999 }}>{L('Nuevo', 'New')}</span>}
+                  </div>
                 </div>
+                {/* Punto azul solo mientras esté sin leer. */}
                 {!n.read_at && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--soft-brand)', flex: 'none', marginTop: 5 }} />}
               </div>
               );
