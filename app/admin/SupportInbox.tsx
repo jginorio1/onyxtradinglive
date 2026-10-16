@@ -393,7 +393,9 @@ export default function SupportInbox() {
         .wa-help{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--mut);cursor:pointer;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1}
         .wa-help:hover{color:var(--brand);border-color:var(--brand)}
         /* Globo de ayuda: fijo y centrado abajo para que NUNCA se corte en móvil. */
-        .wa-tip{position:fixed;left:12px;right:12px;bottom:84px;margin:0 auto;z-index:2147483600;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.7;width:auto;max-width:360px;box-shadow:0 16px 40px rgba(0,0,0,.4);color:var(--tx);cursor:pointer}
+        .wa-tip{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 64px);bottom:auto;margin:0 auto;z-index:2147483600;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.7;width:auto;max-width:360px;box-shadow:0 16px 40px rgba(0,0,0,.4);color:var(--tx);cursor:pointer}
+        /* Capa invisible a pantalla completa: tocar FUERA de un popup lo cierra. */
+        .wa-ov{position:fixed;inset:0;z-index:2147483590;background:transparent}
         .wa-nav{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--card2)}
         .wa-nav button{width:26px;height:26px;border-radius:50%;border:none;background:transparent;color:var(--brand);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
         .wa-nav button:disabled{color:var(--mut);opacity:.4;cursor:default}
@@ -401,7 +403,11 @@ export default function SupportInbox() {
         .wa2{display:grid;grid-template-columns:320px minmax(0,1fr);gap:14px;align-items:stretch}
         .wa-search{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;margin-left:auto;max-width:260px;flex:1;color:var(--mut)}
         .wa-back{display:none}
-        .wa-cfg-btn{display:none}
+        /* Ajustes de soporte (rango, Insights, IA, SLA, bilingüe) COLAPSADOS tras una
+           sola línea también en PC, para que la lista de conversaciones no baje tanto. */
+        .wa-cfg-btn{display:flex}
+        .wa-cfg{display:none}
+        .wa-cfg.wa-cfg-open{display:block}
         /* Botón de emoji en el selector (PC): aro al pasar / al elegir, para que
            se note cuál se selecciona (antes no sombreaba ni reaccionaba). */
         .wa-emo{border-radius:8px;line-height:1;transition:background .1s,transform .06s}
@@ -588,7 +594,8 @@ export default function SupportInbox() {
             </span>
             <span style={{ position: 'relative', flex: 'none' }}>
               <button className="wa-help" onClick={() => setHelpKey(helpKey === 'filters' ? '' : 'filters')} title={es ? '¿Qué significan?' : 'What do these mean?'} aria-label="?">?</button>
-              {helpKey === 'filters' && (
+              {helpKey === 'filters' && (<>
+                <div className="wa-ov" onClick={() => setHelpKey('')} />
                 <div className="wa-tip" onClick={() => setHelpKey('')}>
                   <b>{t.s_open}</b> — {es ? 'conversaciones nuevas sin atender.' : 'new, unattended conversations.'}<br />
                   <b>{t.s_inprogress}</b> — {es ? 'ya les respondiste; esperan seguimiento.' : "you've replied; awaiting follow-up."}<br />
@@ -596,7 +603,7 @@ export default function SupportInbox() {
                   <b>{l.fMine}</b> — {es ? 'las que tomaste tú.' : 'the ones you took.'}<br />
                   <b>{l.fUnassigned}</b> — {es ? 'sin dueño: ¡tómalas!' : 'no owner yet: grab them!'}
                 </div>
-              )}
+              </>)}
             </span>
             <div className="wa-search"><Icon name="search" size={15} /><input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%', color: 'var(--tx)' }} /></div>
           </div>
@@ -738,7 +745,8 @@ export default function SupportInbox() {
                   {/* Ayuda "?" de las acciones del chat */}
                   <span style={{ position: 'relative', flex: 'none' }}>
                     <button className="wa-help" onClick={() => setHelpKey(helpKey === 'actions' ? '' : 'actions')} aria-label="?" title={es ? '¿Qué hace cada botón?' : 'What does each button do?'}>?</button>
-                    {helpKey === 'actions' && (
+                    {helpKey === 'actions' && (<>
+                      <div className="wa-ov" onClick={() => setHelpKey('')} />
                       <div className="wa-tip" onClick={() => setHelpKey('')}>
                         <b>{es ? 'Prioridad' : 'Priority'}</b> — {es ? 'marca urgencia (alta sube el ticket).' : 'sets urgency (high bumps the ticket).'}<br />
                         <b><Icon name="hand" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Tomar' : 'Take'}</b> — {es ? 'te asignas el ticket.' : 'assign it to yourself.'}<br />
@@ -747,7 +755,7 @@ export default function SupportInbox() {
                         <b><Icon name="check" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Resolver' : 'Resolve'}</b> — {es ? 'cierra y avisa al cliente.' : 'close and notify the customer.'}<br />
                         <b><Icon name="refresh" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Reabrir' : 'Reopen'}</b> — {es ? 'vuelve a abrir un ticket resuelto.' : 'reopen a resolved ticket.'}
                       </div>
-                    )}
+                    </>)}
                   </span>
                 </div>
 
@@ -802,40 +810,23 @@ export default function SupportInbox() {
                   </div>
 
                   {/* Respuestas guardadas */}
-                  {showCanned && mode === 'reply' && (
-                    <div style={{ position: 'absolute', bottom: '100%', left: 12, right: 12, marginBottom: 8, zIndex: 20, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, boxShadow: '0 12px 30px rgba(0,0,0,.3)' }}>
-                      {!newC && (
-                        <>
-                          {!cannedList.length && <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{l.cEmpty}</div>}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 170, overflowY: 'auto' }}>
-                            {cannedList.map((c) => (
-                              <div key={c.id} className="row between" style={{ gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '7px 9px' }}>
-                                <div style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 12.5, fontWeight: 600 }}>{c.title}</div>
-                                  <div className="muted" style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.body}</div>
-                                </div>
-                                <div className="row" style={{ gap: 4, flex: 'none' }}>
-                                  <button className="btn btn-primary" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => { setText(c.body); setShowCanned(false); }}>{l.insert}</button>
-                                  <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 8px', color: 'var(--red)', display: 'inline-flex' }} title={l.cDel} onClick={() => delCanned(c.id)}><Icon name="trash" size={15} /></button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          <button className="btn btn-ghost" style={{ fontSize: 12, marginTop: 8 }} onClick={() => setNewC({ title: '', body: '' })}>＋ {l.cannedNew}</button>
-                        </>
-                      )}
-                      {newC && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <input placeholder={l.cTitle} value={newC.title} onChange={(e) => setNewC({ ...newC, title: e.target.value })} style={{ margin: 0, fontSize: 13 }} />
-                          <textarea placeholder={l.cBody} value={newC.body} onChange={(e) => setNewC({ ...newC, body: e.target.value })} rows={3} style={{ width: '100%', margin: 0 }} />
-                          <div className="row" style={{ gap: 6 }}>
-                            <button className="btn btn-primary" style={{ fontSize: 12.5 }} onClick={saveCanned} disabled={!newC.title.trim() || !newC.body.trim()}>{l.cSave}</button>
-                            <button className="btn btn-ghost" style={{ fontSize: 12.5, display: 'inline-flex' }} onClick={() => setNewC(null)}><Icon name="x" size={15} /></button>
-                          </div>
-                        </div>
-                      )}
+                  {showCanned && mode === 'reply' && (<>
+                    <div className="wa-ov" onClick={() => setShowCanned(false)} />
+                    <div style={{ position: 'absolute', bottom: '100%', left: 12, right: 12, marginBottom: 8, zIndex: 2147483595, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10, boxShadow: '0 12px 30px rgba(0,0,0,.3)' }}>
+                      {/* Respuestas guardadas: aquí SOLO se usan (insertar). Crear/borrar se
+                          gestiona desde Admin → Base de respuestas, no desde el chat. */}
+                      {!cannedList.length && <div className="muted" style={{ fontSize: 12.5, marginBottom: 2 }}>{l.cEmpty}</div>}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
+                        {cannedList.map((c) => (
+                          <button key={c.id} onClick={() => { setText(c.body); setShowCanned(false); }}
+                            style={{ textAlign: 'left', gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '8px 10px', cursor: 'pointer', color: 'var(--tx)' }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 600 }}>{c.title}</div>
+                            <div className="muted" style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.body}</div>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  )}
+                  </>)}
 
                   {/* Chips de adjuntos por enviar */}
                   {mode === 'reply' && !!atts.length && (

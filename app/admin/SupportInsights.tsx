@@ -14,6 +14,7 @@ export default function SupportInsights({ lang }: { lang: string }) {
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState('');
   const [added, setAdded] = useState<Record<string, boolean>>({});
+  const [drafting, setDrafting] = useState<Record<string, boolean>>({});
 
   async function load(d = days, refresh = false) {
     setBusy(true); setErr('');
@@ -27,12 +28,15 @@ export default function SupportInsights({ lang }: { lang: string }) {
   }
   useEffect(() => { if (open && !data) load(); /* eslint-disable-next-line */ }, [open]);
 
-  async function toKb(title: string) {
-    if (added[title]) return;
+  async function toKb(topic: string) {
+    if (added[topic] || drafting[topic]) return;
+    setDrafting((s) => ({ ...s, [topic]: true }));
     try {
-      await fetch('/api/admin/support/insights', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: title.slice(0, 120), body: title }) });
-      setAdded((s) => ({ ...s, [title]: true }));
+      // Mandamos `topic`: la IA redacta el artículo completo (título + contenido).
+      await fetch('/api/admin/support/insights', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ topic, lang }) });
+      setAdded((s) => ({ ...s, [topic]: true }));
     } catch {}
+    setDrafting((s) => ({ ...s, [topic]: false }));
   }
 
   const k = data?.kpis;
@@ -128,8 +132,8 @@ export default function SupportInsights({ lang }: { lang: string }) {
                     {ai.add.map((s: string, i: number) => (
                       <div key={i} className="row between" style={{ gap: 8, alignItems: 'flex-start' }}>
                         <span className="muted" style={{ fontSize: 12.5, lineHeight: 1.5, flex: 1 }}>{s}</span>
-                        <button onClick={() => toKb(s)} disabled={!!added[s]} className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 11.5, flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, ...(added[s] ? { color: 'var(--soft-green)' } : {}) }}>
-                          <Icon name={added[s] ? 'check' : 'plus'} size={12} /> {added[s] ? (es ? 'Añadido' : 'Added') : (es ? 'Base IA' : 'KB')}
+                        <button onClick={() => toKb(s)} disabled={!!added[s] || !!drafting[s]} className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 11.5, flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, ...(added[s] ? { color: 'var(--soft-green)' } : {}) }}>
+                          <Icon name={added[s] ? 'check' : drafting[s] ? 'sparkles' : 'plus'} size={12} /> {added[s] ? (es ? 'Añadido' : 'Added') : drafting[s] ? (es ? 'Redactando…' : 'Writing…') : (es ? 'Base IA' : 'KB')}
                         </button>
                       </div>
                     ))}

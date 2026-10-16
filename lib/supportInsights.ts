@@ -138,6 +138,23 @@ export async function aiInsights(questions: string[], en: boolean): Promise<Supp
   return { topics, improve: clean(j.improve), add: clean(j.add) };
 }
 
+// ---- Redactar un artículo completo de Base IA desde una sugerencia ---------
+// Convierte un tema/sugerencia ("Tutorial de conexión MT4/MT5…") en un artículo
+// listo para publicar: título limpio + cuerpo con pasos/estructura. Devuelve
+// { title, body }. Si no hay clave de IA, devuelve el tema como título y un
+// cuerpo mínimo (semilla) para que el equipo lo complete a mano.
+export async function draftArticle(topic: string, en: boolean): Promise<{ title: string; body: string }> {
+  const t = String(topic || '').trim().slice(0, 200);
+  if (!t) return { title: '', body: '' };
+  const sys = en
+    ? 'You write help-center articles for Onyx Trading Live (a trading platform: accounts, copy trading, trading robots/EAs for MT4/MT5/cTrader, prop-firm challenges, Onyx Guardian risk tool, ambassadors). Given a topic, write ONE clear, accurate, practical article. Use simple language and concrete steps. If the topic implies a how-to, write numbered steps. Do NOT invent product features you are unsure about; keep it general where needed and tell the reader where to look. Respond ONLY with valid JSON: {"title":"<short clear title>","body":"<the article, plain text with line breaks, you may use short headings and - bullet points>"}. No text outside JSON.'
+    : 'Escribes artículos de centro de ayuda para Onyx Trading Live (plataforma de trading: cuentas, copy trading, robots/EAs para MT4/MT5/cTrader, retos de prop firm, Onyx Guardian de gestión de riesgo, embajadores). Dado un tema, redacta UN artículo claro, preciso y práctico. Lenguaje simple y pasos concretos. Si el tema es un "cómo hacer", usa pasos numerados. NO inventes funciones del producto que no tengas claras; mantenlo general donde haga falta e indica al lector dónde mirar. Responde SOLO con JSON válido: {"title":"<título corto y claro>","body":"<el artículo, texto plano con saltos de línea; puedes usar títulos cortos y viñetas con - >"}. Nada fuera del JSON.';
+  const j = await anthropicJson(sys, (en ? 'Topic: ' : 'Tema: ') + t, 1600);
+  const title = String(j?.title || t).slice(0, 120);
+  const body = String(j?.body || '').trim();
+  return { title, body: body || t };
+}
+
 // ---- Caché del resultado de IA en app_settings ----------------------------
 const CACHE_KEY = 'support_insights_cache';
 type Cache = { at: string; from: string; to: string; lang: string; data: SupportAiInsights };
