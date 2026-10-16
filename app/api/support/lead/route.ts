@@ -88,8 +88,27 @@ export async function POST(req: Request) {
         for (let i = rows.length - 1; i >= 0; i--) { if (rows[i].sender === 'user') { (rows[i] as any).attachments = attList; break; } }
         if (!rows.some((r: any) => r.attachments)) (rows[0] as any).attachments = attList;
       }
-      const r = await supabaseAdmin.from('support_messages').insert(rows);
-      if ((r as any)?.error && attList.length) await supabaseAdmin.from('support_messages').insert(rows.map(({ attachments, ...m }: any) => m));
+      // Soporte bilingüe: detecta el idioma del cliente a partir de su primer
+      // mensaje, lo guarda en el ticket y añade a cada mensaje del cliente la
+      // versión en el idioma del empleado (meta.alt). Tolerante a falta de clave
+      // de IA o de la columna meta.
+      try {
+        const { inbound, setTicketClientLang } = await import('@/lib/supportTranslate');
+        let clientLang = '';
+        for (const row of rows as any[]) {
+          if (row.sender === 'user' && String(row.body || '').trim()) {
+            const { clientLang: cl, meta } = await inbound(row.body, clientLang);
+            if (!clientLang && cl) clientLang = cl;
+            if (meta) row.meta = meta;
+          }
+        }
+        if (clientLang) await setTicketClientLang(ticket.id, clientLang);
+      } catch {}
+      let r = await supabaseAdmin.from('support_messages').insert(rows);
+      if ((r as any)?.error) { // reintenta sin meta
+        r = await supabaseAdmin.from('support_messages').insert(rows.map(({ meta, ...m }: any) => m));
+        if ((r as any)?.error && attList.length) await supabaseAdmin.from('support_messages').insert(rows.map(({ attachments, meta, ...m }: any) => m));
+      }
     } else if (message || attList.length) {
       const one: any = { ticket_id: ticket.id, sender: 'user', body: message || (lang === 'en' ? '(screenshot attached)' : '(captura adjunta)') };
       if (attList.length) one.attachments = attList;

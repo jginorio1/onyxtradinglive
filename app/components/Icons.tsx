@@ -9,7 +9,7 @@ export type IconName =
   | 'userPlus' | 'window' | 'back' | 'sparkles' | 'hash' | 'info' | 'check'
   | 'refresh' | 'hand' | 'lock' | 'trash' | 'x' | 'bulb' | 'image' | 'file'
   | 'clock' | 'ticket' | 'shield' | 'user' | 'dots' | 'chevronDown' | 'bell'
-  | 'message' | 'flag' | 'expand' | 'grip' | 'resize';
+  | 'message' | 'flag' | 'expand' | 'grip' | 'resize' | 'chevronLeft' | 'chevronRight';
 
 const P: Record<IconName, JSX.Element> = {
   search: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></>,
@@ -46,6 +46,8 @@ const P: Record<IconName, JSX.Element> = {
   expand: <><path d="M4 14v6h6M20 10V4h-6M14 10l6-6M10 14l-6 6" /></>,
   grip: <><path d="M8 6h.01M8 12h.01M8 18h.01M14 6h.01M14 12h.01M14 18h.01" /></>,
   resize: <><path d="M20 9L9 20M20 15l-5 5" /></>,
+  chevronLeft: <path d="M15 6l-6 6 6 6" />,
+  chevronRight: <path d="M9 6l6 6-6 6" />,
 };
 
 export default function Icon({ name, size = 18, stroke = 1.8, style, className }: {

@@ -118,6 +118,8 @@ export default function SupportInbox() {
   const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
   const [cfgOpen, setCfgOpen] = useState(false);        // en móvil: panel de ajustes plegable
   const [smallScreen, setSmallScreen] = useState(false);
+  const [helpKey, setHelpKey] = useState('');           // qué ayuda "?" está abierta
+  const [agentLang, setAgentLang] = useState('es');     // idioma principal del empleado (traductor)
   // Alto medido: los paneles llenan desde su borde superior hasta el fondo de la
   // ventana → el composer SIEMPRE queda visible pase lo que pase arriba.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -209,8 +211,8 @@ export default function SupportInbox() {
   // SLA: recordatorio/cierre al cliente inactivo + aviso/vencido cuando el equipo tarda.
   const [sla, setSla] = useState<any>(null);
   const [slaOpen, setSlaOpen] = useState(false);
-  async function loadSla() { try { const r = await fetch('/api/admin/support/sla'); setSla(await r.json()); } catch {} }
-  async function saveSla() { try { const r = await fetch('/api/admin/support/sla', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(sla) }); setSla(await r.json()); } catch {} }
+  async function loadSla() { try { const r = await fetch('/api/admin/support/sla'); const j = await r.json(); setSla(j); if (j && j.agentLang) setAgentLang(j.agentLang); } catch {} }
+  async function saveSla() { try { const r = await fetch('/api/admin/support/sla', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...sla, agentLang }) }); const j = await r.json(); setSla(j); if (j && j.agentLang) setAgentLang(j.agentLang); } catch {} }
 
   async function load() {
     try {
@@ -363,6 +365,13 @@ export default function SupportInbox() {
       <style>{`
         .wa-fil{font-size:12.5px;padding:6px 13px;border-radius:20px;border:1px solid var(--line);background:var(--card2);color:var(--mut);cursor:pointer;transition:all .12s}
         .wa-fil:hover{color:var(--tx)} .wa-fil.on{background:var(--brand);border-color:var(--brand);color:#fff}
+        .wa-help{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--mut);cursor:pointer;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+        .wa-help:hover{color:var(--brand);border-color:var(--brand)}
+        .wa-tip{position:absolute;top:26px;left:0;z-index:50;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.7;width:min(280px,80vw);box-shadow:0 12px 30px rgba(0,0,0,.3);color:var(--tx);cursor:pointer}
+        .wa-nav{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--card2)}
+        .wa-nav button{width:26px;height:26px;border-radius:50%;border:none;background:transparent;color:var(--brand);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+        .wa-nav button:disabled{color:var(--mut);opacity:.4;cursor:default}
+        .wa-navn{font-size:11px;font-weight:600;color:var(--mut);padding:0 2px;min-width:30px;text-align:center}
         .wa2{display:grid;grid-template-columns:320px minmax(0,1fr);gap:14px;align-items:stretch}
         .wa-search{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;margin-left:auto;max-width:260px;flex:1;color:var(--mut)}
         .wa-back{display:none}
@@ -378,10 +387,15 @@ export default function SupportInbox() {
              padding-top = notch/barra de estado del iPhone para no taparse. */
           .wa-fs-m{display:flex !important;position:fixed;left:0;right:0;top:var(--wa-top,0);height:var(--wa-h,100dvh) !important;max-height:var(--wa-h,100dvh);width:100%;border:none;border-radius:0;z-index:2147483000;background:var(--card);padding-top:env(safe-area-inset-top)}
           .wa-back{display:inline-flex !important}
-          /* Ajustes (IA, SLA, rango) ocultos tras un botón para no saturar. */
-          .wa-cfg{display:none}
-          .wa-cfg.wa-cfg-open{display:block}
-          .wa-cfg-btn{display:inline-flex !important}
+          /* En móvil ocultamos del todo los ajustes de IA/SLA/reportes: se gestionan
+             desde la computadora para no saturar el teléfono (lo pidió el dueño). */
+          .wa-cfg{display:none !important}
+          .wa-cfg-btn{display:none !important}
+          /* Filtros más compactos y deslizables en una sola fila. */
+          .wa-filrow{flex-wrap:nowrap !important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+          .wa-filrow::-webkit-scrollbar{display:none}
+          .wa-fil{white-space:nowrap;padding:6px 11px;font-size:12px}
+          .wa-search{max-width:none}
           .wa-head{padding:12px 12px;position:sticky;top:0;z-index:5}
           .wa-comp{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
           /* Botón de volver más visible y con buen área de toque. */
@@ -461,12 +475,54 @@ export default function SupportInbox() {
           </div>
         )}
       </div>
+
+      {/* Soporte bilingüe: idioma principal del empleado. El sistema detecta el
+          idioma del cliente y traduce en ambos sentidos automáticamente. */}
+      <div className="card" style={{ padding: '10px 14px', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ width: 30, height: 30, borderRadius: 9, flex: 'none', background: 'linear-gradient(135deg,#7c8cff,#34e2a0)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17' }}><Icon name="message" size={16} /></span>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>{es ? 'Soporte bilingüe (traductor automático)' : 'Bilingual support (auto-translate)'}</div>
+            <div className="muted" style={{ fontSize: 12 }}>{es ? 'Tú escribes en tu idioma; el cliente recibe el suyo. Detecta el idioma del cliente solo.' : 'You type in your language; the customer gets theirs. It detects the customer language on its own.'}</div>
+          </div>
+          <label style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {es ? 'Tu idioma' : 'Your language'}
+            <select value={agentLang} onChange={(e) => setAgentLang(e.target.value)} onBlur={saveSla} style={{ margin: 0, fontSize: 13, padding: '6px 8px' }}>
+              <option value="es">Español</option>
+              <option value="en">English</option>
+              <option value="pt">Português</option>
+              <option value="fr">Français</option>
+              <option value="it">Italiano</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </label>
+        </div>
+      </div>
       </div>{/* /wa-cfg */}
 
-      <div className="row" style={{ gap: 7, marginBottom: 12, flexWrap: 'wrap' }}>
-        {([['mine', l.fMine, mineCount], ['unassigned', l.fUnassigned, unassignedCount], ['open', t.s_open, counts.open], ['in_progress', t.s_inprogress, counts.in_progress], ['resolved', t.s_resolved, counts.resolved], ['all', t.s_all, null]] as any).map(([k, lab, c]: any) => (
-          <button key={k} className={'wa-fil' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{lab}{c != null ? ` ${c}` : ''}</button>
+      {/* Filtros simples y consistentes (PC + móvil). Primero los 3 estados con
+          contador; luego, más discretos, "míos" y "sin asignar". El "?" explica. */}
+      <div className="wa-filrow row" style={{ gap: 7, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        {([['open', t.s_open, counts.open], ['in_progress', t.s_inprogress, counts.in_progress], ['resolved', t.s_resolved, counts.resolved]] as any).map(([k, lab, c]: any) => (
+          <button key={k} className={'wa-fil' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{lab}{c != null ? ` · ${c}` : ''}</button>
         ))}
+        <span style={{ width: 1, height: 20, background: 'var(--line)', margin: '0 2px', flex: 'none' }} />
+        {([['mine', l.fMine, mineCount], ['unassigned', l.fUnassigned, unassignedCount], ['all', t.s_all, null]] as any).map(([k, lab, c]: any) => (
+          <button key={k} className={'wa-fil' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{lab}{c ? ` · ${c}` : ''}</button>
+        ))}
+        {/* Ayuda "?" de los filtros */}
+        <span style={{ position: 'relative', flex: 'none' }}>
+          <button className="wa-help" onClick={() => setHelpKey(helpKey === 'filters' ? '' : 'filters')} title={es ? '¿Qué significan?' : 'What do these mean?'} aria-label="?">?</button>
+          {helpKey === 'filters' && (
+            <div className="wa-tip" onClick={() => setHelpKey('')}>
+              <b>{t.s_open}</b> — {es ? 'conversaciones nuevas sin atender.' : 'new, unattended conversations.'}<br />
+              <b>{t.s_inprogress}</b> — {es ? 'ya les respondiste; esperan seguimiento.' : "you've replied; awaiting follow-up."}<br />
+              <b>{t.s_resolved}</b> — {es ? 'cerradas. ' : 'closed. '}<br />
+              <b>{l.fMine}</b> — {es ? 'las que tomaste tú.' : 'the ones you took.'}<br />
+              <b>{l.fUnassigned}</b> — {es ? 'sin dueño: ¡tómalas!' : 'no owner yet: grab them!'}
+            </div>
+          )}
+        </span>
         <div className="wa-search"><Icon name="search" size={15} /><input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%', color: 'var(--tx)' }} /></div>
       </div>
 
@@ -536,13 +592,25 @@ export default function SupportInbox() {
               if (s > bestScore) { bestScore = s; suggestedCanned = c; }
             }
             if (bestScore < 2) suggestedCanned = null;   // exige coincidencia real
-            const chatMsgs: ChatMsg[] = tm.map((m) => ({
-              id: m.id,
-              mine: m.sender === 'admin' || m.sender === 'ai',
-              authorName: m.sender === 'user' ? (tk.email || t.s_visitor).split('@')[0] : m.sender === 'ai' ? 'Onyx AI' : t.sender_support,
-              authorKind: m.sender === 'ai' ? 'ai' : m.sender === 'note' ? 'note' : m.sender === 'admin' ? 'admin' : 'user',
-              body: m.body, attachments: m.attachments || [], createdAt: m.created_at, readAt: m.read_at,
-            }));
+            const chatMsgs: ChatMsg[] = tm.map((m) => {
+              // Soporte bilingüe: muestra, bajo el original, la versión traducida.
+              // En mensajes del cliente, la traducción está en TU idioma (para leerla);
+              // en tus respuestas, es lo que RECIBIÓ el cliente (lo enviado).
+              const meta: any = m.meta || null;
+              let trBody = ''; let trLabel = '';
+              if (meta && meta.alt && meta.alt !== m.body) {
+                trBody = meta.alt;
+                const lc = String(meta.altLang || '').toUpperCase();
+                trLabel = (m.sender === 'admin' || m.sender === 'ai') ? `${lc} · ${es ? 'enviado' : 'sent'}` : lc;
+              }
+              return {
+                id: m.id,
+                mine: m.sender === 'admin' || m.sender === 'ai',
+                authorName: m.sender === 'user' ? (tk.email || t.s_visitor).split('@')[0] : m.sender === 'ai' ? 'Onyx AI' : t.sender_support,
+                authorKind: m.sender === 'ai' ? 'ai' : m.sender === 'note' ? 'note' : m.sender === 'admin' ? 'admin' : 'user',
+                body: m.body, trBody, trLabel, attachments: m.attachments || [], createdAt: m.created_at, readAt: m.read_at,
+              };
+            });
             const inConvo = new Set([tk.assignee_id, me, ...parts.map((p) => p.user_id)].filter(Boolean));
             const cands = team.filter((tm2) => !inConvo.has(tm2.id));
             return (
@@ -550,6 +618,20 @@ export default function SupportInbox() {
                 {/* Cabecera WhatsApp */}
                 <div className="wa-head">
                   <button className="wa-hb wa-back" onClick={() => setMobileOpen(false)} title={es ? 'Volver a la lista' : 'Back to list'}><Icon name="back" size={18} /> {es ? 'Volver' : 'Back'}</button>
+                  {/* Navegación entre conversaciones (anterior / siguiente) sin volver
+                      a la lista. Útil cuando hay varios mensajes pendientes. */}
+                  {(() => {
+                    const idx = list.findIndex((x) => x.id === tk.id);
+                    if (idx < 0 || list.length < 2) return null;
+                    const go = (d: number) => { const n = list[idx + d]; if (n) setOpenId(n.id); };
+                    return (
+                      <span className="wa-nav" title={es ? 'Entre conversaciones' : 'Between conversations'}>
+                        <button disabled={idx <= 0} onClick={() => go(-1)} aria-label={es ? 'Anterior' : 'Previous'}><Icon name="chevronLeft" size={16} /></button>
+                        <span className="wa-navn">{idx + 1}/{list.length}</span>
+                        <button disabled={idx >= list.length - 1} onClick={() => go(1)} aria-label={es ? 'Siguiente' : 'Next'}><Icon name="chevronRight" size={16} /></button>
+                      </span>
+                    );
+                  })()}
                   <span className="wa-av" style={{ background: avatarOf(tk.email).bg, color: avatarOf(tk.email).fg }}>{initials(tk.email || '?')}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tk.email || t.s_visitor}</div>
@@ -571,6 +653,19 @@ export default function SupportInbox() {
                   {tk.status !== 'resolved'
                     ? <button className="wa-hb" title={t.s_resolve} style={{ color: 'var(--green)' }} onClick={() => act(tk.id, { status: 'resolved' })}><Icon name="check" size={17} /></button>
                     : <button className="wa-hb" title={t.s_reopen} onClick={() => act(tk.id, { status: 'open' })}><Icon name="refresh" size={17} /></button>}
+                  {/* Ayuda "?" de las acciones del chat */}
+                  <span style={{ position: 'relative', flex: 'none' }}>
+                    <button className="wa-help" onClick={() => setHelpKey(helpKey === 'actions' ? '' : 'actions')} aria-label="?" title={es ? '¿Qué hace cada botón?' : 'What does each button do?'}>?</button>
+                    {helpKey === 'actions' && (
+                      <div className="wa-tip" style={{ right: 0, left: 'auto' }} onClick={() => setHelpKey('')}>
+                        <b>{es ? 'Prioridad' : 'Priority'}</b> — {es ? 'marca urgencia (alta sube el ticket).' : 'sets urgency (high bumps the ticket).'}<br />
+                        <b><Icon name="hand" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Tomar' : 'Take'}</b> — {es ? 'te asignas el ticket.' : 'assign it to yourself.'}<br />
+                        <b><Icon name="userPlus" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Invitar' : 'Invite'}</b> — {es ? 'sumas a un compañero.' : 'bring in a teammate.'}<br />
+                        <b><Icon name="info" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Ficha' : 'Profile'}</b> — {es ? 'expediente del cliente.' : 'customer record.'}<br />
+                        <b><Icon name="check" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Resolver' : 'Resolve'}</b> — {es ? 'cierra y avisa al cliente.' : 'close and notify the customer.'}
+                      </div>
+                    )}
+                  </span>
                 </div>
 
                 {/* Invitar (desplegable) */}

@@ -28,10 +28,22 @@ export async function GET(req: Request) {
     const token = new URL(req.url).searchParams.get('token') || '';
     const tk = await ticketByToken(token);
     if (!tk) return NextResponse.json({ ok: false, messages: [] });
-    const { data: msgs } = await supabaseAdmin.from('support_messages')
-      .select('id,sender,sender_id,body,attachments,created_at')
-      .eq('ticket_id', (tk as any).id).neq('sender', 'note')
-      .order('created_at', { ascending: true }).limit(200);
+    // Intentamos traer también `meta` (versiones traducidas); si la columna aún no
+    // existe, reintentamos sin ella para no romper el hilo.
+    let msgs: any[] = [];
+    {
+      const r = await supabaseAdmin.from('support_messages')
+        .select('id,sender,sender_id,body,attachments,meta,created_at')
+        .eq('ticket_id', (tk as any).id).neq('sender', 'note')
+        .order('created_at', { ascending: true }).limit(200);
+      if (r.error) {
+        const r2 = await supabaseAdmin.from('support_messages')
+          .select('id,sender,sender_id,body,attachments,created_at')
+          .eq('ticket_id', (tk as any).id).neq('sender', 'note')
+          .order('created_at', { ascending: true }).limit(200);
+        msgs = r2.data || [];
+      } else { msgs = r.data || []; }
+    }
 
     // Nombre del agente que atiende (el humano que respondió más reciente). Así el
     // cliente ve CON QUIÉN habla, no solo "Equipo". Si no hay humano aún, queda ''.
@@ -50,13 +62,21 @@ export async function GET(req: Request) {
       }
     } catch {}
 
-    const messages = (msgs || []).map((m: any) => ({
-      role: m.sender === 'user' ? 'user' : 'assistant',   // agente e IA se ven como "assistant"
-      by: m.sender,                                         // 'user' | 'admin' | 'ai'
-      content: m.body || '',
-      attachments: m.attachments || [],
-      at: m.created_at,
-    }));
+    // El cliente ve SIEMPRE en su idioma. Para mensajes del agente guardamos la
+    // versión del cliente en meta.alt (si existe); los del propio cliente ya están
+    // en su idioma. Así nunca ve español si él escribe en inglés.
+    const messages = (msgs || []).map((m: any) => {
+      const meta = m.meta || null;
+      let content = m.body || '';
+      if (m.sender !== 'user' && meta && meta.alt) content = meta.alt; // versión en idioma del cliente
+      return {
+        role: m.sender === 'user' ? 'user' : 'assistant',   // agente e IA se ven como "assistant"
+        by: m.sender,                                         // 'user' | 'admin' | 'ai'
+        content,
+        attachments: m.attachments || [],
+        at: m.created_at,
+      };
+    });
     // ¿El agente está escribiendo ahora? (sello de tiempo reciente < 8s). Tolerante:
     // si la columna agent_typing_at no existe, simplemente no se muestra.
     let agentTyping = false;
@@ -85,7 +105,18 @@ export async function POST(req: Request) {
     const tk = await ticketByToken(token);
     if (!tk) return NextResponse.json({ error: 'not found', code: 'notfound' }, { status: 404 });
 
-    await supabaseAdmin.from('support_messages').insert({ ticket_id: (tk as any).id, sender: 'user', body });
+    // Soporte bilingüe: detecta el idioma del cliente y guarda junto al original
+    // la versión en el idioma del empleado (para que éste la lea). Tolerante: si no
+    // hay clave de IA o la columna meta no existe, guarda el mensaje tal cual.
+    try {
+      const { inbound, insertMessage, setTicketClientLang, ticketClientLang } = await import('@/lib/supportTranslate');
+      const known = await ticketClientLang((tk as any).id);
+      const { clientLang, meta } = await inbound(body, known);
+      await insertMessage({ ticket_id: (tk as any).id, sender: 'user', body }, meta);
+      if (!known && clientLang) await setTicketClientLang((tk as any).id, clientLang);
+    } catch {
+      await supabaseAdmin.from('support_messages').insert({ ticket_id: (tk as any).id, sender: 'user', body });
+    }
     // Reabrir si estaba resuelto y marcar actividad para que suba en la bandeja.
     const patch: any = { updated_at: new Date().toISOString() };
     if ((tk as any).status === 'resolved') patch.status = 'open';

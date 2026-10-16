@@ -15,7 +15,8 @@ export async function GET() {
     const { ok } = await requirePerm('soporte', 'view');
     if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const cfg = await getSetting<SupportSla>('support_sla', SLA_DEFAULT);
-    return NextResponse.json({ ...SLA_DEFAULT, ...cfg });
+    const agentLang = await getSetting<string>('support_agent_lang', 'es');
+    return NextResponse.json({ ...SLA_DEFAULT, ...cfg, agentLang: typeof agentLang === 'string' ? agentLang : 'es' });
   } catch (e: any) {
     await logError('support_sla', e);
     return NextResponse.json({ ...SLA_DEFAULT });
@@ -45,8 +46,14 @@ export async function POST(req: Request) {
     if (next.closeH <= next.reminderH) next.closeH = next.reminderH + 1;
     if (next.overdueMin <= next.ackMin) next.overdueMin = next.ackMin + 10;
     await saveSetting('support_sla', next);
+    // Idioma principal del empleado de soporte (para el traductor bilingüe).
+    let agentLang = await getSetting<string>('support_agent_lang', 'es');
+    if (b.agentLang !== undefined) {
+      agentLang = String(b.agentLang || 'es').toLowerCase().trim().split(/[-_]/)[0].slice(0, 5) || 'es';
+      await saveSetting('support_agent_lang', agentLang);
+    }
     await logAdmin(g.user?.email || '', 'support_sla', 'support_sla', { on: next.on });
-    return NextResponse.json({ ok: true, ...next });
+    return NextResponse.json({ ok: true, ...next, agentLang });
   } catch (e: any) {
     await logError('support_sla', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

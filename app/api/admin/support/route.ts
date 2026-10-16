@@ -66,10 +66,13 @@ export async function GET() {
     let participants: any[] = [];
     if (ids.length) {
       const [m, p] = await Promise.all([
-        supabaseAdmin.from('support_messages').select('id,ticket_id,sender,sender_id,body,attachments,read_at,created_at').in('ticket_id', ids).order('created_at', { ascending: true }),
+        supabaseAdmin.from('support_messages').select('id,ticket_id,sender,sender_id,body,attachments,meta,read_at,created_at').in('ticket_id', ids).order('created_at', { ascending: true }),
         supabaseAdmin.from('ticket_participants').select('ticket_id,user_id').in('ticket_id', ids),
       ]);
-      messages = m.data || [];
+      // Si la columna meta no existe aún, reintentamos sin ella.
+      messages = m.error
+        ? ((await supabaseAdmin.from('support_messages').select('id,ticket_id,sender,sender_id,body,attachments,read_at,created_at').in('ticket_id', ids).order('created_at', { ascending: true })).data || [])
+        : (m.data || []);
       participants = p.data || [];
     }
     // Marca presencia: el admin que carga la bandeja está activo ahora.
@@ -132,7 +135,23 @@ export async function PATCH(req: Request) {
     const attachments = Array.isArray(b.attachments) ? b.attachments.slice(0, 5) : [];
     let emailed = false;
     if (body || attachments.length) {
-      await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'admin', sender_id: user.id, body, attachments });
+      // Soporte bilingüe: si el cliente escribe en otro idioma, traducimos la
+      // respuesta del empleado al idioma del cliente. Guardamos ambas versiones
+      // (body = lo que escribió el empleado · meta.alt = lo que recibe el cliente)
+      // y el correo sale en el idioma del cliente. Tolerante a falta de clave/columna.
+      let clientBody = body;   // lo que verá y recibirá el cliente
+      let outMeta: any = null;
+      try {
+        const { outbound, ticketClientLang, insertMessage } = await import('@/lib/supportTranslate');
+        const cl = await ticketClientLang(ticketId);
+        if (cl && body) {
+          const { clientText, meta } = await outbound(body, cl);
+          clientBody = clientText; outMeta = meta;
+        }
+        await insertMessage({ ticket_id: ticketId, sender: 'admin', sender_id: user.id, body, attachments }, outMeta);
+      } catch {
+        await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'admin', sender_id: user.id, body, attachments });
+      }
       if (!patch.status) patch.status = 'in_progress';
       const { data: tk } = await supabaseAdmin.from('support_tickets').select('email,subject,user_id').eq('id', ticketId).maybeSingle();
       if (tk?.email && body) {
@@ -143,7 +162,7 @@ export async function PATCH(req: Request) {
         emailed = await sendEmail(
           tk.email,
           `Re: ${tk.subject || 'Tu consulta en Onyx'}`,
-          `${body}${attachments.length ? `\n\n(${attachments.length} ${attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} en tu Centro de soporte)` : ''}\n\n—\nEquipo de Onyx Trading Live\nResponde a este correo o entra a tu Centro de soporte para seguir la conversación.`,
+          `${clientBody}${attachments.length ? `\n\n(${attachments.length} ${attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} en tu Centro de soporte)` : ''}\n\n—\nEquipo de Onyx Trading Live\nResponde a este correo o entra a tu Centro de soporte para seguir la conversación.`,
           replyTo ? { replyTo } : undefined,
         );
       }

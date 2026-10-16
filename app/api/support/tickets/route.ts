@@ -28,13 +28,30 @@ export async function GET() {
     const ids = (tickets || []).map((t: any) => t.id);
     let messages: any[] = [];
     if (ids.length) {
-      const { data } = await supabaseAdmin
+      // Intentamos traer también `meta` (traducciones); si la columna no existe aún,
+      // reintentamos sin ella para no romper el Centro de soporte.
+      let rows: any[] = [];
+      const r = await supabaseAdmin
         .from('support_messages')
-        .select('id,ticket_id,sender,sender_id,body,attachments,read_at,created_at')
+        .select('id,ticket_id,sender,sender_id,body,attachments,meta,read_at,created_at')
         .in('ticket_id', ids)
         .neq('sender', 'note')   // las notas internas del equipo NO se muestran al trader
         .order('created_at', { ascending: true });
-      messages = data || [];
+      if (r.error) {
+        const r2 = await supabaseAdmin
+          .from('support_messages')
+          .select('id,ticket_id,sender,sender_id,body,attachments,read_at,created_at')
+          .in('ticket_id', ids).neq('sender', 'note').order('created_at', { ascending: true });
+        rows = r2.data || [];
+      } else { rows = r.data || []; }
+      // Soporte bilingüe: el cliente registrado ve SIEMPRE en su idioma. Para mensajes
+      // del equipo/IA, si hay versión traducida al idioma del cliente (meta.alt), esa se
+      // muestra; sus propios mensajes ya están en su idioma.
+      messages = rows.map((m: any) => {
+        const meta = m.meta || null;
+        if (m.sender !== 'user' && meta && meta.alt) return { ...m, body: meta.alt };
+        return m;
+      });
     }
     return NextResponse.json({ tickets: tickets || [], messages });
   } catch (e: any) {
@@ -99,6 +116,9 @@ export async function POST(req: Request) {
     const question = body || firstUserMsg;
     const { data: prof } = await supabaseAdmin.from('profiles').select('lang').eq('id', user.id).maybeSingle();
     const lang = pickLang((prof as any)?.lang);
+    // Soporte bilingüe: guardamos el idioma del cliente en el ticket (según su perfil)
+    // para que tus respuestas se traduzcan solas a su idioma. Tolerante si falta columna.
+    try { const { setTicketClientLang } = await import('@/lib/supportTranslate'); await setTicketClientLang(ticket.id, lang); } catch {}
     await autoHandleTicket({ ticketId: ticket.id, question, lang, email: user.email, subject });
 
     return NextResponse.json({ ok: true, id: ticket.id });
@@ -138,7 +158,17 @@ export async function PATCH(req: Request) {
     const body = String(b.body || '').trim().slice(0, 4000);
     const attachments = Array.isArray(b.attachments) ? b.attachments.slice(0, 5) : [];
     if (!body && !attachments.length) return NextResponse.json({ error: 'vacío', code: 'missing' }, { status: 400 });
-    await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'user', body, attachments });
+    // Soporte bilingüe: guardamos junto al mensaje del cliente su versión en el idioma
+    // del empleado, para que tú lo leas traducido. Tolerante a falta de clave/columna.
+    try {
+      const { inbound, insertMessage, setTicketClientLang, ticketClientLang } = await import('@/lib/supportTranslate');
+      const known = await ticketClientLang(ticketId);
+      const { clientLang, meta } = await inbound(body, known);
+      await insertMessage({ ticket_id: ticketId, sender: 'user', body, attachments }, meta);
+      if (!known && clientLang) await setTicketClientLang(ticketId, clientLang);
+    } catch {
+      await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'user', body, attachments });
+    }
     // Reabrir si estaba resuelto y marcar actividad
     await supabaseAdmin.from('support_tickets').update({ status: 'open', updated_at: new Date().toISOString() }).eq('id', ticketId);
     return NextResponse.json({ ok: true });

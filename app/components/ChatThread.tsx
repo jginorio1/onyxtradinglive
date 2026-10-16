@@ -27,6 +27,10 @@ export type ChatMsg = {
   createdAt: string;
   readAt?: string | null;
   pending?: boolean;
+  // Soporte bilingüe: versión traducida del mensaje (para que el empleado vea
+  // tanto el original como su traducción). trLabel describe qué es esa línea.
+  trBody?: string;
+  trLabel?: string;
 };
 
 const EMOJIS = [
@@ -172,6 +176,14 @@ export default function ChatThread({
                     </div>
                   )}
                   {renderBody(m.body)}
+                  {/* Soporte bilingüe: línea punteada con la versión traducida, para
+                      que el empleado lea el original y su traducción a la vez. */}
+                  {!!m.trBody && m.trBody !== m.body && (
+                    <div style={{ marginTop: 6, paddingTop: 6, borderTop: m.mine ? '1px dashed rgba(233,237,239,.35)' : '1px dashed var(--line)', fontSize: 12.5, opacity: .92, color: m.mine ? '#cfe0db' : 'var(--mut)' }}>
+                      {m.trLabel && <span style={{ fontSize: 10, fontWeight: 700, opacity: .8, marginRight: 5 }}>{m.trLabel}</span>}
+                      {m.trBody}
+                    </div>
+                  )}
                   {!!m.attachments?.length && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: m.body ? 6 : 0 }}>
                       {m.attachments.map((a, i) => <Attachment key={i} a={a} mine={m.mine} />)}
