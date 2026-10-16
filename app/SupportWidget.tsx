@@ -289,7 +289,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       const r = await fetch('/api/support/thread?token=' + encodeURIComponent(leadToken), { cache: 'no-store' });
       const j = await r.json();
       if (j?.ok && Array.isArray(j.messages)) {
-        setChat(j.messages.map((m: any) => ({ role: m.role, content: m.content, by: m.by })));
+        setChat(j.messages.map((m: any) => ({ role: m.role, content: m.content, by: m.by, attachments: Array.isArray(m.attachments) ? m.attachments : [] })));
         // Nombre del agente que atiende (si ya respondió una persona). Lo mostramos
         // en la cabecera para que el cliente sepa con quién habla.
         if (j.agent) { setAgentName(j.agent); setHuman(true); }
@@ -783,7 +783,18 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
               </div>
             )}
             {chat.map((m, i) => (
-              <div key={i} style={{ maxWidth: '86%', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, whiteSpace: m.role === 'assistant' ? 'normal' : 'pre-wrap', ...bubble(m.role) }}>{m.role === 'assistant' ? renderRich(m.content) : m.content}</div>
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: '86%', minWidth: 0, alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                {!!(m.content && String(m.content).trim()) && (
+                  <div style={{ minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, whiteSpace: m.role === 'assistant' ? 'normal' : 'pre-wrap', ...bubble(m.role) }}>{m.role === 'assistant' ? renderRich(m.content) : m.content}</div>
+                )}
+                {Array.isArray(m.attachments) && m.attachments.map((a: any, j: number) => {
+                  const url = String(a?.url || ''); if (!url) return null;
+                  const isImg = String(a?.type || '').startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(url);
+                  return isImg
+                    ? <a key={j} href={url} target="_blank" rel="noreferrer" style={{ display: 'block' }}><img src={url} alt={a?.name || ''} style={{ maxWidth: 220, maxHeight: 220, borderRadius: 12, border: '1px solid var(--line)', objectFit: 'cover', display: 'block' }} /></a>
+                    : <a key={j} href={url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', padding: '8px 11px', borderRadius: 10, background: 'var(--card2)', border: '1px solid var(--line)', color: 'var(--tx)', fontSize: 13, maxWidth: 220, overflow: 'hidden' }}><OnyxIcon emoji="📎" size={14} glow={false} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a?.name || (es ? 'Archivo' : 'File')}</span></a>;
+                })}
+              </div>
             ))}
             {(busy || agentTyping) && (
               <div style={{ alignSelf: 'flex-start', maxWidth: '86%' }}>
