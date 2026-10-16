@@ -85,6 +85,28 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // ya vio; vive en el navegador para que no "reaparezcan" al recargar.
   const [unseen, setUnseen] = useState(0);
   const seenCount = useRef(0);
+  const prevIncoming = useRef<number>(-1);   // para detectar mensaje NUEVO (no al cargar)
+
+  // "Ping" corto y discreto cuando llega un mensaje nuevo de soporte estando el
+  // chat cerrado. Generado por código (sin archivo). Los navegadores solo permiten
+  // audio tras una interacción del usuario; el invitado ya escribió nombre/correo,
+  // así que normalmente está permitido. Si no, falla en silencio.
+  function playPing() {
+    try {
+      const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(880, ctx.currentTime);
+      o.frequency.setValueAtTime(1175, ctx.currentTime + 0.12);   // dos notas: ding-dong suave
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+      o.start(); o.stop(ctx.currentTime + 0.52);
+      setTimeout(() => { try { ctx.close(); } catch {} }, 700);
+    } catch {}
+  }
   const [roleInfo, setRoleInfo] = useState<any>(null);   // { name, roles } del usuario logueado
   // Preferencias de ventana (escritorio/tablet): tamaño, expandido y lado. Se recuerdan.
   const [big, setBig] = useState(false);
@@ -328,11 +350,16 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // vio el cliente. Si el chat está abierto, todo cuenta como visto.
   useEffect(() => {
     const incoming = chat.filter((m) => m.role !== 'user').length;
+    // ¿Llegó un mensaje NUEVO nuestro en esta sesión (no es la carga inicial)?
+    const isNew = prevIncoming.current >= 0 && incoming > prevIncoming.current;
+    prevIncoming.current = incoming;
     if (open) {
       seenCount.current = incoming; setUnseen(0);
       try { localStorage.setItem('onyx_support_seen', String(incoming)); } catch {}
     } else {
-      setUnseen(Math.max(0, incoming - seenCount.current));
+      const u = Math.max(0, incoming - seenCount.current);
+      setUnseen(u);
+      if (isNew && u > 0 && cfg.sound !== false) playPing();   // ping discreto
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat, open]);
