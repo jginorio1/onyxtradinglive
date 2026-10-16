@@ -15,7 +15,8 @@ import { reverseFromInvoice, salesSettings, beneficiaryChain, pctFor } from '@/l
 //      - fecha futura     → queda PROGRAMADA (pickAd solo la sirve dentro de la
 //        ventana; no hace falta encenderla a mano).
 //  · La comisión del vendedor (sobre el espacio vendido, NO por clic) se
-//    acredita en sales_commissions con maduración y se revierte si hay reembolso.
+//    acredita en el libro único (comm_commissions, program='sales') con
+//    maduración y se revierte si hay reembolso.
 //  · Un cron marca las vencidas como 'expired' y limpia los holds caducados.
 // ============================================================
 
@@ -162,7 +163,7 @@ export async function createBooking(opts: {
 // (idempotente). El vendedor directo cobra el % de espacios (congelado al
 // vender); su Lead (override1) y su Director (override2) cobran su override
 // sobre la misma venta, exactamente como las suscripciones, reutilizando la
-// cadena de beneficiarios de Ventas. Cae en sales_commissions → aparece en el
+// cadena de beneficiarios de Ventas. Cae en comm_commissions (program='sales') → aparece en el
 // extracto/saldos/pagos de cada uno, con maduración y clawback por reembolso.
 async function creditSpaceCommission(booking: any, cfg: AdsConfig): Promise<void> {
   if (!booking?.rep_id) return;
