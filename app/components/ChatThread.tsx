@@ -29,7 +29,17 @@ export type ChatMsg = {
   pending?: boolean;
 };
 
-const EMOJIS = ['👍', '🙏', '✅', '🔥', '🎉', '😀', '😂', '😅', '😎', '🤝', '👌', '💪', '🚀', '⚡', '💰', '📈', '📉', '🛡️', '🤖', '❤️', '👀', '⏳', '⚠️', '❓'];
+const EMOJIS = [
+  '😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚',
+  '😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🥳','🤩','😏','😒','😞','😔','😟','😕','🙁','☹️','😣',
+  '😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗',
+  '🤔','🤭','🤫','🤥','😶','😐','😑','😬','🙄','😯','😦','😧','😮','😲','🥱','😴','🤤','😪','😵','🤐',
+  '🥴','🤢','🤮','🤧','😷','🤒','🤕','🤑','🤠','😈','👿','👻','💀','☠️','👽','🤖','🎃','😺','😸','😹',
+  '👍','👎','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👋',
+  '🤝','🙏','✍️','💪','🦾','👏','🙌','👐','🤲','🫶','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔',
+  '❣️','💕','💞','💓','💗','💖','💘','💝','💯','✅','❌','❗','❓','⚠️','🔥','⭐','🌟','✨','⚡','💥',
+  '🎉','🎊','🎁','🏆','🥇','🚀','📈','📉','💰','💵','💳','📊','📌','📎','🔒','🔑','🛡️','⏳','⏰','🔔',
+];
 
 const initials = (name?: string) => (name || '?').trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join('').toUpperCase() || '?';
 
@@ -73,6 +83,8 @@ export default function ChatThread({
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages.length, typingLabel]);
+  // Compositor que crece con el texto (como WhatsApp): hasta ~5 líneas, luego scroll.
+  useEffect(() => { const el = taRef.current; if (!el) return; el.style.height = 'auto'; el.style.height = Math.min(132, Math.max(36, el.scrollHeight)) + 'px'; }, [text]);
 
   // @menciones: al escribir "@algo" buscamos con la fuente que nos pasen.
   useEffect(() => {
@@ -149,10 +161,10 @@ export default function ChatThread({
                 <div style={{
                   maxWidth: '76%', padding: '8px 12px', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                   borderRadius: m.mine ? '15px 15px 5px 15px' : '15px 15px 15px 5px',
-                  background: note ? 'rgba(255,192,77,.12)' : m.mine ? 'linear-gradient(135deg,#7c8cff,#6675ff)' : ai ? 'linear-gradient(135deg,rgba(52,226,160,.12),rgba(124,140,255,.10))' : 'var(--bg2)',
-                  color: m.mine ? '#fff' : 'var(--tx)',
+                  background: note ? 'rgba(255,192,77,.12)' : m.mine ? '#005c4b' : ai ? 'linear-gradient(135deg,rgba(52,226,160,.12),rgba(124,140,255,.10))' : 'var(--bg2)',
+                  color: m.mine ? '#e9edef' : 'var(--tx)',
                   border: m.mine ? 'none' : note ? '1px solid rgba(255,192,77,.4)' : ai ? '1px solid rgba(52,226,160,.3)' : '1px solid var(--line)',
-                  boxShadow: m.mine ? '0 6px 18px rgba(124,140,255,.26)' : 'none',
+                  boxShadow: m.mine ? '0 1px 1px rgba(0,0,0,.2)' : 'none',
                 }}>
                   {(showAuthors && !m.mine || ai || note) && (
                     <div style={{ fontSize: 10.5, fontWeight: 600, marginBottom: 2, color: ai ? 'var(--soft-brand, #7c8cff)' : note ? 'var(--amber, #ffc04d)' : 'var(--mut)' }}>
@@ -202,7 +214,7 @@ export default function ChatThread({
           )}
           {/* Emojis */}
           {showEmoji && (
-            <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.3)', padding: 8, display: 'grid', gridTemplateColumns: 'repeat(8,1fr)', gap: 3, zIndex: 20, width: 260 }}>
+            <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.3)', padding: 8, display: 'grid', gridTemplateColumns: 'repeat(8,1fr)', gap: 3, zIndex: 20, width: 288, maxHeight: 240, overflowY: 'auto' }}>
               {EMOJIS.map((e) => <button key={e} onClick={() => { setText((v) => v + e); setShowEmoji(false); taRef.current?.focus(); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, padding: 3, borderRadius: 6 }}>{e}</button>)}
             </div>
           )}
@@ -218,16 +230,16 @@ export default function ChatThread({
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 4, background: '#fff', border: '1px solid var(--line)', borderRadius: 16, padding: '4px 6px 4px 4px' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 4, background: '#fff', border: '1px solid var(--line)', borderRadius: 22, padding: '4px 6px 4px 4px' }}>
               <button title={L('Emojis', 'Emojis')} onClick={() => { setShowEmoji((s) => !s); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '8px 6px' }}><Icon name="smile" size={19} /></button>
               <textarea ref={taRef} className="ct-input" value={text} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
                 rows={1} placeholder={placeholder || L('Escribe un mensaje…', 'Type a message…')} enterKeyHint="send"
-                style={{ flex: 1, margin: 0, resize: 'none', maxHeight: 110, minHeight: 36, padding: '8px 4px', border: 'none', background: 'transparent', fontSize: 14, color: '#15181f' }} />
+                style={{ flex: 1, margin: 0, resize: 'none', maxHeight: 132, minHeight: 36, padding: '8px 4px', border: 'none', background: 'transparent', fontSize: 14, color: '#15181f', overflowY: 'auto' }} />
               <button title={L('Adjuntar', 'Attach')} onClick={() => fileRef.current?.click()} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '8px 6px' }}><Icon name="paperclip" size={18} /></button>
               <input ref={fileRef} type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.currentTarget.value = ''; }} />
             </div>
             <button onClick={submit} disabled={busy || (!text.trim() && !atts.length)} title={L('Enviar', 'Send')}
-              style={{ width: 44, height: 44, flex: 'none', borderRadius: 14, border: 'none', cursor: (text.trim() || atts.length) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17', background: (text.trim() || atts.length) ? 'linear-gradient(135deg,#7c8cff,#34e2a0)' : 'var(--line)', boxShadow: (text.trim() || atts.length) ? '0 8px 20px rgba(124,140,255,.32)' : 'none', transition: 'all .15s' }}>
+              style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', border: 'none', cursor: (text.trim() || atts.length) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: (text.trim() || atts.length) ? '#00a884' : 'var(--line)', boxShadow: 'none', transition: 'all .15s' }}>
               {busy ? <Icon name="clock" size={18} /> : <Icon name="send" size={19} />}
             </button>
           </div>

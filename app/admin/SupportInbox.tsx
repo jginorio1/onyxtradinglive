@@ -22,7 +22,17 @@ const AV = [
   { bg: 'rgba(94,207,255,.20)', fg: '#5ecfff' }, { bg: 'rgba(197,132,255,.20)', fg: '#c584ff' },
 ];
 const avatarOf = (s?: string) => AV[Math.abs([...String(s || '?')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7)) % AV.length];
-const EMO = ['👍', '🙏', '✅', '🔥', '🎉', '😀', '😅', '😎', '🤝', '👌', '💪', '🚀', '💰', '📈', '🛡️', '🤖', '❤️', '👀', '⏳', '⚠️'];
+const EMO = [
+  '😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚',
+  '😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🥳','🤩','😏','😒','😞','😔','😟','😕','🙁','☹️','😣',
+  '😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗',
+  '🤔','🤭','🤫','🤥','😶','😐','😑','😬','🙄','😯','😦','😧','😮','😲','🥱','😴','🤤','😪','😵','🤐',
+  '🥴','🤢','🤮','🤧','😷','🤒','🤕','🤑','🤠','😈','👿','👻','💀','☠️','👽','🤖','🎃','😺','😸','😹',
+  '👍','👎','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','✋','🤚','🖐️','🖖','👋',
+  '🤝','🙏','✍️','💪','🦾','👏','🙌','👐','🤲','🫶','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔',
+  '❣️','💕','💞','💓','💗','💖','💘','💝','💯','✅','❌','❗','❓','⚠️','🔥','⭐','🌟','✨','⚡','💥',
+  '🎉','🎊','🎁','🏆','🥇','🚀','📈','📉','💰','💵','💳','📊','📌','📎','🔒','🔑','🛡️','⏳','⏰','🔔',
+];
 
 // Tiempo relativo corto: "hace 5m", "hace 2h", "ayer"…
 function ago(ts: any, es: boolean): string {
@@ -665,7 +675,7 @@ export default function SupportInbox() {
 
                   {/* Emojis */}
                   {showEmoji && mode === 'reply' && (
-                    <div style={{ position: 'absolute', bottom: '100%', left: 12, marginBottom: 8, zIndex: 20, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, boxShadow: '0 12px 30px rgba(0,0,0,.3)', display: 'grid', gridTemplateColumns: 'repeat(10,1fr)', gap: 3, width: 320 }}>
+                    <div style={{ position: 'absolute', bottom: '100%', left: 12, marginBottom: 8, zIndex: 20, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, boxShadow: '0 12px 30px rgba(0,0,0,.3)', display: 'grid', gridTemplateColumns: 'repeat(10,1fr)', gap: 3, width: 320, maxHeight: 240, overflowY: 'auto' }}>
                       {EMO.map((e) => <button key={e} onClick={() => { setText((v) => v + e); setShowEmoji(false); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, padding: 3 }}>{e}</button>)}
                     </div>
                   )}
@@ -679,17 +689,17 @@ export default function SupportInbox() {
                           <input type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadAtt(e.target.files); e.currentTarget.value = ''; }} />
                         </label>
                       </>}
-                      <textarea value={text} onChange={(e) => { setText(e.target.value); if (mode === 'reply') sendTyping(); }}
+                      <textarea ref={taRef} value={text} onChange={(e) => { setText(e.target.value); if (mode === 'reply') sendTyping(); }}
                         onKeyDown={(e) => {
                           // "/" en el compositor vacío abre las respuestas guardadas.
                           if (e.key === '/' && mode === 'reply' && !text) { e.preventDefault(); setShowCanned(true); return; }
                           // Enter (o Cmd/Ctrl+Enter) envía; Shift+Enter hace salto de línea.
                           if (e.key === 'Enter' && (!e.shiftKey || e.metaKey || e.ctrlKey)) { e.preventDefault(); if (mode === 'reply') { if (text.trim() || atts.length) act(tk.id, { body: text, attachments: atts }); } else if (text.trim()) act(tk.id, { note: text }); } }}
-                        rows={1} placeholder={mode === 'note' ? t.s_notePh : `${t.s_replyPh} · ${l.slashHint}`} style={{ flex: 1, margin: 0, resize: 'none', minHeight: 36, maxHeight: 120, padding: '9px 6px', border: 'none', background: 'transparent', fontSize: 14, color: mode === 'note' ? 'var(--tx)' : '#15181f' }} />
+                        rows={1} placeholder={mode === 'note' ? t.s_notePh : `${t.s_replyPh} · ${l.slashHint}`} style={{ flex: 1, margin: 0, resize: 'none', minHeight: 36, maxHeight: 132, overflowY: 'auto', padding: '9px 6px', border: 'none', background: 'transparent', fontSize: 14, color: mode === 'note' ? 'var(--tx)' : '#15181f' }} />
                     </div>
                     <button onClick={() => mode === 'reply' ? act(tk.id, { body: text, attachments: atts }) : act(tk.id, { note: text })}
                       disabled={busy === tk.id || (mode === 'reply' ? (!text.trim() && !atts.length) : !text.trim())} title={mode === 'reply' ? t.s_sendReply : t.s_saveNote}
-                      style={{ width: 44, height: 44, flex: 'none', borderRadius: 14, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17', cursor: 'pointer', background: mode === 'note' ? 'linear-gradient(135deg,#ffc04d,#ff9f45)' : 'linear-gradient(135deg,#7c8cff,#34e2a0)', boxShadow: '0 8px 20px rgba(124,140,255,.3)' }}>
+                      style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: mode === 'note' ? '#241002' : '#fff', cursor: 'pointer', background: mode === 'note' ? 'linear-gradient(135deg,#ffc04d,#ff9f45)' : '#00a884', boxShadow: 'none' }}>
                       {mode === 'note' ? <Icon name="lock" size={18} /> : <Icon name="send" size={19} />}
                     </button>
                   </div>
