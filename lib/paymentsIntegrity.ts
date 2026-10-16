@@ -33,7 +33,7 @@ export type IntegrityReport = {
   overall: CheckStatus;
   checks: Check[];
   programs: ProgramSummary[];
-  automations: { label: string; sub: string; status: CheckStatus }[];
+  automations: { label: string; sub: string; status: CheckStatus; at?: string | null }[];
 };
 
 const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
@@ -193,6 +193,22 @@ export async function runIntegrity(): Promise<IntegrityReport> {
       label: 'Niveles de vendedor (cron)',
       sub: active.length === 0 ? 'Sin vendedores activos aún' : freshest == null ? 'Aún no se han calculado' : `Último recálculo hace ${ageH}h`,
       status: stale ? 'warn' : 'ok',
+      at: freshest ? new Date(freshest).toISOString() : null,
+    });
+  } catch { /* opcional */ }
+
+  // Webhook de Stripe: ¿está recibiendo eventos? (latido escrito por la ruta).
+  try {
+    const { getHeartbeats } = await import('@/lib/heartbeat');
+    const hb = (await getHeartbeats(['stripe_webhook']))['stripe_webhook'];
+    const lastMs = hb?.last_at ? new Date(hb.last_at).getTime() : null;
+    const ageDays = lastMs ? Math.floor((now - lastMs) / 86400000) : null;
+    automations.push({
+      label: 'Webhook de Stripe',
+      sub: !lastMs ? 'Sin eventos recibidos aún'
+        : `Último evento${hb?.meta?.type ? ` (${hb.meta.type})` : ''}${ageDays != null ? `, hace ${ageDays}d` : ''} · ${hb?.hits || 0} en total`,
+      status: 'ok',   // informativo: "sin eventos" es normal antes del primer cobro
+      at: hb?.last_at || null,
     });
   } catch { /* opcional */ }
   try {
@@ -200,8 +216,9 @@ export async function runIntegrity(): Promise<IntegrityReport> {
     const last = stamps.length ? Math.max(...stamps) : null;
     automations.push({
       label: 'Última comisión acreditada',
-      sub: last ? new Date(last).toISOString().slice(0, 16).replace('T', ' ') : 'Ninguna todavía',
+      sub: last ? 'Registrada' : 'Ninguna todavía',
       status: 'ok',
+      at: last ? new Date(last).toISOString() : null,
     });
   } catch { /* opcional */ }
 

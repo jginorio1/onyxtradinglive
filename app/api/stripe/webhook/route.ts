@@ -153,6 +153,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `webhook: ${e.message}` }, { status: 400 });
   }
 
+  // Latido: deja constancia de que el webhook de Stripe SÍ está recibiendo
+  // eventos (se muestra con fecha y hora en Pagos → Revisión). No bloquea.
+  try { const { touchHeartbeat } = await import('@/lib/heartbeat'); await touchHeartbeat('stripe_webhook', { type: event.type }); } catch {}
+
   try {
     if (event.type === 'checkout.session.completed') {
       const s: any = event.data.object;

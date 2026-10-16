@@ -356,7 +356,7 @@ function Integrity({ canManage }: { canManage: boolean }) {
                 <span style={{ width: 8, height: 8, borderRadius: 99, background: col(a.status) }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{a.label}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>{a.sub}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{a.sub}{a.at ? ` · ${fmtDateTime(a.at)}` : ''}</div>
                 </div>
               </div>
             ))}
