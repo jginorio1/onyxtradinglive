@@ -121,6 +121,7 @@ export default function SupportInbox() {
   const [helpKey, setHelpKey] = useState('');           // qué ayuda "?" está abierta
   const [agentLang, setAgentLang] = useState('es');     // idioma principal del empleado (traductor)
   const [filterOpen, setFilterOpen] = useState(false);  // desplegable de filtros
+  const [moreOpen, setMoreOpen] = useState(false);      // menú "+" del compositor (estilo WhatsApp)
   // Alto medido: los paneles llenan desde su borde superior hasta el fondo de la
   // ventana → el composer SIEMPRE queda visible pase lo que pase arriba.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -234,6 +235,13 @@ export default function SupportInbox() {
     }
   }, []);
 
+  // Auto-recuperación móvil: si quedó abierta la vista a pantalla completa pero el
+  // ticket ya no existe (se resolvió, se filtró, o el deep-link apuntó a uno que no
+  // cargó), cerramos solos para no quedar atascados en "Elige una conversación".
+  useEffect(() => {
+    if (mobileOpen && openId && tickets.length && !tickets.find((it) => it.id === openId)) { setMobileOpen(false); setOpenId(''); }
+  }, [tickets, mobileOpen, openId]);
+
   // Al abrir un ticket, traer la ficha del trader y limpiar el compositor
   useEffect(() => {
     setShowInvite(false); setShowEmoji(false); setShowCanned(false); setText(''); setMode('reply');
@@ -292,12 +300,22 @@ export default function SupportInbox() {
   for (const m of msgs) { lastSender[m.ticket_id] = m.sender; lastMsgOf[m.ticket_id] = m; }
   const needsReply = (id: string) => lastSender[id] === 'user';
 
+  // Candado síncrono contra DOBLE ENVÍO: si tocas el botón varias veces rápido,
+  // solo el primer toque manda; los demás se ignoran hasta que termina.
+  const sending = useRef(false);
   async function act(id: string, patch: any) {
+    const isSend = patch.body !== undefined || patch.note !== undefined;
+    if (isSend && sending.current) return;   // ya se está enviando: ignorar toque extra
+    if (isSend) sending.current = true;
     setBusy(id);
-    await fetch('/api/admin/support', { method: 'PATCH', body: JSON.stringify({ ticket_id: id, ...patch }) });
-    if (patch.body !== undefined || patch.note !== undefined) setText('');
-    setBusy(''); await load();
-    if (patch.body !== undefined) { setAtts([]); ping(); }
+    try {
+      await fetch('/api/admin/support', { method: 'PATCH', body: JSON.stringify({ ticket_id: id, ...patch }) });
+      if (isSend) setText('');
+      await load();
+      if (patch.body !== undefined) { setAtts([]); ping(); }
+    } finally {
+      setBusy(''); if (isSend) sending.current = false;
+    }
   }
   // Borrador CON CONTEXTO: la IA ve la ficha del trader + el hilo completo (no solo
   // el primer mensaje), así que el borrador sale personalizado y casi listo.
@@ -403,7 +421,7 @@ export default function SupportInbox() {
           .wa-fil{white-space:nowrap;padding:6px 11px;font-size:12px}
           .wa-search{max-width:none}
           .wa-head{padding:12px 12px;position:sticky;top:0;z-index:5}
-          .wa-comp{padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+          .wa-comp{padding-bottom:calc(16px + env(safe-area-inset-bottom)) !important}
           /* Botón de volver más visible y con buen área de toque. */
           .wa-back{background:var(--brand) !important;color:#fff !important;border:none !important;width:auto !important;padding:8px 12px !important;gap:6px;font-size:13px;font-weight:600;border-radius:10px}
         }
@@ -416,6 +434,11 @@ export default function SupportInbox() {
         .wa-comp{border-top:1px solid var(--line);padding:10px 12px;position:relative;flex:none;background:var(--bg2)}
         .wa-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:6px 11px;border-radius:20px;border:1px solid var(--line);background:var(--card2);color:var(--tx);cursor:pointer}
         .wa-chip:hover{border-color:var(--brand)}
+        /* Botón "+" estilo WhatsApp y su menú desplegable. */
+        .wa-plus{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--brand);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:transform .06s ease,background .12s;-webkit-tap-highlight-color:transparent}
+        .wa-plus:hover{background:var(--card)} .wa-plus:active{transform:scale(.9)}
+        .wa-menu{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 11px;border-radius:9px;border:none;background:transparent;color:var(--tx);cursor:pointer;font-size:13.5px}
+        .wa-menu:hover{background:var(--card2)} .wa-menu:disabled{opacity:.5;cursor:default}
         .wa-av{width:40px;height:40px;border-radius:12px;background:rgba(124,140,255,.18);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex:none}
         .wa-avs{width:40px;height:40px;border-radius:12px;background:rgba(124,140,255,.18);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none}
         .wa-hb{background:var(--card2);border:1px solid var(--line);cursor:pointer;color:var(--mut);display:inline-flex;align-items:center;justify-content:center;padding:8px;border-radius:10px;transition:transform .06s ease, background .12s, border-color .12s;-webkit-tap-highlight-color:transparent}
@@ -606,7 +629,14 @@ export default function SupportInbox() {
         {/* Panel de conversación */}
         <div className={'wa-chat' + (mobileOpen ? ' wa-fs-m' : ' wa-hide-m')}
           style={(smallScreen && mobileOpen && vv) ? ({ ['--wa-h' as any]: vv.h + 'px', ['--wa-top' as any]: vv.top + 'px' } as any) : { height: paneH }}>
-          {!tk && <div className="muted" style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', fontSize: 14, textAlign: 'center', padding: 20 }}>{t.s_pickOne}</div>}
+          {!tk && (
+            <div style={{ display: 'flex', flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 20, paddingTop: 'calc(20px + env(safe-area-inset-top))' }}>
+              {/* Botón Volver también aquí: si en móvil se abrió la vista sin una
+                  conversación cargada, SIEMPRE hay cómo salir (no se traba). */}
+              <button className="wa-back wa-hb" onClick={() => { setMobileOpen(false); setOpenId(''); }}><Icon name="back" size={18} /> {es ? 'Volver' : 'Back'}</button>
+              <div className="muted" style={{ fontSize: 14, textAlign: 'center' }}>{t.s_pickOne}</div>
+            </div>
+          )}
           {tk && (() => {
             const tm = msgs.filter((m) => m.ticket_id === tk.id);
             const firstUser = tm.find((m) => m.sender === 'user')?.body || tk.subject;
@@ -748,25 +778,35 @@ export default function SupportInbox() {
                       <button className={'segbtn' + (mode === 'note' ? ' on-view' : '')} onClick={() => setMode('note')} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Icon name="lock" size={13} /> {t.s_note}</button>
                     </div>
                     {mode === 'reply' && (
-                      <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                        {/* Respuesta guardada sugerida (coincide con el ticket): un clic la usa. */}
+                      <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {/* Respuesta guardada sugerida (coincide con el ticket): un clic la usa. Siempre visible, es lo más útil. */}
                         {suggestedCanned && !text.trim() && (
                           <button className="wa-chip" title={suggestedCanned.title} onClick={() => setText(suggestedCanned.body)}
-                            style={{ borderColor: 'var(--green)', color: 'var(--green)', background: 'rgba(52,226,160,.10)', maxWidth: 230 }}>
+                            style={{ borderColor: 'var(--green)', color: 'var(--green)', background: 'rgba(52,226,160,.10)', maxWidth: 200 }}>
                             <Icon name="bulb" size={14} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.suggested}: {suggestedCanned.title}</span>
                           </button>
                         )}
-                        <button className="wa-chip" onClick={() => setShowCanned((v) => !v)}><Icon name="plus" size={14} /> {l.canned}</button>
-                        <button className="wa-chip" onClick={() => draft(tk.id)} disabled={busy === 'ai' + tk.id}><Icon name="sparkles" size={14} /> {busy === 'ai' + tk.id ? '…' : t.s_aiDraft}</button>
-                        {/* Retocar el borrador YA escrito en un clic. */}
-                        {text.trim() && (
-                          <>
-                            <button className="wa-chip" onClick={() => refine('shorten')} disabled={!!refining}><Icon name="resize" size={14} /> {refining === 'shorten' ? l.rBusy : l.rShorten}</button>
-                            <button className="wa-chip" onClick={() => refine('formal')} disabled={!!refining}><Icon name="shield" size={14} /> {refining === 'formal' ? l.rBusy : l.rFormal}</button>
-                            <button className="wa-chip" onClick={() => refine('translate')} disabled={!!refining}><Icon name="message" size={14} /> {refining === 'translate' ? l.rBusy : l.rTranslate}</button>
-                          </>
-                        )}
-                        <button className="wa-chip" title={l.saveKb} onClick={() => saveKnowledge(tk.subject, tm)}><Icon name="bulb" size={15} /></button>
+                        {/* Menú "+" estilo WhatsApp: agrupa todas las acciones para no saturar. */}
+                        <span style={{ position: 'relative', flex: 'none' }}>
+                          <button className="wa-plus" onClick={() => setMoreOpen((v) => !v)} title={es ? 'Más acciones' : 'More actions'} aria-label="+"><Icon name="plus" size={18} /></button>
+                          {moreOpen && (
+                            <>
+                              <div onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 25 }} />
+                              <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 26, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.35)', padding: 5, width: 215 }}>
+                                <button className="wa-menu" onClick={() => { setShowCanned(true); setMoreOpen(false); }}><Icon name="message" size={16} /> {l.canned}</button>
+                                <button className="wa-menu" onClick={() => { draft(tk.id); setMoreOpen(false); }} disabled={busy === 'ai' + tk.id}><Icon name="sparkles" size={16} /> {busy === 'ai' + tk.id ? '…' : t.s_aiDraft}</button>
+                                {text.trim() && <>
+                                  <div style={{ height: 1, background: 'var(--line)', margin: '4px 8px' }} />
+                                  <button className="wa-menu" onClick={() => { refine('shorten'); setMoreOpen(false); }} disabled={!!refining}><Icon name="resize" size={16} /> {l.rShorten}</button>
+                                  <button className="wa-menu" onClick={() => { refine('formal'); setMoreOpen(false); }} disabled={!!refining}><Icon name="shield" size={16} /> {l.rFormal}</button>
+                                  <button className="wa-menu" onClick={() => { refine('translate'); setMoreOpen(false); }} disabled={!!refining}><Icon name="message" size={16} /> {l.rTranslate}</button>
+                                </>}
+                                <div style={{ height: 1, background: 'var(--line)', margin: '4px 8px' }} />
+                                <button className="wa-menu" onClick={() => { saveKnowledge(tk.subject, tm); setMoreOpen(false); }}><Icon name="bulb" size={16} /> {l.saveKb}</button>
+                              </div>
+                            </>
+                          )}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -843,10 +883,10 @@ export default function SupportInbox() {
                           if (e.key === 'Enter' && (!e.shiftKey || e.metaKey || e.ctrlKey)) { e.preventDefault(); if (mode === 'reply') { if (text.trim() || atts.length) act(tk.id, { body: text, attachments: atts }); } else if (text.trim()) act(tk.id, { note: text }); } }}
                         rows={1} placeholder={mode === 'note' ? t.s_notePh : `${t.s_replyPh} · ${l.slashHint}`} style={{ flex: 1, margin: 0, resize: 'none', minHeight: 36, maxHeight: 132, overflowY: 'auto', padding: '9px 6px', border: 'none', background: 'transparent', fontSize: 14, color: mode === 'note' ? 'var(--tx)' : '#15181f' }} />
                     </div>
-                    <button onClick={() => mode === 'reply' ? act(tk.id, { body: text, attachments: atts }) : act(tk.id, { note: text })}
+                    <button className="wa-send" onClick={() => mode === 'reply' ? act(tk.id, { body: text, attachments: atts }) : act(tk.id, { note: text })}
                       disabled={busy === tk.id || (mode === 'reply' ? (!text.trim() && !atts.length) : !text.trim())} title={mode === 'reply' ? t.s_sendReply : t.s_saveNote}
-                      style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: mode === 'note' ? '#241002' : '#fff', cursor: 'pointer', background: mode === 'note' ? 'linear-gradient(135deg,#ffc04d,#ff9f45)' : '#00a884', boxShadow: 'none' }}>
-                      {mode === 'note' ? <Icon name="lock" size={18} /> : <Icon name="send" size={19} />}
+                      style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: mode === 'note' ? '#241002' : '#fff', cursor: 'pointer', background: mode === 'note' ? 'linear-gradient(135deg,#ffc04d,#ff9f45)' : '#00a884', boxShadow: 'none', opacity: busy === tk.id ? .6 : 1 }}>
+                      {mode === 'note' ? <Icon name="lock" size={18} /> : (busy === tk.id ? <Icon name="dots" size={19} /> : <Icon name="send" size={19} />)}
                     </button>
                   </div>
                 </div>
