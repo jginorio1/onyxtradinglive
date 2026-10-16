@@ -9,6 +9,7 @@ import UserDrawer from './UserDrawer';
 import { useChatRealtime } from '@/lib/chatRealtime';
 import ChatThread, { type Att, type ChatMsg } from '@/app/components/ChatThread';
 import Icon from '@/app/components/Icons';
+import { nativePlatform } from '@/lib/native';
 
 const stColor: any = { open: 'var(--brand)', in_progress: 'var(--amber)', resolved: 'var(--green)' };
 const stBg: any = { open: 'rgba(124,140,255,.15)', in_progress: 'rgba(255,192,77,.15)', resolved: 'rgba(52,226,160,.15)' };
@@ -120,16 +121,47 @@ export default function SupportInbox() {
     const f = () => setSmallScreen(window.innerWidth <= 860);
     f(); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f);
   }, []);
-  // visualViewport: al abrir el teclado del móvil, ajustamos la altura real del
-  // chat a pantalla completa para que el compositor NO quede tapado por el teclado.
+  // Teclado del móvil: ajustamos la altura real del chat a pantalla completa para
+  // que el compositor NO quede tapado (mismo manejo que el widget del cliente).
   const [vv, setVv] = useState<{ h: number; top: number } | null>(null);
+  // iOS app NATIVA: su WebView no encoge el visualViewport, así que usamos el evento
+  // de teclado de Capacitor (lo dispara NativeInit como 'onyxkb' + var --onyx-kb).
   useEffect(() => {
-    if (!(smallScreen && mobileOpen)) { setVv(null); return; }
-    const vp: any = typeof window !== 'undefined' ? (window as any).visualViewport : null;
+    if (!(smallScreen && mobileOpen) || nativePlatform() !== 'ios') return;
+    const apply = (h: number) => {
+      const H = (typeof window !== 'undefined' ? window.innerHeight : 0);
+      setVv(h > 0 ? { h: Math.max(240, H - h), top: 0 } : { h: H, top: 0 });
+    };
+    try { const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--onyx-kb')) || 0; apply(cur); } catch { apply(0); }
+    const on = (e: any) => apply((e && e.detail && e.detail.h) || 0);
+    window.addEventListener('onyxkb', on as any);
+    return () => window.removeEventListener('onyxkb', on as any);
+  }, [smallScreen, mobileOpen]);
+  // Web y Android (su visualViewport SÍ se encoge con el teclado). iOS queda fuera.
+  useEffect(() => {
+    const ios = nativePlatform() === 'ios';
+    if (!(smallScreen && mobileOpen) || ios) { if (!ios) setVv(null); return; }
+    const vp: any = (typeof window !== 'undefined') ? (window as any).visualViewport : null;
     if (!vp) return;
-    const on = () => setVv({ h: Math.round(vp.height), top: Math.round(vp.offsetTop || 0) });
-    on(); vp.addEventListener('resize', on); vp.addEventListener('scroll', on);
-    return () => { vp.removeEventListener('resize', on); vp.removeEventListener('scroll', on); };
+    const measure = () => setVv({ h: Math.round(vp.height), top: Math.round(vp.offsetTop || 0) });
+    let t: any;
+    const on = () => { clearTimeout(t); t = setTimeout(measure, 110); };   // debounce: Safari dispara muchos resize
+    measure();
+    const bump = () => { [60, 250, 500, 850].forEach((ms) => setTimeout(measure, ms)); };
+    vp.addEventListener('resize', on); vp.addEventListener('scroll', on);
+    window.addEventListener('focusin', bump); window.addEventListener('focusout', bump); window.addEventListener('orientationchange', bump);
+    return () => {
+      clearTimeout(t);
+      vp.removeEventListener('resize', on); vp.removeEventListener('scroll', on);
+      window.removeEventListener('focusin', bump); window.removeEventListener('focusout', bump); window.removeEventListener('orientationchange', bump);
+    };
+  }, [smallScreen, mobileOpen]);
+  // Con el chat a pantalla completa en móvil, bloquear el scroll del fondo.
+  useEffect(() => {
+    if (!(smallScreen && mobileOpen)) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
   }, [smallScreen, mobileOpen]);
   const [text, setText] = useState('');
   // Compositor que crece con el texto (como WhatsApp): hasta ~5 líneas y luego scroll.
