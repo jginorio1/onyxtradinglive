@@ -113,3 +113,34 @@ export async function maybeAutoPromote(repId: string): Promise<void> {
     try { const { notifyRep } = await import('@/lib/salesNotify'); await notifyRep(repId, 'promoted', { client: s.level_names?.l1 || 'Lead' }); } catch { /* opcional */ }
   } catch { /* opcional */ }
 }
+
+// ---------- REFRESCO DE TIER (cacheado) ----------
+// Calcula el scorecard de los vendedores activos cuyo tier está "viejo" (o nunca
+// se calculó) y guarda su tier en sales_reps.tier. Así el webhook de cobros no
+// recalcula nada: solo lee la columna. Se llama desde el cron de pagos.
+//   staleHours: solo refresca a quien no se ha calculado en este tiempo.
+//   max: tope de reps por corrida (para no saturar una sola ejecución del cron).
+export async function refreshRepTiers(staleHours = 12, max = 150): Promise<{ refreshed: number }> {
+  try {
+    const s = await salesSettings();
+    if (s.commission_auto === false) return { refreshed: 0 };   // si no se usa tier, no gastamos
+    const cutoff = new Date(Date.now() - Math.max(0, staleHours) * 3600000).toISOString();
+    // Reps activos sin tier o con tier viejo. `.or` cubre ambos casos.
+    const { data: reps } = await supabaseAdmin.from('sales_reps')
+      .select('id,tier_at').eq('status', 'active')
+      .or(`tier_at.is.null,tier_at.lt.${cutoff}`)
+      .order('tier_at', { ascending: true, nullsFirst: true }).limit(max);
+    const list = (reps || []) as any[];
+    if (!list.length) return { refreshed: 0 };
+    const { repScorecard } = await import('@/lib/salesPerf');
+    let refreshed = 0;
+    for (const r of list) {
+      try {
+        const card = await repScorecard(r.id, s);
+        await supabaseAdmin.from('sales_reps').update({ tier: card.tier, tier_at: new Date().toISOString() }).eq('id', r.id);
+        refreshed++;
+      } catch { /* uno que falle no frena a los demás */ }
+    }
+    return { refreshed };
+  } catch { return { refreshed: 0 }; }
+}

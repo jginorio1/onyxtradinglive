@@ -597,7 +597,8 @@ function RepGoalRow({ r, period, lvName, LV, inp, btn, btnP, canManage, post, on
 
 function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
   const [f, setF] = useState({ ...s, level_names: names });
-  useEffect(() => { setF({ ...s, level_names: names }); }, [s]);
+  const [simple, setSimple] = useState<boolean>(s?.simple_mode !== false);
+  useEffect(() => { setF({ ...s, level_names: names }); setSimple(s?.simple_mode !== false); }, [s]);
   const u = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
   const un = (k: string, v: any) => setF((x: any) => ({ ...x, level_names: { ...x.level_names, [k]: v } }));
   const uscope = (k: string, v: any) => setF((x: any) => ({ ...x, commission_scope: { ...(x.commission_scope || {}), [k]: v } }));
@@ -623,8 +624,52 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
       <span>{label}{hint && <Hint text={hint} />}</span>
     </label>
   );
+  // --- Modo simple: interruptor supervisores (deriva de los % de override) ---
+  const supervisorsOn = (Number(f.override1_rate) || 0) > 0 || (Number(f.override2_rate) || 0) > 0;
+  const setSupervisors = (on: boolean) => setF((x: any) => ({ ...x, override1_rate: on ? (Number(x.override1_rate) || 7) : 0, override2_rate: on ? (Number(x.override2_rate) || 4) : 0 }));
+  const ModeBar = (
+    <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+      <div><b>{simple ? 'Modo simple' : 'Modo avanzado'}</b><div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{simple ? 'Solo lo esencial. El resto corre con sus valores actuales.' : 'Todos los controles del sistema de ventas.'}</div></div>
+      <div style={{ display: 'inline-flex', border: '1px solid var(--line,#2a3350)', borderRadius: 10, overflow: 'hidden', flex: 'none' }}>
+        {([['simple', 'Simple'], ['adv', 'Avanzado']] as [string, string][]).map(([k, lbl]) => {
+          const on = (k === 'simple') === simple;
+          return <button key={k} onClick={() => setSimple(k === 'simple')} style={{ padding: '7px 16px', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', background: on ? 'var(--accent,#8b93ff)' : 'transparent', color: on ? '#fff' : 'var(--mut,#9aa6bd)' }}>{lbl}</button>;
+        })}
+      </div>
+    </div>
+  );
+
+  if (simple) return (
+    <div>
+      {ModeBar}
+      <div style={card}>
+        <b>Lo esencial</b>
+        <div className="muted" style={{ fontSize: 12, margin: '4px 0 14px' }}>Lo demás (tiers, impulso, metas, auto-ascenso…) queda en Avanzado con sus valores actuales.</div>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          {tog('enabled', 'Sistema de ventas encendido')}
+          {num('direct_rate', 'Comisión al vendedor', '%', 'El % que gana quien trae al cliente, sobre cada pago mensual.')}
+          {num('hold_days', 'Retención antes de pagar', 'días', 'Días de espera anti-reembolso antes de que la comisión se pueda cobrar.')}
+          {num('min_payout', 'Mínimo para pagar', '$')}
+        </div>
+        <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: 'rgba(139,147,255,.06)', border: '1px solid var(--line,#2a3350)' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, cursor: 'pointer', color: 'var(--tx,#e8ecf5)' }}>
+            <input type="checkbox" checked={supervisorsOn} onChange={(e) => setSupervisors(e.target.checked)} style={{ width: 16, height: 16, flex: 'none', margin: 0 }} />
+            <span>Pagar también a los supervisores<Hint text="Si lo enciendes, además del vendedor se paga un override a los 2 niveles arriba de él (la red). Si lo apagas, solo cobra el vendedor que cerró. Los % finos se ajustan en Avanzado." /></span>
+          </label>
+          {supervisorsOn && <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>Override Nivel 1: {Number(f.override1_rate) || 0}% · Nivel 2: {Number(f.override2_rate) || 0}% (ajústalos en Avanzado).</div>}
+        </div>
+        <div style={{ marginTop: 14, display: 'grid', gap: 6, maxWidth: 520 }}>
+          {tog('auto_payout', 'Pagar automáticamente lo que ya maduró', 'Si está apagado, los pagos los das tú a mano desde la pestaña Pagos.')}
+          {tog('review_before_pay', 'Revisar antes de pagar (recomendado)', 'Encola los pagos para que tú los apruebes antes de que salgan, aunque el pago automático esté encendido.')}
+        </div>
+      </div>
+      {canManage && <button style={btnP} onClick={() => act({ action: 'save_settings', settings: { ...f, simple_mode: true } })}>Guardar ajustes</button>}
+    </div>
+  );
+
   return (
     <div>
+      {ModeBar}
       <div style={card}>
         <b style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{ic('pencil', 15)} Nombres de las posiciones</b>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
@@ -1002,7 +1047,7 @@ function SettingsBox({ s, names, act, inp, btnP, canManage }: any) {
 
       <ProposalCard f={f} names={names} inp={inp} btnP={btnP} card={card} />
 
-      {canManage && <button style={btnP} onClick={() => act({ action: 'save_settings', settings: f })}>Guardar ajustes</button>}
+      {canManage && <button style={btnP} onClick={() => act({ action: 'save_settings', settings: { ...f, simple_mode: false } })}>Guardar ajustes</button>}
     </div>
   );
 }

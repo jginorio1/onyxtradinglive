@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { autoPaySalesDue } from '@/lib/salesPayout';
 import { salesSettings } from '@/lib/sales';
-import { assignLeadsRoundRobin, autoPromoteAll } from '@/lib/salesGrowth';
+import { assignLeadsRoundRobin, autoPromoteAll, refreshRepTiers } from '@/lib/salesGrowth';
 import { logError } from '@/lib/errlog';
 
 export const dynamic = 'force-dynamic';
@@ -21,10 +21,13 @@ export async function GET(req: Request) {
     const r = await autoPaySalesDue();
     // Motor de crecimiento: reparte leads y asciende si el dueño lo activó.
     const s = await salesSettings();
-    let assigned = 0, promoted = 0;
+    let assigned = 0, promoted = 0, tiers = 0;
     if (s.auto_assign_leads === true) { try { assigned = (await assignLeadsRoundRobin(300)).assigned; } catch {} }
     if (s.auto_promote === true) { try { promoted = (await autoPromoteAll()).promoted; } catch {} }
-    return NextResponse.json({ ok: true, ...r, assigned, promoted });
+    // Refresca el tier cacheado de los vendedores (lo lee el webhook de cobros sin
+    // recalcular). Solo toca a quienes están "viejos", así cada corrida es barata.
+    try { tiers = (await refreshRepTiers()).refreshed; } catch {}
+    return NextResponse.json({ ok: true, ...r, assigned, promoted, tiers });
   } catch (e: any) {
     await logError('cron_sales_payouts', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

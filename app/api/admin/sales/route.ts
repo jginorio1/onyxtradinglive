@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requirePerm } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { salesSettings, saveSalesSettings, uniqueRepCode, balances } from '@/lib/sales';
+import { salesSettings, saveSalesSettings, uniqueRepCode } from '@/lib/sales';
 import { scoreboard, repScorecard, reviewsForTeam, evaluationsFor, actionsFor, submitEvaluation, logAction } from '@/lib/salesPerf';
 import { goalProgress, goalFor } from '@/lib/salesGoals';
 import { funnelStats, unassignedLeads, assignLeadsRoundRobin, autoPromoteAll } from '@/lib/salesGrowth';
@@ -36,15 +36,18 @@ export async function GET() {
     apps.push({ ...a, resume_signed: cv, sponsor_name });
   }
   const { data: reps } = await supabaseAdmin.from('sales_reps').select('*').order('created_at', { ascending: true });
+  const repList = (reps || []) as any[];
 
-  // Enriquecer cada rep con correo, nº de clientes y saldos.
-  const list: any[] = [];
-  for (const r of (reps || []) as any[]) {
-    const { data: prof } = await supabaseAdmin.from('profiles').select('email').eq('id', r.user_id).maybeSingle();
-    const { count: clients } = await supabaseAdmin.from('sales_clients').select('*', { count: 'exact', head: true }).eq('rep_id', r.id);
-    const bal = await balances(r.id);
-    list.push({ ...r, email: (prof as any)?.email || null, clients: clients || 0, balances: bal });
-  }
+  // Enriquecer cada rep con correo, nº de clientes y saldos — SIN N+1: correos,
+  // clientes y saldos de todos en pocas consultas (antes: 3 por rep).
+  const { balancesBatch, clientsCountBatch } = await import('@/lib/sales');
+  const userIds = repList.map((r) => r.user_id).filter(Boolean);
+  const emailBy: Record<string, string> = {};
+  if (userIds.length) { const { data: profs } = await supabaseAdmin.from('profiles').select('id,email').in('id', userIds); (profs || []).forEach((p: any) => { emailBy[p.id] = p.email; }); }
+  const repIds = repList.map((r) => r.id);
+  const counts = await clientsCountBatch(repIds);
+  const bals = await balancesBatch(repIds);
+  const list = repList.map((r) => ({ ...r, email: emailBy[r.user_id] || null, clients: counts[r.id] || 0, balances: bals[r.id] || { pending: 0, available: 0, paid: 0 } }));
   return NextResponse.json({ settings, applications: apps || [], reps: list });
 }
 

@@ -8,6 +8,9 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export type SalesSettings = {
   enabled: boolean;
+  // Modo simple: el panel solo muestra lo esencial (el resto corre con sus valores
+  // actuales). No cambia el motor; solo qué ve/edita el dueño. true por defecto.
+  simple_mode?: boolean;
   direct_rate: number;        // % para el vendedor que trajo al cliente
   override1_rate: number;     // % override para su supervisor N1
   override2_rate: number;     // % override para el supervisor N2
@@ -84,7 +87,7 @@ const PERM_ALL: RepPerms = { can_trial: true, can_discount: true, can_clients: t
 const PERM_SELLER: RepPerms = { can_trial: true, can_discount: true, can_clients: true, can_tickets: true, can_recruit: false, can_team: false };
 
 const DEFAULTS: SalesSettings = {
-  enabled: true, direct_rate: 20, override1_rate: 7, override2_rate: 4,
+  enabled: true, simple_mode: true, direct_rate: 20, override1_rate: 7, override2_rate: 4,
   commission_months: 0,            // fallback (auto apagado): 0 = ∞
   commission_auto: true,           // el sistema decide el tope por desempeño
   commission_months_by_tier: { star: 0, solid: 18, risk: 9 },  // Estrella ∞ · Sólido 18m · En riesgo 9m
@@ -248,10 +251,13 @@ export async function creditFromPayment(opts: {
   let capMonths = Number(s.commission_months) || 0;
   if (s.commission_auto) {
     try {
-      const { repScorecard } = await import('@/lib/salesPerf');
-      const scg = await repScorecard(directRepId, s);
+      // ROBUSTEZ: el webhook NO recalcula el scorecard (consulta pesada). Lee el
+      // tier CACHEADO en sales_reps.tier (lo refresca un cron). Si aún no hay
+      // tier, trata al vendedor como 'solid' (tope intermedio) sin bloquear el cobro.
+      const { data: r } = await supabaseAdmin.from('sales_reps').select('tier').eq('id', directRepId).maybeSingle();
+      const tier = (r as any)?.tier || 'solid';
       const byT = (s.commission_months_by_tier || {}) as any;
-      const v = byT[scg.tier];
+      const v = byT[tier];
       if (v !== undefined && v !== null) capMonths = Number(v) || 0;
     } catch { /* si falla, cae al tope fijo */ }
   }
@@ -360,6 +366,39 @@ export async function balances(repId: string): Promise<{ pending: number; availa
   return { pending: Math.round(pending * 100) / 100, available: Math.round(available * 100) / 100, paid: Math.round(paid * 100) / 100 };
 }
 
+// Saldos de MUCHOS reps en UNA consulta (evita el N+1 del panel). Devuelve un
+// mapa repId → {pending, available, paid}. Reps sin filas salen en cero.
+export async function balancesBatch(repIds: string[]): Promise<Record<string, { pending: number; available: number; paid: number }>> {
+  const out: Record<string, { pending: number; available: number; paid: number }> = {};
+  for (const id of repIds) out[id] = { pending: 0, available: 0, paid: 0 };
+  if (!repIds.length) return out;
+  const now = Date.now();
+  for (const chunk of (function* () { for (let i = 0; i < repIds.length; i += 100) yield repIds.slice(i, i + 100); })()) {
+    const { data } = await supabaseAdmin.from('sales_commissions').select('rep_id,amount,status,available_at').in('rep_id', chunk).neq('status', 'reversed').limit(100000);
+    (data || []).forEach((c: any) => {
+      const b = out[c.rep_id]; if (!b) return;
+      const amt = Number(c.amount) || 0;
+      if (c.status === 'paid') b.paid += amt;
+      else if (c.status === 'available' || (c.available_at && new Date(c.available_at).getTime() <= now)) b.available += amt;
+      else b.pending += amt;
+    });
+  }
+  for (const id of repIds) { const b = out[id]; b.pending = Math.round(b.pending * 100) / 100; b.available = Math.round(b.available * 100) / 100; b.paid = Math.round(b.paid * 100) / 100; }
+  return out;
+}
+
+// Nº de clientes por rep en UNA consulta (mapa repId → count).
+export async function clientsCountBatch(repIds: string[]): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  for (const id of repIds) out[id] = 0;
+  if (!repIds.length) return out;
+  for (const chunk of (function* () { for (let i = 0; i < repIds.length; i += 100) yield repIds.slice(i, i + 100); })()) {
+    const { data } = await supabaseAdmin.from('sales_clients').select('rep_id').in('rep_id', chunk).limit(100000);
+    (data || []).forEach((r: any) => { if (out[r.rep_id] !== undefined) out[r.rep_id]++; });
+  }
+  return out;
+}
+
 // Ata un cliente recién registrado a un vendedor por su código (atribución de por
 // vida). Idempotente: si ya está atado, no hace nada. No se ata a sí mismo.
 export async function attachClientByCode(userId: string, code: string, source: 'link' | 'invite' | 'manual' = 'link'): Promise<{ linked: boolean }> {
@@ -415,14 +454,16 @@ export async function teamRollup(rootId: string): Promise<any[]> {
   const ids = await subtreeRepIds(rootId);
   if (!ids.length) return [];
   const { data: reps } = await supabaseAdmin.from('sales_reps').select('id,user_id,level,display_name,status').in('id', ids);
-  const out: any[] = [];
-  for (const r of (reps || []) as any[]) {
-    const { data: prof } = await supabaseAdmin.from('profiles').select('email').eq('id', r.user_id).maybeSingle();
-    const { count } = await supabaseAdmin.from('sales_clients').select('*', { count: 'exact', head: true }).eq('rep_id', r.id);
-    const bal = await balances(r.id);
-    out.push({ id: r.id, level: r.level, name: r.display_name || (prof as any)?.email || 'Rep', email: (prof as any)?.email || null, status: r.status, clients: count || 0, available: bal.available });
-  }
-  return out;
+  const list = (reps || []) as any[];
+  if (!list.length) return [];
+  // Sin N+1: correos, nº de clientes y saldos de TODO el equipo en pocas consultas.
+  const userIds = list.map((r) => r.user_id).filter(Boolean);
+  const emailBy: Record<string, string> = {};
+  if (userIds.length) { const { data: profs } = await supabaseAdmin.from('profiles').select('id,email').in('id', userIds); (profs || []).forEach((p: any) => { emailBy[p.id] = p.email; }); }
+  const repIds = list.map((r) => r.id);
+  const counts = await clientsCountBatch(repIds);
+  const bals = await balancesBatch(repIds);
+  return list.map((r) => ({ id: r.id, level: r.level, name: r.display_name || emailBy[r.user_id] || 'Rep', email: emailBy[r.user_id] || null, status: r.status, clients: counts[r.id] || 0, available: (bals[r.id] || { available: 0 }).available }));
 }
 
 // Dar PRUEBA a un cliente existente del rep: extiende su acceso de cortesía
