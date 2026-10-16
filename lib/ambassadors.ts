@@ -48,18 +48,9 @@ export async function rateFor(amb: any, s?: AmbSettings): Promise<{ rate: number
 
 // Saldos: retenido, disponible y ya pagado
 export async function balances(ambassadorId: string) {
-  const { data } = await supabaseAdmin.from('commissions').select('amount,status,available_at').eq('ambassador_id', ambassadorId);
-  const now = Date.now();
-  let pending = 0, available = 0, paid = 0;
-  (data || []).forEach((c: any) => {
-    const amt = Number(c.amount) || 0;
-    if (c.status === 'paid') paid += amt;
-    else if (c.status === 'reversed') return;
-    else if (c.status === 'available' || (c.available_at && new Date(c.available_at).getTime() <= now)) available += amt;
-    else pending += amt;
-  });
-  const r = (n: number) => Math.round(n * 100) / 100;
-  return { pending: r(pending), available: r(available), paid: r(paid) };
+  // Saldos desde el LIBRO ÚNICO de comisiones (programa 'ambassador').
+  const { balances: commBalances } = await import('@/lib/commissions');
+  return commBalances('ambassador', ambassadorId);
 }
 
 // Genera un código a partir del email, sin caracteres raros

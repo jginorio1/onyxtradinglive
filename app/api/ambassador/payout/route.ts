@@ -35,8 +35,8 @@ export async function POST() {
 
     // Reservamos esas comisiones para este pago
     const now = new Date().toISOString();
-    await supabaseAdmin.from('commissions').update({ payout_id: pay.id })
-      .eq('ambassador_id', amb.id).in('status', ['pending', 'available']).lte('available_at', now).is('payout_id', null);
+    await supabaseAdmin.from('comm_commissions').update({ payout_id: pay.id })
+      .eq('program', 'ambassador').eq('referrer_id', amb.id).in('status', ['pending', 'available']).lte('available_at', now).is('payout_id', null);
 
     return NextResponse.json({ ok: true, amount: bal.available });
   } catch (e: any) {

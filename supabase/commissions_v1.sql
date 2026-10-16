@@ -27,6 +27,7 @@ create table if not exists comm_commissions (
   status              text not null default 'pending', -- pending|available|paid|reversed
   available_at        timestamptz,                     -- cuándo deja de estar retenida
   paid_at             timestamptz,
+  reversed_at         timestamptz,                     -- cuándo se revirtió (clawback)
   payout_id           uuid,                            -- a qué pago pertenece (si ya se pagó)
   meta                jsonb,
   created_at          timestamptz not null default now()

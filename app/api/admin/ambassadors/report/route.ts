@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     : { title: 'Ambassador statement', earned: 'Commissions earned', owed: 'Owed (unpaid)', ambs: 'Active ambassadors', refs: 'Referrals (period)', tRows: 'Detail by ambassador', amb: 'Ambassador', ref: 'Referrals', gen: 'Earned', pend: 'Owed' };
 
   try {
-    const { data: comms } = await supabaseAdmin.from('commissions').select('ambassador_id,amount,status,created_at').gte('created_at', fromISO).lte('created_at', toISO).limit(5000);
+    const { data: comms } = await supabaseAdmin.from('comm_commissions').select('referrer_id,amount,status,created_at').eq('program', 'ambassador').gte('created_at', fromISO).lte('created_at', toISO).limit(5000);
     const { data: refs } = await supabaseAdmin.from('referrals').select('ambassador_id,created_at').gte('created_at', fromISO).lte('created_at', toISO).limit(5000);
     const { data: ambs } = await supabaseAdmin.from('ambassadors').select('id,code,user_id');
     const emailById: Record<string, string> = {};
@@ -46,7 +46,7 @@ export async function GET(req: Request) {
     for (const c of comms || []) {
       if (c.status === 'reversed') continue;
       const amt = Number(c.amount) || 0;
-      const a = g(c.ambassador_id); a.earned += amt; if (c.status !== 'paid') a.owed += amt;
+      const a = g(c.referrer_id); a.earned += amt; if (c.status !== 'paid') a.owed += amt;
     }
     for (const r of refs || []) g(r.ambassador_id).refs++;
 

@@ -178,7 +178,7 @@ export async function PATCH(req: Request) {
 
     if (b.action === 'reject_payout') {
       await supabaseAdmin.from('ambassador_payouts').update({ status: 'rejected', note: b.note || null }).eq('id', b.id);
-      await supabaseAdmin.from('commissions').update({ payout_id: null }).eq('payout_id', b.id);
+      await supabaseAdmin.from('comm_commissions').update({ payout_id: null }).eq('program', 'ambassador').eq('payout_id', b.id);
       return NextResponse.json({ ok: true });
     }
 

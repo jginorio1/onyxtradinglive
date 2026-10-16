@@ -93,43 +93,28 @@ async function creditCommission(invoice: any) {
   }
   if (!ambassadorId) return;
 
-  const { data: amb } = await supabaseAdmin.from('ambassadors').select('id,rate,status').eq('id', ambassadorId).maybeSingle();
+  const { data: amb } = await supabaseAdmin.from('ambassadors').select('id,user_id,rate,status').eq('id', ambassadorId).maybeSingle();
   if (!amb || amb.status !== 'approved') return;
 
   const { rate } = await rateFor(amb, settings);
   if (!rate) return;
 
-  // Idempotencia: si Stripe reintenta el webhook de esta MISMA factura, no pagamos
-  // la comisión dos veces. Una factura = una comisión (a lo sumo).
-  if (invoice.id) {
-    const { data: dup } = await supabaseAdmin.from('commissions')
-      .select('id').eq('invoice_id', invoice.id).maybeSingle();
-    if (dup) return;
-  }
-
-  // Tope de meses de comisión por suscriptor (0 = ilimitado). Cada factura pagada
-  // genera una fila; si este suscriptor ya alcanzó el tope, dejamos de pagar.
+  // Tope de meses de comisión por suscriptor (0 = ilimitado) — en el LIBRO ÚNICO.
   const capMonths = Number(settings.commission_months) || 0;
   if (capMonths > 0) {
-    const { count: prior } = await supabaseAdmin.from('commissions')
-      .select('*', { count: 'exact', head: true })
-      .eq('ambassador_id', amb.id).eq('user_id', prof.id).neq('status', 'reversed');
-    if ((prior || 0) >= capMonths) return;
+    const { monthsCredited } = await import('@/lib/commissions');
+    const prior = await monthsCredited('ambassador', prof.id, 'direct');
+    if (prior >= capMonths) return;
   }
 
-  const amount = Math.round(paid * (rate / 100) * 100) / 100;
-  const availableAt = new Date(Date.now() + (settings.hold_days || 30) * 864e5).toISOString();
-
-  await supabaseAdmin.from('commissions').insert({
-    ambassador_id: amb.id,
-    user_id: prof.id,
-    invoice_id: invoice.id,
-    base_amount: paid,
-    rate,
-    amount,
-    currency: (invoice.currency || 'usd').toUpperCase(),
-    status: 'pending',
-    available_at: availableAt,
+  // Acredita al motor único (programa 'ambassador'). Idempotente por factura: si
+  // Stripe reintenta, no duplica.
+  const { creditCommissions } = await import('@/lib/commissions');
+  await creditCommissions({
+    program: 'ambassador', invoiceId: invoice.id, clientUserId: prof.id,
+    baseAmount: paid, currency: (invoice.currency || 'usd').toUpperCase(),
+    holdDays: settings.hold_days ?? 30,
+    rows: [{ referrerId: amb.id, level: 'direct', pct: rate, beneficiaryUserId: (amb as any).user_id }],
   });
 
   await supabaseAdmin.from('referrals').update({ first_paid_at: new Date().toISOString() })

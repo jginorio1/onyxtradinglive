@@ -84,7 +84,7 @@ export async function runPayout(payoutId: string): Promise<PayResult> {
       });
       await supabaseAdmin.from('ambassador_payouts')
         .update({ status: 'paid', paid_at: new Date().toISOString(), method: 'credit', tx_ref: bt.id }).eq('id', payoutId);
-      await supabaseAdmin.from('commissions').update({ status: 'paid' }).eq('payout_id', payoutId);
+      await supabaseAdmin.from('comm_commissions').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('program', 'ambassador').eq('payout_id', payoutId);
       return { ok: true, auto: true, transfer_id: bt.id };
     } catch (e: any) {
       return { ok: false, error: e?.message || 'stripe_credit_failed' };
@@ -108,7 +108,7 @@ export async function runPayout(payoutId: string): Promise<PayResult> {
     }
     await supabaseAdmin.from('ambassador_payouts')
       .update({ status: 'paid', paid_at: new Date().toISOString(), method: 'stripe', transfer_id: transfer.id }).eq('id', payoutId);
-    await supabaseAdmin.from('commissions').update({ status: 'paid' }).eq('payout_id', payoutId);
+    await supabaseAdmin.from('comm_commissions').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('program', 'ambassador').eq('payout_id', payoutId);
     return { ok: true, auto: true, transfer_id: transfer.id };
   }
 
@@ -200,8 +200,8 @@ export async function autoPayoutDue(): Promise<{ checked: number; paid: number; 
       .insert({ ambassador_id: a.id, amount: bal.available, method, details: a.payout_details || null, status: 'requested' })
       .select('id').single();
     if (!pay) continue;
-    await supabaseAdmin.from('commissions').update({ payout_id: pay.id })
-      .eq('ambassador_id', a.id).in('status', ['pending', 'available']).lte('available_at', now).is('payout_id', null);
+    await supabaseAdmin.from('comm_commissions').update({ payout_id: pay.id })
+      .eq('program', 'ambassador').eq('referrer_id', a.id).in('status', ['pending', 'available']).lte('available_at', now).is('payout_id', null);
 
     // Con freno global o método manual (cripto): queda en la cola del admin.
     if (review || method === 'usdt') { queued++; continue; }
@@ -221,11 +221,11 @@ export async function clawbackCommission(invoiceId: string): Promise<void> {
   if (!invoiceId) return;
   const nowIso = new Date().toISOString();
   // No pagadas aún → anular directo.
-  await supabaseAdmin.from('commissions').update({ status: 'reversed', reversed_at: nowIso })
-    .eq('invoice_id', invoiceId).in('status', ['pending', 'available']);
+  await supabaseAdmin.from('comm_commissions').update({ status: 'reversed', reversed_at: nowIso })
+    .eq('program', 'ambassador').eq('invoice_id', invoiceId).in('status', ['pending', 'available']);
   // Ya pagadas → clawback del monto exacto contra el payout que las cubrió.
-  const { data: paidRows } = await supabaseAdmin.from('commissions')
-    .select('id,amount,currency,payout_id').eq('invoice_id', invoiceId).eq('status', 'paid');
+  const { data: paidRows } = await supabaseAdmin.from('comm_commissions')
+    .select('id,amount,currency,payout_id').eq('program', 'ambassador').eq('invoice_id', invoiceId).eq('status', 'paid');
   for (const c of (paidRows || []) as any[]) {
     if (c.payout_id) {
       const { data: po } = await supabaseAdmin.from('ambassador_payouts')
@@ -238,7 +238,7 @@ export async function clawbackCommission(invoiceId: string): Promise<void> {
       }
       // crédito/cripto/manual: no se revierte automáticamente; queda 'reversed' para descontar del próximo pago.
     }
-    await supabaseAdmin.from('commissions').update({ status: 'reversed', reversed_at: nowIso }).eq('id', c.id);
+    await supabaseAdmin.from('comm_commissions').update({ status: 'reversed', reversed_at: nowIso }).eq('id', c.id);
   }
 }
 
@@ -249,6 +249,6 @@ export async function markPaidManual(payoutId: string, method: string, txRef?: s
   if (pay.status === 'paid') return { ok: false, error: 'already_paid' };
   await supabaseAdmin.from('ambassador_payouts')
     .update({ status: 'paid', paid_at: new Date().toISOString(), method: method || 'manual', tx_ref: (txRef || '').slice(0, 120) || null }).eq('id', payoutId);
-  await supabaseAdmin.from('commissions').update({ status: 'paid' }).eq('payout_id', payoutId);
+  await supabaseAdmin.from('comm_commissions').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('program', 'ambassador').eq('payout_id', payoutId);
   return { ok: true, auto: false };
 }

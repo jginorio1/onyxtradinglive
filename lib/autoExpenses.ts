@@ -17,8 +17,8 @@ export async function autoExpensesForMonth(mStart: number, mEnd: number): Promis
   const toISO = new Date(mEnd).toISOString();
   let ambassadors = 0, members = 0;
   try {
-    const { data } = await supabaseAdmin.from('commissions')
-      .select('amount,status,created_at').gte('created_at', fromISO).lte('created_at', toISO);
+    const { data } = await supabaseAdmin.from('comm_commissions')
+      .select('amount,status,created_at').eq('program', 'ambassador').gte('created_at', fromISO).lte('created_at', toISO);
     ambassadors = (data || []).filter((r: any) => r.status !== 'reversed').reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
   } catch {}
   try {
