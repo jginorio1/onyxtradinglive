@@ -176,6 +176,15 @@ export default function SupportInbox() {
   const [text, setText] = useState('');
   // Compositor que crece con el texto (como WhatsApp): hasta ~5 líneas y luego scroll.
   const taRef = useRef<HTMLTextAreaElement>(null);
+  // Avisar al cliente que el agente está escribiendo (throttle ~2.5s). Barato: el
+  // widget lo lee en su sondeo. Marca un sello de tiempo en el ticket.
+  const typePingRef = useRef(0);
+  const pingAgentTyping = (id: string) => {
+    const now = Date.now();
+    if (now - typePingRef.current < 2500) return;
+    typePingRef.current = now;
+    fetch('/api/admin/support/typing', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ticket_id: id }) }).catch(() => {});
+  };
   useEffect(() => {
     const el = taRef.current; if (!el) return;
     el.style.height = 'auto';
@@ -689,7 +698,7 @@ export default function SupportInbox() {
                           <input type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadAtt(e.target.files); e.currentTarget.value = ''; }} />
                         </label>
                       </>}
-                      <textarea ref={taRef} value={text} onChange={(e) => { setText(e.target.value); if (mode === 'reply') sendTyping(); }}
+                      <textarea ref={taRef} value={text} onChange={(e) => { setText(e.target.value); if (mode === 'reply') { sendTyping(); pingAgentTyping(tk.id); } }}
                         onKeyDown={(e) => {
                           // "/" en el compositor vacío abre las respuestas guardadas.
                           if (e.key === '/' && mode === 'reply' && !text) { e.preventDefault(); setShowCanned(true); return; }

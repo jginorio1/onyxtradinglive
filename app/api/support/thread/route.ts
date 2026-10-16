@@ -36,13 +36,17 @@ export async function GET(req: Request) {
     // Nombre del agente que atiende (el humano que respondió más reciente). Así el
     // cliente ve CON QUIÉN habla, no solo "Equipo". Si no hay humano aún, queda ''.
     let agent = '';
+    let agentAvatar = '';
     try {
       const adminIds = Array.from(new Set((msgs || []).filter((m: any) => m.sender === 'admin' && m.sender_id).map((m: any) => m.sender_id)));
       if (adminIds.length) {
-        const { data: profs } = await supabaseAdmin.from('profiles').select('id,full_name,email').in('id', adminIds as any);
-        const nameOf = (id: string) => { const p = (profs || []).find((x: any) => x.id === id); return (p?.full_name || (p?.email ? String(p.email).split('@')[0] : '') || '').trim(); };
+        const { data: profs } = await supabaseAdmin.from('profiles').select('id,full_name,email,avatar_url').in('id', adminIds as any);
         const lastAdmin = [...(msgs || [])].reverse().find((m: any) => m.sender === 'admin' && m.sender_id);
-        if (lastAdmin) agent = nameOf((lastAdmin as any).sender_id);
+        if (lastAdmin) {
+          const p: any = (profs || []).find((x: any) => x.id === (lastAdmin as any).sender_id);
+          agent = (p?.full_name || (p?.email ? String(p.email).split('@')[0] : '') || '').trim();
+          agentAvatar = String(p?.avatar_url || '').trim();
+        }
       }
     } catch {}
 
@@ -53,7 +57,16 @@ export async function GET(req: Request) {
       attachments: m.attachments || [],
       at: m.created_at,
     }));
-    return NextResponse.json({ ok: true, status: (tk as any).status, agent, messages });
+    // ¿El agente está escribiendo ahora? (sello de tiempo reciente < 8s). Tolerante:
+    // si la columna agent_typing_at no existe, simplemente no se muestra.
+    let agentTyping = false;
+    try {
+      const { data: tt } = await supabaseAdmin.from('support_tickets').select('agent_typing_at').eq('id', (tk as any).id).maybeSingle();
+      const at = (tt as any)?.agent_typing_at;
+      if (at) agentTyping = (Date.now() - new Date(at).getTime()) < 8000;
+    } catch {}
+
+    return NextResponse.json({ ok: true, status: (tk as any).status, agent, agentAvatar, agentTyping, messages });
   } catch (e: any) {
     await logError('support_thread', e);
     return NextResponse.json({ ok: false, messages: [] });

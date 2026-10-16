@@ -69,6 +69,8 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // respondiendo la conversación aquí mismo (ya no solo por correo). Vive en el navegador.
   const [leadToken, setLeadToken] = useState('');
   const [agentName, setAgentName] = useState('');   // nombre del agente que atiende (se ve en la cabecera)
+  const [agentTyping, setAgentTyping] = useState(false);  // el agente está escribiendo ahora
+  const [agentAvatar, setAgentAvatar] = useState('');     // foto del agente que atiende
   useEffect(() => { try { const tkn = localStorage.getItem('onyx_support_token'); if (tkn) setLeadToken(tkn); } catch {} }, []);
   const [err, setErr] = useState('');
   const [attach, setAttach] = useState<{ data: string; name: string; type: string } | null>(null);
@@ -110,7 +112,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     // Importante: cortar el hilo del invitado. Si no, el sondeo (cada 6s) vuelve a
     // traer la conversación anterior y "reaparece" tras limpiar. Nueva conversación
     // = empezar de cero; el próximo mensaje abre un hilo/ticket nuevo.
-    setLeadToken(''); setAgentName('');
+    setLeadToken(''); setAgentName(''); setAgentTyping(false); setAgentAvatar('');
     try { localStorage.removeItem('onyx_chat_log'); localStorage.removeItem('onyx_support_token'); } catch {}
   }
   // Cerrar el menú "⋯" al hacer clic fuera (se engancha tras el clic que lo abrió).
@@ -291,10 +293,12 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
         // Nombre del agente que atiende (si ya respondió una persona). Lo mostramos
         // en la cabecera para que el cliente sepa con quién habla.
         if (j.agent) { setAgentName(j.agent); setHuman(true); }
+        if (j.agentAvatar !== undefined) setAgentAvatar(j.agentAvatar || '');
+        setAgentTyping(!!j.agentTyping);
       }
     } catch {}
   }
-  useEffect(() => { if (!open || !leadToken) return; loadThread(); const iv = setInterval(loadThread, 6000); return () => clearInterval(iv);
+  useEffect(() => { if (!open || !leadToken) return; loadThread(); const iv = setInterval(loadThread, 3000); return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, leadToken]);
   // El invitado responde en el widget → va al hilo (no a la IA).
@@ -701,9 +705,12 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     <button onClick={onClick} aria-label={label} title={label} style={{ background: 'rgba(255,255,255,.15)', border: 'none', color: cfg.fg || '#fff', cursor: 'pointer', width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{children}</button>
   );
 
-  const avatar = (sz: number) => cfg.avatarUrl
-    ? <img src={cfg.avatarUrl} alt="" style={{ width: sz, height: sz, borderRadius: 8, objectFit: 'cover', flex: 'none' }} />
-    : <span style={{ width: sz, height: sz, borderRadius: 8, background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', color: '#fff' }}><OnyxIcon emoji={human ? '🙋' : (cfg.headerEmoji || '🤖')} size={Math.round(sz * 0.6)} glow={false} /></span>;
+  // Foto del avatar en la cabecera: si atiende una persona con foto de perfil, se
+  // usa esa; si no, la foto configurada del widget; si no, el emoji.
+  const headPic = (human && agentAvatar) ? agentAvatar : cfg.avatarUrl;
+  const avatar = (sz: number) => headPic
+    ? <img src={headPic} alt="" style={{ width: sz, height: sz, borderRadius: '50%', objectFit: 'cover', flex: 'none' }} onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+    : <span style={{ width: sz, height: sz, borderRadius: 8, background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', color: '#fff' }}>{(human && agentName) ? <span style={{ fontSize: Math.round(sz * 0.42), fontWeight: 700 }}>{agentName.trim().charAt(0).toUpperCase()}</span> : <OnyxIcon emoji={human ? '🙋' : (cfg.headerEmoji || '🤖')} size={Math.round(sz * 0.6)} glow={false} />}</span>;
 
   return (
     <div className="onyx-support-root" style={themeVars}>
@@ -778,11 +785,14 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             {chat.map((m, i) => (
               <div key={i} style={{ maxWidth: '86%', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, whiteSpace: m.role === 'assistant' ? 'normal' : 'pre-wrap', ...bubble(m.role) }}>{m.role === 'assistant' ? renderRich(m.content) : m.content}</div>
             ))}
-            {busy && (
-              <div style={{ padding: '9px 12px', ...bubble('assistant') }}>
-                <span className="onyx-d1" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
-                <span className="onyx-d2" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
-                <span className="onyx-d3" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
+            {(busy || agentTyping) && (
+              <div style={{ alignSelf: 'flex-start', maxWidth: '86%' }}>
+                {agentTyping && !busy && <div style={{ fontSize: 11, color: 'var(--mut)', marginBottom: 2, marginLeft: 4 }}>{(agentName || (es ? 'Soporte' : 'Support'))} {es ? 'está escribiendo…' : 'is typing…'}</div>}
+                <div style={{ padding: '9px 12px', ...bubble('assistant') }}>
+                  <span className="onyx-d1" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
+                  <span className="onyx-d2" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
+                  <span className="onyx-d3" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--mut)', margin: '0 2px' }} />
+                </div>
               </div>
             )}
             {!isIOS && plans.length > 0 && (
