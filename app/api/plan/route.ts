@@ -28,6 +28,9 @@ export async function GET(req: Request) {
   const sp = new URL(req.url).searchParams;
   const rq = Number(sp.get('range')) || 30;
   const range = [7, 30, 90].includes(rq) ? rq : 30;
+  // Fecha LOCAL del trader (su teléfono) para que el check-in se reinicie a SU
+  // medianoche, no a la del servidor (UTC). Funciona en cualquier zona horaria.
+  const today = sp.get('today') || undefined;
   const plan = await getPlan(user.id);
   // Alcance de la MEDICIÓN según la cuenta elegida arriba (un solo control): 'all' = todas;
   // un id = solo esa cuenta. Solo afecta la respuesta (no cambia el plan guardado).
@@ -36,7 +39,7 @@ export async function GET(req: Request) {
     : acc === 'all' ? { ...plan, scope: 'all' as const }
     : { ...plan, scope: 'primary' as const, primary_account_id: acc };
   const [checkin, stats, ai, guardian, planRow] = await Promise.all([
-    getCheckin(user.id), computeStats(user.id, planForStats, range), aiEnabled(user.id), guardianSummary(user.id),
+    getCheckin(user.id, today), computeStats(user.id, planForStats, range, today), aiEnabled(user.id), guardianSummary(user.id),
     supabaseAdmin.from('trading_plans').select('user_id').eq('user_id', user.id).maybeSingle(),
   ]);
 
@@ -91,8 +94,9 @@ export async function POST(req: Request) {
   const valid = new Set(planHabitIds(plan0));
   const items: Record<string, boolean> = {};
   if (b.items && typeof b.items === 'object') for (const k of Object.keys(b.items)) if (valid.has(k)) items[k] = !!b.items[k];
-  await saveCheckin(user.id, items, String(b.note || ''));
+  const today = typeof b.today === 'string' ? b.today : undefined;   // día local del trader
+  await saveCheckin(user.id, items, String(b.note || ''), today);
   const plan = await getPlan(user.id);
-  const stats = await computeStats(user.id, plan);
+  const stats = await computeStats(user.id, plan, 30, today);
   return NextResponse.json({ ok: true, stats });
 }

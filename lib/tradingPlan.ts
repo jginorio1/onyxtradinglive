@@ -140,6 +140,17 @@ export function resolveMeasured(plan: Plan, summary: GuardianSummary): { ids: st
 
 const DAY = 864e5;
 const dayStr = (d: Date) => d.toISOString().slice(0, 10);
+// Valida y normaliza una fecha local "YYYY-MM-DD" enviada por el trader. Así el
+// "día" del check-in es la MEDIANOCHE DEL TRADER (su teléfono), no la del servidor
+// (UTC). Funciona en cualquier parte del mundo sin configurar zona horaria.
+function safeDayStr(s?: string): string {
+  if (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  return dayStr(new Date());
+}
+// Mueve una fecha "YYYY-MM-DD" n días (aritmética sobre la cadena, estable).
+function shiftDay(s: string, n: number): string {
+  return new Date(new Date(s + 'T00:00:00Z').getTime() + n * DAY).toISOString().slice(0, 10);
+}
 
 export async function getPlan(userId: string): Promise<Plan> {
   const { data } = await supabaseAdmin.from('trading_plans').select('data').eq('user_id', userId).maybeSingle();
@@ -236,12 +247,13 @@ export async function applyGuardian(userId: string, dailyLossPct: number, maxTra
   return { updated };
 }
 
-export async function getCheckin(userId: string, day = dayStr(new Date())) {
+export async function getCheckin(userId: string, today?: string) {
+  const day = safeDayStr(today);   // día local del trader (su medianoche), no UTC
   const { data } = await supabaseAdmin.from('plan_checkins').select('items,note').eq('user_id', userId).eq('day', day).maybeSingle();
   return { items: (data as any)?.items || {}, note: (data as any)?.note || '' };
 }
-export async function saveCheckin(userId: string, items: Record<string, boolean>, note = '') {
-  const day = dayStr(new Date());
+export async function saveCheckin(userId: string, items: Record<string, boolean>, note = '', today?: string) {
+  const day = safeDayStr(today);   // se guarda bajo el día local del trader
   await supabaseAdmin.from('plan_checkins').upsert({ user_id: userId, day, items, note: String(note).slice(0, 500), created_at: new Date().toISOString() });
 }
 
@@ -260,13 +272,14 @@ export type PlanStats = {
 // Calcula racha y adherencia. Mezcla el cumplimiento de hábitos (check-ins) con la
 // disciplina real de las operaciones (respetar el máximo de operaciones por día).
 // rangeDays define la ventana (7 / 30 / 90) para adherencia, disciplina y eventos.
-export async function computeStats(userId: string, plan: Plan, rangeDays = 30): Promise<PlanStats> {
+export async function computeStats(userId: string, plan: Plan, rangeDays = 30, today?: string): Promise<PlanStats> {
   const R = Math.max(1, Math.min(365, Math.round(rangeDays)));
   const habitIds = planHabitIds(plan);
   const enabled = habitIds.length || 1;
+  const todayKey = safeDayStr(today);   // hoy según el trader (su zona horaria)
 
   // --- Check-ins de la ventana elegida ---
-  const from = dayStr(new Date(Date.now() - R * DAY));
+  const from = shiftDay(todayKey, -R);
   const { data: checks } = await supabaseAdmin.from('plan_checkins').select('day,items').eq('user_id', userId).gte('day', from).order('day', { ascending: false });
   const byDay: Record<string, number> = {};   // completion 0..1 por día
   for (const c of (checks || []) as any[]) {
@@ -279,14 +292,12 @@ export async function computeStats(userId: string, plan: Plan, rangeDays = 30): 
   const daysCompliant = vals.filter((v) => v >= 0.8).length;
 
   // Racha: días consecutivos (desde hoy o ayer) con check-in "bueno" (≥80%).
+  // "Hoy" es el día local del trader, para que la racha no se rompa por el huso.
   let streak = 0;
-  const today = new Date();
-  const todayDone = (byDay[dayStr(today)] || 0) >= 0.8;
-  let cursor = new Date(today);
-  if (!todayDone) cursor = new Date(today.getTime() - DAY); // si hoy aún no, cuenta desde ayer
+  const todayDone = (byDay[todayKey] || 0) >= 0.8;
+  let curKey = todayDone ? todayKey : shiftDay(todayKey, -1); // si hoy aún no, cuenta desde ayer
   for (let i = 0; i < 60; i++) {
-    const key = dayStr(cursor);
-    if ((byDay[key] || 0) >= 0.8) { streak++; cursor = new Date(cursor.getTime() - DAY); }
+    if ((byDay[curKey] || 0) >= 0.8) { streak++; curKey = shiftDay(curKey, -1); }
     else break;
   }
 

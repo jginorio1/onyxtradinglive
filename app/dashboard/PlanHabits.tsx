@@ -197,7 +197,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
       return;
     }
     try {
-      const r = await fetch('/api/plan?account=' + encodeURIComponent(account || 'all')); const j = await r.json();
+      const r = await fetch('/api/plan?today=' + new Date().toLocaleDateString('en-CA') + '&account=' + encodeURIComponent(account || 'all')); const j = await r.json();
       setD(j); setItems(j.checkin?.items || {}); setNote(j.checkin?.note || '');
     } catch {}
   }
@@ -238,7 +238,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
   async function saveCheckin() {
     if (demoStop()) return;
     setBusy('ck');
-    const r = await fetch('/api/plan', { method: 'POST', body: JSON.stringify({ items, note }) });
+    const r = await fetch('/api/plan', { method: 'POST', body: JSON.stringify({ items, note, today: new Date().toLocaleDateString('en-CA') }) });
     const j = await r.json(); setBusy('');
     if (j.ok) { setD({ ...d, stats: j.stats }); setSavedCk(true); setTimeout(() => setSavedCk(false), 1500); }
   }
@@ -342,7 +342,7 @@ export default function PlanHabits({ lang, onGoGuardian, account = 'all', accoun
   async function changeRange(rn: number) {
     setRange(rn);
     if (demo) return;   // demo público: mantenemos el mapa de ejemplo
-    try { const r = await fetch('/api/plan?range=' + rn); const j = await r.json(); setD((old: any) => ({ ...old, stats: j.stats, history: j.history })); } catch {}
+    try { const r = await fetch('/api/plan?range=' + rn + '&today=' + new Date().toLocaleDateString('en-CA')); const j = await r.json(); setD((old: any) => ({ ...old, stats: j.stats, history: j.history })); } catch {}
   }
 
   const overlay: React.CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 };

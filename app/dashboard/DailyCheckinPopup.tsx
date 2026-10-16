@@ -48,11 +48,17 @@ export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onSta
   const [phase, setPhase] = useState<'hidden' | 'popup' | 'bar'>('hidden');
   const [saved, setSaved] = useState(false);
   const saveTimer = useRef<any>(null);
+  // Fecha y hora LOCAL del trader (se refresca cada 30 s, sin segundos en vivo
+  // para no distraer ni gastar batería). Confirma que es el check-in de HOY.
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => { setNow(new Date()); const iv = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(iv); }, []);
+  const loc = lang === 'en' ? 'en-US' : 'es-ES';
+  const localWhen = now ? `${now.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'short' })} · ${now.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })}` : '';
 
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch('/api/plan'); const j = await r.json();
+        const r = await fetch('/api/plan?today=' + todayLocal()); const j = await r.json();
         if (!j || !j.hasPlan || !j.plan) return; // solo a quien usa el plan
         const it: Record<string, boolean> = { ...(j.checkin?.items || {}) };
         // Auto-marcado: premarca lo detectado que aún no estaba puesto.
@@ -94,7 +100,7 @@ export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onSta
   function persist(next: Record<string, boolean>, nt: string) {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      try { await fetch('/api/plan', { method: 'POST', body: JSON.stringify({ items: next, note: nt }) }); setSaved(true); setTimeout(() => setSaved(false), 1300); } catch {}
+      try { await fetch('/api/plan', { method: 'POST', body: JSON.stringify({ items: next, note: nt, today: todayLocal() }) }); setSaved(true); setTimeout(() => setSaved(false), 1300); } catch {}
     }, 350);
   }
   function toggle(id: string) {
@@ -136,6 +142,7 @@ export default function DailyCheckinPopup({ lang, onState }: { lang: Lang; onSta
             <div style={{ fontSize: 18, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-flex', color: 'var(--brand)' }}><OnyxIcon emoji="🎯" size={20} /></span> {t.title}</div>
             <span className="pill" style={{ fontSize: 12, background: allDone ? 'rgba(52,226,160,.15)' : 'rgba(124,140,255,.15)', color: allDone ? 'var(--green)' : 'var(--soft-brand)' }}>{done}/{total}</span>
           </div>
+          {localWhen && <div className="muted" style={{ fontSize: 12, margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 5, textTransform: 'capitalize' }}><OnyxIcon emoji="📅" size={13} /> {localWhen}</div>}
           <p className="muted" style={{ fontSize: 13, margin: '6px 0 0' }}>{allDone ? t.allDone : t.sub}</p>
         </div>
 
