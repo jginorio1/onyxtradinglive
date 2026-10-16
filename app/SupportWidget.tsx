@@ -68,6 +68,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // Token del hilo del invitado (sin sesión). Con él, el widget sigue mostrando y
   // respondiendo la conversación aquí mismo (ya no solo por correo). Vive en el navegador.
   const [leadToken, setLeadToken] = useState('');
+  const [agentName, setAgentName] = useState('');   // nombre del agente que atiende (se ve en la cabecera)
   useEffect(() => { try { const tkn = localStorage.getItem('onyx_support_token'); if (tkn) setLeadToken(tkn); } catch {} }, []);
   const [err, setErr] = useState('');
   const [attach, setAttach] = useState<{ data: string; name: string; type: string } | null>(null);
@@ -104,7 +105,14 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       else localStorage.removeItem('onyx_chat_log');
     } catch {}
   }, [chat]);
-  function clearChat() { setChat([]); setRefs([]); setActions([]); setPlans([]); setShowEmail(false); setSent(false); setAttach(null); try { localStorage.removeItem('onyx_chat_log'); } catch {} }
+  function clearChat() {
+    setChat([]); setRefs([]); setActions([]); setPlans([]); setShowEmail(false); setSent(false); setAttach(null);
+    // Importante: cortar el hilo del invitado. Si no, el sondeo (cada 6s) vuelve a
+    // traer la conversación anterior y "reaparece" tras limpiar. Nueva conversación
+    // = empezar de cero; el próximo mensaje abre un hilo/ticket nuevo.
+    setLeadToken(''); setAgentName('');
+    try { localStorage.removeItem('onyx_chat_log'); localStorage.removeItem('onyx_support_token'); } catch {}
+  }
   // Cerrar el menú "⋯" al hacer clic fuera (se engancha tras el clic que lo abrió).
   useEffect(() => {
     if (!menu) return;
@@ -278,7 +286,12 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     try {
       const r = await fetch('/api/support/thread?token=' + encodeURIComponent(leadToken), { cache: 'no-store' });
       const j = await r.json();
-      if (j?.ok && Array.isArray(j.messages)) setChat(j.messages.map((m: any) => ({ role: m.role, content: m.content })));
+      if (j?.ok && Array.isArray(j.messages)) {
+        setChat(j.messages.map((m: any) => ({ role: m.role, content: m.content, by: m.by })));
+        // Nombre del agente que atiende (si ya respondió una persona). Lo mostramos
+        // en la cabecera para que el cliente sepa con quién habla.
+        if (j.agent) { setAgentName(j.agent); setHuman(true); }
+      }
     } catch {}
   }
   useEffect(() => { if (!open || !leadToken) return; loadThread(); const iv = setInterval(loadThread, 6000); return () => clearInterval(iv);
@@ -732,7 +745,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
         <div className="onyx-panel" style={panelStyle}>
           <div style={{ background: 'var(--grad)', color: CHINK, padding: `calc(12px + env(safe-area-inset-top)) 14px 12px 14px`, display: 'flex', alignItems: 'center', gap: 9, flex: 'none' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? x.humanTitle : x.title}</div>
+              <div style={{ fontWeight: 800, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? (agentName || x.humanTitle) : x.title}</div>
               <div style={{ fontSize: 12, opacity: .85, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden' }}>
                 {cfg.showPulse && <span className={human ? 'onyx-pulse' : ''} style={{ width: 7, height: 7, borderRadius: '50%', background: human ? '#128a4f' : 'rgba(255,255,255,.4)', flex: 'none' }} />}
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? x.online : (x.offline || x.online)}</span>

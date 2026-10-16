@@ -29,9 +29,23 @@ export async function GET(req: Request) {
     const tk = await ticketByToken(token);
     if (!tk) return NextResponse.json({ ok: false, messages: [] });
     const { data: msgs } = await supabaseAdmin.from('support_messages')
-      .select('id,sender,body,attachments,created_at')
+      .select('id,sender,sender_id,body,attachments,created_at')
       .eq('ticket_id', (tk as any).id).neq('sender', 'note')
       .order('created_at', { ascending: true }).limit(200);
+
+    // Nombre del agente que atiende (el humano que respondió más reciente). Así el
+    // cliente ve CON QUIÉN habla, no solo "Equipo". Si no hay humano aún, queda ''.
+    let agent = '';
+    try {
+      const adminIds = Array.from(new Set((msgs || []).filter((m: any) => m.sender === 'admin' && m.sender_id).map((m: any) => m.sender_id)));
+      if (adminIds.length) {
+        const { data: profs } = await supabaseAdmin.from('profiles').select('id,full_name,email').in('id', adminIds as any);
+        const nameOf = (id: string) => { const p = (profs || []).find((x: any) => x.id === id); return (p?.full_name || (p?.email ? String(p.email).split('@')[0] : '') || '').trim(); };
+        const lastAdmin = [...(msgs || [])].reverse().find((m: any) => m.sender === 'admin' && m.sender_id);
+        if (lastAdmin) agent = nameOf((lastAdmin as any).sender_id);
+      }
+    } catch {}
+
     const messages = (msgs || []).map((m: any) => ({
       role: m.sender === 'user' ? 'user' : 'assistant',   // agente e IA se ven como "assistant"
       by: m.sender,                                         // 'user' | 'admin' | 'ai'
@@ -39,7 +53,7 @@ export async function GET(req: Request) {
       attachments: m.attachments || [],
       at: m.created_at,
     }));
-    return NextResponse.json({ ok: true, status: (tk as any).status, messages });
+    return NextResponse.json({ ok: true, status: (tk as any).status, agent, messages });
   } catch (e: any) {
     await logError('support_thread', e);
     return NextResponse.json({ ok: false, messages: [] });
