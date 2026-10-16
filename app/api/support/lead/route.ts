@@ -133,12 +133,21 @@ export async function POST(req: Request) {
     // Avisar al equipo por Telegram (no bloquea la respuesta al visitante)
     await notifyNewTicket({ email, subject, isLead: true });
 
+    // Pregunta real del visitante (si la hay). Cuando solo dejó su contacto desde la
+    // puerta de entrada (nombre + correo, sin escribir todavía), NO hay pregunta: no
+    // corremos el triage de IA (evita la nota falsa de "la IA tuvo un error / necesita
+    // humano") ni el acuse por correo. La conversación seguirá en el widget.
+    const realQuestion = String(firstUserMsg || message || '').trim();
+
     // Triage + auto-respuesta con IA (si está activada y el tema no es sensible)
-    const { answered } = await autoHandleTicket({ ticketId: ticket.id, question: firstUserMsg || message, lang, email, subject });
+    let answered = false;
+    if (realQuestion) {
+      ({ answered } = await autoHandleTicket({ ticketId: ticket.id, question: realQuestion, lang, email, subject }));
+    }
 
     // Si la IA ya respondió, esa respuesta salió por correo y no duplicamos el
-    // acuse. Si no respondió, mandamos el acuse "recibimos tu mensaje".
-    if (!answered) {
+    // acuse. Si no respondió (y había pregunta), mandamos el acuse "recibimos tu mensaje".
+    if (realQuestion && !answered) {
       await sendEmail(
         email,
         lang === 'en' ? 'We got your message · Onyx Trading Live' : 'Recibimos tu mensaje · Onyx Trading Live',
