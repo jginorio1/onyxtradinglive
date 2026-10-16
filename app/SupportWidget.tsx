@@ -73,12 +73,18 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const [agentName, setAgentName] = useState('');   // nombre del agente que atiende (se ve en la cabecera)
   const [agentTyping, setAgentTyping] = useState(false);  // el agente está escribiendo ahora
   const [agentAvatar, setAgentAvatar] = useState('');     // foto del agente que atiende
-  useEffect(() => { try { const tkn = localStorage.getItem('onyx_support_token'); if (tkn) setLeadToken(tkn); } catch {} }, []);
+  useEffect(() => { try { const tkn = localStorage.getItem('onyx_support_token'); if (tkn) setLeadToken(tkn); } catch {}
+    try { const s = parseInt(localStorage.getItem('onyx_support_seen') || '0', 10); if (s > 0) seenCount.current = s; } catch {} }, []);
   const [err, setErr] = useState('');
   const [attach, setAttach] = useState<{ data: string; name: string; type: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [device, setDevice] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [tease, setTease] = useState(false);
+  // Mensajes nuevos de soporte sin ver (cuando el chat está cerrado / el cliente
+  // navega en otra página). `seenCount` = cuántos mensajes NUESTROS (persona/IA)
+  // ya vio; vive en el navegador para que no "reaparezcan" al recargar.
+  const [unseen, setUnseen] = useState(0);
+  const seenCount = useRef(0);
   const [roleInfo, setRoleInfo] = useState<any>(null);   // { name, roles } del usuario logueado
   // Preferencias de ventana (escritorio/tablet): tamaño, expandido y lado. Se recuerdan.
   const [big, setBig] = useState(false);
@@ -311,9 +317,39 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       }
     } catch {}
   }
-  useEffect(() => { if (!open || !leadToken) return; loadThread(); const iv = setInterval(loadThread, 3000); return () => clearInterval(iv);
+  // Sondeo del hilo: ABIERTO cada 3 s (conversación en vivo); CERRADO cada 20 s en
+  // segundo plano, para enterarnos de que soporte respondió aunque el cliente esté
+  // en otra página. Esto cubre al invitado sin login (no tiene campana).
+  useEffect(() => { if (!leadToken) return; loadThread(); const iv = setInterval(loadThread, open ? 3000 : 20000); return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, leadToken]);
+
+  // No leídos: cuántos mensajes NUESTROS (persona/IA) llegaron desde lo último que
+  // vio el cliente. Si el chat está abierto, todo cuenta como visto.
+  useEffect(() => {
+    const incoming = chat.filter((m) => m.role !== 'user').length;
+    if (open) {
+      seenCount.current = incoming; setUnseen(0);
+      try { localStorage.setItem('onyx_support_seen', String(incoming)); } catch {}
+    } else {
+      setUnseen(Math.max(0, incoming - seenCount.current));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat, open]);
+
+  // Aviso en el título de la pestaña cuando hay no leídos y el cliente está en otra
+  // pestaña/página. Al volver (o abrir el chat) se restaura el título original.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const base = (document as any).__onyxTitle || document.title;
+    (document as any).__onyxTitle = base;
+    let on = false; let iv: any = null;
+    if (unseen > 0 && !open) {
+      const tag = (es ? '💬 Nuevo mensaje' : '💬 New message');
+      iv = setInterval(() => { document.title = on ? base : tag; on = !on; }, 1200);
+    } else { document.title = base; }
+    return () => { if (iv) clearInterval(iv); document.title = (document as any).__onyxTitle || base; };
+  }, [unseen, open, es]);
   // El invitado responde en el widget → va al hilo (no a la IA).
   async function sendThread(raw?: string) {
     const body = (raw ?? ask).trim(); if (!body || busy) return;
@@ -768,7 +804,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       `}</style>
 
       {!open && (
-        <div style={{ position: 'fixed', [side]: ox, bottom: `calc(${oy}px + env(safe-area-inset-bottom))`, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: side === 'left' ? 'flex-start' : 'flex-end', gap: 8, transition: 'transform .28s ease, opacity .28s ease', transform: (hideLauncher && !tease) ? `translateY(${lsz + oy + 28}px)` : 'translateY(0)', opacity: (hideLauncher && !tease) ? 0 : 1, pointerEvents: (hideLauncher && !tease) ? 'none' : 'auto' }}>
+        <div style={{ position: 'fixed', [side]: ox, bottom: `calc(${oy}px + env(safe-area-inset-bottom))`, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: side === 'left' ? 'flex-start' : 'flex-end', gap: 8, transition: 'transform .28s ease, opacity .28s ease', transform: (hideLauncher && !tease && unseen === 0) ? `translateY(${lsz + oy + 28}px)` : 'translateY(0)', opacity: (hideLauncher && !tease && unseen === 0) ? 0 : 1, pointerEvents: (hideLauncher && !tease && unseen === 0) ? 'none' : 'auto' }}>
           {/* Globo proactivo */}
           {tease && x.proactive && (
             <div onClick={launch} style={{ cursor: 'pointer', maxWidth: 250, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 34px 10px 12px', fontSize: 13, color: 'var(--tx)', boxShadow: '0 8px 22px rgba(0,0,0,.32)', animation: 'onyxTease .3s ease', position: 'relative' }}>
@@ -784,7 +820,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                 : (() => { const s = Math.round(lsz * 0.52); return (
                   <svg width={s} height={s} viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M4 3.5h16a2.5 2.5 0 0 1 2.5 2.5v9A2.5 2.5 0 0 1 20 17.5H9.6L4.4 21.6A.7.7 0 0 1 3.3 21v-3.5H4A2.5 2.5 0 0 1 1.5 15V6A2.5 2.5 0 0 1 4 3.5z" transform="translate(0.5 0)"/><circle cx="8" cy="10.5" r="1.5" fill="#ff7a1a"/><circle cx="12.5" cy="10.5" r="1.5" fill="#ff7a1a"/><circle cx="17" cy="10.5" r="1.5" fill="#ff7a1a"/></svg>
                 ); })()}
-              {cfg.showPulse && <span className="onyx-pulse" style={{ position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: '50%', background: 'var(--green)', border: '2px solid var(--bg)' }} />}
+              {cfg.showPulse && unseen === 0 && <span className="onyx-pulse" style={{ position: 'absolute', top: 2, right: 2, width: 13, height: 13, borderRadius: '50%', background: 'var(--green)', border: '2px solid var(--bg)' }} />}
+              {/* Globito rojo con el nº de mensajes nuevos de soporte sin leer. */}
+              {unseen > 0 && <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 20, height: 20, padding: '0 5px', borderRadius: 10, background: '#ff3b5c', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--bg)', boxShadow: '0 2px 6px rgba(0,0,0,.35)' }}>{unseen > 9 ? '9+' : unseen}</span>}
             </span>
           </button>
         </div>

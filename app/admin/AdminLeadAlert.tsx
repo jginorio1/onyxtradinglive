@@ -21,7 +21,14 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
   const [busy, setBusy] = useState(false);
   // Posición arrastrada (px desde la esquina). Null = esquina inferior derecha por defecto.
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const [desk, setDesk] = useState(false);   // PC (ancho ≥ 860px): pastilla un poco más grande
   const drag = useRef<{ dx: number; dy: number } | null>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width:860px)');
+    const upd = () => setDesk(mq.matches);
+    upd(); mq.addEventListener('change', upd); return () => mq.removeEventListener('change', upd);
+  }, []);
 
   useEffect(() => {
     try { setSeen(new Set(JSON.parse(localStorage.getItem('onyx_lead_seen') || '[]'))); } catch {}
@@ -51,12 +58,13 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
   const catMap: any = { facturacion: L('Facturación', 'Billing'), conexion: L('Conexión', 'Connection'), instalacion: L('Instalación', 'Install'), guardian: 'Guardian', general: L('General', 'General') };
   const ago = (iso: string) => { const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000); if (m < 1) return L('ahora', 'now'); if (m < 60) return `${m} min`; return `${Math.floor(m / 60)} h`; };
 
-  // Minimizado: pestañita pegada al borde con contador.
+  // Minimizado: pestañita pegada al borde DERECHO, centrada a media pantalla
+  // (vertical). En PC un poco más grande para que resalte.
   if (min) return (
     <button onClick={() => setMin(false)} title={L('Consultas nuevas', 'New consultations')}
-      style={{ position: 'fixed', right: 0, bottom: 90, zIndex: 2000, background: 'var(--card)', border: '1px solid var(--line)', borderRight: 'none', borderRadius: '20px 0 0 20px', borderLeft: '4px solid #EF9F27', padding: '9px 12px 9px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, boxShadow: '-6px 0 18px rgba(0,0,0,.25)' }}>
-      <span style={{ fontSize: 17 }}><OnyxIcon emoji="💬" size={15} /></span>
-      <span style={{ background: 'var(--red)', color: '#fff', fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: 20 }}>{unseen.length}</span>
+      style={{ position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 2000, background: 'var(--card)', border: '1px solid var(--line)', borderRight: 'none', borderRadius: `${desk ? 24 : 20}px 0 0 ${desk ? 24 : 20}px`, borderLeft: '4px solid #EF9F27', padding: desk ? '13px 16px 13px 14px' : '9px 12px 9px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: desk ? 9 : 7, boxShadow: '-6px 0 18px rgba(0,0,0,.25)' }}>
+      <span style={{ fontSize: desk ? 21 : 17 }}><OnyxIcon emoji="💬" size={desk ? 19 : 15} /></span>
+      <span style={{ background: 'var(--red)', color: '#fff', fontSize: desk ? 13 : 11, fontWeight: 700, padding: desk ? '2px 9px' : '1px 7px', borderRadius: 20 }}>{unseen.length}</span>
     </button>
   );
 
