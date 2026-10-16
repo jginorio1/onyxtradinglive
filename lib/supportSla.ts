@@ -72,6 +72,11 @@ function hasMarkerAfter(msgs: any[], marker: string, afterIso: string): boolean 
   return msgs.some((m) => m.sender === 'note' && typeof m.body === 'string' && m.body.includes(marker) && new Date(m.created_at).getTime() >= after);
 }
 
+// ¿Existe una nota con `marker` en CUALQUIER punto del hilo? (idempotencia dura)
+function hasMarker(msgs: any[], marker: string): boolean {
+  return msgs.some((m) => m.sender === 'note' && typeof m.body === 'string' && m.body.includes(marker));
+}
+
 async function addNote(ticketId: string, body: string) {
   try { await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'note', body }); } catch {}
 }
@@ -141,7 +146,12 @@ export async function runSupportSla(dry = false): Promise<{ scanned: number; rem
     // --- Esperando al CLIENTE: recordatorio → cierre ---
     if (waitingOnClient) {
       const hrs = (now - new Date(lastAt).getTime()) / 3.6e6;
-      if (hrs >= cfg.closeH && !hasMarkerAfter(msgs, M.closed, lastAt)) {
+      // Cierre idempotente: si YA existe un marcador de cierre en el hilo, no lo
+      // volvemos a cerrar ni a anotar (evita la nota repetida cada 15 min aunque,
+      // por el motivo que sea, el ticket siguiera figurando como abierto). El ticket
+      // solo vuelve a cerrarse si el cliente responde (eso crea un mensaje nuevo del
+      // cliente → pasa a "esperando al equipo", no a este tramo).
+      if (hrs >= cfg.closeH && !hasMarker(msgs, M.closed)) {
         if (!dry) {
           await supabaseAdmin.from('support_tickets').update({ status: 'resolved', updated_at: new Date().toISOString() }).eq('id', t.id);
           await addNote(t.id, `${M.closed} Cerrado automáticamente por inactividad (sin respuesta del cliente en ${cfg.closeH}h). Se reabre solo si el cliente responde el correo.`);

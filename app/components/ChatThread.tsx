@@ -155,6 +155,17 @@ export default function ChatThread({
           const showDay = dl !== lastDay; lastDay = dl;
           const note = m.authorKind === 'note';
           const ai = m.authorKind === 'ai';
+          // Línea de SISTEMA: eventos automáticos (p. ej. cierre por inactividad).
+          // Se muestra como una línea fina y centrada, no como globo de mensaje.
+          if (m.authorKind === 'system') {
+            return (
+              <div key={m.id} style={{ textAlign: 'center', margin: '8px 0 4px' }}>
+                <span className="muted" style={{ fontSize: 11, background: 'var(--bg2)', border: '1px solid var(--line)', padding: '4px 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <Icon name="lock" size={11} /> {m.body}
+                </span>
+              </div>
+            );
+          }
           return (
             <div key={m.id}>
               {showDay && <div style={{ textAlign: 'center', margin: '10px 0 6px' }}><span className="muted" style={{ fontSize: 11, background: 'var(--bg2)', border: '1px solid var(--line)', padding: '3px 12px', borderRadius: 999 }}>{dl}</span></div>}

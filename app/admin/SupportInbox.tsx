@@ -120,6 +120,7 @@ export default function SupportInbox() {
   const [smallScreen, setSmallScreen] = useState(false);
   const [helpKey, setHelpKey] = useState('');           // qué ayuda "?" está abierta
   const [agentLang, setAgentLang] = useState('es');     // idioma principal del empleado (traductor)
+  const [filterOpen, setFilterOpen] = useState(false);  // desplegable de filtros
   // Alto medido: los paneles llenan desde su borde superior hasta el fondo de la
   // ventana → el composer SIEMPRE queda visible pase lo que pase arriba.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -367,7 +368,8 @@ export default function SupportInbox() {
         .wa-fil:hover{color:var(--tx)} .wa-fil.on{background:var(--brand);border-color:var(--brand);color:#fff}
         .wa-help{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--mut);cursor:pointer;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;line-height:1}
         .wa-help:hover{color:var(--brand);border-color:var(--brand)}
-        .wa-tip{position:absolute;top:26px;left:0;z-index:50;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.7;width:min(280px,80vw);box-shadow:0 12px 30px rgba(0,0,0,.3);color:var(--tx);cursor:pointer}
+        /* Globo de ayuda: fijo y centrado abajo para que NUNCA se corte en móvil. */
+        .wa-tip{position:fixed;left:12px;right:12px;bottom:84px;margin:0 auto;z-index:2147483600;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.7;width:auto;max-width:360px;box-shadow:0 16px 40px rgba(0,0,0,.4);color:var(--tx);cursor:pointer}
         .wa-nav{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--card2)}
         .wa-nav button{width:26px;height:26px;border-radius:50%;border:none;background:transparent;color:var(--brand);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
         .wa-nav button:disabled{color:var(--mut);opacity:.4;cursor:default}
@@ -500,43 +502,65 @@ export default function SupportInbox() {
       </div>
       </div>{/* /wa-cfg */}
 
-      {/* Filtros simples y consistentes (PC + móvil). Primero los 3 estados con
-          contador; luego, más discretos, "míos" y "sin asignar". El "?" explica. */}
-      <div className="wa-filrow row" style={{ gap: 7, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        {([['open', t.s_open, counts.open], ['in_progress', t.s_inprogress, counts.in_progress], ['resolved', t.s_resolved, counts.resolved]] as any).map(([k, lab, c]: any) => (
-          <button key={k} className={'wa-fil' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{lab}{c != null ? ` · ${c}` : ''}</button>
-        ))}
-        <span style={{ width: 1, height: 20, background: 'var(--line)', margin: '0 2px', flex: 'none' }} />
-        {([['mine', l.fMine, mineCount], ['unassigned', l.fUnassigned, unassignedCount], ['all', t.s_all, null]] as any).map(([k, lab, c]: any) => (
-          <button key={k} className={'wa-fil' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>{lab}{c ? ` · ${c}` : ''}</button>
-        ))}
-        {/* Ayuda "?" de los filtros */}
-        <span style={{ position: 'relative', flex: 'none' }}>
-          <button className="wa-help" onClick={() => setHelpKey(helpKey === 'filters' ? '' : 'filters')} title={es ? '¿Qué significan?' : 'What do these mean?'} aria-label="?">?</button>
-          {helpKey === 'filters' && (
-            <div className="wa-tip" onClick={() => setHelpKey('')}>
-              <b>{t.s_open}</b> — {es ? 'conversaciones nuevas sin atender.' : 'new, unattended conversations.'}<br />
-              <b>{t.s_inprogress}</b> — {es ? 'ya les respondiste; esperan seguimiento.' : "you've replied; awaiting follow-up."}<br />
-              <b>{t.s_resolved}</b> — {es ? 'cerradas. ' : 'closed. '}<br />
-              <b>{l.fMine}</b> — {es ? 'las que tomaste tú.' : 'the ones you took.'}<br />
-              <b>{l.fUnassigned}</b> — {es ? 'sin dueño: ¡tómalas!' : 'no owner yet: grab them!'}
-            </div>
-          )}
-        </span>
-        <div className="wa-search"><Icon name="search" size={15} /><input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%', color: 'var(--tx)' }} /></div>
-      </div>
-
-      {/* Filtro por ROL de quien escribe (mentor / embajador / Bot Lab / cliente). Solo muestra los que existen. */}
-      {(roleCounts.mentor || roleCounts.ambassador || roleCounts.botlab || roleCounts.paid) ? (
-        <div className="row" style={{ gap: 7, marginBottom: 12, flexWrap: 'wrap' }}>
-          <button className={'wa-fil' + (roleFilter === 'all' ? ' on' : '')} onClick={() => setRoleFilter('all')}>{es ? 'Todos' : 'All'}</button>
-          {(['mentor', 'ambassador', 'botlab', 'paid'] as const).map((r) => roleCounts[r] ? (
-            <button key={r} className={'wa-fil' + (roleFilter === r ? ' on' : '')} onClick={() => setRoleFilter(roleFilter === r ? 'all' : r)}>
-              {ROLE_META[r].ic} {es ? ROLE_META[r].es : ROLE_META[r].en} {roleCounts[r]}
-            </button>
-          ) : null)}
-        </div>
-      ) : null}
+      {/* Filtros en UN SOLO desplegable (igual en PC y móvil): no se amontonan ni se
+          "pillan". El botón muestra el filtro activo; al abrirlo eliges Estado,
+          Míos/Sin asignar, o Rol. Un "?" explica qué significa cada estado. */}
+      {(() => {
+        const stLabel: any = { open: t.s_open, in_progress: t.s_inprogress, resolved: t.s_resolved, mine: l.fMine, unassigned: l.fUnassigned, all: t.s_all };
+        const roleActive = roleFilter !== 'all' && ROLE_META[roleFilter] ? ` · ${es ? ROLE_META[roleFilter].es : ROLE_META[roleFilter].en}` : '';
+        const Row = ({ active, onClick, label, count, ic }: any) => (
+          <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 14, background: active ? 'var(--brand)' : 'transparent', color: active ? '#fff' : 'var(--tx)' }}>
+            {ic && <span style={{ display: 'inline-flex' }}>{ic}</span>}<span style={{ flex: 1 }}>{label}</span>{count != null && <span style={{ fontSize: 12, color: active ? 'rgba(255,255,255,.85)' : 'var(--mut)' }}>{count}</span>}
+          </button>
+        );
+        return (
+          <div className="row" style={{ gap: 8, marginBottom: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ position: 'relative', flex: 'none' }}>
+              <button onClick={() => setFilterOpen((v) => !v)} className="wa-filbtn" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 13px', fontSize: 14, fontWeight: 600, color: 'var(--tx)', cursor: 'pointer' }}>
+                <Icon name="ticket" size={16} /> {stLabel[filter] || t.s_all}{roleActive}
+                <span style={{ transform: filterOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s', display: 'inline-flex', color: 'var(--mut)' }}><Icon name="chevronDown" size={15} /></span>
+              </button>
+              {filterOpen && (
+                <>
+                  <div onClick={() => setFilterOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                  <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 41, width: 240, maxWidth: '86vw', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 14px 34px rgba(0,0,0,.35)', padding: 5 }}>
+                    <div style={{ fontSize: 11, color: 'var(--mut)', padding: '6px 10px 2px' }}>{es ? 'Estado' : 'Status'}</div>
+                    <Row active={filter === 'open'} onClick={() => { setFilter('open'); setFilterOpen(false); }} label={t.s_open} count={counts.open} />
+                    <Row active={filter === 'in_progress'} onClick={() => { setFilter('in_progress'); setFilterOpen(false); }} label={t.s_inprogress} count={counts.in_progress} />
+                    <Row active={filter === 'resolved'} onClick={() => { setFilter('resolved'); setFilterOpen(false); }} label={t.s_resolved} count={counts.resolved} />
+                    <div style={{ height: 1, background: 'var(--line)', margin: '4px 8px' }} />
+                    <Row active={filter === 'mine'} onClick={() => { setFilter('mine'); setFilterOpen(false); }} label={l.fMine} count={mineCount} />
+                    <Row active={filter === 'unassigned'} onClick={() => { setFilter('unassigned'); setFilterOpen(false); }} label={l.fUnassigned} count={unassignedCount} />
+                    <Row active={filter === 'all'} onClick={() => { setFilter('all'); setFilterOpen(false); }} label={t.s_all} count={null} />
+                    {(roleCounts.mentor || roleCounts.ambassador || roleCounts.botlab || roleCounts.paid) ? (
+                      <>
+                        <div style={{ fontSize: 11, color: 'var(--mut)', padding: '8px 10px 2px' }}>{es ? 'Quién escribe' : 'Who writes'}</div>
+                        <Row active={roleFilter === 'all'} onClick={() => setRoleFilter('all')} label={es ? 'Todos' : 'All'} count={null} />
+                        {(['mentor', 'ambassador', 'botlab', 'paid'] as const).map((r) => roleCounts[r] ? (
+                          <Row key={r} active={roleFilter === r} onClick={() => setRoleFilter(roleFilter === r ? 'all' : r)} label={es ? ROLE_META[r].es : ROLE_META[r].en} count={roleCounts[r]} ic={<span>{ROLE_META[r].ic}</span>} />
+                        ) : null)}
+                      </>
+                    ) : null}
+                  </div>
+                </>
+              )}
+            </span>
+            <span style={{ position: 'relative', flex: 'none' }}>
+              <button className="wa-help" onClick={() => setHelpKey(helpKey === 'filters' ? '' : 'filters')} title={es ? '¿Qué significan?' : 'What do these mean?'} aria-label="?">?</button>
+              {helpKey === 'filters' && (
+                <div className="wa-tip" onClick={() => setHelpKey('')}>
+                  <b>{t.s_open}</b> — {es ? 'conversaciones nuevas sin atender.' : 'new, unattended conversations.'}<br />
+                  <b>{t.s_inprogress}</b> — {es ? 'ya les respondiste; esperan seguimiento.' : "you've replied; awaiting follow-up."}<br />
+                  <b>{t.s_resolved}</b> — {es ? 'cerradas.' : 'closed.'}<br />
+                  <b>{l.fMine}</b> — {es ? 'las que tomaste tú.' : 'the ones you took.'}<br />
+                  <b>{l.fUnassigned}</b> — {es ? 'sin dueño: ¡tómalas!' : 'no owner yet: grab them!'}
+                </div>
+              )}
+            </span>
+            <div className="wa-search"><Icon name="search" size={15} /><input placeholder={t.s_search} value={q} onChange={(e) => setQ(e.target.value)} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%', color: 'var(--tx)' }} /></div>
+          </div>
+        );
+      })()}
 
       <div className="wa2" ref={wrapRef}>
         {/* Lista de conversaciones estilo WhatsApp */}
@@ -593,6 +617,15 @@ export default function SupportInbox() {
             }
             if (bestScore < 2) suggestedCanned = null;   // exige coincidencia real
             const chatMsgs: ChatMsg[] = tm.map((m) => {
+              // Notas AUTOMÁTICAS del sistema (SLA): no ensucian el chat. El cierre por
+              // inactividad se muestra como una línea fina de "sistema"; el resto
+              // (recordatorio/aviso/vencido) se oculta por completo.
+              if (m.sender === 'note' && typeof m.body === 'string' && m.body.includes('[[sla:')) {
+                if (m.body.includes('[[sla:closed]]')) {
+                  return { id: m.id, mine: false, authorKind: 'system' as any, body: es ? 'Cerrado por inactividad · sin respuesta del cliente' : 'Closed for inactivity · no customer reply', attachments: [], createdAt: m.created_at } as ChatMsg;
+                }
+                return null as any; // ocultar recordatorio/aviso/vencido
+              }
               // Soporte bilingüe: muestra, bajo el original, la versión traducida.
               // En mensajes del cliente, la traducción está en TU idioma (para leerla);
               // en tus respuestas, es lo que RECIBIÓ el cliente (lo enviado).
@@ -610,7 +643,7 @@ export default function SupportInbox() {
                 authorKind: m.sender === 'ai' ? 'ai' : m.sender === 'note' ? 'note' : m.sender === 'admin' ? 'admin' : 'user',
                 body: m.body, trBody, trLabel, attachments: m.attachments || [], createdAt: m.created_at, readAt: m.read_at,
               };
-            });
+            }).filter(Boolean) as ChatMsg[];
             const inConvo = new Set([tk.assignee_id, me, ...parts.map((p) => p.user_id)].filter(Boolean));
             const cands = team.filter((tm2) => !inConvo.has(tm2.id));
             return (
@@ -657,7 +690,7 @@ export default function SupportInbox() {
                   <span style={{ position: 'relative', flex: 'none' }}>
                     <button className="wa-help" onClick={() => setHelpKey(helpKey === 'actions' ? '' : 'actions')} aria-label="?" title={es ? '¿Qué hace cada botón?' : 'What does each button do?'}>?</button>
                     {helpKey === 'actions' && (
-                      <div className="wa-tip" style={{ right: 0, left: 'auto' }} onClick={() => setHelpKey('')}>
+                      <div className="wa-tip" onClick={() => setHelpKey('')}>
                         <b>{es ? 'Prioridad' : 'Priority'}</b> — {es ? 'marca urgencia (alta sube el ticket).' : 'sets urgency (high bumps the ticket).'}<br />
                         <b><Icon name="hand" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Tomar' : 'Take'}</b> — {es ? 'te asignas el ticket.' : 'assign it to yourself.'}<br />
                         <b><Icon name="userPlus" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Invitar' : 'Invite'}</b> — {es ? 'sumas a un compañero.' : 'bring in a teammate.'}<br />
