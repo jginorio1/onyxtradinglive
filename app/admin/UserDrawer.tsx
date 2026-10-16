@@ -153,15 +153,22 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
 
   return (
     <div onMouseDown={(e) => { if (e.target === e.currentTarget) (onClose)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 80, display: 'flex', justifyContent: 'flex-end' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(480px,100%)', height: '100%', background: 'var(--bg)', borderLeft: '1px solid var(--line)', overflowY: 'auto', padding: 20 }}>
-        <div className="row between" style={{ marginBottom: 12 }}>
-          <b style={{ fontSize: 15 }}>{email}</b>
-          <button className="btn btn-ghost" onClick={onClose}>✕</button>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(480px,100%)', height: '100%', background: 'var(--bg)', borderLeft: '1px solid var(--line)', overflowY: 'auto', padding: 0 }}>
+        {/* Cabecera FIJA: no se mete bajo el notch (safe-area) y siempre tiene un
+            botón "Volver" visible para regresar a la conversación. */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg)', borderBottom: '1px solid var(--line)', paddingTop: 'env(safe-area-inset-top)' }}>
+          <div className="row" style={{ gap: 10, alignItems: 'center', padding: '10px 14px' }}>
+            <button className="btn btn-primary" onClick={onClose} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', fontSize: 13, flex: 'none' }}>
+              <OnyxIcon emoji="‹" size={15} /> {lang === 'en' ? 'Back' : 'Volver'}
+            </button>
+            <b style={{ fontSize: 14.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{email}</b>
+            <button className="btn btn-ghost" onClick={onClose} style={{ padding: '6px 10px', flex: 'none' }}>✕</button>
+          </div>
+          <div className="row" style={{ gap: 8, padding: '0 14px 10px', overflowX: 'auto', flexWrap: 'nowrap' }}>
+            {t.tabs.map((tt: string, i: number) => <button key={i} className={'btn ' + (tab === i ? 'btn-primary' : 'btn-ghost')} style={{ padding: '6px 14px', fontSize: 13, whiteSpace: 'nowrap', flex: 'none' }} onClick={() => setTab(i)}>{tt}</button>)}
+          </div>
         </div>
-
-        <div className="row" style={{ gap: 8, marginBottom: 14 }}>
-          {t.tabs.map((tt: string, i: number) => <button key={i} className={'btn ' + (tab === i ? 'btn-primary' : 'btn-ghost')} style={{ padding: '6px 14px', fontSize: 13 }} onClick={() => setTab(i)}>{tt}</button>)}
-        </div>
+        <div style={{ padding: 20 }}>
 
         {tab === 0 && (
           <div>
@@ -457,6 +464,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
             </div>
           </div>
         )}
+        </div>{/* /padding wrapper */}
       </div>
     </div>
   );

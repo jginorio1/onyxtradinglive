@@ -224,10 +224,14 @@ export default function SupportInbox() {
   }
   async function loadCanned() { try { const r = await fetch('/api/admin/support/canned'); const j = await r.json(); setCanned(j.canned || []); } catch {} }
   useEffect(() => { load(); loadCanned(); loadAi(); loadSla(); const iv = setInterval(load, 8000); return () => clearInterval(iv); }, []);
-  // Si llega con ?ticket=ID (desde el aviso sticky), abre esa conversación.
+  // Si llega con ?ticket=ID (desde el aviso sticky / pastilla), abre ESA conversación.
+  // En móvil la abrimos a PANTALLA COMPLETA directamente, no en la lista.
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('ticket');
-    if (id) { setFilter('all'); setOpenId(id); }
+    if (id) {
+      setFilter('all'); setOpenId(id);
+      if (typeof window !== 'undefined' && window.innerWidth <= 860) setMobileOpen(true);
+    }
   }, []);
 
   // Al abrir un ticket, traer la ficha del trader y limpiar el compositor
@@ -695,7 +699,8 @@ export default function SupportInbox() {
                         <b><Icon name="hand" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Tomar' : 'Take'}</b> — {es ? 'te asignas el ticket.' : 'assign it to yourself.'}<br />
                         <b><Icon name="userPlus" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Invitar' : 'Invite'}</b> — {es ? 'sumas a un compañero.' : 'bring in a teammate.'}<br />
                         <b><Icon name="info" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Ficha' : 'Profile'}</b> — {es ? 'expediente del cliente.' : 'customer record.'}<br />
-                        <b><Icon name="check" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Resolver' : 'Resolve'}</b> — {es ? 'cierra y avisa al cliente.' : 'close and notify the customer.'}
+                        <b><Icon name="check" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Resolver' : 'Resolve'}</b> — {es ? 'cierra y avisa al cliente.' : 'close and notify the customer.'}<br />
+                        <b><Icon name="refresh" size={13} style={{ display: 'inline', verticalAlign: '-2px' }} /> {es ? 'Reabrir' : 'Reopen'}</b> — {es ? 'vuelve a abrir un ticket resuelto.' : 'reopen a resolved ticket.'}
                       </div>
                     )}
                   </span>
