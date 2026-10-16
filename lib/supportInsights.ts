@@ -163,10 +163,35 @@ type Cache = { at: string; from: string; to: string; lang: string; data: Support
 // inventamos: la IA extrapolaría genéricos sin base real. Mejor avisar.
 const MIN_QUESTIONS = 8;
 
+// Saludos/pruebas que NO son preguntas reales (varios idiomas). Si el mensaje ES
+// solo esto (o casi), no cuenta como pregunta de cliente.
+const JUNK = /^(hola|hi|hey|hello|holaa+|buenas|buenos dias|buenas tardes|buenas noches|test|testing|prueba|probando|ok|okay|ola|yo|hru|sup|gm|gn|si|no|yes|thanks|gracias|ty|\.|,|\?|¿)+[\s!.¡¿?]*$/i;
+
+// Deja solo preguntas con contenido real: largo mínimo, no saludo/prueba, y
+// sin duplicados (texto normalizado). Esto evita que el tráfico de pruebas
+// dispare sugerencias inventadas.
+function meaningfulQuestions(sample: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of sample) {
+    const q = String(raw || '').trim();
+    if (q.length < 12) continue;                 // muy corto → no es consulta real
+    if (JUNK.test(q)) continue;                  // saludo/prueba
+    const words = q.split(/\s+/).filter(Boolean);
+    if (words.length < 3) continue;              // menos de 3 palabras → descartar
+    const key = q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    if (seen.has(key)) continue;                 // duplicado
+    seen.add(key); out.push(q);
+  }
+  return out;
+}
+
 export async function getInsights(fromISO: string, toISO: string, en: boolean, refresh: boolean): Promise<{ kpis: SupportKpis; ai: SupportAiInsights; aiAt: string | null; lowData?: boolean }> {
   const kpis = await computeKpis(fromISO, toISO);
-  // Pocas conversaciones → no fabricamos temas/sugerencias (serían inventados).
-  if (kpis.questionsSample.length < MIN_QUESTIONS) {
+  // Solo preguntas reales (sin saludos/pruebas/duplicados).
+  const real = meaningfulQuestions(kpis.questionsSample);
+  // Pocas conversaciones reales → no fabricamos temas/sugerencias (serían inventados).
+  if (real.length < MIN_QUESTIONS) {
     return { kpis, ai: { topics: [], improve: [], add: [] }, aiAt: null, lowData: true };
   }
   const lang = en ? 'en' : 'es';
@@ -174,10 +199,10 @@ export async function getInsights(fromISO: string, toISO: string, en: boolean, r
   const sameRange = cache && cache.from === fromISO && cache.to === toISO && cache.lang === lang;
   const fresh = cache && sameRange && (Date.now() - new Date(cache.at).getTime()) < 12 * 3600 * 1000;
   if (!refresh && fresh && cache) return { kpis, ai: cache.data, aiAt: cache.at };
-  // Regenerar (o primera vez / rango distinto / forzado).
-  const ai = await aiInsights(kpis.questionsSample, en);
+  // Regenerar (o primera vez / rango distinto / forzado). La IA solo ve preguntas reales.
+  const ai = await aiInsights(real, en);
   const payload: Cache = { at: new Date().toISOString(), from: fromISO, to: toISO, lang, data: ai };
-  try { await setSetting(CACHE_KEY, payload); } catch {}
+  try { await saveSetting(CACHE_KEY, payload); } catch {}
   return { kpis, ai, aiAt: payload.at };
 }
 
