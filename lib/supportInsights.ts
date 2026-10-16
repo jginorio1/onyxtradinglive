@@ -159,8 +159,16 @@ export async function draftArticle(topic: string, en: boolean): Promise<{ title:
 const CACHE_KEY = 'support_insights_cache';
 type Cache = { at: string; from: string; to: string; lang: string; data: SupportAiInsights };
 
-export async function getInsights(fromISO: string, toISO: string, en: boolean, refresh: boolean): Promise<{ kpis: SupportKpis; ai: SupportAiInsights; aiAt: string | null }> {
+// Mínimo de preguntas REALES para que la IA sugiera. Por debajo de esto, NO
+// inventamos: la IA extrapolaría genéricos sin base real. Mejor avisar.
+const MIN_QUESTIONS = 8;
+
+export async function getInsights(fromISO: string, toISO: string, en: boolean, refresh: boolean): Promise<{ kpis: SupportKpis; ai: SupportAiInsights; aiAt: string | null; lowData?: boolean }> {
   const kpis = await computeKpis(fromISO, toISO);
+  // Pocas conversaciones → no fabricamos temas/sugerencias (serían inventados).
+  if (kpis.questionsSample.length < MIN_QUESTIONS) {
+    return { kpis, ai: { topics: [], improve: [], add: [] }, aiAt: null, lowData: true };
+  }
   const lang = en ? 'en' : 'es';
   let cache = await getSetting<Cache | null>(CACHE_KEY, null as any);
   const sameRange = cache && cache.from === fromISO && cache.to === toISO && cache.lang === lang;

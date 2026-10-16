@@ -50,6 +50,15 @@ export async function POST(req: Request) {
       body = a.body;
     }
     if (!title) return NextResponse.json({ error: 'title' }, { status: 400 });
+    // Anti-duplicado: si ya existe un artículo con título muy parecido, no creamos
+    // otro (evita repetidos en la Base IA). Comparación tolerante por título normalizado.
+    const norm = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    try {
+      const { data: existing } = await supabaseAdmin.from('kb_articles').select('title').limit(500);
+      const nt = norm(title);
+      const dup = (existing || []).some((a: any) => { const na = norm(a.title); return na && nt && (na === nt || na.includes(nt) || nt.includes(na)); });
+      if (dup) return NextResponse.json({ ok: true, duplicate: true, title });
+    } catch {}
     const { error } = await supabaseAdmin.from('kb_articles').insert({ title, body: body || title, tags: 'soporte, insights', published: true });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, title });

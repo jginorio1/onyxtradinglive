@@ -28,13 +28,16 @@ export default function SupportInsights({ lang }: { lang: string }) {
   }
   useEffect(() => { if (open && !data) load(); /* eslint-disable-next-line */ }, [open]);
 
+  const [dups, setDups] = useState<Record<string, boolean>>({});
   async function toKb(topic: string) {
     if (added[topic] || drafting[topic]) return;
     setDrafting((s) => ({ ...s, [topic]: true }));
     try {
       // Mandamos `topic`: la IA redacta el artículo completo (título + contenido).
-      await fetch('/api/admin/support/insights', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ topic, lang }) });
-      setAdded((s) => ({ ...s, [topic]: true }));
+      const r = await fetch('/api/admin/support/insights', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ topic, lang }) });
+      const j = await r.json().catch(() => ({} as any));
+      if (j?.duplicate) setDups((s) => ({ ...s, [topic]: true }));
+      else setAdded((s) => ({ ...s, [topic]: true }));
     } catch {}
     setDrafting((s) => ({ ...s, [topic]: false }));
   }
@@ -99,6 +102,16 @@ export default function SupportInsights({ lang }: { lang: string }) {
                 </div>
               )}
 
+              {/* Pocas conversaciones: la IA no inventa temas/sugerencias sin datos reales */}
+              {data?.lowData && (
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: 12, fontSize: 12.5, lineHeight: 1.6 }} className="muted">
+                  <div style={{ fontWeight: 700, color: 'var(--tx)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="bulb" size={14} /> {es ? 'Aún no hay suficientes datos' : 'Not enough data yet'}</div>
+                  {es
+                    ? 'La IA solo sugiere temas y mejoras cuando hay suficientes preguntas reales de clientes. Con pocas conversaciones inventaría genéricos, así que esperamos a que llegue tráfico real. Los KPIs de arriba sí son reales.'
+                    : 'The AI only suggests topics and improvements once there are enough real customer questions. With few conversations it would just fabricate generic ones, so we wait for real traffic. The KPIs above are real.'}
+                </div>
+              )}
+
               {/* Lo más preguntado */}
               {!!(ai?.topics || []).length && (
                 <div style={{ marginBottom: 12 }}>
@@ -132,8 +145,8 @@ export default function SupportInsights({ lang }: { lang: string }) {
                     {ai.add.map((s: string, i: number) => (
                       <div key={i} className="row between" style={{ gap: 8, alignItems: 'flex-start' }}>
                         <span className="muted" style={{ fontSize: 12.5, lineHeight: 1.5, flex: 1 }}>{s}</span>
-                        <button onClick={() => toKb(s)} disabled={!!added[s] || !!drafting[s]} className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 11.5, flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, ...(added[s] ? { color: 'var(--soft-green)' } : {}) }}>
-                          <Icon name={added[s] ? 'check' : drafting[s] ? 'sparkles' : 'plus'} size={12} /> {added[s] ? (es ? 'Añadido' : 'Added') : drafting[s] ? (es ? 'Redactando…' : 'Writing…') : (es ? 'Base IA' : 'KB')}
+                        <button onClick={() => toKb(s)} disabled={!!added[s] || !!drafting[s] || !!dups[s]} className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 11.5, flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, ...(added[s] ? { color: 'var(--soft-green)' } : dups[s] ? { color: 'var(--muted)' } : {}) }}>
+                          <Icon name={added[s] ? 'check' : dups[s] ? 'check' : drafting[s] ? 'sparkles' : 'plus'} size={12} /> {added[s] ? (es ? 'Añadido' : 'Added') : dups[s] ? (es ? 'Ya existe' : 'Exists') : drafting[s] ? (es ? 'Redactando…' : 'Writing…') : (es ? 'Base IA' : 'KB')}
                         </button>
                       </div>
                     ))}
