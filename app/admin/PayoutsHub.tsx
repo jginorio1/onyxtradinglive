@@ -35,6 +35,7 @@ export default function PayoutsHub({ canManage }: { canManage: boolean }) {
   const [prog, setProg] = useState<'all' | 'botlab' | 'ambassador'>('all');
   const [st, setSt] = useState<'pendientes' | 'retenidos' | 'pagados' | 'todos'>('pendientes');
   const [showInfo, setShowInfo] = useState(false);
+  const [view, setView] = useState<'requests' | 'review'>('requests');
 
   async function load() {
     setLoading(true);
@@ -106,10 +107,19 @@ export default function PayoutsHub({ canManage }: { canManage: boolean }) {
           <p className="muted" style={{ fontSize: 13, margin: 0 }}>{es ? 'Todas las solicitudes de retiro de tus programas, en un solo lugar. Cada pago usa el motor y las protecciones de su programa.' : 'Every payout request across your programs, in one place. Each payout uses its program\'s engine and protections.'}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={load} className="btn btn-ghost" style={{ fontSize: 12.5 }}>{es ? 'Refrescar' : 'Refresh'}</button>
-          <button onClick={exportCsv} className="btn btn-ghost" style={{ fontSize: 12.5 }}>CSV</button>
+          {view === 'requests' && <button onClick={load} className="btn btn-ghost" style={{ fontSize: 12.5 }}>{es ? 'Refrescar' : 'Refresh'}</button>}
+          {view === 'requests' && <button onClick={exportCsv} className="btn btn-ghost" style={{ fontSize: 12.5 }}>CSV</button>}
         </div>
       </div>
+
+      {/* Sub-pestañas: Solicitudes (ejecutar pagos) · Revisión (cuadrar el libro) */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--line)', marginBottom: 16 }}>
+        {([['requests', es ? 'Solicitudes' : 'Requests'], ['review', es ? 'Revisión / integridad' : 'Review / integrity']] as [any, string][]).map(([k2, l]) => (
+          <button key={k2} onClick={() => setView(k2)} style={{ padding: '8px 14px', background: 'none', border: 'none', borderBottom: `2px solid ${view === k2 ? 'var(--brand)' : 'transparent'}`, color: view === k2 ? 'var(--tx)' : 'var(--mut)', fontWeight: view === k2 ? 800 : 600, fontSize: 13.5, cursor: 'pointer' }}>{l}</button>
+        ))}
+      </div>
+
+      {view === 'review' ? <Integrity canManage={canManage} /> : <>
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: 16 }}>
@@ -227,6 +237,7 @@ export default function PayoutsHub({ canManage }: { canManage: boolean }) {
       <div className="muted" style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.6 }}>
         {es ? 'Onyx Copy (proveedor) y Academia (mentor) cobran directo a su Stripe, así que no generan solicitudes aquí. «Invita y gana» se aplica como crédito automático. Cada pago respeta la maduración y las protecciones de su programa.' : 'Onyx Copy (provider) and Academy (mentor) get paid straight to their Stripe, so they raise no requests here. “Invite & earn” is applied as automatic credit. Each payout respects its program\'s maturation and protections.'}
       </div>
+      </>}
     </div>
   );
 }
@@ -248,5 +259,112 @@ function Kpi({ label, value, sub, color }: any) {
 function Chip({ on, onClick, children }: any) {
   return (
     <button onClick={onClick} style={{ padding: '7px 13px', borderRadius: 99, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', border: `1.5px solid ${on ? 'var(--brand)' : 'var(--line)'}`, background: on ? 'color-mix(in srgb,var(--brand) 12%,transparent)' : 'var(--bg2)', color: on ? 'var(--brand)' : 'var(--tx)' }}>{children}</button>
+  );
+}
+
+const usd = (n: number) => '$' + (Math.round((Number(n) || 0) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// ============================================================
+// REVISIÓN / INTEGRIDAD · el único lugar que confirma que las comisiones y pagos
+// de todos los programas cuadran. Solo lectura + un arreglo seguro (recalcular
+// el total de pagos descuadrados). Lee /api/admin/pay-integrity.
+// ============================================================
+function Integrity({ canManage }: { canManage: boolean }) {
+  const { lang } = useLang();
+  const es = lang !== 'en';
+  const [rep, setRep] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState('');
+
+  async function run() {
+    setLoading(true);
+    try { const r = await fetch('/api/admin/pay-integrity', { cache: 'no-store' }); const j = await r.json(); if (r.ok) setRep(j); else toastErr(j?.error); }
+    catch (e: any) { toastErr(e?.message); } finally { setLoading(false); }
+  }
+  useEffect(() => { run(); }, []);
+
+  async function fix(action: string) {
+    if (!canManage) { toastErr(es ? 'No tienes permiso.' : 'No permission.'); return; }
+    const ok = await confirmDialog(es ? 'Recalcular el total de los pagos descuadrados a partir de sus comisiones. No crea ni borra dinero. ¿Continuar?' : 'Recompute mismatched payout totals from their commissions. No money is created or deleted. Continue?');
+    if (!ok) return;
+    setBusy(action);
+    try { const r = await fetch('/api/admin/pay-integrity', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) }); const j = await r.json(); if (!r.ok) throw new Error(j?.error || 'error'); toast(`${es ? 'Corregidos' : 'Fixed'}: ${j.fixed}`); await run(); }
+    catch (e: any) { toastErr(e?.message); } finally { setBusy(''); }
+  }
+
+  const col = (s: string) => (s === 'ok' ? 'var(--green)' : s === 'warn' ? 'var(--amber)' : 'var(--red)');
+  const ic = (s: string) => (s === 'ok' ? '✓' : s === 'warn' ? '!' : '✗');
+
+  if (loading && !rep) return <div className="muted" style={{ padding: 28, textAlign: 'center' }}>{es ? 'Revisando…' : 'Checking…'}</div>;
+  if (!rep) return <div className="muted" style={{ padding: 28, textAlign: 'center' }}>{es ? 'Sin datos.' : 'No data.'}</div>;
+
+  const warns = (rep.checks || []).filter((c: any) => c.status !== 'ok').length;
+  const headColor = col(rep.overall);
+  const headMsg = rep.overall === 'ok' ? (es ? 'Todo cuadra' : 'All reconciled') : rep.overall === 'warn' ? (es ? `${warns} aviso(s) menor(es)` : `${warns} minor warning(s)`) : (es ? `${warns} problema(s) a revisar` : `${warns} issue(s) to review`);
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+        <div className="muted" style={{ fontSize: 13 }}>{es ? 'Verifica que las comisiones y pagos de todos los programas cuadran.' : 'Verifies commissions and payouts across every program reconcile.'}</div>
+        <button onClick={run} className="btn btn-ghost" style={{ fontSize: 12.5 }}>{es ? 'Correr revisión' : 'Run review'}</button>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: `color-mix(in srgb,${headColor} 12%,transparent)`, border: `1px solid color-mix(in srgb,${headColor} 35%,transparent)`, borderRadius: 14, padding: '12px 14px', marginBottom: 16 }}>
+        <span style={{ width: 30, height: 30, borderRadius: 99, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: headColor, color: '#0b1020', fontWeight: 900, fontSize: 16 }}>{ic(rep.overall)}</span>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 14, color: headColor }}>{headMsg}</div>
+          <div className="muted" style={{ fontSize: 12 }}>{es ? 'Última revisión' : 'Last review'}: {fmtDateTime(rep.at)} · {(rep.checks || []).length} {es ? 'chequeos' : 'checks'}</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+        {(rep.checks || []).map((c: any) => (
+          <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--line)', borderLeft: `3px solid ${col(c.status)}`, borderRadius: 10, padding: '10px 12px' }}>
+            <span style={{ color: col(c.status), fontWeight: 900, fontSize: 15, width: 16, textAlign: 'center' }}>{ic(c.status)}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700 }}>{es ? c.es : c.en}</div>
+              <div className="muted" style={{ fontSize: 12 }}>{es ? c.subEs : c.subEn}</div>
+            </div>
+            {c.fix && c.status !== 'ok' && canManage && (
+              <button disabled={busy === c.fix} onClick={() => fix(c.fix)} style={{ ...btnGhost, opacity: busy === c.fix ? .5 : 1 }}>{es ? 'Arreglar' : 'Fix'}</button>
+            )}
+            <span style={{ fontSize: 12, fontWeight: 800, color: col(c.status), background: `color-mix(in srgb,${col(c.status)} 14%,transparent)`, borderRadius: 99, padding: '3px 10px', minWidth: 30, textAlign: 'center' }}>{c.count}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="muted" style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>{es ? 'Resumen por programa' : 'By program'}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10, marginBottom: 16 }}>
+        {(rep.programs || []).map((p: any) => (
+          <div key={p.key} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 12 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 6 }}>{es ? p.es : p.en}</div>
+            <div className="muted" style={{ fontSize: 12, lineHeight: 1.8 }}>
+              {es ? 'Generado' : 'Generated'} {usd(p.generated)}<br />
+              {p.key === 'member' ? (es ? 'Aplicado' : 'Applied') : (es ? 'Disponible' : 'Available')} {usd(p.available)}<br />
+              {p.key === 'member' ? <span>&nbsp;</span> : <>{es ? 'Pagado' : 'Paid'} {usd(p.paid)}</>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {(rep.automations || []).length > 0 && (
+        <>
+          <div className="muted" style={{ fontSize: 13, fontWeight: 700, margin: '0 0 8px' }}>{es ? 'Automatismos' : 'Automations'}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(rep.automations || []).map((a: any, i: number) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--line)', borderRadius: 10, padding: '9px 12px' }}>
+                <span style={{ width: 8, height: 8, borderRadius: 99, background: col(a.status) }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{a.label}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{a.sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {!canManage && <div className="muted" style={{ fontSize: 12, marginTop: 12 }}>{es ? 'Solo lectura: necesitas permiso de Finanzas o Embajadores (o ser dueño) para aplicar arreglos.' : 'Read-only: you need Finance or Ambassadors permission (or be the owner) to apply fixes.'}</div>}
+    </div>
   );
 }
