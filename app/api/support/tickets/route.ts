@@ -1,4 +1,5 @@
 import { pickLang, langFromCookie } from '@/lib/i18n';
+import { reqGeo } from '@/lib/geo';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
@@ -80,10 +81,19 @@ export async function POST(req: Request) {
     // Se permite un ticket con solo captura o solo historial siempre que haya asunto.
     if (!subject || (!body && !attachments.length && !hasHistory)) return NextResponse.json({ error: 'faltan datos', code: 'missing' }, { status: 400 });
 
-    const { data: ticket, error } = await supabaseAdmin
-      .from('support_tickets')
-      .insert({ user_id: user.id, email: user.email || null, subject, category, status: 'open' })
-      .select('id').single();
+    // De dónde escribe (aproximado por IP, cabeceras de Vercel). Tolerante: si las
+    // columnas country/city no existen, reintenta sin ellas.
+    const geo = reqGeo(req);
+    const tbase: any = { user_id: user.id, email: user.email || null, subject, category, status: 'open' };
+    const tgeo: any = { ...tbase };
+    if (geo.country) tgeo.country = geo.country;
+    if (geo.city) tgeo.city = geo.city;
+    let ticket: any = null; let error: any = null;
+    {
+      const r = await supabaseAdmin.from('support_tickets').insert(tgeo).select('id').single();
+      if (r.error) { const r2 = await supabaseAdmin.from('support_tickets').insert(tbase).select('id').single(); ticket = r2.data; error = r2.error; }
+      else ticket = r.data;
+    }
     if (error || !ticket) return NextResponse.json({ error: error?.message || 'error' }, { status: 500 });
 
     // 1) Guardamos TODO el hilo previo con la IA (usuario e IA), en orden.

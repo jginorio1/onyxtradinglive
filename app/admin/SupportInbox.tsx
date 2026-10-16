@@ -9,6 +9,8 @@ import UserDrawer from './UserDrawer';
 import { useChatRealtime } from '@/lib/chatRealtime';
 import ChatThread, { type Att, type ChatMsg } from '@/app/components/ChatThread';
 import Icon from '@/app/components/Icons';
+import SupportInsights from './SupportInsights';
+import { flagEmoji } from '@/lib/geo';
 import { nativePlatform } from '@/lib/native';
 
 const stColor: any = { open: 'var(--brand)', in_progress: 'var(--amber)', resolved: 'var(--green)' };
@@ -465,6 +467,9 @@ export default function SupportInbox() {
         pdfUrl={(f, tt) => `/api/admin/support/report?from=${f}&to=${tt}&lang=${lang}`}
         csvUrl={(f, tt) => `/api/admin/support/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
 
+      {/* Onyx AI · Insights de soporte: KPIs + temas + dónde mejorar + qué añadir. */}
+      <SupportInsights lang={lang} />
+
       {/* Interruptor de auto-respuesta IA */}
       <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 12, flexWrap: 'wrap' }}>
         <span style={{ width: 30, height: 30, borderRadius: 9, flex: 'none', background: 'linear-gradient(135deg,#34e2a0,#7c8cff)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17' }}><Icon name="sparkles" size={17} /></span>
@@ -715,6 +720,7 @@ export default function SupportInbox() {
                       {/* Triage automático: categoría (coloreada si es prioridad alta) + canal. */}
                       <span title={l.triageAuto} style={tk.priority === 'high' ? { color: 'var(--red)', fontWeight: 700 } : undefined}>{CATS[tk.category] || tk.category}</span>
                       {' · '}{CH[tk.channel] || tk.channel}{tk.is_lead ? ' · Lead' : ''}
+                      {tk.country && <span title={l.country} style={{ fontWeight: 600 }}> · {flagEmoji(tk.country)} {[tk.city, tk.country].filter(Boolean).join(', ')}</span>}
                       {traderTyping && <span style={{ color: 'var(--soft-green)' }}> · {l.typing}</span>}
                     </div>
                   </div>

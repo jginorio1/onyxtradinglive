@@ -22,7 +22,7 @@ export async function GET() {
     {
       const r = await supabaseAdmin
         .from('support_tickets')
-        .select('id,user_id,email,subject,category,status,is_lead,channel,assignee_id,priority,created_at,updated_at')
+        .select('id,user_id,email,subject,category,status,is_lead,channel,assignee_id,priority,name,country,city,created_at,updated_at')
         .order('updated_at', { ascending: false })
         .limit(300);
       if (r.error) {

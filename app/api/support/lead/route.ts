@@ -7,6 +7,7 @@ import { logError } from '@/lib/errlog';
 import { notifyNewTicket } from '@/lib/supportNotify';
 import { autoHandleTicket } from '@/lib/supportAI';
 import { rateLimit, clientIp, tooMany } from '@/lib/ratelimit';
+import { reqGeo, flagEmoji } from '@/lib/geo';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -59,13 +60,19 @@ export async function POST(req: Request) {
     // Token público para que el invitado (sin sesión) siga viendo y respondiendo
     // la conversación en el widget. Si la columna aún no existe, el insert reintenta sin ella.
     const publicToken = randomUUID();
+    // De dónde escribe (aproximado, por IP vía cabeceras de Vercel). País fiable;
+    // ciudad opcional. No se le pide nada al cliente.
+    const geo = reqGeo(req);
     const base: any = { user_id: null, email, subject, category: 'general', status: 'open', is_lead: true };
-    // Probamos insertos de más a menos completos: así guardamos nombre y token si
-    // esas columnas existen, pero nunca fallamos si aún no están en la BD.
+    // Campos nuevos opcionales (name/country/city): si las columnas no existen aún,
+    // caemos al inserto con solo el token (que sí existe) para no fallar nunca.
+    const extra: any = { name };
+    if (geo.country) extra.country = geo.country;
+    if (geo.city) extra.city = geo.city;
     const candidates: any[] = [
-      { ...base, public_token: publicToken, name },
+      { ...base, public_token: publicToken, ...extra },
       { ...base, public_token: publicToken },
-      { ...base, name },
+      { ...base, ...extra },
       { ...base },
     ].filter((c, i, arr) => i === 0 || JSON.stringify(c) !== JSON.stringify(arr[i - 1]));
     let ticket: any = null; let error: any = null;
@@ -121,12 +128,14 @@ export async function POST(req: Request) {
     } else {
       // Ni conversación ni mensaje: dejó su correo sin escribir. No dejamos el
       // hilo vacío, para que el equipo sepa qué pasó.
-      const who = name ? (lang === 'en' ? `${name} ` : `${name} `) : (lang === 'en' ? 'The visitor ' : 'El visitante ');
+      const who = name ? `${name} ` : (lang === 'en' ? 'The visitor ' : 'El visitante ');
+      const place = [geo.city, geo.country].filter(Boolean).join(', ');
+      const from = place ? ` ${flagEmoji(geo.country)} ${lang === 'en' ? 'from' : 'desde'} ${place}` : '';
       await supabaseAdmin.from('support_messages').insert({
         ticket_id: ticket.id, sender: 'note',
         body: lang === 'en'
-          ? `${who}entered the chat and left their contact (${email}).`
-          : `${who}entró al chat y dejó su contacto (${email}).`,
+          ? `${who}entered the chat and left their contact (${email})${from}.`
+          : `${who}entró al chat y dejó su contacto (${email})${from}.`,
       });
     }
 

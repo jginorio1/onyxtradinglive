@@ -28,3 +28,16 @@ export async function notifyNewTicket(opts: { email: string; subject: string; is
     );
   } catch { /* silencioso */ }
 }
+
+// Difunde un texto (HTML) a todo el equipo con Telegram vinculado. Reutilizado por
+// el resumen semanal de Insights de soporte. Nunca lanza.
+export async function broadcastTeam(text: string, kind = 'support_digest'): Promise<number> {
+  try {
+    const { data: admins } = await supabaseAdmin
+      .from('profiles').select('telegram_chat_id').eq('is_admin', true).not('telegram_chat_id', 'is', null);
+    const ids = (admins || []).map((a: any) => a.telegram_chat_id).filter(Boolean);
+    if (!ids.length) return 0;
+    await Promise.all(ids.map((chatId: string) => sendMessage(chatId, text, { kind })));
+    return ids.length;
+  } catch { return 0; }
+}
