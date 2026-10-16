@@ -66,9 +66,12 @@ export async function translateTo(text: string, to: string, from = ''): Promise<
   const clean = String(text || '').trim();
   if (!clean || !t || (f && f === t)) return text;
   const fromHint = f ? `del idioma "${f}" ` : '';
+  // max_tokens amplio: idiomas como el chino o el árabe pueden expandirse al
+  // traducir; con el tope por defecto (500) se cortaba y volvía sin traducir.
   const out = await anthropic(
     `Eres un traductor. Traduce el texto del usuario ${fromHint}al idioma con código ISO "${t}". Responde SOLO con la traducción, sin comillas ni explicaciones, manteniendo un tono cercano y profesional. Si ya está en ese idioma, devuélvelo igual.`,
     clean,
+    2000,
   );
   return out || text;
 }

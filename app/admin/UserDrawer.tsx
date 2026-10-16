@@ -152,7 +152,7 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
   }
 
   return (
-    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (onClose)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 80, display: 'flex', justifyContent: 'flex-end' }}>
+    <div onMouseDown={(e) => { if (e.target === e.currentTarget) (onClose)(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 2147483646, display: 'flex', justifyContent: 'flex-end' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(480px,100%)', height: '100%', background: 'var(--bg)', borderLeft: '1px solid var(--line)', overflowY: 'auto', padding: 0 }}>
         {/* Cabecera FIJA: no se mete bajo el notch (safe-area) y siempre tiene un
             botón "Volver" visible para regresar a la conversación. */}

@@ -60,11 +60,12 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
     </button>
   );
 
-  // Arrastre: al soltar, guardamos la posición. Posición por defecto: abajo-derecha.
+  // Arrastre: al soltar, guardamos la posición. Por defecto, CENTRADA a media
+  // pantalla; una vez que la arrastras, recuerda dónde la dejaste.
   const W = 330;
   const style: any = pos
     ? { left: Math.max(6, Math.min(pos.x, (typeof window !== 'undefined' ? window.innerWidth : 1200) - W - 6)), top: Math.max(6, pos.y) }
-    : { right: 16, bottom: 16 };
+    : { left: '50%', top: '50%', transform: 'translate(-50%,-50%)' };
   function onDown(e: React.PointerEvent) {
     const el = (e.currentTarget.closest('[data-pill]') as HTMLElement); if (!el) return;
     const r = el.getBoundingClientRect(); drag.current = { dx: e.clientX - r.left, dy: e.clientY - r.top };
@@ -77,7 +78,11 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
   function onUp() { if (drag.current) { drag.current = null; try { localStorage.setItem('onyx_lead_pos', JSON.stringify(pos)); } catch {} } }
 
   return (
-    <div data-pill style={{ position: 'fixed', zIndex: 2000, width: W, maxWidth: '92vw', background: 'var(--card)', border: '1px solid var(--line)', borderLeft: '5px solid #EF9F27', borderRadius: 16, boxShadow: '0 16px 44px rgba(0,0,0,.42)', overflow: 'hidden', ...style }}>
+    <>
+      {/* Fondo atenuado (estilo tarjeta centrada). No bloquea: puedes arrastrar la
+          tarjeta igual. Solo resalta el aviso a media pantalla. */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 1999, background: 'rgba(0,0,0,.28)', pointerEvents: 'none' }} />
+    <div data-pill style={{ position: 'fixed', zIndex: 2000, width: W, maxWidth: '92vw', background: 'var(--card)', border: '1px solid var(--line)', borderLeft: '5px solid #EF9F27', borderRadius: 16, boxShadow: '0 20px 56px rgba(0,0,0,.5)', overflow: 'hidden', ...style }}>
       {/* Cabecera: agarra el ⠿ para mover; navega entre consultas; minimiza. */}
       <div className="row between" style={{ padding: '9px 12px', borderBottom: '1px solid var(--line)' }}>
         <span className="row" style={{ gap: 7, alignItems: 'center', minWidth: 0 }}>
@@ -133,5 +138,6 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
         <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 13, marginLeft: 'auto' }} onClick={() => markSeen(l.id)}>{L('Visto', 'Seen')}</button>
       </div>
     </div>
+    </>
   );
 }

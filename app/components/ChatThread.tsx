@@ -83,10 +83,14 @@ export default function ChatThread({
   const [mQuery, setMQuery] = useState<string | null>(null);
   const [picked, setPicked] = useState<MentionItem[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollBox = useRef<HTMLDivElement>(null);
+  // No bajar de golpe si el usuario subió a leer mensajes anteriores.
+  const stick = useRef(true);
+  const onBoxScroll = () => { const el = scrollBox.current; if (el) stick.current = (el.scrollHeight - el.scrollTop - el.clientHeight) < 140; };
   const fileRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages.length, typingLabel]);
+  useEffect(() => { if (stick.current) endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages.length, typingLabel]);
   // Compositor que crece con el texto (como WhatsApp): hasta ~5 líneas, luego scroll.
   useEffect(() => { const el = taRef.current; if (!el) return; el.style.height = 'auto'; el.style.height = Math.min(132, Math.max(36, el.scrollHeight)) + 'px'; }, [text]);
 
@@ -148,7 +152,7 @@ export default function ChatThread({
       <style>{`.ct-input::placeholder{color:#9aa0ac;opacity:1}@media(max-width:600px){.ct-input{font-size:16px !important}}`}</style>
       {/* Alto MÁXIMO con scroll: si no, en un contenedor flex el hilo crecería sin
           fin con conversaciones largas (usar height+flex se anulan entre sí). */}
-      <div style={{ overflowY: 'auto', maxHeight: height, minHeight: 60, padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div ref={scrollBox} onScroll={onBoxScroll} style={{ overflowY: 'auto', overscrollBehavior: 'contain', maxHeight: height, minHeight: 60, padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {!messages.length && <div className="muted" style={{ fontSize: 13, textAlign: 'center', margin: 'auto' }}>{emptyText || L('Aún no hay mensajes.', 'No messages yet.')}</div>}
         {messages.map((m) => {
           const dl = dayLabel(m.createdAt, lang);

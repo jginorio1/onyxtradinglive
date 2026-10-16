@@ -84,6 +84,12 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const [dim, setDim] = useState<{ w: number; h: number } | null>(null);
   const [menu, setMenu] = useState(false);   // menú "⋯" de la cabecera
   const end = useRef<HTMLDivElement>(null);
+  const scrollBox = useRef<HTMLDivElement>(null);
+  // ¿El cliente está pegado al final? Si subió a leer mensajes viejos, NO lo
+  // bajamos de golpe en cada actualización (cada 3 s). Se baja solo si ya estaba
+  // abajo o cuando él mismo envía algo.
+  const stick = useRef(true);
+  const onBodyScroll = () => { const el = scrollBox.current; if (el) stick.current = (el.scrollHeight - el.scrollTop - el.clientHeight) < 140; };
   const started = chat.length > 0;
 
   // Cargar preferencias guardadas una vez.
@@ -262,7 +268,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     if (!open || !loggedIn) return;
     fetch('/api/support/ai').then((r) => r.json()).then((j) => { if (j?.loggedIn) setRoleInfo(j); }).catch(() => {});
   }, [open, loggedIn]);
-  useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth' }); }, [chat, busy, showEmail, sent]);
+  useEffect(() => { if (stick.current) end.current?.scrollIntoView({ behavior: 'smooth' }); }, [chat, busy, showEmail, sent]);
 
   // Mensaje proactivo: globo sobre el botón tras unos segundos (una vez por sesión).
   const proactiveOn = cfg?.proactiveOn && !open;
@@ -304,6 +310,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   // El invitado responde en el widget → va al hilo (no a la IA).
   async function sendThread(raw?: string) {
     const body = (raw ?? ask).trim(); if (!body || busy) return;
+    stick.current = true;   // al enviar yo, siempre bajar al final
     setChat((c) => [...c, { role: 'user', content: body }]); setAsk(''); setBusy(true);
     try { await fetch('/api/support/thread', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: leadToken, body }) }); } catch {}
     setBusy(false); loadThread();
@@ -313,6 +320,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     // Si ya hay un hilo humano (invitado), sus mensajes van al hilo, no a la IA.
     if (leadToken) { sendThread(q); return; }
     const question = (q ?? ask).trim(); if (!question || busy) return;
+    stick.current = true;   // al enviar yo, siempre bajar al final
     const next = [...chat, { role: 'user', content: question }];
     setChat(next); setAsk(''); setBusy(true); setRefs([]); setActions([]); setPlans([]);
     try {
@@ -762,7 +770,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             <button onClick={() => setOpen(false)} aria-label={es ? 'Cerrar' : 'Close'} title={es ? 'Cerrar' : 'Close'} style={{ background: 'rgba(0,0,0,.42)', border: '1px solid rgba(255,255,255,.35)', color: '#fff', fontSize: 20, fontWeight: 800, cursor: 'pointer', lineHeight: 1, width: 34, height: 34, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', boxShadow: '0 1px 3px rgba(0,0,0,.3)' }}>✕</button>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
+          <div ref={scrollBox} onScroll={onBodyScroll} style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
             <div style={{ maxWidth: '86%', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, ...bubble('assistant') }}>{linkify(greet)}</div>
             {!started && cfg.showTopics && topics.length > 0 && (
               <div>

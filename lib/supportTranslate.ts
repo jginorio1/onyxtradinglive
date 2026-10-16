@@ -15,7 +15,7 @@
 // ============================================================
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { getSetting } from '@/lib/settings';
-import { detectTo, translateTo, normLang } from '@/lib/translate';
+import { detectLang, translateTo, normLang } from '@/lib/translate';
 
 // Forma de support_messages.meta para un mensaje bilingüe.
 export type MsgMeta = {
@@ -36,11 +36,13 @@ export async function inbound(text: string, knownClientLang = ''): Promise<{ cli
   const emp = await agentLang();
   const clean = String(text || '').trim();
   if (!clean) return { clientLang: normLang(knownClientLang) || emp, meta: null };
-  // Una sola llamada: detecta el idioma del cliente y traduce al del empleado.
-  const { lang, text: tr } = await detectTo(clean, emp);
-  const clientLang = lang || normLang(knownClientLang) || emp;
+  // Dos pasos ROBUSTOS (en vez de un JSON que se cortaba con textos largos como
+  // el chino): 1) detectar el idioma del cliente, 2) traducir al del empleado.
+  const detected = normLang(knownClientLang) || await detectLang(clean);
+  const clientLang = detected || emp;
   // Si el cliente ya escribe en el idioma del empleado, no hay nada que mostrar aparte.
   if (!clientLang || clientLang === emp) return { clientLang: emp, meta: null };
+  const tr = await translateTo(clean, emp, clientLang);
   return { clientLang, meta: { lang: clientLang, altLang: emp, alt: tr } };
 }
 

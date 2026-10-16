@@ -418,8 +418,12 @@ export default function SupportInbox() {
         .wa-chip:hover{border-color:var(--brand)}
         .wa-av{width:40px;height:40px;border-radius:12px;background:rgba(124,140,255,.18);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex:none}
         .wa-avs{width:40px;height:40px;border-radius:12px;background:rgba(124,140,255,.18);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none}
-        .wa-hb{background:var(--card2);border:1px solid var(--line);cursor:pointer;color:var(--mut);display:inline-flex;align-items:center;justify-content:center;padding:8px;border-radius:10px}
+        .wa-hb{background:var(--card2);border:1px solid var(--line);cursor:pointer;color:var(--mut);display:inline-flex;align-items:center;justify-content:center;padding:8px;border-radius:10px;transition:transform .06s ease, background .12s, border-color .12s;-webkit-tap-highlight-color:transparent}
         .wa-hb:hover{color:var(--tx);border-color:var(--brand)}
+        /* Reacción táctil: todos los botones del chat "se hunden" al oprimirlos. */
+        .wa-hb:active,.wa-chip:active,.wa-fil:active,.wa-help:active,.wa-filbtn:active,.wa-send:active,.wa-back:active{transform:scale(.9);filter:brightness(.92)}
+        .wa-chip,.wa-fil,.wa-help,.wa-filbtn,.wa-back,.wa-send{transition:transform .06s ease, filter .12s, background .12s, border-color .12s;-webkit-tap-highlight-color:transparent}
+        .wa-send:active{transform:scale(.88)}
       `}</style>
       <div className="tabhead"><div className="th-row"><span className="th-ic" style={{ display: 'inline-flex' }}><Icon name="ticket" size={18} /></span><span className="th-t">{t.h_soporte_t}</span></div><div className="th-s">{t.h_soporte_s}</div></div>
       {/* En móvil, los ajustes (rango, IA, SLA) van tras este botón para no saturar. */}
