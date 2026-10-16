@@ -400,6 +400,11 @@ export default function SupportInbox() {
         .wa-search{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;margin-left:auto;max-width:260px;flex:1;color:var(--mut)}
         .wa-back{display:none}
         .wa-cfg-btn{display:none}
+        /* Botón de emoji en el selector (PC): aro al pasar / al elegir, para que
+           se note cuál se selecciona (antes no sombreaba ni reaccionaba). */
+        .wa-emo{border-radius:8px;line-height:1;transition:background .1s,transform .06s}
+        .wa-emo:hover{background:var(--bg2)}
+        .wa-emo:active{transform:scale(.82);background:color-mix(in srgb,var(--brand) 22%,transparent)}
         @media(max-width:860px){
           .wa2{grid-template-columns:1fr}
           .wa-list{max-height:none;height:calc(100dvh - 215px);min-height:320px}
@@ -786,27 +791,6 @@ export default function SupportInbox() {
                             <Icon name="bulb" size={14} /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.suggested}: {suggestedCanned.title}</span>
                           </button>
                         )}
-                        {/* Menú "+" estilo WhatsApp: agrupa todas las acciones para no saturar. */}
-                        <span style={{ position: 'relative', flex: 'none' }}>
-                          <button className="wa-plus" onClick={() => setMoreOpen((v) => !v)} title={es ? 'Más acciones' : 'More actions'} aria-label="+"><Icon name="plus" size={18} /></button>
-                          {moreOpen && (
-                            <>
-                              <div onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 25 }} />
-                              <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 26, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.35)', padding: 5, width: 215 }}>
-                                <button className="wa-menu" onClick={() => { setShowCanned(true); setMoreOpen(false); }}><Icon name="message" size={16} /> {l.canned}</button>
-                                <button className="wa-menu" onClick={() => { draft(tk.id); setMoreOpen(false); }} disabled={busy === 'ai' + tk.id}><Icon name="sparkles" size={16} /> {busy === 'ai' + tk.id ? '…' : t.s_aiDraft}</button>
-                                {text.trim() && <>
-                                  <div style={{ height: 1, background: 'var(--line)', margin: '4px 8px' }} />
-                                  <button className="wa-menu" onClick={() => { refine('shorten'); setMoreOpen(false); }} disabled={!!refining}><Icon name="resize" size={16} /> {l.rShorten}</button>
-                                  <button className="wa-menu" onClick={() => { refine('formal'); setMoreOpen(false); }} disabled={!!refining}><Icon name="shield" size={16} /> {l.rFormal}</button>
-                                  <button className="wa-menu" onClick={() => { refine('translate'); setMoreOpen(false); }} disabled={!!refining}><Icon name="message" size={16} /> {l.rTranslate}</button>
-                                </>}
-                                <div style={{ height: 1, background: 'var(--line)', margin: '4px 8px' }} />
-                                <button className="wa-menu" onClick={() => { saveKnowledge(tk.subject, tm); setMoreOpen(false); }}><Icon name="bulb" size={16} /> {l.saveKb}</button>
-                              </div>
-                            </>
-                          )}
-                        </span>
                       </div>
                     )}
                   </div>
@@ -859,18 +843,43 @@ export default function SupportInbox() {
                     </div>
                   )}
 
-                  {/* Emojis */}
-                  {showEmoji && mode === 'reply' && (
+                  {/* Emojis — solo en PC. En móvil el teclado del teléfono ya trae
+                      emojis, así que ocultamos el selector (evita el recuadro incómodo). */}
+                  {showEmoji && mode === 'reply' && !smallScreen && (
                     <div style={{ position: 'absolute', bottom: '100%', left: 12, marginBottom: 8, zIndex: 20, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 8, boxShadow: '0 12px 30px rgba(0,0,0,.3)', display: 'grid', gridTemplateColumns: 'repeat(10,1fr)', gap: 3, width: 320, maxHeight: 240, overflowY: 'auto' }}>
-                      {EMO.map((e) => <button key={e} onClick={() => { setText((v) => v + e); setShowEmoji(false); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, padding: 3 }}>{e}</button>)}
+                      {EMO.map((e) => <button key={e} className="wa-emo" onClick={() => { setText((v) => v + e); setShowEmoji(false); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, padding: 3 }}>{e}</button>)}
                     </div>
                   )}
 
                   {/* Fila de entrada estilo WhatsApp */}
                   <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
+                    {/* Menú "+" estilo WhatsApp: a la IZQUIERDA del campo. El popover abre
+                        hacia la derecha desde aquí, así nunca se corta contra el borde. */}
+                    {mode === 'reply' && (
+                      <span style={{ position: 'relative', flex: 'none' }}>
+                        <button className="wa-plus" onClick={() => setMoreOpen((v) => !v)} title={es ? 'Más acciones' : 'More actions'} aria-label="+"><Icon name="plus" size={18} /></button>
+                        {moreOpen && (
+                          <>
+                            <div onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 25 }} />
+                            <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 26, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.35)', padding: 5, width: 215, maxWidth: 'calc(100vw - 32px)' }}>
+                              <button className="wa-menu" onClick={() => { setShowCanned(true); setMoreOpen(false); }}><Icon name="message" size={16} /> {l.canned}</button>
+                              <button className="wa-menu" onClick={() => { draft(tk.id); setMoreOpen(false); }} disabled={busy === 'ai' + tk.id}><Icon name="sparkles" size={16} /> {busy === 'ai' + tk.id ? '…' : t.s_aiDraft}</button>
+                              {text.trim() && <>
+                                <div style={{ height: 1, background: 'var(--line)', margin: '4px 8px' }} />
+                                <button className="wa-menu" onClick={() => { refine('shorten'); setMoreOpen(false); }} disabled={!!refining}><Icon name="resize" size={16} /> {l.rShorten}</button>
+                                <button className="wa-menu" onClick={() => { refine('formal'); setMoreOpen(false); }} disabled={!!refining}><Icon name="shield" size={16} /> {l.rFormal}</button>
+                                <button className="wa-menu" onClick={() => { refine('translate'); setMoreOpen(false); }} disabled={!!refining}><Icon name="message" size={16} /> {l.rTranslate}</button>
+                              </>}
+                              <div style={{ height: 1, background: 'var(--line)', margin: '4px 8px' }} />
+                              <button className="wa-menu" onClick={() => { saveKnowledge(tk.subject, tm); setMoreOpen(false); }}><Icon name="bulb" size={16} /> {l.saveKb}</button>
+                            </div>
+                          </>
+                        )}
+                      </span>
+                    )}
                     <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 2, background: mode === 'note' ? 'rgba(255,192,77,.14)' : '#fff', border: '1px solid ' + (mode === 'note' ? 'rgba(255,192,77,.4)' : 'var(--line)'), borderRadius: 16, padding: '3px 4px' }}>
                       {mode === 'reply' && <>
-                        <button className="ci-btn" title={l.emoji} onClick={() => setShowEmoji((v) => !v)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '8px 6px', display: 'flex' }}><Icon name="smile" size={19} /></button>
+                        {!smallScreen && <button className="ci-btn" title={l.emoji} onClick={() => setShowEmoji((v) => !v)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '8px 6px', display: 'flex' }}><Icon name="smile" size={19} /></button>}
                         <label className="ci-btn" title={l.attach} style={{ cursor: 'pointer', color: '#6b7280', padding: '8px 6px', display: 'flex' }}><Icon name="paperclip" size={18} />
                           <input type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadAtt(e.target.files); e.currentTarget.value = ''; }} />
                         </label>

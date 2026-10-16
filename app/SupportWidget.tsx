@@ -83,6 +83,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const [sideOv, setSideOv] = useState<'left' | 'right' | null>(null);
   const [dim, setDim] = useState<{ w: number; h: number } | null>(null);
   const [menu, setMenu] = useState(false);   // menú "⋯" de la cabecera
+  const [confirmNew, setConfirmNew] = useState(false);   // popup de confirmar "Nueva conversación"
   const end = useRef<HTMLDivElement>(null);
   const scrollBox = useRef<HTMLDivElement>(null);
   // ¿El cliente está pegado al final? Si subió a leer mensajes viejos, NO lo
@@ -926,7 +927,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             <div style={{ padding: kbOpen ? '10px' : '10px 10px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
               {/* Nueva conversación: botón fijo arriba del campo (reemplaza al menú). Siempre visible. */}
               {(
-                <button onClick={() => clearChat()} className="onyx-newconv" style={{ width: '100%', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '9px', borderRadius: 10, border: '1px solid rgba(255,157,61,.5)', background: 'rgba(255,122,26,.08)', color: '#ffb15e', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={() => { if (started || leadToken) setConfirmNew(true); else clearChat(); }} className="onyx-newconv" style={{ width: '100%', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '9px', borderRadius: 10, border: '1px solid rgba(255,157,61,.5)', background: 'rgba(255,122,26,.08)', color: '#ffb15e', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
                   <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 6h10M6.5 6V4.5h3V6M5 6l.6 7h4.8L11 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   {es ? 'Nueva conversación' : 'New conversation'}
                 </button>
@@ -947,6 +948,31 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                 </>}
                 <input value={ask} onChange={(e) => setAsk(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendAI(); }} placeholder={x.ph} style={{ flex: 1, margin: 0, fontSize: 13 }} />
                 <button className="btn btn-primary" style={{ padding: '9px 13px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', color: '#241002', border: 'none' }} onClick={() => sendAI()} disabled={busy || !ask.trim()} aria-label={t.send}><OnyxIcon name="send" size={16} glow={false} /></button>
+              </div>
+            </div>
+          )}
+
+          {/* Popup de confirmación al empezar una conversación nueva. Explica que la
+              conversación actual no se pierde para el equipo y que cualquier respuesta
+              llega por correo, así el cliente conserva el contexto del tema anterior. */}
+          {confirmNew && (
+            <div onClick={() => setConfirmNew(false)} style={{ position: 'absolute', inset: 0, zIndex: 50, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 18 }}>
+              <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 320, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 18, boxShadow: '0 18px 50px rgba(0,0,0,.5)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,122,26,.12)', color: '#ffb15e', flex: 'none' }}>
+                    <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 5.2v3.3M8 11h.01M8 1.6l6.2 10.8a1 1 0 0 1-.87 1.5H2.67a1 1 0 0 1-.87-1.5L8 1.6Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: 15 }}>{es ? '¿Empezar una conversación nueva?' : 'Start a new conversation?'}</div>
+                </div>
+                <p style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--muted)', margin: '0 0 14px' }}>
+                  {es
+                    ? 'Esta conversación se quitará de aquí, pero el equipo la conserva. Si te responden sobre este tema, te llegará por correo con el asunto original, así no pierdes el hilo.'
+                    : 'This conversation will be cleared from here, but the team keeps it. If they reply about this topic, you’ll get it by email with the original subject, so you don’t lose the thread.'}
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => setConfirmNew(false)} className="btn btn-ghost" style={{ flex: 1, padding: '9px', fontSize: 13, fontWeight: 700 }}>{es ? 'Cancelar' : 'Cancel'}</button>
+                  <button onClick={() => { setConfirmNew(false); clearChat(); }} style={{ flex: 1, padding: '9px', fontSize: 13, fontWeight: 800, border: 'none', borderRadius: 10, cursor: 'pointer', background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', color: '#241002' }}>{es ? 'Sí, empezar nueva' : 'Yes, start new'}</button>
+                </div>
               </div>
             </div>
           )}
