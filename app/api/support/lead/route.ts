@@ -40,6 +40,7 @@ export async function POST(req: Request) {
   try {
     const b = await req.json().catch(() => ({}));
     const email = String(b.email || '').trim().toLowerCase().slice(0, 160);
+    const name = String(b.name || '').trim().replace(/\s+/g, ' ').slice(0, 80);
     const message = String(b.message || '').trim().slice(0, 4000);
     const lang = pickLang(b.lang);
     // Rate-limit: público, llama a la IA y crea un ticket (spam). 5 por minuto por IP.
@@ -58,17 +59,20 @@ export async function POST(req: Request) {
     // Token público para que el invitado (sin sesión) siga viendo y respondiendo
     // la conversación en el widget. Si la columna aún no existe, el insert reintenta sin ella.
     const publicToken = randomUUID();
+    const base: any = { user_id: null, email, subject, category: 'general', status: 'open', is_lead: true };
+    // Probamos insertos de más a menos completos: así guardamos nombre y token si
+    // esas columnas existen, pero nunca fallamos si aún no están en la BD.
+    const candidates: any[] = [
+      { ...base, public_token: publicToken, name },
+      { ...base, public_token: publicToken },
+      { ...base, name },
+      { ...base },
+    ].filter((c, i, arr) => i === 0 || JSON.stringify(c) !== JSON.stringify(arr[i - 1]));
     let ticket: any = null; let error: any = null;
-    {
-      const r = await supabaseAdmin.from('support_tickets')
-        .insert({ user_id: null, email, subject, category: 'general', status: 'open', is_lead: true, public_token: publicToken })
-        .select('id').single();
-      if (r.error) {
-        const r2 = await supabaseAdmin.from('support_tickets')
-          .insert({ user_id: null, email, subject, category: 'general', status: 'open', is_lead: true })
-          .select('id').single();
-        ticket = r2.data; error = r2.error;
-      } else { ticket = r.data; }
+    for (const row of candidates) {
+      const r = await supabaseAdmin.from('support_tickets').insert(row).select('id').single();
+      if (!r.error && r.data) { ticket = r.data; error = null; break; }
+      error = r.error;
     }
     if (error || !ticket) return NextResponse.json({ error: error?.message || 'error' }, { status: 500 });
 
@@ -117,9 +121,12 @@ export async function POST(req: Request) {
     } else {
       // Ni conversación ni mensaje: dejó su correo sin escribir. No dejamos el
       // hilo vacío, para que el equipo sepa qué pasó.
+      const who = name ? (lang === 'en' ? `${name} ` : `${name} `) : (lang === 'en' ? 'The visitor ' : 'El visitante ');
       await supabaseAdmin.from('support_messages').insert({
         ticket_id: ticket.id, sender: 'note',
-        body: lang === 'en' ? 'The visitor left their email from the widget without writing a question.' : 'El visitante dejó su correo desde el widget sin escribir una pregunta.',
+        body: lang === 'en'
+          ? `${who}entered the chat and left their contact (${email}).`
+          : `${who}entró al chat y dejó su contacto (${email}).`,
       });
     }
 

@@ -63,6 +63,8 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const [remoteBusy, setRemoteBusy] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState('');
+  const [leadName, setLeadName] = useState('');   // nombre del visitante (puerta de entrada)
+  const [teamOnline, setTeamOnline] = useState(false); // ¿hay agentes disponibles? (informativo)
   const [leadMsg, setLeadMsg] = useState('');
   const [sent, setSent] = useState(false);
   // Token del hilo del invitado (sin sesión). Con él, el widget sigue mostrando y
@@ -251,7 +253,11 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     };
   }, [open]);
 
-  useEffect(() => { fetch('/api/support/availability').then((r) => r.json()).then((j) => setHuman(!!j.online)).catch(() => {}); }, [open]);
+  // Disponibilidad del equipo: SOLO informativa. OJO: ya NO marca `human`, porque
+  // "human" significa que una persona DE VERDAD está atendiendo este hilo (no que
+  // el equipo esté en línea). Así el encabezado no miente: dice "Onyx AI" mientras
+  // responde la IA, y cambia a la persona solo cuando una responde (loadThread).
+  useEffect(() => { fetch('/api/support/availability').then((r) => r.json()).then((j) => setTeamOnline(!!j.online)).catch(() => {}); }, [open]);
   // ¿Está activo el soporte remoto de pago? (para mostrar el botón con su precio)
   useEffect(() => { if (!open) return; fetch('/api/support/remote').then((r) => r.json()).then(setRemoteCfg).catch(() => {}); }, [open]);
   // Pagar/agendar la sesión remota → Stripe Checkout. Invitado sin correo → pide correo.
@@ -317,9 +323,27 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     setBusy(false); loadThread();
   }
 
+  // Puerta de entrada (invitado): pide nombre + correo ANTES de usar la IA. Con eso
+  // (1) capturamos el lead, (2) frenamos bots y el consumo de IA, y (3) creamos el
+  // hilo para guardar TODO (incluidas las preguntas a la IA). Con sesión no aplica.
+  async function startLead() {
+    const nm = leadName.trim();
+    const e = email.trim();
+    if (nm.length < 2) { setErr(es ? 'Escribe tu nombre.' : 'Enter your name.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) { setErr(t.errMail); return; }
+    setErr(''); setBusy(true);
+    try {
+      const r = await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ name: nm, email: e, lang }) });
+      const j = await r.json().catch(() => ({} as any));
+      if (j?.token) { setLeadToken(j.token); try { localStorage.setItem('onyx_support_token', j.token); } catch {} }
+    } catch {}
+    setBusy(false);
+  }
+
   async function sendAI(q?: string) {
-    // Si ya hay un hilo humano (invitado), sus mensajes van al hilo, no a la IA.
-    if (leadToken) { sendThread(q); return; }
+    // Si YA atiende una persona de verdad, el mensaje va directo al hilo humano
+    // (no gastamos IA ni la hacemos hablar por encima del agente).
+    if (leadToken && human) { sendThread(q); return; }
     const question = (q ?? ask).trim(); if (!question || busy) return;
     stick.current = true;   // al enviar yo, siempre bajar al final
     const next = [...chat, { role: 'user', content: question }];
@@ -328,13 +352,19 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       // platform: en la app de iOS, el servidor oculta precios/planes (regla 3.1.1 de Apple).
       const r = await fetch('/api/support/ai', { method: 'POST', body: JSON.stringify({ question, history: chat, lang, platform: nativePlatform() }) });
       const j = await r.json();
-      setChat([...next, { role: 'assistant', content: j.answer || '…' }]);
+      const answer = j.answer || '…';
+      setChat([...next, { role: 'assistant', content: answer }]);
       setRefs(j.articles || []);
       // En iOS, canonHref reescribe /bot-builder y /bot-lab a sus tabs internos
       // (nunca al landing), así que las acciones pueden mostrarse tal cual.
       setActions(Array.isArray(j.actions) ? j.actions : []);
       setPlans(Array.isArray(j.plans) ? j.plans : []);
       if (!loggedIn && j.escalate) openEmail();
+      // Guardamos la pregunta + la respuesta de la IA en el hilo del lead, para que el
+      // equipo vea en Admin → Soporte qué pregunta la gente (aunque nunca pida persona).
+      if (leadToken) {
+        try { fetch('/api/support/thread', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: leadToken, body: question, aiReply: answer }) }); } catch {}
+      }
     } catch { setChat([...next, { role: 'assistant', content: '…' }]); }
     setBusy(false);
   }
@@ -437,6 +467,9 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   if (rr?.ambassador && rr.ambassador !== 'none') roleTopics.push([es ? '¿Cómo veo mi enlace y comisión de embajador?' : 'How do I see my ambassador link and commission?', es ? '🎯 Mi enlace y comisión' : '🎯 My link & commission']);
   if (rr?.mentor) roleTopics.push([es ? '¿Cómo cobro como mentor y conecto mi Stripe?' : 'How do I get paid as a mentor and connect Stripe?', es ? '🎓 Cobros de mentor' : '🎓 Mentor payouts']);
   const topics = [...roleTopics, ...baseTopics];
+  // Puerta de entrada: el invitado (sin sesión) debe dejar nombre + correo ANTES de
+  // escribir. Con sesión no aplica (ya sabemos quién es) y con token ya pasó la puerta.
+  const needGate = !loggedIn && !leadToken && !sent;
   // Saludo personalizado por nombre si hay sesión. Evita "¡Hola! ¡Hola!" quitando
   // el saludo inicial que ya trae el texto configurado antes de anteponer el nombre.
   const greet = roleInfo?.name
@@ -773,14 +806,31 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
 
           <div ref={scrollBox} onScroll={onBodyScroll} style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
             <div style={{ maxWidth: '86%', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, ...bubble('assistant') }}>{linkify(greet)}</div>
-            {!started && cfg.showTopics && topics.length > 0 && (
+
+            {/* Puerta de entrada: nombre + correo antes de chatear (solo invitados). Da
+                el lead, frena bots y evita el consumo de IA, y crea el hilo para guardar todo. */}
+            {needGate && (
+              <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 13, marginTop: 4 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{es ? 'Antes de empezar' : 'Before we start'}</div>
+                <div className="muted" style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 10 }}>{es ? 'Déjanos tu nombre y correo. Así guardamos tu conversación y un asesor puede seguirla si hace falta.' : 'Leave your name and email. We keep your conversation and an advisor can follow it if needed.'}</div>
+                <input value={leadName} onChange={(e) => setLeadName(e.target.value)} placeholder={es ? 'Tu nombre' : 'Your name'} style={{ width: '100%', margin: '0 0 7px', fontSize: 13 }} />
+                <input value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') startLead(); }} type="email" inputMode="email" autoComplete="email" placeholder={t.emailPh} style={{ width: '100%', margin: '0 0 9px', fontSize: 13 }} />
+                {err && <div style={{ color: 'var(--red)', fontSize: 12, marginBottom: 8 }}>{err}</div>}
+                <button onClick={() => startLead()} disabled={busy} className="btn btn-primary" style={{ width: '100%', padding: '10px', fontSize: 13, fontWeight: 700, background: 'linear-gradient(100deg,#ffcf5c,#ff9d3d 55%,#ff6a2b)', color: '#241002', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                  {busy ? '…' : <>{es ? 'Empezar a chatear' : 'Start chatting'} <OnyxIcon name="send" size={14} glow={false} /></>}
+                </button>
+                <div className="muted" style={{ fontSize: 10.5, marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><OnyxIcon emoji="🔒" size={11} glow={false} /> {es ? 'Solo para responderte. Sin spam.' : 'Only to reply to you. No spam.'}</div>
+              </div>
+            )}
+
+            {!needGate && !started && cfg.showTopics && topics.length > 0 && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--mut)', margin: '2px 0 6px' }}>{x.topicsT}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   {topics.map(([q, label]) => (
                     <button key={label} className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12 }} onClick={() => sendAI(q)}>{iconLabel(label)}</button>
                   ))}
-                  {!loggedIn && cfg.showHuman && <button className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, gridColumn: '1 / -1' }} onClick={openEmail}>{iconLabel(x.human)}</button>}
+                  {!loggedIn && !leadToken && cfg.showHuman && <button className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, gridColumn: '1 / -1' }} onClick={openEmail}>{iconLabel(x.human)}</button>}
                   {/* Soporte remoto de pago: solo para usuarios con sesión (no en el
                       landing para visitantes) y oculto en iOS por la regla de Apple. */}
                   {loggedIn && remoteCfg?.on && !isIOS && (
@@ -923,7 +973,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             </div>
           )}
 
-          {!sent && (
+          {!sent && !needGate && (
             <div style={{ padding: kbOpen ? '10px' : '10px 10px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid var(--line)', background: 'var(--card)' }}>
               {/* Nueva conversación: botón fijo arriba del campo (reemplaza al menú). Siempre visible. */}
               {(

@@ -101,6 +101,9 @@ export async function POST(req: Request) {
     const b = await req.json().catch(() => ({} as any));
     const token = String(b.token || '');
     const body = String(b.body || '').trim().slice(0, 4000);
+    // Respuesta de la IA (opcional): cuando el visitante le pregunta a Onyx AI, el
+    // widget manda la pregunta + la respuesta para que TODO quede guardado en el hilo.
+    const aiReply = String(b.aiReply || '').trim().slice(0, 4000);
     if (!body) return NextResponse.json({ error: 'empty', code: 'empty' }, { status: 400 });
     const tk = await ticketByToken(token);
     if (!tk) return NextResponse.json({ error: 'not found', code: 'notfound' }, { status: 404 });
@@ -116,6 +119,11 @@ export async function POST(req: Request) {
       if (!known && clientLang) await setTicketClientLang((tk as any).id, clientLang);
     } catch {
       await supabaseAdmin.from('support_messages').insert({ ticket_id: (tk as any).id, sender: 'user', body });
+    }
+    // Guardamos también la respuesta de Onyx AI (si vino), como mensaje 'ai'. Así el
+    // equipo ve la conversación completa aunque nunca haya intervenido una persona.
+    if (aiReply) {
+      try { await supabaseAdmin.from('support_messages').insert({ ticket_id: (tk as any).id, sender: 'ai', body: aiReply }); } catch {}
     }
     // Reabrir si estaba resuelto y marcar actividad para que suba en la bandeja.
     const patch: any = { updated_at: new Date().toISOString() };
