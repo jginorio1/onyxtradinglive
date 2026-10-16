@@ -147,7 +147,7 @@ export const TEMPLATE_META: { id: string; cat: string; es: string; en: string; v
   { id: 'security_locked', cat: 'security', es: 'Cuenta bloqueada por PIN (al admin)', en: 'Account locked by PIN (to admin)', vars: [], to: 'admin' },
   { id: 'dispute_alert', cat: 'security', es: 'Disputa de tarjeta (al admin)', en: 'Card dispute (to admin)', vars: ['id'], to: 'admin' },
   { id: 'mail_test', cat: 'security', es: 'Correo de prueba', en: 'Test email', vars: [], to: 'admin' },
-  { id: 'remote_support', cat: 'billing', es: 'Soporte remoto · sesión reservada', en: 'Remote support · session booked', vars: ['minutos', 'tool', 'link'], to: 'usuario' },
+  { id: 'remote_support', cat: 'billing', es: 'Soporte remoto · sesión reservada', en: 'Remote support · session booked', vars: ['minutos', 'tool', 'link', 'cita'], to: 'usuario' },
   { id: 'support_followup', cat: 'account', es: 'Soporte · recordatorio sin respuesta', en: 'Support · no-reply reminder', vars: ['asunto', 'enlace'], to: 'usuario' },
 ];
 

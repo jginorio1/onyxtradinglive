@@ -38,6 +38,7 @@ export async function POST(req: Request) {
       minutes: b.minutes !== undefined ? Math.max(5, Math.round(Number(b.minutes) || 30)) : cur.minutes,
       tool: b.tool !== undefined ? String(b.tool).slice(0, 40) : cur.tool,
       link: b.link !== undefined ? String(b.link).slice(0, 300) : cur.link,
+      schedule_link: b.schedule_link !== undefined ? String(b.schedule_link).slice(0, 300) : (cur.schedule_link || ''),
     };
     await saveSetting('remote_support', next);
     await logAdmin(g.user?.email || '', 'remote_support', 'remote_support', { on: next.on, price: next.price });

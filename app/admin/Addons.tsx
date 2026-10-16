@@ -117,7 +117,9 @@ export default function Addons() {
             <div><span style={lbl}>Duración (min)</span><input type="number" value={rem.minutes ?? 30} onChange={(e) => setRem({ ...rem, minutes: Number(e.target.value) })} style={num} /></div>
             <div><span style={lbl}>Herramienta</span><input value={rem.tool || ''} onChange={(e) => setRem({ ...rem, tool: e.target.value })} placeholder="AnyDesk" style={{ margin: 0 }} /></div>
             <div><span style={lbl}>Enlace de descarga</span><input value={rem.link || ''} onChange={(e) => setRem({ ...rem, link: e.target.value })} placeholder="https://anydesk.com/download" style={{ margin: 0 }} /></div>
+            <div><span style={lbl}>Enlace de cita (opcional)</span><input value={rem.schedule_link || ''} onChange={(e) => setRem({ ...rem, schedule_link: e.target.value })} placeholder="https://calendly.com/tu-usuario" style={{ margin: 0 }} /></div>
           </div>
+          <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>Si pones un enlace de cita (Calendly, etc.), se añade al correo de confirmación para que el cliente agende su hora solo.</p>
           <label className="row" style={{ gap: 8, marginTop: 12, cursor: 'pointer' }}>
             <input type="checkbox" checked={!!rem.on} onChange={(e) => setRem({ ...rem, on: e.target.checked })} style={{ width: 'auto', margin: 0 }} /> {t.re_addonOn}
           </label>

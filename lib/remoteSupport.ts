@@ -12,10 +12,12 @@ import { notifyNewTicket } from '@/lib/supportNotify';
 // ============================================================
 export type RemoteSupport = {
   on: boolean; price: number; minutes: number; tool: string; link: string;
+  schedule_link: string;   // enlace de agenda/cita (Calendly, etc.); opcional
 };
 
 export const REMOTE_DEFAULT: RemoteSupport = {
   on: false, price: 25, minutes: 30, tool: 'AnyDesk', link: 'https://anydesk.com/download',
+  schedule_link: '',
 };
 
 export async function getRemoteConfig(): Promise<RemoteSupport> {
@@ -47,9 +49,11 @@ export async function fulfillRemoteSession(opts: { sessionId: string; email: str
   if (!ticketId) return { ok: false };
 
   const amt = opts.amount || cfg.price;
-  const firstMsg = en
+  const sched = (cfg.schedule_link || '').trim();
+  const firstMsg = (en
     ? `The client PAID for a remote support session ($${amt} · ${cfg.minutes} min). Tool: ${cfg.tool}. Contact them to agree a time and run the session.`
-    : `El cliente PAGÓ una sesión de soporte remoto ($${amt} · ${cfg.minutes} min). Herramienta: ${cfg.tool}. Contáctalo para acordar hora y hacer la sesión.`;
+    : `El cliente PAGÓ una sesión de soporte remoto ($${amt} · ${cfg.minutes} min). Herramienta: ${cfg.tool}. Contáctalo para acordar hora y hacer la sesión.`)
+    + (sched ? (en ? `\nScheduling link sent to the client: ${sched}` : `\nEnlace de cita enviado al cliente: ${sched}`) : '');
   try { await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'note', body: firstMsg }); } catch {}
 
   // Aviso al equipo (Telegram) de que entró una sesión remota pagada.
@@ -60,8 +64,16 @@ export async function fulfillRemoteSession(opts: { sessionId: string; email: str
     try {
       const { emailTplLive } = await import('@/lib/emailTemplates');
       const { sendEmail } = await import('@/lib/mail');
-      const em = await emailTplLive('remote_support', en ? 'en' : 'es', { minutos: cfg.minutes, tool: cfg.tool, link: cfg.link });
-      if (em.subject) await sendEmail(email, em.subject, em.text, { kind: 'support', htmlBody: em.html || undefined });
+      const em = await emailTplLive('remote_support', en ? 'en' : 'es', { minutos: cfg.minutes, tool: cfg.tool, link: cfg.link, cita: sched });
+      // Si hay enlace de cita, lo añadimos al correo (texto y HTML) para que el
+      // cliente agende su hora de una vez, sin depender de que el equipo escriba.
+      let text = em.text, html = em.html || undefined;
+      if (sched) {
+        const line = en ? `Book your time here: ${sched}` : `Agenda tu hora aquí: ${sched}`;
+        text = `${text}\n\n${line}`;
+        if (html) html = `${html}<p style="margin:16px 0"><a href="${sched}">${en ? 'Book your time' : 'Agenda tu hora'}</a></p>`;
+      }
+      if (em.subject) await sendEmail(email, em.subject, text, { kind: 'support', htmlBody: html });
     } catch {}
   }
 
