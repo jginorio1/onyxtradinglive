@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { creditCommissions, monthsCredited, reverseInvoice, balances as commBalances, balancesBatch as commBalancesBatch, type CommissionRow } from '@/lib/commissions';
 
 // ============================================================
 // Red de VENTAS · motor. Árbol de 3 niveles (vendedor → N1 → N2),
@@ -208,14 +209,6 @@ export function pctFor(rep: Rep | null, slot: 'direct' | 'override1' | 'override
   return slot === 'direct' ? s.direct_rate : slot === 'override1' ? s.override1_rate : s.override2_rate;
 }
 
-// Cuántos meses de comisión ya se generaron para un cliente (nivel direct).
-async function monthsBilled(clientUserId: string): Promise<number> {
-  const { count } = await supabaseAdmin.from('sales_commissions')
-    .select('*', { count: 'exact', head: true })
-    .eq('client_user_id', clientUserId).eq('level', 'direct').neq('status', 'reversed');
-  return count || 0;
-}
-
 // Fecha (ms) de la última VENTA NUEVA del vendedor: el cliente más reciente que
 // pagó por primera vez. Se usa para congelar el residual por inactividad.
 async function repLastNewSaleAt(repId: string): Promise<number | null> {
@@ -244,7 +237,7 @@ export async function creditFromPayment(opts: {
   const directRepId = (sc as any)?.rep_id;
   if (!directRepId) return { credited: 0, reason: 'no_rep' };
 
-  const priorDirect = await monthsBilled(opts.clientUserId);
+  const priorDirect = await monthsCredited('sales', opts.clientUserId, 'direct');
   // TOPE DE MESES por cliente: fijo (commission_months) o AUTOMÁTICO por desempeño.
   // Con auto, el sistema mira el tier del vendedor y aplica su tope (0 = ∞): un
   // Estrella cobra indefinidamente, uno flojo tiene límite. Todo editable en admin.
@@ -265,7 +258,6 @@ export async function creditFromPayment(opts: {
   const firstPay = priorDirect === 0;   // primer pago de este cliente
 
   const { direct, up1, up2 } = await beneficiaryChain(directRepId);
-  const availableAt = new Date(Date.now() + (s.hold_days || 0) * 86400000).toISOString();
   const base = Number(opts.baseAmount) || 0;
   const currency = opts.currency || 'USD';
 
@@ -280,25 +272,29 @@ export async function creditFromPayment(opts: {
     if (last == null || last < cutoff) freezeDirect = true;
   }
 
-  const rows: any[] = [];
+  // Construimos la cadena de beneficiarios y la mandamos al MOTOR ÚNICO de
+  // comisiones (lib/commissions). La política (quién, %, meses, impulso) sigue
+  // viviendo aquí; el libro del dinero es único para todos los programas.
+  const chain: CommissionRow[] = [];
+  const notif: { rep_id: string; amount: number }[] = [];
   const add = (rep: Rep | null, slot: 'direct' | 'override1' | 'override2', level: string) => {
     if (!rep || rep.status !== 'active') return;
     const pct = pctFor(rep, slot, s, line, firstPay);   // 1.er mes usa el % de impulso si está activo
     if (!(pct > 0)) return;
-    rows.push({
-      rep_id: rep.id, client_user_id: opts.clientUserId, level, invoice_id: opts.invoiceId,
-      base_amount: base, pct, amount: Math.round(base * pct) / 100, currency,
-      status: 'pending', available_at: availableAt,
-    });
+    chain.push({ referrerId: rep.id, level, pct, beneficiaryUserId: rep.user_id });
+    notif.push({ rep_id: rep.id, amount: Math.round(base * pct) / 100 });
   };
   if (!freezeDirect) add(direct, 'direct', 'direct');
   add(up1, 'override1', 'override1');
   add(up2, 'override2', 'override2');
-  if (!rows.length) return { credited: 0, reason: 'no_rates' };
+  if (!chain.length) return { credited: 0, reason: 'no_rates' };
 
-  // upsert idempotente por (invoice_id, rep_id, level)
-  const { error } = await supabaseAdmin.from('sales_commissions').upsert(rows, { onConflict: 'invoice_id,rep_id,level', ignoreDuplicates: true });
-  if (error) return { credited: 0, reason: error.message };
+  const { credited, error } = await creditCommissions({
+    program: 'sales', invoiceId: opts.invoiceId, clientUserId: opts.clientUserId,
+    baseAmount: base, currency, line, holdDays: s.hold_days, rows: chain,
+  });
+  if (error) return { credited: 0, reason: error };
+  if (!credited) return { credited: 0, reason: 'dup' };
 
   try { await supabaseAdmin.from('sales_clients').update({ first_paid_at: new Date().toISOString() }).eq('user_id', opts.clientUserId).is('first_paid_at', null); } catch {}
 
@@ -313,16 +309,16 @@ export async function creditFromPayment(opts: {
         .select('*', { count: 'exact', head: true })
         .eq('rep_id', direct.id).not('first_paid_at', 'is', null);
       if ((paidClients || 0) >= target) {
-        // ¿Ya cobró este bono antes? (una sola vez por vendedor)
-        const { count: had } = await supabaseAdmin.from('sales_commissions')
+        // ¿Ya cobró este bono antes? (una sola vez por vendedor). Idempotente por
+        // invoice_id `bonusfirst-<rep>` en el libro único.
+        const { count: had } = await supabaseAdmin.from('comm_commissions')
           .select('*', { count: 'exact', head: true })
-          .eq('rep_id', direct.id).eq('level', 'bonus_first');
+          .eq('program', 'sales').eq('referrer_id', direct.id).eq('level', 'bonus_first');
         if (!had) {
-          await supabaseAdmin.from('sales_commissions').insert({
-            rep_id: direct.id, client_user_id: opts.clientUserId, level: 'bonus_first',
-            invoice_id: `bonusfirst-${direct.id}`, base_amount: 0, pct: 0,
-            amount: Number(s.first_sales_bonus), currency,
-            status: 'pending', available_at: availableAt,
+          await creditCommissions({
+            program: 'sales', invoiceId: `bonusfirst-${direct.id}`, clientUserId: opts.clientUserId,
+            baseAmount: 0, currency, line, holdDays: s.hold_days,
+            rows: [{ referrerId: direct.id, level: 'bonus_first', pct: 0, amount: Number(s.first_sales_bonus), beneficiaryUserId: direct.user_id }],
           });
           try { const { notifyRep } = await import('@/lib/salesNotify'); await notifyRep(direct.id, 'bonus', { amount: Number(s.first_sales_bonus), reason: 'first_sales' }); } catch {}
         }
@@ -336,55 +332,28 @@ export async function creditFromPayment(opts: {
     const { awardBonusIfMet } = await import('@/lib/salesGoals');
     const clientEmail = await (async () => { try { const { data } = await supabaseAdmin.from('profiles').select('email').eq('id', opts.clientUserId).maybeSingle(); return (data as any)?.email || undefined; } catch { return undefined; } })();
     if (firstPay && direct) await notifyRep(direct.id, 'first_paid', { client: clientEmail });
-    for (const row of rows) await notifyRep(row.rep_id, 'commission', { amount: row.amount });
+    for (const row of notif) await notifyRep(row.rep_id, 'commission', { amount: row.amount });
     for (const rep of [direct, up1, up2]) if (rep) await awardBonusIfMet(rep.id, s);
     if (direct) { const { maybeAutoPromote } = await import('@/lib/salesGrowth'); await maybeAutoPromote(direct.id); }
   } catch { /* opcional */ }
 
-  return { credited: rows.length };
+  return { credited: chain.length };
 }
 
-// Reversa (clawback) por reembolso/contracargo: anula las comisiones de esa factura.
+// Reversa (clawback) por reembolso/contracargo → motor único (programa 'sales').
 export async function reverseFromInvoice(invoiceId: string): Promise<number> {
-  const { data } = await supabaseAdmin.from('sales_commissions')
-    .update({ status: 'reversed' }).eq('invoice_id', invoiceId).neq('status', 'paid').select('id');
-  return (data || []).length;
+  return reverseInvoice('sales', invoiceId);
 }
 
-// Saldos de un rep: retenido, disponible y pagado.
+// Saldos de un rep: retenido, disponible y pagado → motor único.
 export async function balances(repId: string): Promise<{ pending: number; available: number; paid: number }> {
-  const { data } = await supabaseAdmin.from('sales_commissions').select('amount,status,available_at').eq('rep_id', repId);
-  const now = Date.now();
-  let pending = 0, available = 0, paid = 0;
-  (data || []).forEach((c: any) => {
-    const amt = Number(c.amount) || 0;
-    if (c.status === 'paid') paid += amt;
-    else if (c.status === 'reversed') return;
-    else if (c.status === 'available' || (c.available_at && new Date(c.available_at).getTime() <= now)) available += amt;
-    else pending += amt;
-  });
-  return { pending: Math.round(pending * 100) / 100, available: Math.round(available * 100) / 100, paid: Math.round(paid * 100) / 100 };
+  return commBalances('sales', repId);
 }
 
 // Saldos de MUCHOS reps en UNA consulta (evita el N+1 del panel). Devuelve un
 // mapa repId → {pending, available, paid}. Reps sin filas salen en cero.
 export async function balancesBatch(repIds: string[]): Promise<Record<string, { pending: number; available: number; paid: number }>> {
-  const out: Record<string, { pending: number; available: number; paid: number }> = {};
-  for (const id of repIds) out[id] = { pending: 0, available: 0, paid: 0 };
-  if (!repIds.length) return out;
-  const now = Date.now();
-  for (const chunk of (function* () { for (let i = 0; i < repIds.length; i += 100) yield repIds.slice(i, i + 100); })()) {
-    const { data } = await supabaseAdmin.from('sales_commissions').select('rep_id,amount,status,available_at').in('rep_id', chunk).neq('status', 'reversed').limit(100000);
-    (data || []).forEach((c: any) => {
-      const b = out[c.rep_id]; if (!b) return;
-      const amt = Number(c.amount) || 0;
-      if (c.status === 'paid') b.paid += amt;
-      else if (c.status === 'available' || (c.available_at && new Date(c.available_at).getTime() <= now)) b.available += amt;
-      else b.pending += amt;
-    });
-  }
-  for (const id of repIds) { const b = out[id]; b.pending = Math.round(b.pending * 100) / 100; b.available = Math.round(b.available * 100) / 100; b.paid = Math.round(b.paid * 100) / 100; }
-  return out;
+  return commBalancesBatch('sales', repIds);
 }
 
 // Nº de clientes por rep en UNA consulta (mapa repId → count).

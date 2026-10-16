@@ -6,9 +6,9 @@ function ym(d = new Date()): string { return d.toISOString().slice(0, 7); }
 // ---------- EXTRACTO DEL VENDEDOR ----------
 // Línea por línea: cliente, nivel, base, %, monto, estado efectivo y fecha.
 export async function repStatement(repId: string, limit = 200): Promise<any[]> {
-  const { data } = await supabaseAdmin.from('sales_commissions')
+  const { data } = await supabaseAdmin.from('comm_commissions')
     .select('client_user_id,level,base_amount,pct,amount,currency,status,available_at,created_at,invoice_id')
-    .eq('rep_id', repId).order('created_at', { ascending: false }).limit(limit);
+    .eq('program', 'sales').eq('referrer_id', repId).order('created_at', { ascending: false }).limit(limit);
   const rows = (data || []) as any[];
   const ids = Array.from(new Set(rows.map((r) => r.client_user_id).filter(Boolean)));
   const byId: Record<string, string> = {};
@@ -74,8 +74,8 @@ export async function goalProgress(repId: string, s: SalesSettings) {
   const goal = await goalFor(repId, period, s);
   const { count: newClients } = await supabaseAdmin.from('sales_clients')
     .select('*', { count: 'exact', head: true }).eq('rep_id', repId).gte('first_paid_at', start);
-  const { data: comms } = await supabaseAdmin.from('sales_commissions')
-    .select('amount,status').eq('rep_id', repId).gte('created_at', start);
+  const { data: comms } = await supabaseAdmin.from('comm_commissions')
+    .select('amount,status').eq('program', 'sales').eq('referrer_id', repId).gte('created_at', start);
   const amount = (comms || []).filter((c: any) => c.status !== 'reversed').reduce((a: number, c: any) => a + (Number(c.amount) || 0), 0);
   const met = (goal.target_clients > 0 || goal.target_amount > 0)
     && (goal.target_clients > 0 ? (newClients || 0) >= goal.target_clients : true)
@@ -95,11 +95,13 @@ export async function awardBonusIfMet(repId: string, s: SalesSettings): Promise<
   const ins = await supabaseAdmin.from('sales_bonuses').insert({ rep_id: repId, period: p.period, amount: bonus, reason: 'goal_met' }).select('id');
   if (ins.error || !ins.data || !ins.data.length) return false;   // ya existía (unique rep+period)
   const hold = s.hold_days || 0;
-  await supabaseAdmin.from('sales_commissions').insert({
-    rep_id: repId, client_user_id: null, level: 'bonus', invoice_id: `bonus-${p.period}-${repId}`,
-    base_amount: 0, pct: 0, amount: bonus, currency: 'USD', status: 'pending',
+  // Bono de meta → libro único (motor de comisiones, programa 'sales').
+  await supabaseAdmin.from('comm_commissions').upsert({
+    program: 'sales', referrer_id: repId, client_user_id: null, level: 'bonus',
+    invoice_id: `bonus-${p.period}-${repId}`, base_amount: 0, pct: 0, amount: bonus,
+    currency: 'USD', status: 'pending',
     available_at: new Date(Date.now() + hold * 86400000).toISOString(),
-  });
+  }, { onConflict: 'program,invoice_id,referrer_id,level', ignoreDuplicates: true });
   try { const { notifyRep } = await import('@/lib/salesNotify'); await notifyRep(repId, 'bonus', { amount: bonus, reason: 'goal' }); } catch { /* opcional */ }
   return true;
 }

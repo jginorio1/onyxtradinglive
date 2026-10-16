@@ -77,8 +77,8 @@ export async function repScorecard(repId: string, s?: SalesSettings): Promise<Sc
   const new30 = rows.filter((r) => now - new Date(r.created_at).getTime() <= 30 * DAY).length;
 
   // Comisiones / ventas.
-  const { data: comms } = await supabaseAdmin.from('sales_commissions')
-    .select('level,base_amount,amount,status,created_at').eq('rep_id', repId).limit(4000);
+  const { data: comms } = await supabaseAdmin.from('comm_commissions')
+    .select('level,base_amount,amount,status,created_at').eq('program', 'sales').eq('referrer_id', repId).limit(4000);
   let earned = 0, earned30 = 0, revenue30 = 0;
   (comms || []).forEach((c: any) => {
     if (c.status === 'reversed') return;

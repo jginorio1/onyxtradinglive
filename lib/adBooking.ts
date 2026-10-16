@@ -172,15 +172,11 @@ async function creditSpaceCommission(booking: any, cfg: AdsConfig): Promise<void
   const { direct, up1, up2 } = await beneficiaryChain(booking.rep_id);
   const availableAt = new Date(Date.now() + Math.max(0, cfg.maturationDays) * DAY).toISOString();
   const invoiceId = `adspace:${booking.id}`;
-  const rows: any[] = [];
+  const rows: { referrerId: string; level: string; pct: number; beneficiaryUserId?: string }[] = [];
   const add = (rep: any, pct: number, level: string) => {
     if (!rep || rep.status !== 'active') return;
     if (!(pct > 0)) return;
-    rows.push({
-      rep_id: rep.id, client_user_id: null, level, invoice_id: invoiceId,
-      base_amount: base, pct, amount: Math.round(base * pct) / 100, currency: 'USD',
-      status: 'pending', available_at: availableAt,
-    });
+    rows.push({ referrerId: rep.id, level, pct, beneficiaryUserId: rep.user_id });
   };
   // Directo: % de espacios (el congelado al vender, o el actual como respaldo).
   add(direct, Number(booking.commission_pct) || cfg.spaceCommissionPct || 0, 'ad_space');
@@ -191,11 +187,13 @@ async function creditSpaceCommission(booking: any, cfg: AdsConfig): Promise<void
   add(up1, ov1, 'ad_space_ov1');
   add(up2, ov2, 'ad_space_ov2');
   if (!rows.length) return;
-  await supabaseAdmin.from('sales_commissions').upsert(rows, { onConflict: 'invoice_id,rep_id,level', ignoreDuplicates: true });
+  // Al libro ÚNICO de comisiones (programa 'sales'), con la misma maduración.
+  const { creditCommissions } = await import('@/lib/commissions');
+  await creditCommissions({ program: 'sales', invoiceId, clientUserId: null, baseAmount: base, currency: 'USD', line: 'addons', holdDays: Math.max(0, cfg.maturationDays), rows });
   // Avisos best-effort a cada beneficiario (nunca rompen el flujo).
   try {
     const { notifyRep } = await import('@/lib/salesNotify');
-    for (const r of rows) await notifyRep(r.rep_id, 'commission', { amount: r.amount });
+    for (const r of rows) await notifyRep(r.referrerId, 'commission', { amount: Math.round(base * r.pct) / 100 });
   } catch {}
 }
 
