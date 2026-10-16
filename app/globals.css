@@ -117,6 +117,8 @@ html[data-theme="light"] .onyx-vivid .faq .qa .qa-mk{color:#c2410c;}
 /* Pills cálidas: ámbar y rojo claros se perdían sobre su propio fondo pálido en claro. */
 html[data-theme="light"] .pill.amber{background:rgba(255,192,77,.2);color:#9a6600;}
 html[data-theme="light"] .pill.red{background:rgba(226,59,85,.12);color:#c2334a;}
+/* Lead (pill brand): en oscuro es lila claro sobre lila claro → ilegible en claro. */
+html[data-theme="light"] .pill.brand{background:rgba(123,79,208,.14);color:#6b34c0;}
 /* "Black Onyx" en la tabla de planes usa texto degradado blanco→lila (para el
    fondo oscuro). En tema claro la columna es lila MUY claro → el nombre quedaba
    invisible. Lo pintamos púrpura oscuro sólido (anula el clip de degradado). */

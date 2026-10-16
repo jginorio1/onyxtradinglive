@@ -23,12 +23,17 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const [desk, setDesk] = useState(false);   // PC (ancho ≥ 860px): pastilla un poco más grande
   const drag = useRef<{ dx: number; dy: number } | null>(null);
+  // Posición vertical (px desde arriba) de la pastilla minimizada en el borde
+  // derecho. Null = centrada. Se arrastra arriba/abajo y se recuerda.
+  const [pillY, setPillY] = useState<number | null>(null);
+  const pillDrag = useRef<{ startY: number; baseY: number; moved: boolean } | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width:860px)');
     const upd = () => setDesk(mq.matches);
     upd(); mq.addEventListener('change', upd); return () => mq.removeEventListener('change', upd);
   }, []);
+  useEffect(() => { try { const y = localStorage.getItem('onyx_lead_pillY'); if (y != null) setPillY(parseInt(y, 10)); } catch {} }, []);
 
   useEffect(() => {
     try { setSeen(new Set(JSON.parse(localStorage.getItem('onyx_lead_seen') || '[]'))); } catch {}
@@ -58,14 +63,36 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
   const catMap: any = { facturacion: L('Facturación', 'Billing'), conexion: L('Conexión', 'Connection'), instalacion: L('Instalación', 'Install'), guardian: 'Guardian', general: L('General', 'General') };
   const ago = (iso: string) => { const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000); if (m < 1) return L('ahora', 'now'); if (m < 60) return `${m} min`; return `${Math.floor(m / 60)} h`; };
 
-  // Minimizado: pestañita pegada al borde DERECHO, centrada a media pantalla
-  // (vertical). En PC un poco más grande para que resalte.
+  // Minimizado: pestañita pegada al borde DERECHO. Se ARRASTRA arriba/abajo por
+  // todo el lado derecho para que no estorbe el chat; recuerda dónde la dejaste.
+  // Un toque (sin arrastrar) la abre. En PC un poco más grande.
+  const pillH = desk ? 48 : 40;   // alto aprox. para acotar el arrastre
+  const pillTop = pillY != null
+    ? Math.max(6, Math.min(pillY, (typeof window !== 'undefined' ? window.innerHeight : 800) - pillH - 6))
+    : undefined;
+  function pillDown(e: React.PointerEvent) {
+    pillDrag.current = { startY: e.clientY, baseY: pillTop != null ? pillTop : (e.currentTarget as HTMLElement).getBoundingClientRect().top, moved: false };
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  }
+  function pillMove(e: React.PointerEvent) {
+    const d = pillDrag.current; if (!d) return;
+    const dy = e.clientY - d.startY;
+    if (Math.abs(dy) > 4) d.moved = true;
+    setPillY(d.baseY + dy);
+  }
+  function pillUp() {
+    const d = pillDrag.current; pillDrag.current = null;
+    if (!d) return;
+    if (!d.moved) { setMin(false); return; }   // fue un toque → abrir
+    try { if (pillY != null) localStorage.setItem('onyx_lead_pillY', String(pillY)); } catch {}
+  }
   if (min) return (
-    <button onClick={() => setMin(false)} title={L('Consultas nuevas', 'New consultations')}
-      style={{ position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 2000, background: 'var(--card)', border: '1px solid var(--line)', borderRight: 'none', borderRadius: `${desk ? 24 : 20}px 0 0 ${desk ? 24 : 20}px`, borderLeft: '4px solid #EF9F27', padding: desk ? '13px 16px 13px 14px' : '9px 12px 9px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: desk ? 9 : 7, boxShadow: '-6px 0 18px rgba(0,0,0,.25)' }}>
+    <div title={L('Consultas nuevas · arrastra para mover', 'New consultations · drag to move')}
+      onPointerDown={pillDown} onPointerMove={pillMove} onPointerUp={pillUp}
+      style={{ position: 'fixed', right: 0, ...(pillTop != null ? { top: pillTop } : { top: '50%', transform: 'translateY(-50%)' }), zIndex: 2000, background: 'var(--card)', border: '1px solid var(--line)', borderRight: 'none', borderRadius: `${desk ? 24 : 20}px 0 0 ${desk ? 24 : 20}px`, borderLeft: '4px solid #EF9F27', padding: desk ? '13px 16px 13px 14px' : '9px 12px 9px 10px', cursor: 'grab', touchAction: 'none', userSelect: 'none', display: 'flex', alignItems: 'center', gap: desk ? 9 : 7, boxShadow: '-6px 0 18px rgba(0,0,0,.25)' }}>
       <span style={{ fontSize: desk ? 21 : 17 }}><OnyxIcon emoji="💬" size={desk ? 19 : 15} /></span>
       <span style={{ background: 'var(--red)', color: '#fff', fontSize: desk ? 13 : 11, fontWeight: 700, padding: desk ? '2px 9px' : '1px 7px', borderRadius: 20 }}>{unseen.length}</span>
-    </button>
+    </div>
   );
 
   // Arrastre: al soltar, guardamos la posición. Por defecto, CENTRADA a media
@@ -87,9 +114,7 @@ export default function AdminLeadAlert({ available }: { available: boolean }) {
 
   return (
     <>
-      {/* Fondo atenuado (estilo tarjeta centrada). No bloquea: puedes arrastrar la
-          tarjeta igual. Solo resalta el aviso a media pantalla. */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 1999, background: 'rgba(0,0,0,.28)', pointerEvents: 'none' }} />
+    {/* Sin fondo oscuro: la tarjeta no debe tapar ni atenuar el chat de atrás. */}
     <div data-pill style={{ position: 'fixed', zIndex: 2000, width: W, maxWidth: '92vw', background: 'var(--card)', border: '1px solid var(--line)', borderLeft: '5px solid #EF9F27', borderRadius: 16, boxShadow: '0 20px 56px rgba(0,0,0,.5)', overflow: 'hidden', ...style }}>
       {/* Cabecera: agarra el ⠿ para mover; navega entre consultas; minimiza. */}
       <div className="row between" style={{ padding: '9px 12px', borderBottom: '1px solid var(--line)' }}>
