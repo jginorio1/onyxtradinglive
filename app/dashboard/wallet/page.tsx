@@ -44,6 +44,7 @@ function ApplyCredit({ es, reload }: { es: boolean; reload: () => void }) {
 function AutoReload({ es }: { es: boolean }) {
   const [cfg, setCfg] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  const [cardModal, setCardModal] = useState(false);   // abre el popup para guardar tarjeta
   async function load() { try { const r = await fetch('/api/wallet/autoreload', { cache: 'no-store' }); const j = await r.json(); if (r.ok) setCfg(j); } catch {} }
   useEffect(() => { load(); const onF = () => load(); window.addEventListener('focus', onF); return () => window.removeEventListener('focus', onF); }, []);
   async function save(patch: any) {
@@ -51,11 +52,8 @@ function AutoReload({ es }: { es: boolean }) {
     try { const r = await fetch('/api/wallet/autoreload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) }); const j = await r.json(); if (!r.ok) throw new Error(j?.error || 'error'); setCfg(j); }
     catch (e: any) { toastErr(e?.message); await load(); } finally { setBusy(false); }
   }
-  async function addCard() {
-    setBusy(true);
-    try { const r = await fetch('/api/wallet/autoreload/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); const j = await r.json(); if (!r.ok) throw new Error(j?.error || 'error'); if (j.url) window.location.href = j.url; }
-    catch (e: any) { toastErr(e?.message); setBusy(false); }
-  }
+  // Guardar tarjeta EMBEBIDO (no sale de Onyx). En la app nativa el modal abre el navegador.
+  function addCard() { if (isNativeApp()) { fetch('/api/wallet/autoreload/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).then(r => r.json()).then(j => { if (j.url) window.location.href = j.url; else toastErr(j?.error); }).catch((e) => toastErr(e?.message)); return; } setCardModal(true); }
   if (!cfg) return null;
   return (
     <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 18, marginBottom: 16 }}>
@@ -78,6 +76,8 @@ function AutoReload({ es }: { es: boolean }) {
         </div>
         <div className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{es ? `Tarjeta guardada ✓ · máx. ${cfg.max_per_day} recargas automáticas por día.` : `Card saved ✓ · max ${cfg.max_per_day} auto-reloads per day.`} <button onClick={addCard} style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', padding: 0, fontSize: 11.5 }}>{es ? 'Cambiar tarjeta' : 'Change card'}</button></div>
       </>)}
+      {/* Guardar tarjeta EMBEBIDO. Al terminar, Stripe vuelve a ?card=ok y recarga la config. */}
+      {cardModal && <WalletCheckoutModal mode="setup" lang={es ? 'es' : 'en'} onClose={() => { setCardModal(false); load(); }} />}
     </div>
   );
 }

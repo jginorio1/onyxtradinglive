@@ -27,14 +27,20 @@ export async function POST(req: Request) {
     if (!base) { const u = new URL(req.url); base = `${u.protocol}//${u.host}`; }
     if (!/^https?:\/\//i.test(base)) base = 'https://' + base;
 
+    const b = await req.json().catch(() => ({} as any));
+    const embedded = b.embedded === true;
     const session = await stripe.checkout.sessions.create({
       mode: 'setup',
       currency: 'usd',                       // requerido por Stripe en modo 'setup'
       customer,
-      success_url: `${base}/dashboard/wallet?card=ok`,
-      cancel_url: `${base}/dashboard/wallet?card=cancel`,
       metadata: { kind: 'wallet_setup', userId: user.id, customer },
+      ...(embedded
+        // EMBEBIDO: dentro de Onyx, sin salir. Devuelve client_secret.
+        ? { ui_mode: 'embedded' as const, return_url: `${base}/dashboard/wallet?card=ok` }
+        : { success_url: `${base}/dashboard/wallet?card=ok`, cancel_url: `${base}/dashboard/wallet?card=cancel` }),
     });
-    return NextResponse.json({ ok: true, url: session.url });
+    return NextResponse.json(embedded
+      ? { ok: true, clientSecret: (session as any).client_secret }
+      : { ok: true, url: session.url });
   } catch (e: any) { await logError('wallet_setup', e); return NextResponse.json({ error: e?.message || 'error' }, { status: 500 }); }
 }
