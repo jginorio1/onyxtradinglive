@@ -26,6 +26,7 @@ function buildFaqs(plans: any[], lang: 'es' | 'en'): [string, string][] {
     if (f.hasTrial) out.push(['¿Hay prueba gratis?', `Sí: ${trialLine(f, 'es')}. Entras con tarjeta pero no se te cobra hasta que termina la prueba; cancela antes y no pagas nada.`]);
     out.push(['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.']);
     out.push(['¿Y si no quiero pagar mensualidad?', 'Usa el plan gratis y paga solo por lo que uses. Incluye gratis cada mes 1 cuenta y un cupo de análisis de Onyx AI; si usas de más, se descuenta de tu saldo recargable (unos centavos por análisis extra). Sin compromiso: recargas cuando quieres y subes a un plan solo cuando te convenga. La app te avisa cuándo un plan te saldría más barato.']);
+    out.push(['¿Cómo funciona la recarga (pago por uso)?', 'Tu cuenta tiene un saldo recargable, como un monedero. Cada mes el plan gratis incluye un cupo de uso sin coste; solo si lo superas se descuentan unos centavos del saldo por cada análisis extra. Recargas el monto que quieras con tarjeta o USDT y ves cada movimiento (recargas y consumos) en tu cuenta. No caduca y nunca se cobra sin saldo: si llega a cero, esas funciones extra se pausan hasta que recargues.']);
     out.push(['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT. El acceso se activa al confirmar el pago.']);
     if (f.annualPct > 0) out.push(['¿El anual ahorra?', `Sí: pagando al año ahorras un ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (unos ${f.annualMonthsFree} meses gratis)` : ''} frente a pagar mes a mes.`]);
   } else {
@@ -33,6 +34,7 @@ function buildFaqs(plans: any[], lang: 'es' | 'en'): [string, string][] {
     if (f.hasTrial) out.push(['Is there a free trial?', `Yes: ${trialLine(f, 'en')}. You enter with a card but you are not charged until the trial ends; cancel before then and you pay nothing.`]);
     out.push(['Can I change or cancel anytime?', 'Yes. Upgrade or downgrade in one click from your account and cancel anytime; you keep access until the period ends.']);
     out.push(["What if I don't want a monthly fee?", 'Use the free plan and pay only for what you use. It includes 1 account and an Onyx AI allowance free each month; if you go over, it comes out of your top-up balance (a few cents per extra analysis). No commitment: top up when you want and move to a plan only when it pays off. The app tells you when a plan would be cheaper.']);
+    out.push(['How does topping up (pay as you go) work?', 'Your account has a top-up balance, like a wallet. Each month the free plan includes a usage allowance at no cost; only if you go over do a few cents come out of your balance per extra analysis. Top up any amount by card or USDT and see every movement (top-ups and usage) in your account. It never expires and you are never charged without balance: if it hits zero, those extra features pause until you top up.']);
     out.push(['Do you accept crypto?', 'Yes, pay with card (Stripe) or USDT. Access activates once the payment confirms.']);
     if (f.annualPct > 0) out.push(['Does annual save money?', `Yes: paying yearly saves you ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (about ${f.annualMonthsFree} months free)` : ''} vs paying monthly.`]);
   }
@@ -49,6 +51,7 @@ const T = {
     faqs: [
       ['¿Necesito tarjeta para empezar?', 'No. El plan Free es gratis y sin tarjeta. Solo pides tarjeta o USDT cuando eliges un plan de pago.'],
       ['¿Y si no quiero pagar mensualidad?', 'Usa el plan gratis y paga solo por lo que uses. Incluye gratis cada mes 1 cuenta y un cupo de análisis de Onyx AI; si usas de más, se descuenta de tu saldo recargable. Sin compromiso: subes a un plan solo cuando te convenga, y la app te avisa cuándo saldría más barato.'],
+      ['¿Cómo funciona la recarga (pago por uso)?', 'Tu cuenta tiene un saldo recargable, como un monedero. Cada mes el plan gratis incluye un cupo de uso sin coste; solo si lo superas se descuentan unos centavos del saldo por cada análisis extra. Recargas el monto que quieras con tarjeta o USDT y ves cada movimiento en tu cuenta. No caduca y nunca se cobra sin saldo: si llega a cero, esas funciones extra se pausan hasta que recargues.'],
       ['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.'],
       ['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT. El acceso se activa al confirmar el pago.'],
       ['¿El anual ahorra?', 'Sí: pagando al año te salen 2 meses gratis (unos 17% menos) frente a pagar mes a mes.'],

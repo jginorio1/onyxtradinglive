@@ -73,6 +73,12 @@ export async function GET() {
       ambMinPayout = Number(s.min_payout || 50);
     } catch { /* si falla, dejamos los valores por defecto */ }
 
+    // Tarifa de pago por uso (del panel Admin → tarifas de uso), para que el
+    // bloque del landing muestre el ejemplo de coste SIEMPRE con la cifra real.
+    // Si cambias el precio en admin, el ejemplo del landing cambia en vivo.
+    let aiCallCents = 20;
+    try { const { usageConfig } = await import('@/lib/usage'); aiCallCents = Number((await usageConfig()).ai_call_cents) || 20; } catch { /* por defecto 20¢ */ }
+
     // Base editable de las cifras del landing (desde Admin → Módulos).
     // La cifra pública = base + real, y sube en vivo con el uso de todos.
     let tBase = 0, bBase = 0, aBase = 0, cBase = 0, builtBase = 0, platforms = 5, readonly = 100;
@@ -140,10 +146,11 @@ export async function GET() {
 
       platforms, readonly,          // valores fijos editables desde admin
       ambRate, ambCoupon, ambBase, ambMinPayout,
+      aiCallCents,                  // tarifa de pago por uso (para el ejemplo del landing en vivo)
       botPlanMatrix, botCapMeta: BOT_CAP_META,   // tabla comparativa de planes de bots (Admin)
     }, { headers: NO_CACHE });
   } catch {
     const R = grow(0, 'bots_built', 2, 7);
-    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, botsBuilt: R, botStats: { platforms: 3, opsByBots: Math.round(R * 190), strategies: Math.round(R * 2), traders: Math.round(R * 0.8) }, reviews: [], reviewSummary: { total: 0, avg: 0, byStar: { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 } }, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50, botPlanMatrix: BOT_PLAN_MATRIX_DEF, botCapMeta: BOT_CAP_META }, { headers: NO_CACHE });
+    return NextResponse.json({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, botsBuilt: R, botStats: { platforms: 3, opsByBots: Math.round(R * 190), strategies: Math.round(R * 2), traders: Math.round(R * 0.8) }, reviews: [], reviewSummary: { total: 0, avg: 0, byStar: { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 } }, platforms: 5, readonly: 100, ambRate: 30, ambCoupon: 20, ambBase: 20, ambMinPayout: 50, aiCallCents: 20, botPlanMatrix: BOT_PLAN_MATRIX_DEF, botCapMeta: BOT_CAP_META }, { headers: NO_CACHE });
   }
 }

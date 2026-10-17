@@ -481,6 +481,9 @@ export default function Home() {
   // Arranca en el piso semilla (nunca 0): aunque el fetch falle o llegue una
   // respuesta vieja en caché, las cifras solo suben desde aquí — jamás muestran 0.
   const [stats, setStats] = useState({ trades: 1000, blocks: 80, accounts: 40, copied: 300, bots: 1200, platforms: 5, readonly: 100 });
+  // Tarifa de pago por uso (centavos por análisis extra) desde Admin, vía /api/stats.
+  // El ejemplo del bloque de recarga se recalcula con esta cifra → cambios en vivo.
+  const [aiCents, setAiCents] = useState(20);
   // Reloj que avanza cada minuto para que las cifras suban solas con el tiempo.
   const [nowTs, setNowTs] = useState(() => Date.now());
   useEffect(() => { const iv = setInterval(() => setNowTs(Date.now()), 60000); return () => clearInterval(iv); }, []);
@@ -535,6 +538,7 @@ export default function Home() {
         readonly: Number(j.readonly ?? p.readonly ?? 100),
       }));
       setAmb({ rate: Number(j.ambRate || 30), coupon: Number(j.ambCoupon || 20) });
+      if (Number(j.aiCallCents) > 0) setAiCents(Number(j.aiCallCents));
     }).catch(() => { /* si falla, mantenemos las cifras que ya se ven */ });
     loadStats();
     const iv = setInterval(loadStats, 20000);
@@ -579,20 +583,32 @@ export default function Home() {
 
   // PAGO POR USO (bloque del landing, editable desde Admin → Landing · lc.payg).
   // Mensaje único: sin mensualidad, pagas solo por lo que uses, subes cuando convenga.
+  // Tres PASOS numerados (más intuitivo que 3 features sueltas): empiezas gratis →
+  // si usas de más se descuenta → recargas cuando quieras.
   const paygDefaultCards = lang === 'es'
     ? [
-        { i: '🚀', t: 'Empieza sin tarjeta', d: 'El plan gratis incluye 1 cuenta y análisis de IA cada mes. Sin mensualidad, sin compromiso.' },
-        { i: '💳', t: 'Pagas solo lo que usas', d: 'Si pasas el cupo, se descuenta de tu saldo recargable: unos centavos por análisis. Recargas con tarjeta o USDT.' },
-        { i: '📈', t: 'Subes cuando te convenga', d: 'La app te avisa cuándo un plan te sale más barato que seguir pagando por uso. Tú decides, siempre.' },
+        { i: '🚀', t: '1 · Empieza gratis', d: '1 cuenta y un cupo de análisis de Onyx AI cada mes. Sin tarjeta, sin compromiso.' },
+        { i: '📈', t: '2 · ¿Usas de más?', d: 'Se descuenta de tu saldo: unos centavos por análisis extra. Nada de sorpresas.' },
+        { i: '💳', t: '3 · Recargas cuando quieras', d: 'Con tarjeta o USDT, el monto que tú elijas. Sin compromiso.' },
       ]
     : [
-        { i: '🚀', t: 'Start with no card', d: 'The free plan includes 1 account and AI analyses every month. No monthly fee, no commitment.' },
-        { i: '💳', t: 'Pay only for what you use', d: 'Go over the allowance and it comes out of your top-up balance: a few cents per analysis. Top up by card or USDT.' },
-        { i: '📈', t: 'Upgrade when it pays off', d: 'The app tells you when a plan is cheaper than paying per use. You always decide.' },
+        { i: '🚀', t: '1 · Start free', d: '1 account and an Onyx AI allowance every month. No card, no commitment.' },
+        { i: '📈', t: '2 · Go over the allowance?', d: 'It comes out of your balance: a few cents per extra analysis. No surprises.' },
+        { i: '💳', t: '3 · Top up whenever you want', d: 'By card or USDT, the amount you choose. No commitment.' },
       ];
-  const paygTitle = lc?.payg?.[`t_${lang}`] || (lang === 'es' ? 'Sin mensualidad: paga solo por lo que uses' : 'No monthly fee: pay only for what you use');
-  const paygSub = lc?.payg?.[`s_${lang}`] || (lang === 'es' ? 'Empieza gratis y recarga saldo solo cuando uses funciones de más. Tú controlas tu gasto.' : 'Start free and top up only when you use extra features. You stay in control of your spend.');
+  const paygTitle = lc?.payg?.[`t_${lang}`] || (lang === 'es' ? 'Sin mensualidad. Pagas solo por lo que uses.' : 'No monthly fee. Pay only for what you use.');
+  const paygSub = lc?.payg?.[`s_${lang}`] || (lang === 'es' ? 'Empiezas gratis. Si un mes usas de más, se descuenta unos centavos de tu saldo. Tú controlas el gasto.' : 'Start free. If you go over one month, a few cents come out of your balance. You stay in control.');
   const paygBtn = lc?.payg?.[`btn_${lang}`] || (lang === 'es' ? 'Empezar gratis' : 'Start free');
+  // Ejemplo de coste concreto (da confianza): $10 ÷ tarifa real = nº de análisis.
+  // La tarifa (aiCents) viene de Admin vía /api/stats, así que si la cambias en el
+  // panel el ejemplo del landing se actualiza SOLO (en vivo). Si el dueño escribe
+  // un texto propio en el editor (ex_es/ex_en), ese manda.
+  const paygPackAnalyses = Math.max(1, Math.round(1000 / Math.max(1, aiCents))); // $10 = 1000¢
+  const paygExample = lc?.payg?.[`ex_${lang}`] || (lang === 'es'
+    ? `Ejemplo: recargas $10 y te alcanzan para ~${paygPackAnalyses} análisis extra de Onyx AI.`
+    : `Example: top up $10 and it covers ~${paygPackAnalyses} extra Onyx AI analyses.`);
+  // Franja de tranquilidad: la app avisa cuándo conviene un plan.
+  const paygNote = lc?.payg?.[`note_${lang}`] || (lang === 'es' ? 'La app te avisa cuándo un plan te sale más barato que seguir pagando por uso. Tú decides, siempre.' : 'The app tells you when a plan is cheaper than paying per use. You always decide.');
   const paygCards = lc?.payg?.cards?.length
     ? lc.payg.cards.map((c: any) => ({ i: c.i, t: lang === 'es' ? c.t_es : c.t_en, d: lang === 'es' ? c.d_es : c.d_en }))
     : paygDefaultCards;
@@ -750,6 +766,42 @@ export default function Home() {
           </span>
         </div>
       </div>
+
+      {/* PAGO POR USO: bloque de valor cerca del hero. Sin mensualidad, pagas solo
+          por lo que uses, con 3 pasos + ejemplo de coste. Editable desde Admin → Landing. */}
+      {paygOn && (
+        <div id="pago-por-uso" className="wrap section" style={{ paddingTop: 6 }}>
+          <div style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto 22px' }}>
+            <span style={{ display: 'inline-block', fontSize: 12, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--green)', background: 'rgba(52,226,160,.12)', border: '1px solid rgba(52,226,160,.3)', borderRadius: 99, padding: '5px 14px', marginBottom: 12 }}>{lang === 'es' ? 'Plan gratis · pago por uso' : 'Free plan · pay as you go'}</span>
+            <h2 style={{ margin: '0 0 8px' }}>{paygTitle}</h2>
+            <p className="muted" style={{ margin: 0 }}>{paygSub}</p>
+          </div>
+          {/* 3 pasos numerados, conectados visualmente */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12, maxWidth: 860, margin: '0 auto 14px', alignItems: 'stretch' }}>
+            {paygCards.map((c: any, i: number) => (
+              <div key={i} className="card" style={{ padding: '18px 18px 16px', position: 'relative' }}>
+                <div style={{ display: 'inline-flex', width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: 'rgba(52,226,160,.13)', color: 'var(--green)', marginBottom: 10 }}><OnyxIcon emoji={c.i} size={20} glow={false} /></div>
+                <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>{c.t}</div>
+                <div className="muted" style={{ fontSize: 13, lineHeight: 1.55 }}>{c.d}</div>
+              </div>
+            ))}
+          </div>
+          {/* Ejemplo de coste concreto: da confianza mostrando lo barato que es */}
+          <div style={{ maxWidth: 860, margin: '0 auto 10px', display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', flexWrap: 'wrap', fontSize: 13.5, color: 'var(--tx)', background: 'var(--card2)', border: '1px solid var(--line)', borderRadius: 12, padding: '10px 16px' }}>
+            <span style={{ color: 'var(--green)', display: 'inline-flex' }}><OnyxIcon name="money" size={16} glow={false} /></span>
+            <span>{paygExample}</span>
+          </div>
+          {/* Franja de tranquilidad: la app avisa cuándo conviene un plan */}
+          <div style={{ maxWidth: 860, margin: '0 auto 18px', display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(52,226,160,.07)', border: '1px solid rgba(52,226,160,.22)', borderRadius: 12, padding: '11px 16px' }}>
+            <span style={{ color: 'var(--green)', display: 'inline-flex', flexShrink: 0 }}><OnyxIcon name="bell" size={17} glow={false} /></span>
+            <span style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--mut)' }}>{paygNote}</span>
+          </div>
+          <div className="row" style={{ justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <a href="/login?mode=signup" className="btn btn-primary">{paygBtn}</a>
+            <a href="#pricing" className="btn btn-ghost">{lang === 'es' ? 'Ver planes' : 'See plans'}</a>
+          </div>
+        </div>
+      )}
 
       {/* STATS · números reales que crecen solos con el uso (de /api/stats) */}
       <div className="wrap section" style={{ paddingTop: 10 }}>
@@ -1009,31 +1061,6 @@ export default function Home() {
       <div className="wrap"><AdSlot slot="landing_top" lang={lang} /></div>
 
       {/* PRICING */}
-      {/* PAGO POR USO: bloque de valor justo antes de los precios. Sin mensualidad,
-          pagas solo por lo que uses. Editable desde Admin → Landing. */}
-      {paygOn && (
-        <div id="pago-por-uso" className="wrap section">
-          <div style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto 24px' }}>
-            <span style={{ display: 'inline-block', fontSize: 12, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--green)', background: 'rgba(52,226,160,.12)', border: '1px solid rgba(52,226,160,.3)', borderRadius: 99, padding: '5px 14px', marginBottom: 12 }}>{lang === 'es' ? 'Plan gratis · pago por uso' : 'Free plan · pay as you go'}</span>
-            <h2 style={{ margin: '0 0 8px' }}>{paygTitle}</h2>
-            <p className="muted" style={{ margin: 0 }}>{paygSub}</p>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, maxWidth: 920, margin: '0 auto 22px' }}>
-            {paygCards.map((c: any, i: number) => (
-              <div key={i} className="card" style={{ padding: '18px 18px 16px' }}>
-                <div style={{ color: 'var(--green)', marginBottom: 10 }}><OnyxIcon emoji={c.i} size={26} glow={false} /></div>
-                <div style={{ fontWeight: 800, fontSize: 15.5, marginBottom: 4 }}>{c.t}</div>
-                <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>{c.d}</div>
-              </div>
-            ))}
-          </div>
-          <div className="row" style={{ justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <a href="/login?mode=signup" className="btn btn-primary">{paygBtn}</a>
-            <a href="#pricing" className="btn btn-ghost">{lang === 'es' ? 'Ver planes' : 'See plans'}</a>
-          </div>
-        </div>
-      )}
-
       <div id="pricing" className="wrap section">
         <h2 style={{ textAlign: 'center' }}>{t.priceT}</h2>
         <p className="muted" style={{ textAlign: 'center', margin: '10px 0 20px' }}>{t.priceS}</p>
