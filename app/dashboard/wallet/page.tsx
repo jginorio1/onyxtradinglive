@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 import { fmtDateTime } from '@/lib/fmtDate';
+import { nativePlatform } from '@/lib/native';
 
 // ============================================================
 // MONEDERO (cliente). Saldo recargable para comprar dentro de Onyx. No retirable.
@@ -20,6 +21,8 @@ export default function WalletPage() {
   const [busy, setBusy] = useState(false);
   const [usdt, setUsdt] = useState<any>(null);   // datos del pago USDT pendiente
   const [txid, setTxid] = useState('');
+  const [ios, setIos] = useState(false);
+  useEffect(() => { try { setIos(nativePlatform() === 'ios'); } catch {} }, []);
 
   async function load() {
     try { const r = await fetch('/api/wallet', { cache: 'no-store' }); const j = await r.json(); if (r.ok) { setCents(Number(j.balanceCents) || 0); setMv(j.movements || []); } } catch {}
@@ -70,7 +73,13 @@ export default function WalletPage() {
         <div style={{ fontSize: 32, fontWeight: 900, color: 'var(--green)' }}>{money(cents)}</div>
       </div>
 
-      {/* Recargar */}
+      {/* Recargar — oculto en la app de iPhone (regla de Apple). Se puede recargar
+          desde el navegador en el sitio web. El saldo y los movimientos sí se ven. */}
+      {ios ? (
+        <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 18, marginBottom: 16 }}>
+          <div className="muted" style={{ fontSize: 13 }}>{es ? 'Las recargas no están disponibles dentro de la app de iPhone. Para recargar saldo, entra a Onyx desde el navegador de tu teléfono o computadora.' : 'Top-ups are not available inside the iPhone app. To add balance, open Onyx from your phone or computer browser.'}</div>
+        </div>
+      ) : (<>
       <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 18, marginBottom: 16 }}>
         <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 10 }}>{es ? 'Recargar' : 'Top up'}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 10 }}>
@@ -103,6 +112,8 @@ export default function WalletPage() {
           </div>
         </div>
       )}
+
+      </>)}
 
       {/* Movimientos */}
       <div style={{ fontSize: 14, fontWeight: 800, margin: '0 0 8px' }}>{es ? 'Movimientos' : 'Movements'}</div>
