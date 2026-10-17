@@ -540,7 +540,12 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const rr = roleInfo?.roles;
   if (rr?.ambassador && rr.ambassador !== 'none') roleTopics.push([es ? '¿Cómo veo mi enlace y comisión de embajador?' : 'How do I see my ambassador link and commission?', es ? '🎯 Mi enlace y comisión' : '🎯 My link & commission']);
   if (rr?.mentor) roleTopics.push([es ? '¿Cómo cobro como mentor y conecto mi Stripe?' : 'How do I get paid as a mentor and connect Stripe?', es ? '🎓 Cobros de mentor' : '🎓 Mentor payouts']);
-  const topics = [...roleTopics, ...baseTopics];
+  // Tema rápido de PAGO POR USO (oculto en iPhone por la regla de Apple): deja que
+  // la IA explique saldo, tarifas y qué es gratis con el corpus que ya conoce.
+  const payTopic: [string, string][] = !isIOS
+    ? [[es ? '¿Puedo usar Onyx sin pagar mensualidad? ¿Cómo funciona el saldo?' : 'Can I use Onyx with no monthly fee? How does the balance work?', es ? '💰 Pago por uso' : '💰 Pay as you go']]
+    : [];
+  const topics = [...roleTopics, ...payTopic, ...baseTopics];
   // Puerta de entrada: el invitado (sin sesión) debe dejar nombre + correo ANTES de
   // escribir. Con sesión no aplica (ya sabemos quién es) y con token ya pasó la puerta.
   const needGate = !loggedIn && !leadToken && !sent;

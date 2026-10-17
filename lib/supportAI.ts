@@ -82,6 +82,8 @@ APP MÓVIL: Onyx es instalable como app (PWA) en iPhone y Android desde el naveg
 
 PLANES: Free, Pro, Elite y Black Onyx. Se empieza gratis. Pago mensual o anual (el anual sale más barato). Los precios exactos están en la sección PRECIOS de abajo. Cambiar de plan desde Mi cuenta → Suscripción: subir es inmediato, bajar se aplica al final del periodo pagado (conservas las funciones hasta que termine).
 
+PAGO POR USO / MONEDERO (plan gratis): no hace falta pagar mensualidad. El plan gratis incluye gratis cada mes 1 cuenta conectada y un cupo de análisis de Onyx AI (lo que diga el plan, p. ej. 20). Si usas de más, se descuenta de tu SALDO (un monedero recargable): cada análisis de IA extra cuesta unos centavos y cada cuenta extra una tarifa mensual pequeña; los precios exactos se ven en Mi cuenta → Suscripción. El saldo se recarga con tarjeta o USDT (la recarga con tarjeta lleva una pequeña comisión de servicio que baja cuanto más recargas; USDT a valor nominal). El saldo NO es retirable: es solo para usar dentro de Onyx. Si el saldo llega a $0, las funciones de pago se pausan hasta recargar; puedes activar la auto-recarga para que nunca se corte. La idea: empiezas gratis, pagas solo por lo que uses y subes a un plan cuando te convenga (la propia app te avisa cuándo un plan te saldría más barato que seguir pagando por uso). IMPORTANTE: el monedero, la recarga y los precios por uso NO aparecen dentro de la app de iPhone (regla de Apple); ahí se gestiona desde el sitio web o con los planes del App Store.
+
 EMBAJADORES: comisión recurrente por cada suscriptor que traigas y descuento para tu comunidad; se solicita desde la página de Embajadores.
 
 SOPORTE: Onyx AI responde al instante; si hace falta, una persona contesta por correo o en el Centro de soporte.`,
@@ -112,6 +114,8 @@ ALERTS: via Telegram (Elite plan and above) — funding, manager, news, EA down,
 MOBILE APP: Onyx installs as an app (PWA) on iPhone and Android from the browser (iPhone: Share → Add to Home Screen; Android: install button). With push notifications.
 
 PLANS: Free, Pro, Elite and Black Onyx. You can start free. Monthly or yearly billing (yearly is cheaper). Exact prices are in the PRICES section below. Change plan from My account → Subscription: upgrading is immediate, downgrading applies at the end of the paid period (you keep features until it ends).
+
+PAY AS YOU GO / WALLET (free plan): no monthly fee required. The free plan includes each month 1 connected account and an Onyx AI allowance (whatever the plan says, e.g. 20). If you go over, it's charged to your BALANCE (a top-up wallet): each extra AI analysis costs a few cents and each extra account a small monthly fee; exact prices are shown in My account → Subscription. You top up with card or USDT (card top-ups carry a small service fee that drops the more you add; USDT at face value). The balance is NOT withdrawable: it's only for use inside Onyx. If the balance hits $0, paid features pause until you top up; you can turn on auto-reload so it never cuts off. The idea: start free, pay only for what you use, and move to a plan when it pays off (the app itself tells you when a plan would be cheaper than paying per use). IMPORTANT: the wallet, top-ups and usage prices do NOT appear inside the iPhone app (Apple rule); there it's managed from the website or via App Store plans.
 
 AMBASSADORS: recurring commission for every subscriber you bring and a discount for your community; apply from the Ambassadors page.
 

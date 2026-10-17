@@ -25,12 +25,14 @@ function buildFaqs(plans: any[], lang: 'es' | 'en'): [string, string][] {
     out.push(['¿Necesito tarjeta para empezar?', 'No. El plan Free es gratis y sin tarjeta. Solo pides tarjeta o USDT cuando eliges un plan de pago.']);
     if (f.hasTrial) out.push(['¿Hay prueba gratis?', `Sí: ${trialLine(f, 'es')}. Entras con tarjeta pero no se te cobra hasta que termina la prueba; cancela antes y no pagas nada.`]);
     out.push(['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.']);
+    out.push(['¿Y si no quiero pagar mensualidad?', 'Usa el plan gratis y paga solo por lo que uses. Incluye gratis cada mes 1 cuenta y un cupo de análisis de Onyx AI; si usas de más, se descuenta de tu saldo recargable (unos centavos por análisis extra). Sin compromiso: recargas cuando quieres y subes a un plan solo cuando te convenga. La app te avisa cuándo un plan te saldría más barato.']);
     out.push(['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT. El acceso se activa al confirmar el pago.']);
     if (f.annualPct > 0) out.push(['¿El anual ahorra?', `Sí: pagando al año ahorras un ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (unos ${f.annualMonthsFree} meses gratis)` : ''} frente a pagar mes a mes.`]);
   } else {
     out.push(['Do I need a card to start?', 'No. The Free plan is free and card-free. We only ask for a card or USDT when you pick a paid plan.']);
     if (f.hasTrial) out.push(['Is there a free trial?', `Yes: ${trialLine(f, 'en')}. You enter with a card but you are not charged until the trial ends; cancel before then and you pay nothing.`]);
     out.push(['Can I change or cancel anytime?', 'Yes. Upgrade or downgrade in one click from your account and cancel anytime; you keep access until the period ends.']);
+    out.push(["What if I don't want a monthly fee?", 'Use the free plan and pay only for what you use. It includes 1 account and an Onyx AI allowance free each month; if you go over, it comes out of your top-up balance (a few cents per extra analysis). No commitment: top up when you want and move to a plan only when it pays off. The app tells you when a plan would be cheaper.']);
     out.push(['Do you accept crypto?', 'Yes, pay with card (Stripe) or USDT. Access activates once the payment confirms.']);
     if (f.annualPct > 0) out.push(['Does annual save money?', `Yes: paying yearly saves you ${f.annualPct}%${f.annualMonthsFree > 0 ? ` (about ${f.annualMonthsFree} months free)` : ''} vs paying monthly.`]);
   }
@@ -46,6 +48,7 @@ const T = {
     faqT: 'Preguntas sobre los planes',
     faqs: [
       ['¿Necesito tarjeta para empezar?', 'No. El plan Free es gratis y sin tarjeta. Solo pides tarjeta o USDT cuando eliges un plan de pago.'],
+      ['¿Y si no quiero pagar mensualidad?', 'Usa el plan gratis y paga solo por lo que uses. Incluye gratis cada mes 1 cuenta y un cupo de análisis de Onyx AI; si usas de más, se descuenta de tu saldo recargable. Sin compromiso: subes a un plan solo cuando te convenga, y la app te avisa cuándo saldría más barato.'],
       ['¿Puedo cambiar o cancelar cuando quiera?', 'Sí. Subes o bajas de plan en un clic desde tu cuenta y cancelas cuando quieras; conservas el acceso hasta el fin del período.'],
       ['¿Aceptan cripto?', 'Sí, pagas con tarjeta (Stripe) o USDT. El acceso se activa al confirmar el pago.'],
       ['¿El anual ahorra?', 'Sí: pagando al año te salen 2 meses gratis (unos 17% menos) frente a pagar mes a mes.'],
@@ -56,6 +59,7 @@ const T = {
     faqT: 'Questions about the plans',
     faqs: [
       ['Do I need a card to start?', 'No. The Free plan is free and card-free. We only ask for a card or USDT when you pick a paid plan.'],
+      ["What if I don't want a monthly fee?", 'Use the free plan and pay only for what you use. It includes 1 account and an Onyx AI allowance free each month; if you go over, it comes out of your top-up balance. No commitment: move to a plan only when it pays off, and the app tells you when that is.'],
       ['Can I change or cancel anytime?', 'Yes. Upgrade or downgrade in one click from your account and cancel anytime; you keep access until the period ends.'],
       ['Do you accept crypto?', 'Yes, pay with card (Stripe) or USDT. Access activates once the payment confirms.'],
       ['Does annual save money?', 'Yes: paying yearly gives you 2 months free (about 17% off) vs paying monthly.'],
