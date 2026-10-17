@@ -1,34 +1,40 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { getStripe } from '@/lib/stripeClient';
+import { getStripe, onyxAppearance } from '@/lib/stripeClient';
 import { isNativeApp } from '@/lib/native';
 
 // ============================================================
-// Recarga del monedero EMBEBIDA dentro de Onyx (igual que el pago de suscripción).
-// Recibe el monto; pide el client_secret al backend (ui_mode: embedded) y monta
-// el checkout en un modal. Al terminar, Stripe redirige a return_url (?topup=ok).
-// En la app nativa se abre un checkout ALOJADO en el navegador del sistema.
+// Recarga del monedero / guardar tarjeta DENTRO de Onyx.
+//  · topup  → checkout EMBEBIDO de Stripe (es un cobro).
+//  · setup  → Payment Element con el tema OSCURO de Onyx (igual que la
+//             suscripción), sin salir al checkout alojado. Así "Guardar tarjeta"
+//             combina con el panel y no sale en blanco.
+// En la app nativa (Android/iOS) ambos abren un checkout ALOJADO en el navegador.
 // ============================================================
 
 export default function WalletCheckoutModal({
-  amount, lang, onClose, mode = 'topup',
-}: { amount?: number; lang: 'es' | 'en'; onClose: () => void; mode?: 'topup' | 'setup' }) {
+  amount, lang, onClose, mode = 'topup', onSaved,
+}: { amount?: number; lang: 'es' | 'en'; onClose: () => void; mode?: 'topup' | 'setup'; onSaved?: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   const [err, setErr] = useState('');
   const [nativeUrl, setNativeUrl] = useState('');
+  const [ready, setReady] = useState(false);
+  const [busy, setBusy] = useState(false);
   const checkoutRef = useRef<any>(null);
+  const stripeRef = useRef<any>(null);
+  const elementsRef = useRef<any>(null);
   const es = lang === 'es';
   const isSetup = mode === 'setup';
-  // Endpoint y cuerpo según el modo: recargar saldo (topup) o guardar tarjeta (setup).
-  const endpoint = isSetup ? '/api/wallet/autoreload/setup' : '/api/wallet/topup';
-  const bodyBase = isSetup ? {} : { method: 'card', amount, lang };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
+        // ── App nativa: checkout alojado en el navegador del sistema ──────────
         if (isNativeApp()) {
-          const r = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(bodyBase) });
+          const endpoint = isSetup ? '/api/wallet/autoreload/setup' : '/api/wallet/topup';
+          const body = isSetup ? {} : { method: 'card', amount, lang };
+          const r = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
           const j = await r.json();
           if (cancelled) return;
           if (!r.ok || !j.url) { setErr(j.error || (es ? 'No se pudo abrir.' : 'Could not open.')); return; }
@@ -38,7 +44,23 @@ export default function WalletCheckoutModal({
         }
 
         const stripe = await getStripe();
-        const r = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...bodyBase, embedded: true }) });
+
+        // ── GUARDAR TARJETA (setup) · Payment Element oscuro, dentro de Onyx ───
+        if (isSetup) {
+          const r = await fetch('/api/wallet/autoreload/setup-intent', { method: 'POST' });
+          const j = await r.json();
+          if (cancelled) return;
+          if (!r.ok || !j.clientSecret) { setErr(j.error || (es ? 'No se pudo abrir.' : 'Could not open.')); return; }
+          const elements = stripe.elements({ clientSecret: j.clientSecret, appearance: onyxAppearance() });
+          const pe = elements.create('payment');
+          pe.mount(box.current);
+          stripeRef.current = stripe; elementsRef.current = elements;
+          setReady(true);
+          return;
+        }
+
+        // ── RECARGAR SALDO (topup) · checkout embebido de Stripe ──────────────
+        const r = await fetch('/api/wallet/topup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ method: 'card', amount, lang, embedded: true }) });
         const j = await r.json();
         if (cancelled) return;
         if (!r.ok || !j.clientSecret) { setErr(j.error || (es ? 'No se pudo abrir.' : 'Could not open.')); return; }
@@ -51,8 +73,26 @@ export default function WalletCheckoutModal({
           : (es ? 'No se pudo abrir.' : 'Could not open.'));
       }
     })();
-    return () => { cancelled = true; try { checkoutRef.current?.destroy(); } catch {} };
+    return () => {
+      cancelled = true;
+      try { checkoutRef.current?.destroy(); } catch {}
+      try { elementsRef.current = null; if (box.current) box.current.innerHTML = ''; } catch {}
+    };
   }, [amount, mode]);
+
+  // Confirma el SetupIntent y registra la tarjeta para la auto-recarga.
+  async function saveCard() {
+    if (!stripeRef.current || !elementsRef.current) return;
+    setBusy(true); setErr('');
+    try {
+      const { error, setupIntent } = await stripeRef.current.confirmSetup({ elements: elementsRef.current, redirect: 'if_required' });
+      if (error) { setErr(error.message || (es ? 'No se pudo guardar la tarjeta.' : 'Could not save the card.')); return; }
+      const pm = setupIntent?.payment_method ? (typeof setupIntent.payment_method === 'string' ? setupIntent.payment_method : setupIntent.payment_method.id) : null;
+      if (pm) await fetch('/api/wallet/autoreload/save-pm', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ paymentMethodId: pm }) });
+      onSaved && onSaved();
+      onClose();
+    } catch { setErr(es ? 'No se pudo guardar la tarjeta.' : 'Could not save the card.'); } finally { setBusy(false); }
+  }
 
   const title = isSetup
     ? (es ? 'Guardar una tarjeta' : 'Save a card')
@@ -77,7 +117,18 @@ export default function WalletCheckoutModal({
                 {es ? 'Abrir el pago en el navegador' : 'Open payment in browser'}
               </a>
             </div>
-          ) : <div ref={box} style={{ minHeight: 260 }} />}
+          ) : (
+            <>
+              <div ref={box} style={{ minHeight: isSetup ? 40 : 260 }} />
+              {/* En modo "guardar tarjeta" el botón lo ponemos nosotros (Payment Element) */}
+              {isSetup && (
+                <div className="row" style={{ gap: 8, marginTop: 12 }}>
+                  <button className="btn btn-primary" onClick={saveCard} disabled={busy || !ready}>{busy ? (es ? 'Guardando…' : 'Saving…') : (es ? 'Guardar tarjeta' : 'Save card')}</button>
+                  <button className="btn btn-ghost" onClick={onClose} disabled={busy}>{es ? 'Cancelar' : 'Cancel'}</button>
+                </div>
+              )}
+            </>
+          )}
       </div>
     </div>
   );
