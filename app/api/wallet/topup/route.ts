@@ -46,15 +46,22 @@ export async function POST(req: Request) {
     if (!/^https?:\/\//i.test(base)) base = 'https://' + base;
 
     const name = en ? 'Onyx wallet top-up' : 'Recarga de monedero Onyx';
+    const embedded = b.embedded === true;
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: amount * 100, product_data: { name } } }],
       customer_email: user.email || undefined,
-      success_url: `${base}/dashboard/wallet?topup=ok`,
-      cancel_url: `${base}/dashboard/wallet?topup=cancel`,
       metadata: { kind: 'wallet_topup', userId: user.id, amount: String(amount), lang },
+      ...(embedded
+        // EMBEBIDO: dentro de Onyx, sin salir. Devuelve client_secret y al terminar
+        // Stripe redirige a return_url (misma página, que detecta ?topup=ok).
+        ? { ui_mode: 'embedded' as const, return_url: `${base}/dashboard/wallet?topup=ok` }
+        // ALOJADO: para la app nativa, se abre en el navegador del sistema.
+        : { success_url: `${base}/dashboard/wallet?topup=ok`, cancel_url: `${base}/dashboard/wallet?topup=cancel` }),
     });
-    return NextResponse.json({ ok: true, method: 'card', url: session.url });
+    return NextResponse.json(embedded
+      ? { ok: true, method: 'card', clientSecret: (session as any).client_secret }
+      : { ok: true, method: 'card', url: session.url });
   } catch (e: any) {
     await logError('wallet_topup', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

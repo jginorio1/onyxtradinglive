@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { useLang } from '@/lib/lang';
 import { toast, toastErr } from '@/lib/toast';
 import { fmtDateTime } from '@/lib/fmtDate';
-import { nativePlatform } from '@/lib/native';
+import { nativePlatform, isNativeApp } from '@/lib/native';
+import WalletCheckoutModal from '@/app/WalletCheckoutModal';
 
 // ============================================================
 // MONEDERO (cliente). Saldo recargable para comprar dentro de Onyx. No retirable.
@@ -92,6 +93,7 @@ export default function WalletPage() {
   const [usdt, setUsdt] = useState<any>(null);   // datos del pago USDT pendiente
   const [txid, setTxid] = useState('');
   const [ios, setIos] = useState(false);
+  const [payAmt, setPayAmt] = useState(0);   // monto del pago con tarjeta embebido (>0 abre el modal)
   useEffect(() => { try { setIos(nativePlatform() === 'ios'); } catch {} }, []);
 
   async function load() {
@@ -103,11 +105,14 @@ export default function WalletPage() {
 
   async function topup() {
     if (!(amount >= 5 && amount <= 2000)) { toastErr(es ? 'Monto entre $5 y $2000.' : 'Amount between $5 and $2000.'); return; }
+    // TARJETA en web: abre el pago EMBEBIDO dentro de Onyx (no sale al checkout alojado).
+    // El modal pide el client_secret y monta el Payment Element; el abono lo hace el webhook.
+    if (method === 'card' && !isNativeApp()) { setUsdt(null); setPayAmt(amount); return; }
     setBusy(true); setUsdt(null);
     try {
       const r = await fetch('/api/wallet/topup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, method, lang }) });
       const j = await r.json(); if (!r.ok) throw new Error(j?.error || 'error');
-      if (j.method === 'card' && j.url) { window.location.href = j.url; return; }
+      if (j.method === 'card' && j.url) { window.location.href = j.url; return; }  // app nativa → navegador
       if (j.method === 'usdt') { setUsdt(j.payment); }
     } catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
   }
@@ -206,6 +211,9 @@ export default function WalletPage() {
           );
         })}
       </div>
+
+      {/* Pago con tarjeta EMBEBIDO (no sale de Onyx). Al terminar, Stripe vuelve a ?topup=ok. */}
+      {payAmt > 0 && <WalletCheckoutModal amount={payAmt} lang={es ? 'es' : 'en'} onClose={() => setPayAmt(0)} />}
     </div>
   );
 }
