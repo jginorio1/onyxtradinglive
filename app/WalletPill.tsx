@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { nativePlatform } from '@/lib/native';
+import OnyxIcon from '@/app/components/OnyxIcon';
 
 // Píldora de SALDO arriba a la derecha. Muestra el saldo del monedero y lleva a
 // la página de recarga. Se refresca al montar y cuando la pestaña vuelve a foco
@@ -33,7 +34,7 @@ export default function WalletPill() {
       border: '1px solid color-mix(in srgb, var(--green) 35%, transparent)', borderRadius: 99,
       padding: '4px 10px', fontSize: 12.5, fontWeight: 800, whiteSpace: 'nowrap',
     }}>
-      <span aria-hidden>💰</span>
+      <OnyxIcon name="money" size={14} glow={false} />
       <span>{txt}</span>
       <span style={{ fontWeight: 900, fontSize: 14, lineHeight: 1, opacity: .9 }}>+</span>
     </Link>

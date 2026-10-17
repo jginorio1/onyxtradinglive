@@ -581,12 +581,12 @@ export default function Home() {
   // Mensaje único: sin mensualidad, pagas solo por lo que uses, subes cuando convenga.
   const paygDefaultCards = lang === 'es'
     ? [
-        { i: '🆓', t: 'Empieza sin tarjeta', d: 'El plan gratis incluye 1 cuenta y análisis de IA cada mes. Sin mensualidad, sin compromiso.' },
+        { i: '🚀', t: 'Empieza sin tarjeta', d: 'El plan gratis incluye 1 cuenta y análisis de IA cada mes. Sin mensualidad, sin compromiso.' },
         { i: '💳', t: 'Pagas solo lo que usas', d: 'Si pasas el cupo, se descuenta de tu saldo recargable: unos centavos por análisis. Recargas con tarjeta o USDT.' },
         { i: '📈', t: 'Subes cuando te convenga', d: 'La app te avisa cuándo un plan te sale más barato que seguir pagando por uso. Tú decides, siempre.' },
       ]
     : [
-        { i: '🆓', t: 'Start with no card', d: 'The free plan includes 1 account and AI analyses every month. No monthly fee, no commitment.' },
+        { i: '🚀', t: 'Start with no card', d: 'The free plan includes 1 account and AI analyses every month. No monthly fee, no commitment.' },
         { i: '💳', t: 'Pay only for what you use', d: 'Go over the allowance and it comes out of your top-up balance: a few cents per analysis. Top up by card or USDT.' },
         { i: '📈', t: 'Upgrade when it pays off', d: 'The app tells you when a plan is cheaper than paying per use. You always decide.' },
       ];
@@ -1021,7 +1021,7 @@ export default function Home() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, maxWidth: 920, margin: '0 auto 22px' }}>
             {paygCards.map((c: any, i: number) => (
               <div key={i} className="card" style={{ padding: '18px 18px 16px' }}>
-                <div style={{ fontSize: 26, marginBottom: 8 }}>{c.i}</div>
+                <div style={{ color: 'var(--green)', marginBottom: 10 }}><OnyxIcon emoji={c.i} size={26} glow={false} /></div>
                 <div style={{ fontWeight: 800, fontSize: 15.5, marginBottom: 4 }}>{c.t}</div>
                 <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>{c.d}</div>
               </div>
