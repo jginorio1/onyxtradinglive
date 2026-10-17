@@ -9,6 +9,7 @@ import TopBarMenu from './TopBarMenu';
 import LangToggle from './LangToggle';
 import ThemeToggle from './ThemeToggle';
 import NotifBell from './NotifBell';
+import WalletPill from './WalletPill';
 import MainNav from './MainNav';
 import PanelLogo from './PanelLogo';
 import PlanPill from './PlanPill';
@@ -201,6 +202,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
               )}
               <PlanPill planName={planName} free={plan === 'free'} />
               <span className="topsep" />
+              {!isDemo && <WalletPill />}
               <NotifBell />
               <ThemeToggle />
               <LangToggle compact />

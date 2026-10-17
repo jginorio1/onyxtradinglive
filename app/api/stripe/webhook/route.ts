@@ -177,6 +177,15 @@ export async function POST(req: Request) {
         } catch (e) { console.error('remote_support fulfill', e); }
         return NextResponse.json({ received: true });
       }
+      // RECARGA DE MONEDERO pagada con tarjeta: acredita el saldo (idempotente por
+      // el id de la sesión de Stripe, así un reintento del webhook no duplica).
+      if (s.metadata?.kind === 'wallet_topup' && s.metadata?.userId) {
+        try {
+          const { credit } = await import('@/lib/wallet');
+          await credit({ userId: s.metadata.userId, amountCents: Math.round((Number(s.metadata.amount) || 0) * 100), kind: 'topup', method: 'card', source: 'stripe', extRef: s.id, note: 'Recarga con tarjeta' });
+        } catch (e) { console.error('wallet_topup credit', e); }
+        return NextResponse.json({ received: true });
+      }
       const g = guardianMeta(s.metadata);
       if (g && g.userId && s.subscription) {
         // Guardian de academia: activa el nivel, guarda la suscripción, NO toca el plan.

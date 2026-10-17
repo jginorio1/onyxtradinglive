@@ -25,7 +25,7 @@ export async function cryptoNetworks(): Promise<('erc20' | 'trc20')[]> {
 // Crea una intención de pago en USDT. Si hay Coinbase Commerce, genera un charge
 // y devuelve su hosted_url (checkout automático, confirmación on-chain por webhook).
 // Si no, cae al modo manual: muestra la wallet y el cliente reporta el hash.
-export async function createCryptoPayment(o: { userId?: string | null; purpose: 'license' | 'service'; refId: string; amountUsd: number; name?: string; network?: string; referrerId?: string | null }) {
+export async function createCryptoPayment(o: { userId?: string | null; purpose: 'license' | 'service' | 'topup'; refId: string; amountUsd: number; name?: string; network?: string; referrerId?: string | null }) {
   const s = await botLabSettings();
   // Red elegida por el cliente (erc20 | trc20). Si no se pasa, la primera disponible.
   const avail = usdtNetworksAvailable(s);
@@ -115,6 +115,13 @@ export async function confirmCryptoPayment(paymentId: string) {
   }
   if (pay.purpose === 'service') {
     await supabaseAdmin.from('bot_service_requests').update({ status: 'in_progress' }).eq('id', pay.ref_id);
+  }
+  // RECARGA DE MONEDERO: acredita el saldo del usuario (idempotente por el id del pago).
+  if (pay.purpose === 'topup' && pay.user_id) {
+    try {
+      const { credit } = await import('@/lib/wallet');
+      await credit({ userId: pay.user_id, amountCents: Math.round((Number(pay.amount_usd) || 0) * 100), kind: 'topup', method: 'usdt', source: 'usdt', extRef: 'crypto_' + paymentId, note: 'Recarga USDT' });
+    } catch {}
   }
   return { ok: true };
 }
