@@ -47,12 +47,13 @@ export async function credit(opts: {
     note: opts.note || null, meta: opts.meta ?? null,
   };
   if (row.ext_ref) {
-    const { error } = await supabaseAdmin.from('wallet_ledger')
-      .upsert(row, { onConflict: 'source,ext_ref', ignoreDuplicates: true }).select('id');
-    if (error) return { ok: false, credited: false };
-    // ¿se insertó o ya existía? Consulta corta por la clave.
-    const { data } = await supabaseAdmin.from('wallet_ledger').select('id').eq('source', row.source).eq('ext_ref', row.ext_ref).maybeSingle();
-    return { ok: true, credited: !!data };
+    // Idempotencia por (source, ext_ref) con verificar-e-insertar (NO upsert con
+    // onConflict: el índice único es parcial —where ext_ref not null— y Postgres
+    // no admite ON CONFLICT contra un índice parcial, lo que hacía fallar el abono).
+    const { data: dup } = await supabaseAdmin.from('wallet_ledger').select('id').eq('source', row.source).eq('ext_ref', row.ext_ref).maybeSingle();
+    if (dup) return { ok: true, credited: false };   // ya existía: idempotente, no duplica
+    const { error } = await supabaseAdmin.from('wallet_ledger').insert(row);
+    return { ok: !error, credited: !error };
   }
   const { error } = await supabaseAdmin.from('wallet_ledger').insert(row);
   return { ok: !error, credited: !error };
