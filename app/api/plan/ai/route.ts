@@ -19,9 +19,9 @@ export async function POST(req: Request) {
     const { data: pl } = await supabaseAdmin.from('plans').select('capabilities').eq('id', (prof as any)?.plan || 'free').maybeSingle();
     if (!(pl?.capabilities as any)?.coach) return NextResponse.json({ locked: true });
 
-    const { checkAiLimit } = await import('@/lib/aiLimits');
-    const gate = await checkAiLimit(user.id);
-    if (!gate.ok) return NextResponse.json({ aiLimit: true, allowance: gate.allowance });
+    const { aiGate } = await import('@/lib/usage');
+    const gate = await aiGate(user.id);
+    if (!gate.ok) return NextResponse.json({ aiLimit: true, needsTopup: gate.needsTopup, allowance: gate.allowance });
 
     const b = await req.json().catch(() => ({}));
     const lang = pickLang(b.lang);

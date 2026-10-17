@@ -45,13 +45,21 @@ export async function POST(req: Request) {
     if (!base) { const u = new URL(req.url); base = `${u.protocol}//${u.host}`; }
     if (!/^https?:\/\//i.test(base)) base = 'https://' + base;
 
+    // Comisión de servicio escalonada (a más recarga, menor %). El cliente paga
+    // amount + comisión en la tarjeta; el saldo recibe solo `amount` (el webhook
+    // acredita metadata.amount, la base). La diferencia es nuestro ingreso.
+    const { topupFeeCents } = await import('@/lib/usage');
+    const feeCents = await topupFeeCents(amount);
+    const chargeCents = amount * 100 + feeCents;
+
     const name = en ? 'Onyx wallet top-up' : 'Recarga de monedero Onyx';
+    const feeLine = feeCents > 0 ? (en ? ` (incl. $${(feeCents / 100).toFixed(2)} service fee)` : ` (incl. comisión $${(feeCents / 100).toFixed(2)})`) : '';
     const embedded = b.embedded === true;
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: amount * 100, product_data: { name } } }],
+      line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: chargeCents, product_data: { name: name + feeLine } } }],
       customer_email: user.email || undefined,
-      metadata: { kind: 'wallet_topup', userId: user.id, amount: String(amount), lang },
+      metadata: { kind: 'wallet_topup', userId: user.id, amount: String(amount), fee_cents: String(feeCents), lang },
       ...(embedded
         // EMBEBIDO: dentro de Onyx, sin salir. Devuelve client_secret y al terminar
         // Stripe redirige a return_url (misma página, que detecta ?topup=ok).
@@ -60,8 +68,8 @@ export async function POST(req: Request) {
         : { success_url: `${base}/dashboard/wallet?topup=ok`, cancel_url: `${base}/dashboard/wallet?topup=cancel` }),
     });
     return NextResponse.json(embedded
-      ? { ok: true, method: 'card', clientSecret: (session as any).client_secret }
-      : { ok: true, method: 'card', url: session.url });
+      ? { ok: true, method: 'card', clientSecret: (session as any).client_secret, feeCents, chargeCents }
+      : { ok: true, method: 'card', url: session.url, feeCents, chargeCents });
   } catch (e: any) {
     await logError('wallet_topup', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

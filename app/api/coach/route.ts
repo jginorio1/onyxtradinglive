@@ -227,7 +227,11 @@ export async function GET(req: Request) {
 
     // Tope de IA del mes: si lo alcanzó, NO gastamos una consulta de IA (mostramos
     // el repaso determinista) y avisamos para que pueda comprar el paquete extra.
-    const gate = await checkAiLimit(user.id);
+    // Tope del plan + PAGO POR USO: si pasó el tope y es plan gratis con saldo,
+    // se cobra una consulta del monedero y deja pasar; si no, cae al repaso
+    // determinista y avisa (needsTopup).
+    const { aiGate } = await import('@/lib/usage');
+    const gate = await aiGate(user.id);
 
     // La IA con red de seguridad: si falla, no responde o tarda >12s, devolvemos
     // un repaso determinista con los mismos números → la cápsula SIEMPRE funciona.
@@ -242,7 +246,7 @@ export async function GET(req: Request) {
       } catch { /* caemos al repaso determinista */ }
     }
     if (!reviewText) reviewText = fallbackReview(summary, lang);
-    return NextResponse.json({ ok: true, review: reviewText, summary, actions, aiLimit: !gate.ok, allowance: gate.allowance });
+    return NextResponse.json({ ok: true, review: reviewText, summary, actions, aiLimit: !gate.ok, needsTopup: (gate as any).needsTopup || false, allowance: gate.allowance });
   } catch (e: any) {
     await logError('coach_get', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

@@ -21,6 +21,7 @@ import TelegramCard from './TelegramCard';
 import NotifPrefs from './NotifPrefs';
 import SalesReviewCard from '@/app/components/SalesReviewCard';
 import BillingCard from './BillingCard';
+import UsageCard from './UsageCard';
 import AddonsCard from './AddonsCard';
 import ManageOnWeb, { useIsIOSApp } from './ManageOnWeb';
 import EmbeddedCheckoutModal from '@/app/EmbeddedCheckoutModal';
@@ -508,6 +509,10 @@ export default function AccountClient({ email }: { email: string }) {
                   {/* Complementos y límites: consumo de Onyx AI + paquetes comprados.
                       En iPhone la propia tarjeta oculta precios/compra (política de Apple). */}
                   {data.ai && <div style={{ marginTop: 16 }}><AddonsCard ai={data.ai} lang={lang} onBought={load} /></div>}
+
+                  {/* Pago por uso del plan gratis: saldo, gasto del mes, tarifas y
+                      upsell. Oculto en la app de iPhone (regla 3.1.1 de Apple). */}
+                  {!iosApp && !paidPlan && <UsageCard lang={lang} />}
 
                   {/* Cambiar de plan (upgrade / downgrade) sobre la misma suscripción */}
                   {!iosApp && sub && (plans.length > 0 || allPlans.length > 0) && (() => {
