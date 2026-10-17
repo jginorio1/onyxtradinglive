@@ -173,9 +173,9 @@ export async function supportChatReply(question: string, lang: Lang, history: an
   // lo escribió; `extra` se añade a las instrucciones. Si están vacíos, se usan los del código.
   const prompt = await aiPromptSettings();
   const adminBrief = ((en ? prompt.brief_en : prompt.brief_es) || '').trim();
-  // El bloque de pago por uso SIEMPRE se añade (haya o no brief personalizado),
-  // para que la IA explique el monedero/saldo con coherencia.
-  const brief = (adminBrief || dictFor(ONYX_BRIEF, lang)) + '\n\n' + dictFor(PAYG_INFO, lang);
+  // El bloque de pago por uso se añade SALVO en la app de iPhone (hidePricing):
+  // ahí no se puede mencionar monedero, recargas ni precios (regla 3.1.1 de Apple).
+  const brief = (adminBrief || dictFor(ONYX_BRIEF, lang)) + (hidePricing ? '' : '\n\n' + dictFor(PAYG_INFO, lang));
   const adminExtra = ((en ? prompt.extra_en : prompt.extra_es) || '').trim();
 
   // === CORPUS COMPLETO ===

@@ -36,34 +36,35 @@ export function getStripe(): Promise<any> {
   return stripePromise;
 }
 
-// Apariencia de los componentes de Stripe SEGÚN EL TEMA del sitio.
-// Antes estaba fijada a oscuro ('night'): en modo claro salían inputs oscuros
-// con etiquetas gris claro sobre fondo blanco (mal contraste). Ahora lee
-// data-theme del <html> y devuelve fondo blanco + texto negro en claro.
-function currentTheme(): 'light' | 'dark' {
-  if (typeof document === 'undefined') return 'dark';
-  const attr = document.documentElement.getAttribute('data-theme');
-  if (attr === 'light' || attr === 'dark') return attr;
-  return (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
-}
-
+// Apariencia de los componentes de Stripe (Payment Element para cambiar/guardar
+// tarjeta). SIEMPRE oscura 'night', igual que el checkout embebido del panel de
+// Stripe, para que el monedero y la suscripción se vean iguales en cualquier
+// tema del sitio. Antes seguía el tema: en modo claro salía blanco/crema y no
+// coincidía con el checkout (que es oscuro). Además subimos el contraste de las
+// etiquetas y textos para que nada quede casi invisible sobre el fondo oscuro.
 export function onyxAppearance() {
-  const light = currentTheme() === 'light';
   return {
-    theme: (light ? 'stripe' : 'night') as 'stripe' | 'night',
+    theme: 'night' as const,
     variables: {
       colorPrimary: '#7c8cff',
-      colorBackground: light ? '#ffffff' : '#12151d',
-      colorText: light ? '#0d1117' : '#e6ebf2',          // negro en claro
-      colorTextSecondary: light ? '#4a5568' : '#8a97a5', // gris oscuro legible en claro
-      colorTextPlaceholder: light ? '#6b7280' : '#6b7684',
-      colorDanger: '#e0504a',
+      colorBackground: '#12151d',
+      colorText: '#f2f5fa',              // casi blanco: valores bien legibles
+      colorTextSecondary: '#c3ccd8',     // antes #8a97a5 (muy tenue): ahora claro
+      colorTextPlaceholder: '#8b96a6',
+      colorDanger: '#ff6b63',
+      colorIcon: '#c3ccd8',
       fontFamily: 'system-ui, sans-serif',
       borderRadius: '10px',
+      spacingUnit: '4px',
     },
-    rules: light ? {
-      '.Input': { border: '1px solid #d0d5dd', boxShadow: 'none' },
-      '.Label': { color: '#0d1117' },
-    } : {},
+    rules: {
+      '.Label': { color: '#e6ebf2', fontWeight: '600' },           // etiquetas bien visibles
+      '.Input': { backgroundColor: '#1a1f2b', border: '1px solid #2b3342', color: '#f2f5fa', boxShadow: 'none' },
+      '.Input::placeholder': { color: '#8b96a6' },
+      '.Input:focus': { border: '1px solid #7c8cff', boxShadow: '0 0 0 1px #7c8cff' },
+      '.Tab, .Block': { backgroundColor: '#1a1f2b', border: '1px solid #2b3342' },
+      '.TabLabel, .BlockText': { color: '#e6ebf2' },
+      '.CheckboxInput': { backgroundColor: '#1a1f2b', border: '1px solid #2b3342' },
+    },
   };
 }
