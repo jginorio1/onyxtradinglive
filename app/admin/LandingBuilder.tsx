@@ -329,7 +329,7 @@ export default function LandingBuilder() {
             <span style={{ fontWeight: 600 }}>{L('Mostrar el bloque de pago por uso en el landing', 'Show the pay-as-you-go block on the landing')}</span>
           </label>
           <div style={{ display: 'grid', gap: 12, maxWidth: 720, marginBottom: 14 }}>
-            {[['t', L('Título', 'Title')], ['s', L('Subtítulo', 'Subtitle')], ['btn', L('Texto del botón', 'Button text')]].map(([k, label]) => (
+            {[['t', L('Título', 'Title')], ['s', L('Subtítulo', 'Subtitle')], ['ex', L('Ejemplo de coste (vacío = se calcula solo con la tarifa de Admin)', 'Cost example (empty = auto-computed from the Admin rate)')], ['note', L('Aviso verde (franja de tranquilidad)', 'Green reassurance band')], ['btn', L('Texto del botón', 'Button text')]].map(([k, label]) => (
               <div key={k} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div><div style={lbl}>{label} · ES</div><input style={inp} value={payg[`${k}_es`] || ''} onChange={(e) => setPayg({ [`${k}_es`]: e.target.value })} /></div>
                 <div><div style={lbl}>{label} · EN</div><input style={inp} value={payg[`${k}_en`] || ''} onChange={(e) => setPayg({ [`${k}_en`]: e.target.value })} /></div>
