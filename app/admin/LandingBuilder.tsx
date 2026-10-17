@@ -63,7 +63,7 @@ export default function LandingBuilder() {
   const es = lang === 'es';
   const L = (a: string, b: string) => (es ? a : b);
 
-  const [sub, setSub] = useState<'hero' | 'faq' | 'compare' | 'eco' | 'features' | 'how' | 'trust' | 'cta' | 'pages' | 'nav' | 'footer' | 'legal'>('hero');
+  const [sub, setSub] = useState<'hero' | 'faq' | 'compare' | 'eco' | 'features' | 'how' | 'trust' | 'cta' | 'payg' | 'pages' | 'nav' | 'footer' | 'legal'>('hero');
   const [pageId, setPageId] = useState('embajadores');
   const [legalDoc, setLegalDoc] = useState<'terms' | 'privacy'>('terms');
   const [content, setContent] = useState<any>(null);
@@ -112,6 +112,8 @@ export default function LandingBuilder() {
   const setTrust = (patch: any) => setContent({ ...content, trust: { ...trust, ...patch } });
   const cta = content.cta || defaults.cta || {};
   const setCta = (patch: any) => setContent({ ...content, cta: { ...cta, ...patch } });
+  const payg = content.payg || (defaults as any).payg || {};
+  const setPayg = (patch: any) => setContent({ ...content, payg: { ...payg, ...patch } });
 
   // Fase 3/4
   const pageDefs = defaults.pages || {};                 // { id: {label_es,label_en,fields:[]} }
@@ -142,7 +144,7 @@ export default function LandingBuilder() {
 
       {/* sub-tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-        {([['hero', L('Hero del landing', 'Landing hero')], ['features', L('Funciones', 'Features')], ['eco', L('Ecosistema', 'Ecosystem')], ['how', L('Cómo funciona', 'How it works')], ['trust', L('Insignias de confianza', 'Trust badges')], ['cta', L('Llamada final (CTA)', 'Final CTA')], ['faq', L('FAQ por página', 'FAQ per page')], ['compare', L('Comparación de planes', 'Plan comparison')], ['pages', L('Otras páginas', 'Other pages')], ['nav', L('Menú (nav)', 'Menu (nav)')], ['footer', L('Footer', 'Footer')], ['legal', L('Legales', 'Legal')]] as const).map(([k, label]) => (
+        {([['hero', L('Hero del landing', 'Landing hero')], ['features', L('Funciones', 'Features')], ['eco', L('Ecosistema', 'Ecosystem')], ['how', L('Cómo funciona', 'How it works')], ['trust', L('Insignias de confianza', 'Trust badges')], ['cta', L('Llamada final (CTA)', 'Final CTA')], ['payg', L('Pago por uso', 'Pay as you go')], ['faq', L('FAQ por página', 'FAQ per page')], ['compare', L('Comparación de planes', 'Plan comparison')], ['pages', L('Otras páginas', 'Other pages')], ['nav', L('Menú (nav)', 'Menu (nav)')], ['footer', L('Footer', 'Footer')], ['legal', L('Legales', 'Legal')]] as const).map(([k, label]) => (
           <button key={k} className={'btn ' + (sub === k ? 'btn-primary' : 'btn-ghost')} style={{ padding: '6px 13px', fontSize: 13 }} onClick={() => setSub(k as any)}>{label}</button>
         ))}
       </div>
@@ -316,6 +318,31 @@ export default function LandingBuilder() {
             ))}
           </div>
           <button className="btn btn-primary" style={{ marginTop: 14 }} onClick={() => save({ cta })} disabled={busy}>{busy ? '…' : L('Guardar CTA', 'Save CTA')}</button>
+        </div>
+      )}
+
+      {/* PAGO POR USO (bloque del landing antes de precios) */}
+      {sub === 'payg' && (
+        <div className="card" style={{ padding: 18 }}>
+          <label className="row" style={{ gap: 8, marginBottom: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={payg.on !== false} onChange={(e) => setPayg({ on: e.target.checked })} style={{ width: 'auto', margin: 0 }} />
+            <span style={{ fontWeight: 600 }}>{L('Mostrar el bloque de pago por uso en el landing', 'Show the pay-as-you-go block on the landing')}</span>
+          </label>
+          <div style={{ display: 'grid', gap: 12, maxWidth: 720, marginBottom: 14 }}>
+            {[['t', L('Título', 'Title')], ['s', L('Subtítulo', 'Subtitle')], ['btn', L('Texto del botón', 'Button text')]].map(([k, label]) => (
+              <div key={k} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div><div style={lbl}>{label} · ES</div><input style={inp} value={payg[`${k}_es`] || ''} onChange={(e) => setPayg({ [`${k}_es`]: e.target.value })} /></div>
+                <div><div style={lbl}>{label} · EN</div><input style={inp} value={payg[`${k}_en`] || ''} onChange={(e) => setPayg({ [`${k}_en`]: e.target.value })} /></div>
+              </div>
+            ))}
+          </div>
+          <p className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>{L('Tres tarjetas de beneficio. Vacío = usa el texto por defecto.', 'Three benefit cards. Empty = uses the default text.')}</p>
+          <CardList es={es} showIcon cards={payg.cards || []} onChange={(c) => setPayg({ cards: c })}
+            addLabel={L('Añadir tarjeta', 'Add card')} tLabel={L('Título', 'Title')} dLabel={L('Descripción', 'Description')} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button className="btn btn-ghost" onClick={async () => { if (await confirmDialog(L('¿Volver al texto del código?', 'Reset to code text?'))) setContent({ ...content, payg: (defaults as any).payg }); }}>{L('Restaurar', 'Reset')}</button>
+            <button className="btn btn-primary" onClick={() => save({ payg })} disabled={busy}>{busy ? '…' : L('Guardar pago por uso', 'Save pay as you go')}</button>
+          </div>
         </div>
       )}
 

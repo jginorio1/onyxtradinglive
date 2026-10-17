@@ -31,6 +31,7 @@ export async function PATCH(req: Request) {
   if (b.how !== undefined) next.how = b.how;
   if (b.trust !== undefined) next.trust = b.trust;
   if (b.cta !== undefined) next.cta = b.cta;
+  if (b.payg !== undefined) next.payg = b.payg;
   if (b.pages !== undefined) next.pages = b.pages;
   if (b.nav !== undefined) next.nav = b.nav;
   if (b.footer !== undefined) next.footer = b.footer;

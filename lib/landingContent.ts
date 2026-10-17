@@ -22,6 +22,8 @@ export type LandingContent = {
   how?: { t_es?: string; t_en?: string; steps?: CardRow[] };   // steps sin icono (van numerados)
   trust?: { es?: string[]; en?: string[] };                    // 3 insignias de confianza
   cta?: { t_es?: string; t_en?: string; btn_es?: string; btn_en?: string };
+  // Pago por uso (bloque del landing antes de precios). on=false lo oculta.
+  payg?: { on?: boolean; t_es?: string; t_en?: string; s_es?: string; s_en?: string; btn_es?: string; btn_en?: string; cards?: CardRow[] };
   // FASE 3 · textos por página (embajadores, invita, mentores, academias, analiza).
   // clave de campo → { es, en }. Vacío = usa el texto del código.
   pages?: Record<string, Record<string, { es?: string; en?: string }>>;

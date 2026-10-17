@@ -577,6 +577,27 @@ export default function Home() {
     : t.steps;
   const trustBadges: string[] = lc?.trust?.[lang]?.length ? lc.trust[lang] : t.trust;
 
+  // PAGO POR USO (bloque del landing, editable desde Admin → Landing · lc.payg).
+  // Mensaje único: sin mensualidad, pagas solo por lo que uses, subes cuando convenga.
+  const paygDefaultCards = lang === 'es'
+    ? [
+        { i: '🆓', t: 'Empieza sin tarjeta', d: 'El plan gratis incluye 1 cuenta y análisis de IA cada mes. Sin mensualidad, sin compromiso.' },
+        { i: '💳', t: 'Pagas solo lo que usas', d: 'Si pasas el cupo, se descuenta de tu saldo recargable: unos centavos por análisis. Recargas con tarjeta o USDT.' },
+        { i: '📈', t: 'Subes cuando te convenga', d: 'La app te avisa cuándo un plan te sale más barato que seguir pagando por uso. Tú decides, siempre.' },
+      ]
+    : [
+        { i: '🆓', t: 'Start with no card', d: 'The free plan includes 1 account and AI analyses every month. No monthly fee, no commitment.' },
+        { i: '💳', t: 'Pay only for what you use', d: 'Go over the allowance and it comes out of your top-up balance: a few cents per analysis. Top up by card or USDT.' },
+        { i: '📈', t: 'Upgrade when it pays off', d: 'The app tells you when a plan is cheaper than paying per use. You always decide.' },
+      ];
+  const paygTitle = lc?.payg?.[`t_${lang}`] || (lang === 'es' ? 'Sin mensualidad: paga solo por lo que uses' : 'No monthly fee: pay only for what you use');
+  const paygSub = lc?.payg?.[`s_${lang}`] || (lang === 'es' ? 'Empieza gratis y recarga saldo solo cuando uses funciones de más. Tú controlas tu gasto.' : 'Start free and top up only when you use extra features. You stay in control of your spend.');
+  const paygBtn = lc?.payg?.[`btn_${lang}`] || (lang === 'es' ? 'Empezar gratis' : 'Start free');
+  const paygCards = lc?.payg?.cards?.length
+    ? lc.payg.cards.map((c: any) => ({ i: c.i, t: lang === 'es' ? c.t_es : c.t_en, d: lang === 'es' ? c.d_es : c.d_en }))
+    : paygDefaultCards;
+  const paygOn = lc?.payg?.on !== false;   // el dueño puede ocultarlo
+
   // Celda de la comparativa con iconos de línea: ✅ → check verde en pastilla,
   // ❌ → cruz gris tenue, y "Limitado/Difícil/Manual" → texto ámbar suave.
   const cmpCell = (v: string) =>
@@ -988,6 +1009,31 @@ export default function Home() {
       <div className="wrap"><AdSlot slot="landing_top" lang={lang} /></div>
 
       {/* PRICING */}
+      {/* PAGO POR USO: bloque de valor justo antes de los precios. Sin mensualidad,
+          pagas solo por lo que uses. Editable desde Admin → Landing. */}
+      {paygOn && (
+        <div id="pago-por-uso" className="wrap section">
+          <div style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto 24px' }}>
+            <span style={{ display: 'inline-block', fontSize: 12, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--green)', background: 'rgba(52,226,160,.12)', border: '1px solid rgba(52,226,160,.3)', borderRadius: 99, padding: '5px 14px', marginBottom: 12 }}>{lang === 'es' ? 'Plan gratis · pago por uso' : 'Free plan · pay as you go'}</span>
+            <h2 style={{ margin: '0 0 8px' }}>{paygTitle}</h2>
+            <p className="muted" style={{ margin: 0 }}>{paygSub}</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, maxWidth: 920, margin: '0 auto 22px' }}>
+            {paygCards.map((c: any, i: number) => (
+              <div key={i} className="card" style={{ padding: '18px 18px 16px' }}>
+                <div style={{ fontSize: 26, marginBottom: 8 }}>{c.i}</div>
+                <div style={{ fontWeight: 800, fontSize: 15.5, marginBottom: 4 }}>{c.t}</div>
+                <div className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>{c.d}</div>
+              </div>
+            ))}
+          </div>
+          <div className="row" style={{ justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <a href="/login?mode=signup" className="btn btn-primary">{paygBtn}</a>
+            <a href="#pricing" className="btn btn-ghost">{lang === 'es' ? 'Ver planes' : 'See plans'}</a>
+          </div>
+        </div>
+      )}
+
       <div id="pricing" className="wrap section">
         <h2 style={{ textAlign: 'center' }}>{t.priceT}</h2>
         <p className="muted" style={{ textAlign: 'center', margin: '10px 0 20px' }}>{t.priceS}</p>
