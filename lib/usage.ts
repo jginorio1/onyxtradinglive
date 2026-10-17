@@ -205,3 +205,83 @@ export async function monthlyAccountChargeAll(): Promise<{ charged: number; cent
   }
   return { charged, cents, skipped };
 }
+
+// ---- UPSELL HONESTO POR USO (cron mensual) ----
+// A los usuarios del plan GRATIS que este mes ya gastaron por uso MÁS de lo que
+// costaría el plan de pago más barato, les avisamos (push + campana + email) que
+// les saldría más barato suscribirse. Es un negocio, pero el cliente decide: solo
+// se avisa cuando de verdad le conviene. Idempotente por mes (profiles.tg_sent).
+// El push/campana usan la plantilla 'usage_upsell' (Admin → Notificaciones) y el
+// correo la plantilla 'usage_upsell' (Admin → Correos). CRON_SECRET en la ruta.
+export async function usageUpsellSweep(): Promise<{ notified: number; scanned: number; skipped: number }> {
+  let notified = 0, scanned = 0, skipped = 0;
+  const cfg = await usageConfig();
+  if (!cfg.usage_on) return { notified, scanned, skipped };
+
+  // Plan de pago más barato (lo que se le ofrecerá). Sin planes de pago, no hay upsell.
+  const { data: plans } = await supabaseAdmin.from('plans')
+    .select('id,name,price_month,active').eq('active', true).gt('price_month', 0)
+    .order('price_month', { ascending: true }).limit(1);
+  const cheap = (plans || [])[0] as any;
+  if (!cheap) return { notified, scanned, skipped };
+  const priceMonth = Number(cheap.price_month) || 0;
+  if (priceMonth <= 0) return { notified, scanned, skipped };
+
+  // Gasto por uso del mes, por usuario (solo consumos reales: IA y cuentas extra).
+  const since = monthStartISO();
+  const spentByUser: Record<string, number> = {};
+  try {
+    const { data } = await supabaseAdmin.from('wallet_ledger')
+      .select('user_id,amount_cents,source,created_at')
+      .in('source', ['usage_ai', 'usage_account']).lt('amount_cents', 0).gte('created_at', since).limit(50000);
+    for (const r of (data || []) as any[]) {
+      const u = r.user_id; if (!u) continue;
+      spentByUser[u] = (spentByUser[u] || 0) + Math.abs(Number(r.amount_cents) || 0);
+    }
+  } catch { return { notified, scanned, skipped }; }
+
+  const period = monthKey();
+  const cfgNotif = await (await import('@/lib/notifConfig')).loadNotifConfig();
+  for (const [userId, spentCents] of Object.entries(spentByUser)) {
+    scanned++;
+    // Solo avisa si el gasto del mes ya iguala o supera el precio del plan.
+    if (spentCents < priceMonth * 100) { skipped++; continue; }
+    try {
+      // Solo plan GRATIS (los de pago no pagan por uso) y dedup por mes.
+      const { data: pr } = await supabaseAdmin.from('profiles').select('plan,name,lang,tg_sent').eq('id', userId).maybeSingle();
+      const plan = ((pr as any)?.plan || 'free').toLowerCase();
+      if (plan !== 'free') { skipped++; continue; }
+      const sent = ((pr as any)?.tg_sent as any) || {};
+      const onceKey = `upsell_${period}`;
+      if (sent[onceKey]) { skipped++; continue; }
+
+      const lang: 'es' | 'en' = (pr as any)?.lang === 'en' ? 'en' : 'es';
+      const nombre = (pr as any)?.name || (lang === 'es' ? 'trader' : 'trader');
+      const vars = { plan: cheap.name, price: String(priceMonth), spent: String(Math.round(spentCents / 100)), nombre, enlace: `${(process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://onyxtradinglive.com').replace(/\/+$/, '')}/account` };
+
+      // PUSH + CAMPANA (ignorePlan: el plan gratis no recibe push por defecto; este
+      // aviso debe llegarles igual porque es justamente para ellos).
+      try {
+        const { emitNotif } = await import('@/lib/emitNotif');
+        await emitNotif(userId, 'usage_upsell', { lang, vars, cfg: cfgNotif, ignorePlan: true });
+      } catch {}
+
+      // EMAIL (plantilla editable 'usage_upsell' en Admin → Correos).
+      try {
+        const { data: au } = await supabaseAdmin.auth.admin.getUserById(userId);
+        const email = (au as any)?.user?.email || '';
+        if (email) {
+          const { emailTplLive } = await import('@/lib/emailTemplates');
+          const { sendEmail } = await import('@/lib/mail');
+          const t = await emailTplLive('usage_upsell', lang, vars);
+          if (t.subject) await sendEmail(email, t.subject, t.text, { htmlBody: t.html || undefined });
+        }
+      } catch {}
+
+      // Marca el dedup del mes.
+      try { sent[onceKey] = new Date().toISOString().slice(0, 10); await supabaseAdmin.from('profiles').update({ tg_sent: sent }).eq('id', userId); } catch {}
+      notified++;
+    } catch { skipped++; }
+  }
+  return { notified, scanned, skipped };
+}

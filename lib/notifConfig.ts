@@ -180,6 +180,17 @@ export const NOTIF_CATALOG: NotifDef[] = [
     bell: true, push: true, telegram: false, tgKind: 'manager', url: '/account',
     editableChannels: ['bell', 'push'],
   },
+  {
+    // Upsell honesto por uso: a un usuario del plan GRATIS que ya gastó por uso más
+    // de lo que costaría un plan, le avisamos que le saldría más barato suscribirse.
+    // Lo dispara el cron /api/cron/usage-upsell (mensual). El email equivalente vive
+    // en Admin → Correos (plantilla 'usage_upsell'). {plan} y {price} se rellenan.
+    key: 'usage_upsell', group: 'Cuenta y pagos',
+    es: { title: '💡 Un plan te saldría más barato', body: 'Por tu uso de este mes, el plan {plan} (${price}/mes) te sale más barato que seguir pagando por uso. Tú decides.' },
+    en: { title: '💡 A plan would be cheaper for you', body: 'Based on this month’s usage, the {plan} plan (${price}/mo) is cheaper than paying per use. You decide.' },
+    bell: true, push: true, telegram: false, tgKind: 'manager', url: '/account',
+    editableChannels: ['bell', 'push'],
+  },
 
   // ===== GRUPO 2 · opt-in (apagadas por defecto; el usuario las activa) =====
   {

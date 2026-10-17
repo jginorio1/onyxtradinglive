@@ -40,6 +40,11 @@ const TEMPLATES: Record<string, Entry> = {
     en: { subject: 'Your plan will change to {plan}', body: 'Hi {nombre},\n\nThe change to **{plan}** will apply on **{fecha}**. Until then you keep your current plan and all its features.\n\nYou can cancel this change anytime from My account → Subscription:\n{enlace}' },
   },
 
+  usage_upsell: {
+    es: { subject: 'Un plan te saldría más barato que pagar por uso', body: 'Hola {nombre},\n\nEste mes llevas gastado unos **${spent}** en Onyx pagando por uso. El plan **{plan}** cuesta **${price}/mes** — o sea, te saldría más barato suscribirte y, además, desbloqueas todo lo del plan.\n\nSin presión: tú decides cuándo te conviene. Puedes cambiarte en un clic aquí:\n{enlace}\n\n— El equipo de Onyx Trading Live' },
+    en: { subject: 'A plan would be cheaper than paying per use', body: 'Hi {nombre},\n\nThis month you\'ve spent about **${spent}** on Onyx paying per use. The **{plan}** plan costs **${price}/mo** — so subscribing would actually be cheaper, and you unlock everything in the plan.\n\nNo pressure: you decide when it\'s worth it. You can switch in one click here:\n{enlace}\n\n— The Onyx Trading Live team' },
+  },
+
   // === Crecimiento =====================================================
   referral_bridge: {
     es: { subject: '🚀 Ya puedes hacerte Embajador de Onyx', body: '¡Felicidades {nombre}! Ya has traído **{count}** amigos que se suscribieron.\n\nAhora puedes pasar al programa de Embajador y cobrar una comisión en efectivo recurrente por cada suscriptor, en vez de solo crédito.\n\nActívalo aquí:\n{enlace}' },
@@ -133,6 +138,7 @@ export const TEMPLATE_META: { id: string; cat: string; es: string; en: string; v
   { id: 'payment_failed', cat: 'billing', es: 'Pago fallido', en: 'Payment failed', vars: ['plan', 'nombre', 'enlace'], to: 'usuario' },
   { id: 'comp_reminder', cat: 'billing', es: 'Prueba de pago · vence pronto', en: 'Trial · ending soon', vars: ['plan', 'dias', 'enlace'], to: 'usuario' },
   { id: 'plan_downgrade', cat: 'billing', es: 'Bajada de plan programada', en: 'Scheduled downgrade', vars: ['plan', 'nombre', 'fecha', 'enlace'], to: 'usuario' },
+  { id: 'usage_upsell', cat: 'billing', es: 'Pago por uso · un plan sale más barato', en: 'Pay-as-you-go · a plan is cheaper', vars: ['nombre', 'plan', 'price', 'spent', 'enlace'], to: 'usuario' },
   // Academia
   { id: 'sch_apply_mentor', cat: 'academy', es: 'Beca · nueva solicitud (al mentor)', en: 'Scholarship · new request (to mentor)', vars: ['academia', 'enlace'], to: 'mentor' },
   { id: 'sch_approved', cat: 'academy', es: 'Beca · aprobada (al alumno)', en: 'Scholarship · approved (to student)', vars: ['academia', 'enlace'], to: 'alumno' },

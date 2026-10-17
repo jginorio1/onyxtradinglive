@@ -14,7 +14,7 @@ export function notifCategory(key: string): string {
   if (key === 'copy_stopped') return 'onyx_copy';
   if (['live_class', 'academy_activity', 'academy_announcement', 'academy_dm', 'academy_win', 'academy_class'].includes(key)) return 'onyx_academia';
   if (['referral_reward', 'member_reward', 'became_ambassador', 'ambassador_invite', 'academy_reward_credited', 'academy_reward_paid', 'new_commission', 'bot_sold', 'sales_alert'].includes(key)) return 'onyx_ingresos';
-  if (['payment_failed', 'plan_change'].includes(key)) return 'onyx_cuenta';
+  if (['payment_failed', 'plan_change', 'usage_upsell'].includes(key)) return 'onyx_cuenta';
   if (['support_reply', 'team_mention'].includes(key)) return 'onyx_soporte';
   if (key === 'weekly_summary') return 'onyx_resumen';
   return 'onyx_default';
