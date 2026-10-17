@@ -21,7 +21,26 @@ export async function POST(req: Request) {
   if (product.seller_id && product.seller_id === user.id) return NextResponse.json({ error: 'Es tu propio robot: no puedes comprarlo. Ya lo tienes en Mis creaciones.' }, { status: 400 });
   if (await hasLicense(user.id, product.id)) return NextResponse.json({ error: 'Ya tienes este robot activo.' }, { status: 400 });
 
-  const method = b.method === 'usdt' ? 'usdt' : 'card';
+  const method = b.method === 'usdt' ? 'usdt' : b.method === 'wallet' ? 'wallet' : 'card';
+
+  // PAGAR CON SALDO del monedero. Descuenta y otorga la licencia al instante.
+  // Una suscripción pagada con saldo vale 30 días (como USDT, no es recurrente).
+  if (method === 'wallet') {
+    const cents = Math.max(0, Math.round(Number(product.price_cents) || 0));
+    if (cents <= 0) return NextResponse.json({ error: 'Precio no válido.' }, { status: 400 });
+    const { debit } = await import('@/lib/wallet');
+    const { grantLicense } = await import('@/lib/botlab');
+    const orderId = `wallet_bl_${user.id}_${product.id}_${Date.now()}`;
+    const d = await debit({ userId: user.id, amountCents: cents, source: 'botlab', extRef: orderId, note: `Bot Lab · ${product.name}` });
+    if (!d.ok) {
+      if (d.reason === 'insufficient') return NextResponse.json({ error: 'Saldo insuficiente. Recarga tu monedero.', code: 'insufficient', balanceCents: d.balance || 0 }, { status: 400 });
+      return NextResponse.json({ error: 'No se pudo cobrar del saldo.' }, { status: 400 });
+    }
+    const refIdW = (typeof b.ref === 'string' && b.ref && b.ref !== user.id && b.ref !== product.seller_id) ? b.ref : undefined;
+    const periodEnd = product.kind === 'subscription' ? Math.floor(Date.now() / 1000) + 30 * 24 * 3600 : undefined;
+    await grantLicense({ productId: product.id, buyerId: user.id, sellerId: product.seller_id, kind: product.kind, method: 'wallet', grossCents: cents, currency: product.currency, ref: 'wallet_' + orderId, periodEnd, referrerId: refIdW });
+    return NextResponse.json({ ok: true, paid: cents });
+  }
 
   if (method === 'usdt') {
     if (!product.accepts_crypto) return NextResponse.json({ error: 'Este robot no acepta cripto.' }, { status: 400 });

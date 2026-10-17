@@ -29,6 +29,7 @@ export async function POST(req: Request) {
 
     const session = await stripe.checkout.sessions.create({
       mode: 'setup',
+      currency: 'usd',                       // requerido por Stripe en modo 'setup'
       customer,
       success_url: `${base}/dashboard/wallet?card=ok`,
       cancel_url: `${base}/dashboard/wallet?card=cancel`,

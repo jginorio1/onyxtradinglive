@@ -11,6 +11,34 @@ import { nativePlatform } from '@/lib/native';
 // ============================================================
 const PRESETS = [10, 25, 50, 100];
 
+// Usar el saldo para las facturas (add-ons, plan): pasa saldo a crédito de Stripe.
+// Stripe lo usa primero en la próxima factura y cobra a la tarjeta solo el resto.
+function ApplyCredit({ es, reload }: { es: boolean; reload: () => void }) {
+  const [amt, setAmt] = useState(10);
+  const [busy, setBusy] = useState(false);
+  async function apply() {
+    if (!(amt >= 1)) { toastErr(es ? 'Mínimo $1.' : 'Minimum $1.'); return; }
+    setBusy(true);
+    try {
+      const r = await fetch('/api/wallet/apply-credit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: amt }) });
+      const j = await r.json(); if (!r.ok) throw new Error(j?.error || 'error');
+      toast(es ? '✅ Saldo aplicado como crédito. Se usará en tu próxima factura.' : '✅ Balance applied as credit. It will be used on your next invoice.');
+      reload();
+    } catch (e: any) { toastErr(e?.message); } finally { setBusy(false); }
+  }
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 18, marginBottom: 16 }}>
+      <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>{es ? 'Usar mi saldo en mis facturas' : 'Use my balance on my invoices'}</div>
+      <div className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{es ? 'Pasa parte de tu saldo a crédito. Se usa primero en tu próxima factura (add-ons, plan) y la tarjeta cubre solo el resto.' : 'Move part of your balance to credit. It is used first on your next invoice (add-ons, plan); the card covers only the remainder.'}</div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <span className="muted">$</span>
+        <input type="number" min={1} value={amt} onChange={(e) => setAmt(Math.max(0, Number(e.target.value) || 0))} style={{ width: 110, margin: 0 }} />
+        <button className="btn btn-primary" onClick={apply} disabled={busy}>{es ? 'Aplicar como crédito' : 'Apply as credit'}</button>
+      </div>
+    </div>
+  );
+}
+
 // Auto-recarga: tarjeta guardada + "recarga sola cuando el saldo baje de X".
 function AutoReload({ es }: { es: boolean }) {
   const [cfg, setCfg] = useState<any>(null);
@@ -156,6 +184,7 @@ export default function WalletPage() {
       )}
 
       <AutoReload es={es} />
+      <ApplyCredit es={es} reload={load} />
       </>)}
 
       {/* Movimientos */}

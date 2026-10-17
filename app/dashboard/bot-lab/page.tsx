@@ -81,16 +81,20 @@ export default function BotLabDashboard() {
     return () => clearTimeout(t);
   }, [focusId, products]);
 
-  async function buy(p: any, method: 'card' | 'usdt', network?: string) {
+  async function buy(p: any, method: 'card' | 'usdt' | 'wallet', network?: string) {
     try {
       // Referido del vendedor: si venimos de un enlace de promoción, lo acreditamos.
       let ref: string | undefined; try { ref = localStorage.getItem('onyx_bl_ref') || undefined; } catch {}
       const r = await fetch('/api/botlab/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: p.id, method, network, ref }) });
       const j = await r.json();
-      if (!r.ok) throw new Error(j.error || 'error');
+      if (!r.ok) {
+        if (j.code === 'insufficient') { toastErr(es ? 'Saldo insuficiente. Recarga tu monedero.' : 'Not enough balance. Top up your wallet.'); return; }
+        throw new Error(j.error || 'error');
+      }
       if (j.chooseNetwork) { setNetPick({ product: p, networks: j.chooseNetwork }); return; } // el cliente elige red
       if (j.url) { payRedirect(j.url); return; } // en la app nativa abre el pago en el navegador (Play Billing)
-      if (j.crypto) { setNetPick(null); setCrypto({ ...j.crypto, product: p }); }
+      if (j.crypto) { setNetPick(null); setCrypto({ ...j.crypto, product: p }); return; }
+      if (j.ok) { toast(es ? '✅ Comprado con tu saldo. Ya está en Mis licencias.' : '✅ Bought with your balance. It is in My licenses.'); await loadLicenses(); await loadMarket(); } // pago con saldo
     } catch (e: any) { toastErr(e?.message || 'error'); }
   }
 
@@ -233,6 +237,7 @@ export default function BotLabDashboard() {
                           <span className="muted" style={{ fontSize: 10 }}>{es ? 'sin contracargos' : 'no chargebacks'}</span>
                         </div>
                         {pay.card && <button onClick={() => buy(p, 'card')} className="muted ios-pay-hide" style={{ width: '100%', marginTop: 6, padding: '6px', borderRadius: 8, cursor: 'pointer', fontWeight: 700, fontSize: 11.5, border: 'none', background: 'transparent' }}>{es ? 'o pagar con tarjeta' : 'or pay by card'}</button>}
+                        <button onClick={() => buy(p, 'wallet')} className="ios-pay-hide" style={{ width: '100%', marginTop: 4, padding: '6px', borderRadius: 8, cursor: 'pointer', fontWeight: 800, fontSize: 11.5, border: '1px solid color-mix(in srgb,var(--green) 35%,transparent)', background: 'color-mix(in srgb,var(--green) 12%,transparent)', color: 'var(--green)' }}>💰 {es ? 'Pagar con mi saldo' : 'Pay with my balance'}</button>
                       </>
                     )}
                     {/* Referido: si el vendedor ofrece %, cualquiera puede compartir su enlace y ganar (menos el propio creador). */}
