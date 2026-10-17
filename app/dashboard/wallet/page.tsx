@@ -11,6 +11,48 @@ import { nativePlatform } from '@/lib/native';
 // ============================================================
 const PRESETS = [10, 25, 50, 100];
 
+// Auto-recarga: tarjeta guardada + "recarga sola cuando el saldo baje de X".
+function AutoReload({ es }: { es: boolean }) {
+  const [cfg, setCfg] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  async function load() { try { const r = await fetch('/api/wallet/autoreload', { cache: 'no-store' }); const j = await r.json(); if (r.ok) setCfg(j); } catch {} }
+  useEffect(() => { load(); const onF = () => load(); window.addEventListener('focus', onF); return () => window.removeEventListener('focus', onF); }, []);
+  async function save(patch: any) {
+    setBusy(true);
+    try { const r = await fetch('/api/wallet/autoreload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) }); const j = await r.json(); if (!r.ok) throw new Error(j?.error || 'error'); setCfg(j); }
+    catch (e: any) { toastErr(e?.message); await load(); } finally { setBusy(false); }
+  }
+  async function addCard() {
+    setBusy(true);
+    try { const r = await fetch('/api/wallet/autoreload/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); const j = await r.json(); if (!r.ok) throw new Error(j?.error || 'error'); if (j.url) window.location.href = j.url; }
+    catch (e: any) { toastErr(e?.message); setBusy(false); }
+  }
+  if (!cfg) return null;
+  return (
+    <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 18, marginBottom: 16 }}>
+      <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 4 }}>{es ? 'Auto-recarga' : 'Auto-reload'}</div>
+      <div className="muted" style={{ fontSize: 12.5, marginBottom: 12 }}>{es ? 'Recarga sola cuando tu saldo baje de un mínimo. Usa una tarjeta guardada.' : 'Tops up automatically when your balance drops below a minimum. Uses a saved card.'}</div>
+      {!cfg.has_card ? (
+        <button className="btn btn-primary" onClick={addCard} disabled={busy}>{es ? '＋ Guardar una tarjeta' : '＋ Save a card'}</button>
+      ) : (<>
+        <label className="row" style={{ gap: 8, marginBottom: 12, cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!cfg.enabled} onChange={(e) => save({ enabled: e.target.checked })} disabled={busy} style={{ width: 'auto', margin: 0 }} />
+          <span style={{ fontWeight: 600 }}>{es ? 'Auto-recarga activada' : 'Auto-reload on'}</span>
+        </label>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div><div className="muted" style={{ fontSize: 12 }}>{es ? 'Cuando baje de' : 'When below'}</div>
+            <div className="row" style={{ gap: 4 }}><span>$</span><input type="number" min={0} defaultValue={Math.round(cfg.threshold_cents / 100)} onBlur={(e) => save({ threshold_cents: Math.max(0, Number(e.target.value) || 0) * 100 })} style={{ width: 90, margin: 0 }} disabled={busy} /></div>
+          </div>
+          <div><div className="muted" style={{ fontSize: 12 }}>{es ? 'Recargar' : 'Reload'}</div>
+            <div className="row" style={{ gap: 4 }}><span>$</span><input type="number" min={5} defaultValue={Math.round(cfg.amount_cents / 100)} onBlur={(e) => save({ amount_cents: Math.max(5, Number(e.target.value) || 5) * 100 })} style={{ width: 90, margin: 0 }} disabled={busy} /></div>
+          </div>
+        </div>
+        <div className="muted" style={{ fontSize: 11.5, marginTop: 10 }}>{es ? `Tarjeta guardada ✓ · máx. ${cfg.max_per_day} recargas automáticas por día.` : `Card saved ✓ · max ${cfg.max_per_day} auto-reloads per day.`} <button onClick={addCard} style={{ background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', padding: 0, fontSize: 11.5 }}>{es ? 'Cambiar tarjeta' : 'Change card'}</button></div>
+      </>)}
+    </div>
+  );
+}
+
 export default function WalletPage() {
   const { lang } = useLang();
   const es = lang !== 'en';
@@ -113,6 +155,7 @@ export default function WalletPage() {
         </div>
       )}
 
+      <AutoReload es={es} />
       </>)}
 
       {/* Movimientos */}

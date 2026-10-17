@@ -177,6 +177,19 @@ export async function POST(req: Request) {
         } catch (e) { console.error('remote_support fulfill', e); }
         return NextResponse.json({ received: true });
       }
+      // GUARDAR TARJETA para la auto-recarga (checkout mode 'setup', no cobra).
+      if (s.metadata?.kind === 'wallet_setup' && s.metadata?.userId && s.mode === 'setup') {
+        try {
+          const si: any = s.setup_intent ? await stripe.setupIntents.retrieve(typeof s.setup_intent === 'string' ? s.setup_intent : s.setup_intent.id) : null;
+          const pm = si?.payment_method ? (typeof si.payment_method === 'string' ? si.payment_method : si.payment_method.id) : null;
+          const cust = s.metadata.customer || (typeof s.customer === 'string' ? s.customer : s.customer?.id) || null;
+          if (pm && cust) {
+            const { setAutoReloadCard } = await import('@/lib/wallet');
+            await setAutoReloadCard(s.metadata.userId, cust, pm);
+          }
+        } catch (e) { console.error('wallet_setup card', e); }
+        return NextResponse.json({ received: true });
+      }
       // RECARGA DE MONEDERO pagada con tarjeta: acredita el saldo (idempotente por
       // el id de la sesión de Stripe, así un reintento del webhook no duplica).
       if (s.metadata?.kind === 'wallet_topup' && s.metadata?.userId) {

@@ -298,6 +298,17 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
       if (j.code === 'need_email') { openEmail(); }
     } catch {} finally { setRemoteBusy(false); }
   }
+  // Pagar la sesión remota CON EL SALDO del monedero (sin tarjeta). Solo con sesión.
+  async function payRemoteWallet() {
+    if (remoteBusy) return; setRemoteBusy(true);
+    try {
+      const r = await fetch('/api/wallet/pay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ purpose: 'remote_support', lang }) });
+      const j = await r.json();
+      if (r.ok && j.ok) { setChat((c) => [...c, { role: 'system', text: es ? '✅ Sesión de soporte remoto pagada con tu saldo. Te contactamos para la hora.' : '✅ Remote support session paid with your balance. We will contact you to schedule.' } as any]); return; }
+      if (j.code === 'insufficient') { setChat((c) => [...c, { role: 'system', text: es ? 'Saldo insuficiente. Recarga en tu monedero y vuelve a intentar.' : 'Not enough balance. Top up your wallet and try again.' } as any]); return; }
+      setChat((c) => [...c, { role: 'system', text: j?.error || 'Error' } as any]);
+    } catch {} finally { setRemoteBusy(false); }
+  }
   // Al abrir con sesión: trae rol + nombre para personalizar saludo y temas rápidos.
   useEffect(() => {
     if (!open || !loggedIn) return;
@@ -901,6 +912,11 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
                   {loggedIn && remoteCfg?.on && !isIOS && (
                     <button className="btn btn-primary" style={{ padding: '8px 10px', fontSize: 12, gridColumn: '1 / -1' }} onClick={bookRemote} disabled={remoteBusy}>
                       {remoteBusy ? '…' : `🖥️ ${es ? 'Soporte remoto' : 'Remote support'} · $${remoteCfg.price}`}
+                    </button>
+                  )}
+                  {loggedIn && remoteCfg?.on && !isIOS && (
+                    <button className="btn btn-ghost" style={{ padding: '8px 10px', fontSize: 12, gridColumn: '1 / -1' }} onClick={payRemoteWallet} disabled={remoteBusy}>
+                      {es ? '💰 Pagar con mi saldo' : '💰 Pay with my balance'}
                     </button>
                   )}
                 </div>
