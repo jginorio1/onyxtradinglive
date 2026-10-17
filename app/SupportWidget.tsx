@@ -133,6 +133,11 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const CHAT_TTL = 7 * 864e5;
   useEffect(() => {
     try {
+      // Solo restauramos el historial si NO hay que mostrar la puerta de datos:
+      // un visitante sin sesión ni token debe ver solo "Antes de empezar", sin que
+      // se le encime una conversación vieja (se veía inconsistente).
+      const hasToken = !!localStorage.getItem('onyx_support_token');
+      if (!loggedIn && !hasToken) { localStorage.removeItem('onyx_chat_log'); return; }
       const s = JSON.parse(localStorage.getItem('onyx_chat_log') || 'null');
       if (s && Array.isArray(s.msgs) && s.t && (Date.now() - s.t) < CHAT_TTL) setChat(s.msgs.slice(-30));
       else localStorage.removeItem('onyx_chat_log');
