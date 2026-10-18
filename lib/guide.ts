@@ -2110,7 +2110,7 @@ export const ARTICLES: Article[] = [
   // ---------- MONEDERO / PAGO POR USO (cifras en vivo vía /api/guide) ----------
   {
     slug: 'monedero-pago-por-uso',
-    cat: 'account', icon: '👛', updated: true,
+    cat: 'account', icon: '🪙', updated: true,
     title: { es: 'Monedero y pago por uso: cuánto cuesta y cómo funciona', en: 'Wallet & pay-as-you-go: what it costs and how it works' },
     summary: {
       es: 'Usa Onyx sin mensualidad: paga solo por lo que consumes con tu saldo recargable. Aquí tienes las tarifas de hoy (IA, cuentas extra y comisiones de recarga) explicadas paso a paso.',
