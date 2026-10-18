@@ -61,6 +61,19 @@ export default function PlanCards({
         const name = lang === 'es' ? p.name : (p.name_en || p.name);
         const desc = lang === 'es' ? p.desc_es : (p.desc_en || p.desc_es);
         const feats = (lang === 'es' ? p.features : (p.features_en?.length ? p.features_en : p.features)) || [];
+        // Cupo de Onyx AI al mes, EN VIVO desde capabilities.ai_monthly (editable en
+        // Admin → Planes). 0 = ilimitado. Si el plan aún no lo definió, usamos el mismo
+        // respaldo que el backend (free 20, Black ilimitado, resto 150). Lo mostramos
+        // como una línea más de la tarjeta para que cada plan diga cuántos análisis trae.
+        const aiRaw = p.capabilities?.ai_monthly;
+        const aiM = (aiRaw !== undefined && aiRaw !== null && Number.isFinite(Number(aiRaw)))
+          ? Number(aiRaw)
+          : (p.id === 'free' ? 20 : (['black', 'black_onyx', 'blackonyx'].includes(String(p.id).toLowerCase()) ? 0 : 150));
+        const aiLine = aiM === 0
+          ? (lang === 'es' ? 'Análisis de Onyx AI ilimitados' : 'Unlimited Onyx AI analyses')
+          : (lang === 'es' ? `${aiM} análisis de Onyx AI al mes` : `${aiM} Onyx AI analyses per month`);
+        // Si el dueño YA escribió una línea de IA en las features, no la duplicamos.
+        const hasAiFeat = feats.some((f) => /onyx\s*ai|an[aá]lisis\s+de\s+.*ai|ai\s+anal/i.test(String(f)));
         const badgeRaw = lang === 'es' ? p.badge : (p.badge_en || p.badge);
         const hasBadge = !!badgeRaw;
         // Un solo héroe dorado: "Más popular" → dorado (recomendado); cualquier OTRO
@@ -124,6 +137,11 @@ export default function PlanCards({
             {anchors?.[p.id] && <div className="muted" style={{ fontSize: 12, marginBottom: 2, lineHeight: 1.4, color: blkMut }}>{lang === 'es' ? anchors[p.id].es : anchors[p.id].en}</div>}
             <ul style={{ listStyle: 'none', margin: '16px 0', flexGrow: 1 }}>
               {i > 0 && <li style={{ padding: '7px 0', color: blkMut || 'var(--mut)', fontWeight: 700, fontSize: 13 }}>{t.allOf} {prevName}, {t.andMore}</li>}
+              {!hasAiFeat && (
+                <li style={{ padding: '7px 0', color: blkTx || 'var(--tx)', display: 'flex', alignItems: 'flex-start', gap: 9, fontWeight: 700 }}>
+                  <span style={{ flex: 'none', marginTop: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: 6, background: checkBg, color: checkFg }}><OnyxIcon name="check" size={13} glow={false} /></span>{aiLine}
+                </li>
+              )}
               {feats.map((it, j) => (
                 <li key={j} style={{ padding: '7px 0', color: blkTx || 'var(--tx)', display: 'flex', alignItems: 'flex-start', gap: 9 }}>
                   <span style={{ flex: 'none', marginTop: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 20, height: 20, borderRadius: 6, background: checkBg, color: checkFg }}><OnyxIcon name="check" size={13} glow={false} /></span>{it}

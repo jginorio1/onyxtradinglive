@@ -84,6 +84,16 @@ export default function PlansCompareTable({
     const p = byId(id); if (!p || p.max_accounts == null) return '—';
     return p.max_accounts >= 999 ? (lang === 'es' ? 'Ilimitadas' : 'Unlimited') : String(p.max_accounts);
   };
+  // Cupo de Onyx AI al mes por plan, EN VIVO desde capabilities.ai_monthly (Admin →
+  // Planes). 0 = ilimitado. Si el plan no lo definió, usamos el mismo respaldo que el
+  // backend (free 20, Black ilimitado, resto 150), para que nunca salga vacío.
+  const aiCredits = (id: string) => {
+    const raw = (byId(id) as any)?.capabilities?.ai_monthly;
+    const n = (raw !== undefined && raw !== null && Number.isFinite(Number(raw)))
+      ? Number(raw)
+      : (id === 'free' ? 20 : (['black', 'black_onyx', 'blackonyx'].includes(String(id).toLowerCase()) ? 0 : 150));
+    return n === 0 ? (lang === 'es' ? 'Ilimitados' : 'Unlimited') : String(n);
+  };
   const chk = (v: boolean | string) => typeof v === 'string'
     ? <span style={{ fontSize: 13 }}>{v}</span>
     : v
@@ -137,6 +147,11 @@ export default function PlansCompareTable({
             <tr>
               <td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? 'Cuentas conectadas' : 'Connected accounts'}</td>
               {cols.map((id) => <td key={id} style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700, ...colBg(id) }}>{acc(id)}</td>)}
+            </tr>
+
+            <tr>
+              <td style={{ padding: '12px 16px', color: 'var(--mut)' }}>{lang === 'es' ? 'Análisis de Onyx AI al mes' : 'Onyx AI analyses per month'}</td>
+              {cols.map((id) => <td key={id} style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700, ...colBg(id) }}>{aiCredits(id)}</td>)}
             </tr>
 
             {/* Prueba gratis por plan (días configurables en Admin → Planes). Solo se
