@@ -11,11 +11,23 @@ import ChatThread, { type ChatMsg, type Att, type MentionItem } from '@/app/comp
 import Icon from '@/app/components/Icons';
 import { useChatRealtime, type Presence } from '@/lib/chatRealtime';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import Calendar from '@/app/components/Calendar';
 
 type Channel = { id: string; name: string; kind: string; topic?: string; unread: number; last: any; members: string[] };
-type Member = { id: string; name: string; email: string; role: string; available: boolean; last_active: string };
+type Member = { id: string; name: string; email: string; role: string; available: boolean; last_active: string; job_title?: string; country?: string; languages?: string };
+
+// Línea de ficha de un compañero: puesto · país · idiomas (lo que tenga relleno).
+function metaOf(t: Member, roleTxt: string): string {
+  const bits = [t.job_title || roleTxt];
+  if (t.country) bits.push('📍 ' + t.country);
+  if (t.languages) bits.push('🗣 ' + t.languages);
+  return bits.filter(Boolean).join(' · ');
+}
 
 const initials = (n?: string) => (n || '?').trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join('').toUpperCase();
+// Para las vistas previas (lista y búsqueda): convierte el token de tarjeta de
+// ticket [[tk:id|asunto|...]] en un texto legible "🎫 asunto".
+const tkClean = (s?: string) => String(s || '').replace(/\[\[tk:[^|\]]+\|([^|]*)\|[^\]]*\]\]/g, '🎫 $1').replace(/\s+/g, ' ').trim();
 
 // Avatares de color por nombre (consistentes) — para la lista tipo WhatsApp.
 const AV = [
@@ -112,6 +124,8 @@ function TeamChatInner() {
   const [showSearch, setShowSearch] = useState(false); // buscar DENTRO de los mensajes
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showProfile, setShowProfile] = useState(false); // editar mi ficha de equipo
+  const [pf, setPf] = useState({ job_title: '', country: '', languages: '' });
   useEffect(() => {
     if (!showSearch) return;
     const t = searchQ.trim();
@@ -180,7 +194,7 @@ function TeamChatInner() {
     const isGroup = c.kind === 'group';
     const otherId = isDm ? (c.members.find((id) => id !== me) || '') : '';
     const display = isDm ? (teamById[otherId]?.name || c.name) : c.name;
-    return { ...c, isDm, isGroup, otherId, display };
+    return { ...c, isDm, isGroup, otherId, display, last: c.last ? { ...c.last, body: tkClean(c.last.body) } : null };
   }).filter((c) => c.display.toLowerCase().includes(filter.trim().toLowerCase()));
   const isGroupCh = activeCh?.kind === 'group';
   const dmOther = activeCh?.kind === 'dm' ? (activeCh.members.find((id) => id !== me) || '') : '';
@@ -240,6 +254,12 @@ function TeamChatInner() {
   }
   function openDock(id: string) { setDocks((d) => (d.includes(id) ? d : [...d, id].slice(-3))); }
   function closeDock(id: string) { setDocks((d) => d.filter((x) => x !== id)); }
+  // Abrir/guardar MI ficha de equipo (puesto · país · idiomas).
+  function openProfile() { const m = teamById[me]; setPf({ job_title: m?.job_title || '', country: m?.country || '', languages: m?.languages || '' }); setShowProfile(true); }
+  async function saveProfile() {
+    await fetch('/api/team/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(pf) }).catch(() => {});
+    setShowProfile(false); await loadChannels();
+  }
 
   return (
     <div ref={wrapRef} style={{ width: '100%' }}>
@@ -253,6 +273,7 @@ function TeamChatInner() {
                 <div style={{ fontSize: 15, fontWeight: 700 }}>{L('Equipo', 'Team')}</div>
                 <div className="muted" style={{ fontSize: 11 }}><span style={{ color: 'var(--soft-green)' }}>●</span> {online.length} {L('en línea', 'online')}</div>
               </div>
+              <button title={L('Mi ficha de equipo', 'My team profile')} onClick={openProfile} style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card)', color: 'var(--mut)', border: '1px solid var(--line)', cursor: 'pointer' }}><Icon name="user" size={16} /></button>
               <button title={L('Buscar en los mensajes', 'Search in messages')} onClick={() => { setShowSearch((s) => !s); setSearchQ(''); setSearchResults([]); }} style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: showSearch ? 'var(--tx)' : 'var(--card)', color: showSearch ? 'var(--card)' : 'var(--mut)', border: '1px solid var(--line)', cursor: 'pointer' }}><Icon name="search" size={16} /></button>
             </div>
             {/* Buscar DENTRO de los mensajes de todas las conversaciones visibles. */}
@@ -276,7 +297,7 @@ function TeamChatInner() {
                           <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--mut)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
                           <span style={{ fontSize: 10.5, color: 'var(--mut)', flex: 'none' }}>{shortWhen(r.created_at, en)}</span>
                         </span>
-                        <span style={{ fontSize: 12.5, display: 'block', lineHeight: 1.4 }}>{r.sender_name ? <b style={{ fontWeight: 600 }}>{r.sender_name}: </b> : ''}{r.body}</span>
+                        <span style={{ fontSize: 12.5, display: 'block', lineHeight: 1.4 }}>{r.sender_name ? <b style={{ fontWeight: 600 }}>{r.sender_name}: </b> : ''}{tkClean(r.body)}</span>
                       </button>
                     );
                   })}
@@ -332,7 +353,7 @@ function TeamChatInner() {
                         <span style={{ position: 'relative', width: 30, height: 30, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{initials(t.name)}
                           <span style={{ position: 'absolute', right: -1, bottom: -1, width: 8, height: 8, borderRadius: '50%', background: onlineIds.has(t.id) ? 'var(--soft-green)' : 'var(--mut)', border: '1.5px solid var(--card)' }} />
                         </span>
-                        <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 13, display: 'block' }}>{t.name}</span><span className="muted" style={{ fontSize: 10.5 }}>{roleLabel(t.role, en)}</span></span>
+                        <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 13, display: 'block' }}>{t.name}</span><span className="muted" style={{ fontSize: 10.5, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{metaOf(t, roleLabel(t.role, en))}</span></span>
                       </button>
                     ); })}
                   </div>
@@ -380,7 +401,7 @@ function TeamChatInner() {
                       {(isGroupCh || activeCh.kind === 'dm' ? canAdd : team.filter((t) => t.id !== me)).map((t) => { const av = avatarOf(t.name); return (
                         <button key={t.id} onClick={() => addMember(t.id)} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--line)', padding: '8px 11px', cursor: 'pointer', color: 'var(--tx)' }}>
                           <span style={{ width: 26, height: 26, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flex: 'none' }}>{initials(t.name)}</span>
-                          <span style={{ fontSize: 12.5, flex: 1 }}>{t.name}<span className="muted" style={{ fontSize: 11 }}> · {roleLabel(t.role, en)}</span></span>
+                          <span style={{ fontSize: 12.5, flex: 1, minWidth: 0 }}>{t.name}<span className="muted" style={{ fontSize: 10.5, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{metaOf(t, roleLabel(t.role, en))}</span></span>
                           <Icon name="plus" size={14} style={{ color: 'var(--mut)' }} />
                         </button>
                       ); })}
@@ -394,13 +415,12 @@ function TeamChatInner() {
                 <button title={L('Abrir en ventana', 'Open in window')} onClick={() => openDock(active)} style={iconBtn}><Icon name="window" size={18} /></button>
               </div>
               {showDate && (
-                <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--line)', display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ margin: 0, fontSize: 12, padding: '5px 8px' }} />
-                  {date && <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setDate('')}>{L('Todo', 'All')}</button>}
+                <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'center' }}>
+                  <Calendar value={date} en={en} max={new Date().toISOString().slice(0, 10)} onChange={(d) => { setDate(d); if (d) setShowDate(false); }} />
                 </div>
               )}
               <div style={{ padding: '10px 14px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg)' }}>
-                <ChatThread variant="mono" enableActions onReact={onReactMain} onPin={onPinMain} messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={Math.max(240, gridH - 150)} typingLabel={typingLabel}
+                <ChatThread variant="mono" fill enableActions onReact={onReactMain} onPin={onPinMain} messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={Math.max(240, gridH - 150)} typingLabel={typingLabel}
                   placeholder={L('Escribe… @ para etiquetar, @Onyx para la IA', 'Type… @ to tag, @Onyx for AI')}
                   emptyText={date ? L('Sin mensajes ese día.', 'No messages that day.') : L('Sé el primero en escribir 👋', 'Be the first to write 👋')} />
               </div>
@@ -408,6 +428,28 @@ function TeamChatInner() {
           </div>
         </div>
       </div>
+
+      {/* Modal: editar MI ficha de equipo (puesto · país · idiomas) */}
+      {showProfile && (
+        <div onClick={() => setShowProfile(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 20, width: 360, maxWidth: '100%', boxShadow: '0 20px 50px rgba(0,0,0,.4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <span style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="user" size={17} /></span>
+              <b style={{ fontSize: 15 }}>{L('Mi ficha de equipo', 'My team profile')}</b>
+            </div>
+            <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 4 }}>{L('Puesto', 'Job title')}</label>
+            <input value={pf.job_title} onChange={(e) => setPf({ ...pf, job_title: e.target.value })} placeholder={L('p. ej. Soporte N2', 'e.g. Support L2')} style={{ margin: '0 0 12px', fontSize: 13 }} />
+            <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 4 }}>{L('País', 'Country')}</label>
+            <input value={pf.country} onChange={(e) => setPf({ ...pf, country: e.target.value })} placeholder={L('p. ej. México', 'e.g. Mexico')} style={{ margin: '0 0 12px', fontSize: 13 }} />
+            <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 4 }}>{L('Idiomas que hablas', 'Languages you speak')}</label>
+            <input value={pf.languages} onChange={(e) => setPf({ ...pf, languages: e.target.value })} placeholder={L('p. ej. Español, Inglés', 'e.g. Spanish, English')} style={{ margin: '0 0 16px', fontSize: 13 }} />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setShowProfile(false)}>{L('Cancelar', 'Cancel')}</button>
+              <button className="btn btn-ghost" style={{ background: 'var(--tx)', color: 'var(--card)', border: 'none' }} onClick={saveProfile}>{L('Guardar', 'Save')}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Ventanas acopladas: varios chats abiertos a la vez */}
       <div className="teamchat-docks" style={{ position: 'fixed', right: 16, bottom: 12, display: 'flex', gap: 12, alignItems: 'flex-end', zIndex: 1500 }}>
@@ -452,8 +494,8 @@ function ConvCard({ c, active, online, en, onClick }: { c: any; active: boolean;
           <span style={{ fontSize: 13.5, fontWeight: c.unread ? 700 : 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.display}</span>
           <span style={{ fontSize: 11, color: c.unread ? 'var(--tx)' : 'var(--mut)', fontWeight: c.unread ? 700 : 400, flex: 'none' }}>{shortWhen(c.last?.created_at, en)}</span>
         </span>
-        <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'center', marginTop: 1 }}>
-          <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.last ? (c.last.body || (en ? '📎 attachment' : '📎 adjunto')) : (en ? 'No messages' : 'Sin mensajes')}</span>
+        <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'center', marginTop: 1, minWidth: 0 }}>
+          <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>{c.last ? (c.last.body || (en ? '📎 attachment' : '📎 adjunto')) : (en ? 'No messages' : 'Sin mensajes')}</span>
           {c.unread > 0 && <span style={{ background: 'var(--tx)', color: 'var(--card)', fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', flex: 'none' }}>{c.unread}</span>}
         </span>
       </span>
@@ -552,7 +594,7 @@ function DockWindow({ channelId, title, me, lang, onClose, onActivity, index }: 
       </div>
       {!min && (
         <div style={{ flex: 1, minHeight: 0, padding: '8px 10px', display: 'flex', flexDirection: 'column' }}>
-          <ChatThread variant="mono" enableActions onReact={onReactDock} onPin={onPinDock} messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={mobile ? 300 : innerH} typingLabel={typingLabel}
+          <ChatThread variant="mono" fill enableActions onReact={onReactDock} onPin={onPinDock} messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={mobile ? 300 : innerH} typingLabel={typingLabel}
             placeholder={lang === 'en' ? 'Type…' : 'Escribe…'} />
         </div>
       )}

@@ -76,7 +76,7 @@ const THEMES = {
 export default function ChatThread({
   messages, lang, onSend, onTyping, canReply = true, placeholder, typingLabel,
   mentionSource, showAuthors = false, height = 380, emptyText, variant = 'default',
-  enableActions = false, onReact, onPin,
+  enableActions = false, onReact, onPin, fill = false,
 }: {
   messages: ChatMsg[];
   lang: 'es' | 'en';
@@ -197,7 +197,7 @@ export default function ChatThread({
 
   let lastDay = '';
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, ...(fill ? { flex: 1, height: '100%' } : {}) }}>
       {/* En móvil los campos deben ser ≥16px o iOS hace zoom al enfocarlos. */}
       <style>{`.ct-input::placeholder{color:#9aa0ac;opacity:1}@media(max-width:600px){.ct-input{font-size:16px !important}}.ct-msg .ct-acts{opacity:0;transition:opacity .12s}.ct-msg:hover .ct-acts{opacity:1}@media(max-width:760px){.ct-msg .ct-acts{opacity:.55}}`}</style>
       {/* Mensajes fijados del canal (equipo): barra fina, se puede saltar a ellos. */}
@@ -217,7 +217,7 @@ export default function ChatThread({
       )}
       {/* Alto MÁXIMO con scroll: si no, en un contenedor flex el hilo crecería sin
           fin con conversaciones largas (usar height+flex se anulan entre sí). */}
-      <div ref={scrollBox} onScroll={onBoxScroll} style={{ overflowY: 'auto', overscrollBehavior: 'contain', maxHeight: height, minHeight: 60, padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div ref={scrollBox} onScroll={onBoxScroll} style={{ overflowY: 'auto', overscrollBehavior: 'contain', ...(fill ? { flex: 1 } : { maxHeight: height }), minHeight: 60, padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {!messages.length && <div className="muted" style={{ fontSize: 13, textAlign: 'center', margin: 'auto' }}>{emptyText || L('Aún no hay mensajes.', 'No messages yet.')}</div>}
         {messages.map((m) => {
           const dl = dayLabel(m.createdAt, lang);
@@ -270,7 +270,7 @@ export default function ChatThread({
                       </span>
                     </div>
                   )}
-                  {renderBody(m.body, th.mention)}
+                  {/\[\[tk:/.test(m.body) ? renderRich(m.body, th.mention) : renderBody(m.body, th.mention)}
                   {/* Soporte bilingüe: línea punteada con la versión traducida, para
                       que el empleado lea el original y su traducción a la vez. */}
                   {!!m.trBody && m.trBody !== m.body && (
@@ -424,6 +424,43 @@ function renderBody(body: string, mentionColor = 'var(--soft-brand, #7c8cff)') {
   const underline = mentionColor === 'var(--tx)';
   const parts = body.split(/(@[\p{L}0-9_.\- ]{1,40})/u);
   return <span>{parts.map((p, i) => (p.startsWith('@') ? <span key={i} style={{ color: mentionColor, fontWeight: 600, textDecoration: underline ? 'underline' : 'none' }}>{p}</span> : <span key={i}>{p}</span>))}</span>;
+}
+
+// Render ENRIQUECIDO: convierte líneas [[tk:id|asunto|prio|días|urgente]] (las que
+// emite Onyx AI / el resumen del turno) en TARJETAS de ticket clicables. El resto
+// del texto se muestra normal con @menciones. Solo se usa cuando hay tokens.
+const TK_RE = /^\s*\[\[tk:([^|\]]+)\|([^|]*)\|([^|]*)\|([^|]*)\|([^|\]]*)(?:\|([^|\]]*))?\]\]\s*$/;
+function renderRich(body: string, mentionColor: string) {
+  const lines = String(body || '').split('\n');
+  return (
+    <span>
+      {lines.map((ln, i) => {
+        const m = ln.match(TK_RE);
+        if (m) return <TicketRefCard key={i} id={m[1]} subject={m[2]} prio={m[3]} days={parseInt(m[4], 10) || 0} urgent={m[5] === '1'} no={m[6] || ''} />;
+        if (!ln.trim()) return <div key={i} style={{ height: 4 }} />;
+        return <div key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderBody(ln, mentionColor)}</div>;
+      })}
+    </span>
+  );
+}
+
+// Tarjeta de ticket dentro de un mensaje: #id corto + asunto + prioridad/urgente +
+// días abierto + "Abrir" directo al ticket en Soporte.
+function TicketRefCard({ id, subject, prio, days, urgent, no }: { id: string; subject: string; prio: string; days: number; urgent: boolean; no?: string }) {
+  // Número correlativo (#1042) si el ticket lo tiene; si no, un id corto del UUID.
+  const short = no ? '#' + no : '#' + String(id).replace(/-/g, '').slice(0, 5);
+  const prioLabel = prio === 'high' ? 'Alta' : prio === 'low' ? 'Baja' : 'Media';
+  const prioColor = urgent ? { bg: 'var(--soft-red,#ff6b7d)', tx: '#fff' } : prio === 'high' ? { bg: 'rgba(255,107,125,.15)', tx: 'var(--soft-red,#ff6b7d)' } : prio === 'low' ? { bg: 'var(--bg2)', tx: 'var(--mut)' } : { bg: 'rgba(255,192,77,.15)', tx: 'var(--amber,#ffc04d)' };
+  const dayColor = urgent || days >= 3 ? 'var(--soft-red,#ff6b7d)' : 'var(--mut)';
+  return (
+    <a href={`/admin?ticket=${id}#soporte`} style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'var(--tx)', border: '1px solid ' + (urgent ? 'var(--soft-red,#ff6b7d)' : 'var(--line)'), borderLeft: '3px solid ' + (urgent ? 'var(--soft-red,#ff6b7d)' : 'var(--soft-brand,#7c8cff)'), background: urgent ? 'rgba(255,107,125,.07)' : 'var(--card)', borderRadius: 8, padding: '7px 9px', margin: '4px 0', maxWidth: 340 }}>
+      <span style={{ fontSize: 11.5, fontWeight: 700, flex: 'none' }}>{short}</span>
+      <span style={{ fontSize: 12.5, flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{subject}</span>
+      <span style={{ fontSize: 9.5, fontWeight: 700, background: prioColor.bg, color: prioColor.tx, padding: '2px 7px', borderRadius: 999, flex: 'none' }}>{urgent ? 'Urgente' : prioLabel}</span>
+      <span style={{ fontSize: 11, color: dayColor, display: 'inline-flex', alignItems: 'center', gap: 3, flex: 'none' }}><Icon name="clock" size={12} />{days}d</span>
+      <Icon name="chevronRight" size={14} style={{ color: 'var(--mut)', flex: 'none' }} />
+    </a>
+  );
 }
 
 function Attachment({ a, mine }: { a: Att; mine: boolean }) {

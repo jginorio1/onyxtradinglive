@@ -140,6 +140,26 @@ export async function POST(req: Request) {
       } catch {}
     }
 
+    // Comunicación efectiva: en un DM o GRUPO privado, avisa (campana + push) a los
+    // miembros aunque NO los mencionen — así nadie pierde un mensaje directo. En los
+    // canales abiertos NO se avisa por cada mensaje (sería ruido): ahí solo cuentan
+    // las @menciones y lo urgente/@todos (ya cubiertos arriba).
+    if (!urgent && !toAll) {
+      try {
+        const { data: ch } = await supabaseAdmin.from('chat_channels').select('kind,name').eq('id', channel).maybeSingle();
+        if (ch?.kind === 'dm' || ch?.kind === 'group') {
+          const { data: mem } = await supabaseAdmin.from('chat_members').select('user_id').eq('channel_id', channel);
+          const { emitNotif } = await import('@/lib/emitNotif');
+          const title = ch.kind === 'group' ? `${senderName} · ${ch.name}` : senderName;
+          for (const r of (mem || []) as any[]) {
+            const uid = r.user_id;
+            if (uid === g.user.id || notified.has(uid)) continue;
+            await emitNotif(uid, 'team_mention', { vars: { name: title, body: body.slice(0, 90) || '📎' }, url: `/admin?chat=${channel}#chat`, ignorePlan: true });
+          }
+        }
+      } catch {}
+    }
+
     // @Onyx AI: si mencionan a la IA, responde en el canal como bot.
     const askedAI = /@onyx/i.test(body) || (mentions as any[]).some((m) => m?.type === 'user' && m.id === 'onyx');
     let ai = null as any;

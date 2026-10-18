@@ -628,7 +628,7 @@ export default function SupportInbox() {
                 <span className="wa-avs" style={{ background: avatarOf(it.email).bg, color: avatarOf(it.email).fg }}>{initials(it.email || '?')}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="row between" style={{ gap: 6 }}>
-                    <b style={{ fontSize: 13, fontWeight: nr ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.subject || who}</b>
+                    <b style={{ fontSize: 13, fontWeight: nr ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.ticket_no ? <span className="muted" style={{ fontWeight: 600 }}>#{it.ticket_no} </span> : null}{it.subject || who}</b>
                     <span className="muted" style={{ fontSize: 10.5, flex: 'none' }}>{ago(it.updated_at, es)}</span>
                   </div>
                   <div className="muted" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>{preview || who}</div>

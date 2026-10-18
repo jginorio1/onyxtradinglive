@@ -43,7 +43,7 @@ export async function GET() {
       }
     }
 
-    const { data: team } = await supabaseAdmin.from('profiles').select('id,email,full_name,role,available,last_active').eq('is_admin', true);
+    const { data: team } = await supabaseAdmin.from('profiles').select('id,email,full_name,role,available,last_active,job_title,country,languages').eq('is_admin', true);
 
     // Miembros explícitos por canal (para DMs y para "quién está en la conversación")
     const membersByCh: Record<string, string[]> = {};
@@ -52,7 +52,7 @@ export async function GET() {
       (mem || []).forEach((r: any) => { (membersByCh[r.channel_id] ||= []).push(r.user_id); });
     }
     const channels = visible.map((c: any) => ({ ...c, unread: unread[c.id] || 0, last: last[c.id] || null, members: membersByCh[c.id] || [], created_by: c.created_by || null }));
-    return NextResponse.json({ channels, team: (team || []).map((p: any) => ({ id: p.id, name: nameOf(p), email: p.email, role: p.role || 'admin', available: p.available, last_active: p.last_active })), me });
+    return NextResponse.json({ channels, team: (team || []).map((p: any) => ({ id: p.id, name: nameOf(p), email: p.email, role: p.role || 'admin', available: p.available, last_active: p.last_active, job_title: p.job_title || '', country: p.country || '', languages: p.languages || '' })), me });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', channels: [], team: [] }, { status: 500 });
   }

@@ -11,6 +11,21 @@ const H = 3600 * 1000;
 
 function nameOf(p: any) { return (p?.full_name || (p?.email || '').split('@')[0] || 'cliente'); }
 
+// Token de TARJETA de ticket que el chat (ChatThread) convierte en una tarjeta
+// accionable: #id corto + asunto + prioridad + días abierto + urgente, con enlace
+// directo al ticket. Formato: [[tk:<id>|<asunto>|<prio>|<dias>|<urgente>]]
+// 'urgente' = prioridad alta, o lleva ≥3 días abierto sin resolver.
+function tkCard(t: any): string {
+  const days = Math.max(0, Math.floor((Date.now() - new Date(t.created_at).getTime()) / (24 * H)));
+  const prio = t.priority === 'high' ? 'high' : t.priority === 'low' ? 'low' : 'med';
+  const urgent = (t.priority === 'high' || (days >= 3 && t.status !== 'resolved')) ? 1 : 0;
+  const subj = String(t.subject || '—').replace(/[|\]\[]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+  return `[[tk:${t.id}|${subj}|${prio}|${days}|${urgent}|${t.ticket_no || ''}]]`;
+}
+function cardsBlock(rows: any[], limit = 8): string {
+  return rows.slice(0, limit).map(tkCard).join('\n');
+}
+
 const CAT_ES: any = { general: 'General', conexion: 'Conexión', instalacion: 'Instalación', guardian: 'Guardian', facturacion: 'Facturación' };
 const CAT_EN: any = { general: 'General', conexion: 'Connection', instalacion: 'Install', guardian: 'Guardian', facturacion: 'Billing' };
 
@@ -19,7 +34,7 @@ const CAT_EN: any = { general: 'General', conexion: 'Connection', instalacion: '
 export async function teamDigest(lang: Lang): Promise<string> {
   const en = enBase(lang);
   const { data: tickets } = await supabaseAdmin.from('support_tickets')
-    .select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at')
+    .select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at,ticket_no')
     .order('updated_at', { ascending: false }).limit(200);
   const rows = (tickets || []) as any[];
   const ids = rows.map((t) => t.id);
@@ -43,7 +58,7 @@ export async function teamDigest(lang: Lang): Promise<string> {
       if (!t.assignee_id) unassigned++;
       if (lastSender[t.id] === 'user') {
         const hrs = Math.round((Date.now() - new Date(lastAt[t.id] || t.updated_at).getTime()) / H);
-        waiting.push({ subject: t.subject, email: t.email, hrs, priority: t.priority });
+        waiting.push({ t, subject: t.subject, email: t.email, hrs, priority: t.priority });
       }
     }
   }
@@ -55,10 +70,10 @@ export async function teamDigest(lang: Lang): Promise<string> {
   lines.push(en ? `☀️ Shift digest — ${date}` : `☀️ Resumen del turno — ${date}`);
   lines.push('');
   lines.push(en ? `🕒 Awaiting our reply: ${waiting.length}` : `🕒 Esperan nuestra respuesta: ${waiting.length}`);
-  waiting.slice(0, 8).forEach((w) => lines.push(`   • "${(w.subject || '').slice(0, 50)}" · ${w.email || '—'} · ${w.hrs}h${w.priority === 'high' ? (en ? ' · HIGH' : ' · ALTA') : ''}`));
+  waiting.slice(0, 8).forEach((w) => lines.push(tkCard(w.t)));
   lines.push('');
   lines.push(en ? `🆕 New leads (24h): ${newLeads.length}` : `🆕 Leads nuevos (24h): ${newLeads.length}`);
-  newLeads.slice(0, 8).forEach((t) => lines.push(`   • ${t.email || '—'} — "${(t.subject || '').slice(0, 50)}"`));
+  newLeads.slice(0, 6).forEach((t) => lines.push(tkCard(t)));
   lines.push('');
   lines.push(en ? `📨 New tickets (24h): ${newTickets}` : `📨 Tickets nuevos (24h): ${newTickets}`);
   lines.push(en ? `🗂️ Unassigned: ${unassigned}` : `🗂️ Sin asignar: ${unassigned}`);
@@ -198,7 +213,7 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang; tz?: 
     if (!emails.length && P.names.length) emails = await resolveNameEmails(P.names);
 
     let query = supabaseAdmin.from('support_tickets')
-      .select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at')
+      .select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at,ticket_no')
       .order('created_at', { ascending: false }).limit(80);
     if (emails.length === 1) query = query.ilike('email', emails[0]);
     else if (emails.length > 1) query = query.in('email', emails);
@@ -212,7 +227,7 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang; tz?: 
     // Nombre sin correo en profiles → intenta por la parte local del email del ticket
     if (!rows.length && P.names.length && !P.email) {
       const orlike = P.names.map((n) => `email.ilike.%${n}%`).join(',');
-      let q2 = supabaseAdmin.from('support_tickets').select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at').or(orlike).order('created_at', { ascending: false }).limit(80);
+      let q2 = supabaseAdmin.from('support_tickets').select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at,ticket_no').or(orlike).order('created_at', { ascending: false }).limit(80);
       if (P.from) q2 = q2.gte('created_at', P.from.toISOString());
       if (P.to) q2 = q2.lte('created_at', P.to.toISOString());
       const r2 = await q2; rows = (r2.data || []) as any[];
@@ -258,7 +273,8 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang; tz?: 
       const head = en
         ? `${rows.length} ticket(s)${who ? ' from ' + who : ''}${win}${hourTxt}:`
         : `${rows.length} ticket(s)${who ? ' de ' + who : ''}${win}${hourTxt}:`;
-      return stripMd(head + '\n' + facts);
+      // Tarjetas clicables + (abajo) el detalle de los mensajes.
+      return stripMd(head) + '\n' + cardsBlock(rows, 15) + '\n\n' + stripMd(facts);
     }
 
     // Pregunta abierta con filtros → el modelo, pero con los datos EXACTOS.
@@ -284,7 +300,7 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang; tz?: 
   if (!apiKey) return en ? '⚠️ AI not configured: ANTHROPIC_API_KEY is missing in Vercel.' : '⚠️ IA no configurada: falta ANTHROPIC_API_KEY en Vercel.';
 
   const { data: tickets } = await supabaseAdmin.from('support_tickets')
-    .select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at')
+    .select('id,email,subject,category,status,is_lead,priority,assignee_id,created_at,updated_at,ticket_no')
     .order('updated_at', { ascending: false }).limit(150);
   const rows = (tickets || []) as any[];
   const ids = rows.map((t) => t.id);
@@ -300,11 +316,16 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang; tz?: 
     if (t.status !== 'resolved') byCat[t.category || 'general'] = (byCat[t.category || 'general'] || 0) + 1;
     if (t.is_lead) leads++;
     if (!t.assignee_id && t.status !== 'resolved') unassigned++;
-    if (lastSender[t.id] === 'user' && t.status !== 'resolved') { const hrs = Math.round((Date.now() - new Date(lastAt[t.id] || t.updated_at).getTime()) / H); waiting.push({ subject: t.subject, email: t.email, hrs, priority: t.priority }); }
+    if (lastSender[t.id] === 'user' && t.status !== 'resolved') { const hrs = Math.round((Date.now() - new Date(lastAt[t.id] || t.updated_at).getTime()) / H); waiting.push({ t, subject: t.subject, email: t.email, hrs, priority: t.priority }); }
   }
   waiting.sort((a, b) => b.hrs - a.hrs);
   let ctx = `RESUMEN (${rows.length} tickets recientes):\n- Abiertos: ${byStatus.open || 0} · En curso: ${byStatus.in_progress || 0} · Resueltos: ${byStatus.resolved || 0}\n- Sin asignar: ${unassigned} · Leads: ${leads}\n- Por categoría (sin resolver): ${Object.entries(byCat).map(([k, v]) => `${k}=${v}`).join(', ') || '—'}\n- Esperan respuesta: ${waiting.length}${waiting.length ? ` (más viejo: ${waiting[0].hrs}h)` : ''}\n`;
   if (waiting.length) ctx += `\nPENDIENTES (del más viejo):\n` + waiting.slice(0, 12).map((w) => `· "${w.subject}" · ${w.email || '—'} · ${w.hrs}h${w.priority === 'high' ? ' · ALTA' : ''}`).join('\n') + '\n';
+
+  // Tarjetas accionables (deterministas, siempre con enlace al ticket) que se
+  // anteponen a la prosa de la IA → la respuesta queda rica y clicable.
+  const attnCards = cardsBlock(waiting.map((w) => w.t), 6);
+  const attnHead = attnCards ? (en ? 'Tickets that need attention:\n' : 'Tickets que necesitan atención:\n') + attnCards + '\n\n' : '';
 
   const system = (en
     ? `You are Onyx AI for the internal SUPPORT TEAM (staff-only). Answer with the aggregate SUPPORT DATA below. Real numbers, short lists. Plain text only: no asterisks, no markdown, no #, no bold. Use "· " for lists. If data lacks the answer, say so. Never reveal secrets. No sign-off.`
@@ -317,6 +338,6 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang; tz?: 
     const data = await r.json();
     import('@/lib/aiCost').then((m) => m.logAiUsage('equipo', data)).catch(() => {});
     const answer = (data?.content || []).map((c: any) => c.text || '').join('\n').trim();
-    return stripMd(answer || (en ? 'No data for that.' : 'Sin datos para eso.'));
-  } catch { return en ? 'Sorry, I could not process that right now.' : 'Perdona, no pude procesar eso ahora mismo.'; }
+    return attnHead + stripMd(answer || (en ? 'No data for that.' : 'Sin datos para eso.'));
+  } catch { return attnHead + (en ? 'Sorry, I could not process that right now.' : 'Perdona, no pude procesar eso ahora mismo.'); }
 }
