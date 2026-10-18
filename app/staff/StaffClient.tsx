@@ -39,6 +39,8 @@ export default function StaffClient() {
 
       {msg && <div style={{ ...card, padding: '10px 14px', marginBottom: 12, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', fontSize: 13 }}>{msg}</div>}
 
+      <ScheduleCard card={card} btn={btn} btnP={btnP} />
+
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div style={{ ...card, flex: 1, minWidth: 160 }}>
           <div className="muted" style={{ fontSize: 12 }}>Sueldo mensual</div>
@@ -88,6 +90,73 @@ export default function StaffClient() {
               </tr>
             ))}
           </tbody></table>}
+      </div>
+    </div>
+  );
+}
+
+// ── Mi horario + fichaje (clock in/out) ──────────────────────────────
+const WD_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+function dur(min: number) { const h = Math.floor(min / 60), m = min % 60; return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`; }
+
+function ScheduleCard({ card, btn, btnP }: { card: React.CSSProperties; btn: React.CSSProperties; btnP: React.CSSProperties }) {
+  const [d, setD] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [tick, setTick] = useState(0);   // refresca el cronómetro en vivo
+
+  async function load() { try { const r = await fetch('/api/staff/schedule', { cache: 'no-store' }); const j = await r.json(); setD(j); } catch {} }
+  useEffect(() => { load(); }, []);
+  useEffect(() => { const t = setInterval(() => setTick((x) => x + 1), 30000); return () => clearInterval(t); }, []);
+
+  async function clock(action: 'clock_in' | 'clock_out') {
+    setBusy(true);
+    try { await fetch('/api/staff/schedule', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action }) }); await load(); } catch {} finally { setBusy(false); }
+  }
+
+  if (!d || d.isStaff === false) return null;
+  const open = d.open;
+  const openMin = open ? Math.max(0, Math.round((Date.now() - new Date(open.clock_in).getTime()) / 60000)) : 0;
+  const todayShift: any[] = d.todayShift || [];
+  // Plantilla semanal agrupada por día.
+  const byDay: Record<number, any[]> = {}; for (let i = 0; i < 7; i++) byDay[i] = [];
+  (d.shifts || []).forEach((s: any) => byDay[s.weekday]?.push(s));
+
+  return (
+    <div style={{ ...card, marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <b>Mi horario y fichaje</b>
+          <div className="muted" style={{ fontSize: 12.5, marginTop: 2 }}>
+            {todayShift.length ? `Hoy: ${todayShift.map((t) => `${t.start}–${t.end}`).join(', ')}` : 'Hoy no tienes turno asignado.'}
+            {' · '}Este mes: <b style={{ color: 'var(--tx)' }}>{dur(d.workedMin || 0)}</b>
+          </div>
+        </div>
+        {open
+          ? <button style={{ ...btnP, background: 'var(--red,#e5484d)' }} disabled={busy} onClick={() => clock('clock_out')}>Fichar salida · {dur(openMin)}</button>
+          : <button style={{ ...btnP, background: 'var(--green,#2fbf88)', color: '#0b1020' }} disabled={busy} onClick={() => clock('clock_in')}>Fichar entrada</button>}
+      </div>
+
+      {open && <div style={{ fontSize: 12, color: 'var(--green,#5ed6a0)', marginTop: 8 }}>● Fichado desde las {new Date(open.clock_in).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</div>}
+
+      {/* Plantilla semanal (solo lectura para el empleado). */}
+      <div style={{ marginTop: 12, borderTop: '1px solid var(--line,#2a3350)', paddingTop: 10 }}>
+        <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>Turno semanal</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {[1, 2, 3, 4, 5, 6, 0].map((wd) => (
+            <span key={wd} style={{ fontSize: 11.5, background: 'var(--bg2,#0e1220)', borderRadius: 8, padding: '4px 8px' }}>
+              <b>{WD_ES[wd]}</b> {byDay[wd].length ? byDay[wd].map((s: any) => `${s.start_time}–${s.end_time}`).join(', ') : <span className="muted">libre</span>}
+            </span>
+          ))}
+        </div>
+        {(d.exceptions || []).length > 0 && (
+          <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {(d.exceptions || []).map((e: any) => (
+              <span key={e.id} style={{ fontSize: 11, background: 'var(--bg2,#0e1220)', borderRadius: 8, padding: '3px 8px' }}>
+                <b>{e.day.slice(5)}</b> <span style={{ color: e.kind === 'off' ? 'var(--red,#e5484d)' : 'var(--green,#5ed6a0)' }}>{e.kind === 'off' ? 'libre' : `${e.start_time}–${e.end_time}`}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
