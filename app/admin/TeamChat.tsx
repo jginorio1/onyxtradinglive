@@ -212,6 +212,20 @@ function TeamChatInner() {
   // Reaccionar / fijar en el panel principal: aplica y recarga el hilo.
   async function onReactMain(id: string, emoji: string) { await reactMsg(id, emoji); await loadMsgs(active, date); }
   async function onPinMain(id: string, pinned: boolean) { await pinMsg(id, pinned); await loadMsgs(active, date); }
+  // Puente equipo → ticket: convierte el mensaje en un ticket de soporte (triage + ruteo).
+  async function onToTicketMain(m: any) {
+    const bodyTxt = String(m?.body || '').trim();
+    if (!bodyTxt) { alert(L('El mensaje no tiene texto para convertir.', 'The message has no text to convert.')); return; }
+    const subject = window.prompt(L('Asunto del ticket:', 'Ticket subject:'), bodyTxt.slice(0, 80)) ;
+    if (subject === null) return;
+    const email = window.prompt(L('Correo del cliente (opcional):', 'Customer email (optional):'), '') || '';
+    try {
+      const r = await fetch('/api/admin/support/from-team', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subject: subject || bodyTxt.slice(0, 80), body: bodyTxt, email }) });
+      const j = await r.json();
+      if (j.ok) alert(L('Ticket creado ✓ — en Admin → Soporte.', 'Ticket created ✓ — in Admin → Support.'));
+      else alert(L('No se pudo crear el ticket.', 'Could not create the ticket.'));
+    } catch { alert(L('Error de red al crear el ticket.', 'Network error creating the ticket.')); }
+  }
 
   const activeCh = channels.find((c) => c.id === active);
   const mapped = toChat(msgs, me);
@@ -471,7 +485,7 @@ function TeamChatInner() {
                 </div>
               )}
               <div style={{ padding: '10px 14px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg)' }}>
-                <ChatThread variant="mono" fill enableActions vivid onReact={onReactMain} onPin={onPinMain} messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={Math.max(240, gridH - 150)} typingLabel={typingLabel}
+                <ChatThread variant="mono" fill enableActions vivid onReact={onReactMain} onPin={onPinMain} onToTicket={onToTicketMain} messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={Math.max(240, gridH - 150)} typingLabel={typingLabel}
                   placeholder={L('Escribe… @ para etiquetar, @Onyx para la IA', 'Type… @ to tag, @Onyx for AI')}
                   emptyText={date ? L('Sin mensajes ese día.', 'No messages that day.') : L('Sé el primero en escribir 👋', 'Be the first to write 👋')} />
               </div>
@@ -602,6 +616,18 @@ function DockWindow({ channelId, title, me, lang, onClose, onActivity, index }: 
   async function send(text: string, attachments: Att[], opts?: { replyTo?: string; urgent?: boolean }) { const j = await postMessage(channelId, text, attachments, opts); if (j.ok) { await load(); ping(); onActivity(); } }
   async function onReactDock(id: string, emoji: string) { await reactMsg(id, emoji); await load(); }
   async function onPinDock(id: string, pinned: boolean) { await pinMsg(id, pinned); await load(); }
+  async function onToTicketDock(m: any) {
+    const bodyTxt = String(m?.body || '').trim();
+    if (!bodyTxt) { alert(lang === 'en' ? 'The message has no text to convert.' : 'El mensaje no tiene texto para convertir.'); return; }
+    const subject = window.prompt(lang === 'en' ? 'Ticket subject:' : 'Asunto del ticket:', bodyTxt.slice(0, 80));
+    if (subject === null) return;
+    const email = window.prompt(lang === 'en' ? 'Customer email (optional):' : 'Correo del cliente (opcional):', '') || '';
+    try {
+      const r = await fetch('/api/admin/support/from-team', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subject: subject || bodyTxt.slice(0, 80), body: bodyTxt, email }) });
+      const j = await r.json();
+      alert(j.ok ? (lang === 'en' ? 'Ticket created ✓ — in Admin → Support.' : 'Ticket creado ✓ — en Admin → Soporte.') : (lang === 'en' ? 'Could not create the ticket.' : 'No se pudo crear el ticket.'));
+    } catch { alert(lang === 'en' ? 'Network error creating the ticket.' : 'Error de red al crear el ticket.'); }
+  }
   const typingLabel = typing.length ? `${typing[0]} ${lang === 'en' ? 'is typing…' : 'está escribiendo…'}` : '';
 
   // Al montar: leer tamaño/posición guardados; si no hay, esquina inferior derecha (apilando).
@@ -661,7 +687,7 @@ function DockWindow({ channelId, title, me, lang, onClose, onActivity, index }: 
       </div>
       {!min && (
         <div style={{ flex: 1, minHeight: 0, padding: '8px 10px', display: 'flex', flexDirection: 'column' }}>
-          <ChatThread variant="mono" fill enableActions vivid onReact={onReactDock} onPin={onPinDock} messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={mobile ? 300 : innerH} typingLabel={typingLabel}
+          <ChatThread variant="mono" fill enableActions vivid onReact={onReactDock} onPin={onPinDock} onToTicket={onToTicketDock} messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={mobile ? 300 : innerH} typingLabel={typingLabel}
             placeholder={lang === 'en' ? 'Type…' : 'Escribe…'} />
         </div>
       )}

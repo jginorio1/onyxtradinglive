@@ -10,6 +10,7 @@ import { useChatRealtime } from '@/lib/chatRealtime';
 import ChatThread, { type Att, type ChatMsg } from '@/app/components/ChatThread';
 import Icon from '@/app/components/Icons';
 import SupportMetrics from '@/app/admin/SupportMetrics';
+import SupportRoutingCard from '@/app/admin/SupportRoutingCard';
 import SupportInsights from './SupportInsights';
 import { flagEmoji } from '@/lib/geo';
 import { nativePlatform } from '@/lib/native';
@@ -503,6 +504,9 @@ export default function SupportInbox() {
         </div>
         {metricsOpen && <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}><SupportMetrics /></div>}
       </div>
+
+      {/* Ruteo automático + escalera de escalamiento (editable). */}
+      <SupportRoutingCard />
 
       {/* SLA de soporte: tiempos de recordatorio/cierre al cliente y de aviso/vencido al equipo. */}
       <div className="card" style={{ padding: '10px 14px', marginBottom: 12 }}>

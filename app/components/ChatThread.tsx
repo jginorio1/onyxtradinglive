@@ -85,7 +85,7 @@ const THEMES = {
 export default function ChatThread({
   messages, lang, onSend, onTyping, canReply = true, placeholder, typingLabel,
   mentionSource, showAuthors = false, height = 380, emptyText, variant = 'default', vivid = false,
-  enableActions = false, onReact, onPin, fill = false,
+  enableActions = false, onReact, onPin, onToTicket, fill = false,
 }: {
   messages: ChatMsg[];
   lang: 'es' | 'en';
@@ -105,6 +105,7 @@ export default function ChatThread({
   enableActions?: boolean;
   onReact?: (msgId: string, emoji: string) => Promise<void> | void;
   onPin?: (msgId: string, pinned: boolean) => Promise<void> | void;
+  onToTicket?: (m: ChatMsg) => Promise<void> | void;
 }) {
   const th = THEMES[variant] || THEMES.default;
   const mono = variant === 'mono';
@@ -196,6 +197,7 @@ export default function ChatThread({
   function react(id: string, emoji: string) { onReact?.(id, emoji); setReactFor(null); setActionsFor(null); }
   function pin(m: ChatMsg) { onPin?.(m.id, !m.pinned); setActionsFor(null); }
   function startReply(m: ChatMsg) { setReplyTarget(m); setActionsFor(null); setTimeout(() => taRef.current?.focus(), 0); }
+  function toTicket(m: ChatMsg) { onToTicket?.(m); setActionsFor(null); }
   const pinnedMsgs = enableActions ? messages.filter((m) => m.pinned && m.authorKind !== 'system') : [];
 
   // Marca de leído para MIS mensajes (palomitas).
@@ -324,6 +326,7 @@ export default function ChatThread({
                         </div>
                         <button onClick={() => startReply(m)} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '8px 11px', cursor: 'pointer', color: 'var(--tx)', fontSize: 12.5 }}><Icon name="back" size={14} /> {L('Responder', 'Reply')}</button>
                         {onPin && <button onClick={() => pin(m)} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: '1px solid var(--line)', padding: '8px 11px', cursor: 'pointer', color: 'var(--tx)', fontSize: 12.5 }}><Icon name="lock" size={14} /> {m.pinned ? L('Desfijar', 'Unpin') : L('Fijar', 'Pin')}</button>}
+                        {onToTicket && m.authorKind !== 'system' && <button onClick={() => toTicket(m)} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: '1px solid var(--line)', padding: '8px 11px', cursor: 'pointer', color: 'var(--tx)', fontSize: 12.5 }}><span style={{ fontSize: 14 }}>🎫</span> {L('Convertir en ticket', 'Convert to ticket')}</button>}
                       </div>
                     )}
                   </div>
