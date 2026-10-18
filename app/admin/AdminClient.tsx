@@ -863,7 +863,11 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   // Insignias de "pendientes por atender" (datos ya cargados; sin backend nuevo).
   const diagBad = ((diag?.migrations || []).filter((m: any) => !m.ok).length) + ((diag?.services || []).filter((s: any) => !s.ok).length);
   const navBadges: Record<string, { n: number; tone: 'danger' | 'warn' }> = {};
-  if (supCounts?.open) navBadges.soporte = { n: supCounts.open, tone: 'danger' };
+  // Soporte: si a ESTE empleado lo invitaron a tickets, el badge es personal
+  // (prioridad) para que vea de inmediato que lo llamaron a una conversación;
+  // si no, muestra el total de tickets abiertos de la bandeja.
+  if (supCounts?.invited) navBadges.soporte = { n: supCounts.invited, tone: 'danger' };
+  else if (supCounts?.open) navBadges.soporte = { n: supCounts.open, tone: 'danger' };
   if (unconfirmed) navBadges.usuarios = { n: unconfirmed, tone: 'warn' };
   if (diagBad) navBadges.diag = { n: diagBad, tone: 'danger' };
   useEffect(() => { if (flatNav.length && !flatNav.some(([k]) => k === tab)) setTab(flatNav[0][0]); }, []);

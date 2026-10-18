@@ -81,9 +81,19 @@ export async function GET() {
     // Equipo (para mostrar quién tiene asignado / disponible / última vez)
     const { data: team } = await supabaseAdmin.from('profiles').select('id,email,available,last_active').eq('is_admin', true);
 
-    const counts = { open: 0, in_progress: 0, resolved: 0 } as any;
+    const counts = { open: 0, in_progress: 0, resolved: 0, mine: 0, invited: 0 } as any;
     tickets.forEach((t: any) => { counts[t.status] = (counts[t.status] || 0) + 1; });
-    return NextResponse.json({ tickets, messages, participants, team: team || [], counts, me: g.user?.id || null });
+    // Conteos PERSONALES para el empleado que carga la bandeja: cuántos tickets
+    // (abiertos / en curso) tiene asignados y a cuántos lo invitaron. Alimentan el
+    // badge personal en el nav de Soporte y el filtro "Me invitaron".
+    const me = g.user?.id || null;
+    if (me) {
+      const activeIds = new Set(tickets.filter((t: any) => t.status !== 'resolved').map((t: any) => t.id));
+      counts.mine = tickets.filter((t: any) => t.assignee_id === me && t.status !== 'resolved').length;
+      const invitedIds = new Set(participants.filter((p: any) => p.user_id === me).map((p: any) => p.ticket_id));
+      counts.invited = tickets.filter((t: any) => invitedIds.has(t.id) && t.assignee_id !== me && t.status !== 'resolved').length;
+    }
+    return NextResponse.json({ tickets, messages, participants, team: team || [], counts, me });
   } catch (e: any) {
     await logError('support_admin', e);
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
@@ -116,6 +126,20 @@ export async function PATCH(req: Request) {
     if (b.take) patch.assignee_id = user.id;
     if (b.assignee_id !== undefined) patch.assignee_id = b.assignee_id || null;
 
+    // Aviso al compañero cuando se le ASIGNA un ticket (no cuando uno lo "toma"
+    // para sí): campana + push + Telegram, con enlace al panel de soporte. Editable
+    // en Admin → Notificaciones (clave 'support_assigned'). Tolerante a fallos.
+    const assignTo = String(b.assignee_id || '').trim();
+    if (assignTo && assignTo !== user.id) {
+      try {
+        const { data: tkA } = await supabaseAdmin.from('support_tickets').select('subject').eq('id', ticketId).maybeSingle();
+        const subj = (tkA as any)?.subject ? String((tkA as any).subject).slice(0, 90) : 'Nuevo ticket';
+        const { emitNotif } = await import('@/lib/emitNotif');
+        await emitNotif(assignTo, 'support_assigned', { ignorePlan: true, url: `/admin#soporte`, body: subj });
+        await logAdmin(user?.email || '', 'support_assign', ticketId, { to: assignTo });
+      } catch {}
+    }
+
     // Nota interna (NO se envía al trader ni por correo)
     const note = String(b.note || '').trim().slice(0, 4000);
     if (note) {
@@ -127,7 +151,17 @@ export async function PATCH(req: Request) {
     const invite = String(b.invite_email || '').trim().toLowerCase();
     if (invite) {
       const { data: m } = await supabaseAdmin.from('profiles').select('id').eq('email', invite).eq('is_admin', true).maybeSingle();
-      if (m) { await supabaseAdmin.from('ticket_participants').upsert({ ticket_id: ticketId, user_id: m.id }); await logAdmin(user?.email || '', 'support_invite', ticketId, { invite }); }
+      if (m) {
+        await supabaseAdmin.from('ticket_participants').upsert({ ticket_id: ticketId, user_id: m.id });
+        await logAdmin(user?.email || '', 'support_invite', ticketId, { invite });
+        // Avisar al compañero invitado (campana + push + Telegram), con enlace.
+        try {
+          const { data: tkI } = await supabaseAdmin.from('support_tickets').select('subject').eq('id', ticketId).maybeSingle();
+          const subj = (tkI as any)?.subject ? String((tkI as any).subject).slice(0, 90) : 'Nuevo ticket';
+          const { emitNotif } = await import('@/lib/emitNotif');
+          await emitNotif(m.id, 'support_assigned', { ignorePlan: true, url: `/admin#soporte`, body: subj });
+        } catch {}
+      }
     }
 
     // Respuesta al trader (+ correo)

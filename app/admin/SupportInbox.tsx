@@ -49,7 +49,7 @@ function ago(ts: any, es: boolean): string {
 
 const L: any = {
   es: {
-    fMine: 'Mías', fUnassigned: 'Sin asignar', needsReply: 'Espera respuesta',
+    fMine: 'Mías', fInvited: 'Me invitaron', fUnassigned: 'Sin asignar', needsReply: 'Espera respuesta',
     ctxTitle: 'Ficha del trader', ctxLead: 'Visitante sin cuenta (lead)', ctxNoUser: 'No tiene cuenta en Onyx todavía.',
     plan: 'Plan', member: 'Miembro desde', accounts: 'Cuentas', funded: 'de fondeo', prior: 'Tickets antes',
     langF: 'Idioma', country: 'País', firm: 'Prop firm', firstSeen: 'Primer contacto', none: '—',
@@ -66,7 +66,7 @@ const L: any = {
     remPrice: 'Precio (USD)', remMin: 'Minutos', remTool: 'Herramienta', remLink: 'Enlace de descarga', remNote: 'Instrucción al cliente', remSave: 'Guardar', remSaved: 'Guardado',
   },
   en: {
-    fMine: 'Mine', fUnassigned: 'Unassigned', needsReply: 'Awaiting reply',
+    fMine: 'Mine', fInvited: 'Invited to me', fUnassigned: 'Unassigned', needsReply: 'Awaiting reply',
     ctxTitle: 'Trader profile', ctxLead: 'Visitor without account (lead)', ctxNoUser: 'No Onyx account yet.',
     plan: 'Plan', member: 'Member since', accounts: 'Accounts', funded: 'funded', prior: 'Prior tickets',
     langF: 'Language', country: 'Country', firm: 'Prop firm', firstSeen: 'First contact', none: '—',
@@ -113,7 +113,7 @@ export default function SupportInbox() {
   const [team, setTeam] = useState<any[]>([]);
   const [counts, setCounts] = useState<any>({});
   const [me, setMe] = useState<string>('');
-  const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'mine' | 'unassigned'>('open');
+  const [filter, setFilter] = useState<'all' | 'open' | 'in_progress' | 'resolved' | 'mine' | 'invited' | 'unassigned'>('open');
   const [roleFilter, setRoleFilter] = useState<'all' | 'mentor' | 'ambassador' | 'botlab' | 'paid' | 'lead'>('all');
   const [q, setQ] = useState('');
   const [openId, setOpenId] = useState('');
@@ -362,6 +362,7 @@ export default function SupportInbox() {
 
   let list = tickets.filter((it) => {
     if (filter === 'mine') return it.assignee_id === me;
+    if (filter === 'invited') return participants.some((p) => p.ticket_id === it.id && p.user_id === me) && it.assignee_id !== me;
     if (filter === 'unassigned') return !it.assignee_id;
     if (filter === 'all') return true;
     return it.status === filter;
@@ -379,6 +380,7 @@ export default function SupportInbox() {
   tickets.forEach((it) => { const r = it.role || 'user'; roleCounts[r] = (roleCounts[r] || 0) + 1; });
 
   const mineCount = tickets.filter((it) => it.assignee_id === me && it.status !== 'resolved').length;
+  const invitedCount = tickets.filter((it) => it.status !== 'resolved' && it.assignee_id !== me && participants.some((p) => p.ticket_id === it.id && p.user_id === me)).length;
   const unassignedCount = tickets.filter((it) => !it.assignee_id && it.status !== 'resolved').length;
   const tk = tickets.find((it) => it.id === openId);
 
@@ -553,7 +555,7 @@ export default function SupportInbox() {
           "pillan". El botón muestra el filtro activo; al abrirlo eliges Estado,
           Míos/Sin asignar, o Rol. Un "?" explica qué significa cada estado. */}
       {(() => {
-        const stLabel: any = { open: t.s_open, in_progress: t.s_inprogress, resolved: t.s_resolved, mine: l.fMine, unassigned: l.fUnassigned, all: t.s_all };
+        const stLabel: any = { open: t.s_open, in_progress: t.s_inprogress, resolved: t.s_resolved, mine: l.fMine, invited: l.fInvited, unassigned: l.fUnassigned, all: t.s_all };
         const roleActive = roleFilter !== 'all' && ROLE_META[roleFilter] ? ` · ${es ? ROLE_META[roleFilter].es : ROLE_META[roleFilter].en}` : '';
         const Row = ({ active, onClick, label, count, ic }: any) => (
           <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 7, width: '100%', textAlign: 'left', padding: '9px 11px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 14, background: active ? 'var(--brand)' : 'transparent', color: active ? '#fff' : 'var(--tx)' }}>
@@ -577,6 +579,7 @@ export default function SupportInbox() {
                     <Row active={filter === 'resolved'} onClick={() => { setFilter('resolved'); setFilterOpen(false); }} label={t.s_resolved} count={counts.resolved} />
                     <div style={{ height: 1, background: 'var(--line)', margin: '4px 8px' }} />
                     <Row active={filter === 'mine'} onClick={() => { setFilter('mine'); setFilterOpen(false); }} label={l.fMine} count={mineCount} />
+                    <Row active={filter === 'invited'} onClick={() => { setFilter('invited'); setFilterOpen(false); }} label={l.fInvited} count={invitedCount} />
                     <Row active={filter === 'unassigned'} onClick={() => { setFilter('unassigned'); setFilterOpen(false); }} label={l.fUnassigned} count={unassignedCount} />
                     <Row active={filter === 'all'} onClick={() => { setFilter('all'); setFilterOpen(false); }} label={t.s_all} count={null} />
                     {(roleCounts.mentor || roleCounts.ambassador || roleCounts.botlab || roleCounts.paid) ? (

@@ -23,6 +23,9 @@ export type NotifDef = {
   // muestra los tipos cuyo módulo el usuario tiene/usa; sin 'feature' = universal (todos).
   // El panel del ADMIN siempre muestra todo. 'academy' | 'copy' | 'bots' | 'botlab'.
   feature?: 'academy' | 'copy' | 'bots' | 'botlab';
+  // INTERNO del equipo: no se muestra en el panel de avisos del cliente (solo lo
+  // reciben empleados/admins, p. ej. "te asignaron un ticket").
+  staff?: boolean;
   // Urgente: lo marca el dueño en Admin. Los urgentes se resaltan en rojo en la
   // campanita (y pueden tratarse distinto). Por defecto, false.
   urgent?: boolean;
@@ -82,6 +85,16 @@ export const NOTIF_CATALOG: NotifDef[] = [
     // Alto valor y poco frecuente: al cliente le sirve enterarse al instante.
     bell: true, push: true, telegram: false, tgKind: 'manager', url: '/dashboard/soporte',
     editableChannels: ['bell', 'push'],
+  },
+  {
+    // INTERNO (equipo): al asignar o invitar a un compañero a un ticket, le avisa.
+    // staff:true → no se muestra en el panel de avisos del cliente (solo lo reciben
+    // empleados). Lleva al panel de soporte del admin.
+    key: 'support_assigned', group: 'Soporte (equipo)', staff: true,
+    es: { title: '🎫 Te asignaron un ticket', body: '{body}' },
+    en: { title: '🎫 A ticket was assigned to you', body: '{body}' },
+    bell: true, push: true, telegram: true, tgKind: 'manager', url: '/admin#soporte',
+    editableChannels: ['bell', 'push', 'telegram'],
   },
   {
     key: 'referral_reward', group: 'Referidos',
