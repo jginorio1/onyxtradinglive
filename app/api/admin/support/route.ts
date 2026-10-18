@@ -175,10 +175,19 @@ export async function PATCH(req: Request) {
         // rutas del trader filtran sender 'note'). Dice quién invitó a quién.
         const inviteeEmail = invite;
         const inviterEmail = (user?.email || '').toLowerCase() || 'un compañero';
-        await supabaseAdmin.from('support_messages').insert({
+        // La etiqueta [[invite]] permite que la bandeja la pinte como una línea
+        // centrada y destacada en el hilo (no una notita lateral fácil de perder).
+        const noteIns = await supabaseAdmin.from('support_messages').insert({
           ticket_id: ticketId, sender: 'note',
-          body: `👥 ${inviterEmail} invitó a ${inviteeEmail} para ayudar con este ticket.`,
+          body: `[[invite]]👥 ${inviterEmail} invitó a ${inviteeEmail} a esta conversación.`,
         });
+        // Si por algún motivo falla con la etiqueta, reintentamos como nota simple.
+        if ((noteIns as any)?.error) {
+          await supabaseAdmin.from('support_messages').insert({
+            ticket_id: ticketId, sender: 'note',
+            body: `👥 ${inviterEmail} invitó a ${inviteeEmail} a esta conversación.`,
+          });
+        }
 
         // Línea VISIBLE para el cliente (neutra, sin nombres del equipo). Se guarda
         // como sender 'system' → ambas vistas la muestran como línea centrada de

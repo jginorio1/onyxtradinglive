@@ -675,6 +675,12 @@ export default function SupportInbox() {
             }
             if (bestScore < 2) suggestedCanned = null;   // exige coincidencia real
             const chatMsgs: ChatMsg[] = tm.map((m) => {
+              // Invitación a un compañero: nota INTERNA (el cliente no la ve) que
+              // se pinta como una línea centrada y destacada en el hilo, para que
+              // quede claro quién invitó a quién.
+              if (m.sender === 'note' && typeof m.body === 'string' && m.body.startsWith('[[invite]]')) {
+                return { id: m.id, mine: false, authorKind: 'system' as any, body: '🔒 ' + m.body.replace('[[invite]]', ''), attachments: [], createdAt: m.created_at } as ChatMsg;
+              }
               // Notas AUTOMÁTICAS del sistema (SLA): no ensucian el chat. El cierre por
               // inactividad se muestra como una línea fina de "sistema"; el resto
               // (recordatorio/aviso/vencido) se oculta por completo.
