@@ -6,58 +6,72 @@ export type PermLevel = 'none' | 'view' | 'manage';
 // Marketing, Socios, Producto, Equipo, Sistema). Varias pestañas casi idénticas
 // comparten una sola área: los tres catálogos de brókers → 'brokers'; las dos
 // landing → 'landing'; Guía + Cómo usar → 'guias'.
-export const AREAS: { id: string; label: string }[] = [
+// Grupos de la matriz de permisos (mismo orden y nombres que el menú del panel).
+// Cada área pertenece a uno; la UI los pinta como secciones plegables para que la
+// lista no se vea como una sola fila larguísima hacia abajo.
+export const AREA_GROUPS: { id: string; es: string; en: string; emoji: string }[] = [
+  { id: 'inicio', es: 'Inicio', en: 'Home', emoji: '🏠' },
+  { id: 'clientes', es: 'Clientes', en: 'Customers', emoji: '👥' },
+  { id: 'dinero', es: 'Dinero', en: 'Money', emoji: '💰' },
+  { id: 'marketing', es: 'Marketing', en: 'Marketing', emoji: '📣' },
+  { id: 'socios', es: 'Socios', en: 'Partners', emoji: '🤝' },
+  { id: 'producto', es: 'Producto', en: 'Product', emoji: '🧩' },
+  { id: 'equipo', es: 'Equipo', en: 'Team', emoji: '🛡️' },
+  { id: 'sistema', es: 'Sistema', en: 'System', emoji: '⚙️' },
+];
+
+export const AREAS: { id: string; label: string; group: string }[] = [
   // Inicio
-  { id: 'resumen', label: 'Resumen' },
-  { id: 'monitor', label: 'Command Center' },
-  { id: 'notif', label: 'Notificaciones' },
+  { id: 'resumen', label: 'Resumen', group: 'inicio' },
+  { id: 'monitor', label: 'Command Center', group: 'inicio' },
+  { id: 'notif', label: 'Notificaciones', group: 'inicio' },
   // Clientes
-  { id: 'usuarios', label: 'Usuarios' },
-  { id: 'soporte', label: 'Soporte (tickets/chat)' },
-  { id: 'baseia', label: 'Base IA' },
-  { id: 'correos', label: 'Correos' },
-  { id: 'retencion', label: 'Retención' },
+  { id: 'usuarios', label: 'Usuarios', group: 'clientes' },
+  { id: 'soporte', label: 'Soporte (tickets/chat)', group: 'clientes' },
+  { id: 'baseia', label: 'Base IA', group: 'clientes' },
+  { id: 'correos', label: 'Correos', group: 'clientes' },
+  { id: 'retencion', label: 'Retención', group: 'clientes' },
   // Dinero
-  { id: 'facturacion', label: 'Facturación / Ingresos' },
-  { id: 'planes', label: 'Planes' },
-  { id: 'pagos', label: 'Pagos y retiros' },
-  { id: 'monedero', label: 'Monedero (usuarios)' },
-  { id: 'antifraude', label: 'Pagos & chargebacks' },
-  { id: 'finanzas', label: 'Finanzas Onyx (P&L)' },
+  { id: 'facturacion', label: 'Facturación / Ingresos', group: 'dinero' },
+  { id: 'planes', label: 'Planes', group: 'dinero' },
+  { id: 'pagos', label: 'Pagos y retiros', group: 'dinero' },
+  { id: 'monedero', label: 'Monedero (usuarios)', group: 'dinero' },
+  { id: 'antifraude', label: 'Pagos & chargebacks', group: 'dinero' },
+  { id: 'finanzas', label: 'Finanzas Onyx (P&L)', group: 'dinero' },
   // Marketing
-  { id: 'campanas', label: 'Campañas' },
-  { id: 'blog', label: 'Blog' },
-  { id: 'seo', label: 'SEO' },
-  { id: 'ads', label: 'Publicidad' },
-  { id: 'landing', label: 'Landing Builder' },
+  { id: 'campanas', label: 'Campañas', group: 'marketing' },
+  { id: 'blog', label: 'Blog', group: 'marketing' },
+  { id: 'seo', label: 'SEO', group: 'marketing' },
+  { id: 'ads', label: 'Publicidad', group: 'marketing' },
+  { id: 'landing', label: 'Landing Builder', group: 'marketing' },
   // Socios
-  { id: 'embajadores', label: 'Embajadores' },
-  { id: 'ventas', label: 'Red de ventas' },
-  { id: 'copytraders', label: 'Onyx Copy' },
-  { id: 'trackrecord', label: 'Trackrecord público' },
+  { id: 'embajadores', label: 'Embajadores', group: 'socios' },
+  { id: 'ventas', label: 'Red de ventas', group: 'socios' },
+  { id: 'copytraders', label: 'Onyx Copy', group: 'socios' },
+  { id: 'trackrecord', label: 'Trackrecord público', group: 'socios' },
   // Producto
-  { id: 'modulos', label: 'Módulos' },
-  { id: 'academy', label: 'Onyx Academy (mentores/comisiones)' },
-  { id: 'botlab', label: 'Onyx Bot Lab' },
-  { id: 'factory', label: 'Fábrica de bots' },
-  { id: 'firms', label: 'Prop firms' },
-  { id: 'catalogos', label: 'Catálogos (países, plataformas…)' },
-  { id: 'brokers', label: 'Brókers (MatchTrader/TradeLocker/DXtrade)' },
+  { id: 'modulos', label: 'Módulos', group: 'producto' },
+  { id: 'academy', label: 'Onyx Academy (mentores/comisiones)', group: 'producto' },
+  { id: 'botlab', label: 'Onyx Bot Lab', group: 'producto' },
+  { id: 'factory', label: 'Fábrica de bots', group: 'producto' },
+  { id: 'firms', label: 'Prop firms', group: 'producto' },
+  { id: 'catalogos', label: 'Catálogos (países, plataformas…)', group: 'producto' },
+  { id: 'brokers', label: 'Brókers (MatchTrader/TradeLocker/DXtrade)', group: 'producto' },
   // Equipo
-  { id: 'equipo', label: 'Equipo' },
-  { id: 'nomina', label: 'Nómina' },
-  { id: 'carreras', label: 'Carreras' },
-  { id: 'formacion', label: 'Formación' },
-  { id: 'chat', label: 'Chat de equipo' },
+  { id: 'equipo', label: 'Equipo', group: 'equipo' },
+  { id: 'nomina', label: 'Nómina', group: 'equipo' },
+  { id: 'carreras', label: 'Carreras', group: 'equipo' },
+  { id: 'formacion', label: 'Formación', group: 'equipo' },
+  { id: 'chat', label: 'Chat de equipo', group: 'equipo' },
   // Sistema
-  { id: 'guias', label: 'Guías (Guía y Cómo usar)' },
-  { id: 'diag', label: 'Diagnóstico' },
-  { id: 'pruebas', label: 'Pruebas' },
-  { id: 'recursos', label: 'Recursos' },
-  { id: 'audit', label: 'Auditoría' },
-  { id: 'backups', label: 'Backups' },
-  { id: 'optim', label: 'Optimización' },
-  { id: 'ajustes', label: 'Ajustes' },
+  { id: 'guias', label: 'Guías (Guía y Cómo usar)', group: 'sistema' },
+  { id: 'diag', label: 'Diagnóstico', group: 'sistema' },
+  { id: 'pruebas', label: 'Pruebas', group: 'sistema' },
+  { id: 'recursos', label: 'Recursos', group: 'sistema' },
+  { id: 'audit', label: 'Auditoría', group: 'sistema' },
+  { id: 'backups', label: 'Backups', group: 'sistema' },
+  { id: 'optim', label: 'Optimización', group: 'sistema' },
+  { id: 'ajustes', label: 'Ajustes', group: 'sistema' },
 ];
 
 const rank: Record<PermLevel, number> = { none: 0, view: 1, manage: 2 };

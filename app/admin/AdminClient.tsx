@@ -67,7 +67,7 @@ const Payroll = dynamic(() => import('./Payroll'), { ssr: false, loading: tabLoa
 const CareersAdmin = dynamic(() => import('./CareersAdmin'), { ssr: false, loading: tabLoad });
 const Training = dynamic(() => import('./Training'), { ssr: false, loading: tabLoad });
 const CopyTradersAdmin = dynamic(() => import('./CopyTradersAdmin'), { ssr: false, loading: tabLoad });
-import { AREAS, effectivePerms } from '@/lib/perms';
+import { AREAS, AREA_GROUPS, effectivePerms } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
 import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
@@ -2104,6 +2104,8 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   const [newRole, setNewRole] = useState('support');
   const [busy, setBusy] = useState(false);
   const [editId, setEditId] = useState('');
+  const [openGrp, setOpenGrp] = useState('');          // grupo de permisos desplegado
+  const [hoverArea, setHoverArea] = useState('');       // fila resaltada al pasar el cursor
   const [log, setLog] = useState<any[]>([]);
   const [logMember, setLogMember] = useState('');
   const [logTopic, setLogTopic] = useState('all');
@@ -2165,23 +2167,57 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
 
             {editId === m.id && canManage && (
               <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>
-                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>{t.t_permsByArea} <span style={{ opacity: .7 }}>{t.t_permsHint}</span></div>
-                {AREAS.map((a) => {
+                <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{t.t_permsByArea} <span style={{ opacity: .7 }}>{t.t_permsHint}</span></div>
+                {(() => {
                   const eff = effectivePerms(m.role || 'support', m.perms || {});
-                  const cur = (eff[a.id] as string) || 'none';
-                  const dcol = cur === 'manage' ? 'var(--green)' : cur === 'view' ? 'var(--brand)' : 'var(--line)';
-                  return (
-                    <div key={a.id} className="row" style={{ padding: '8px 0', borderTop: '1px solid var(--line)', gap: 10, flexWrap: 'wrap' }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: dcol, flex: 'none' }} />
-                      <span style={{ fontSize: 13, flex: 1, minWidth: 120 }}>{(t as any)['nav_' + a.id] || a.label}</span>
-                      <div className="seg">
-                        {(['none', 'view', 'manage'] as const).map((lv) => (
-                          <button key={lv} className={'segbtn' + (cur === lv ? ' on-' + lv : '')} onClick={() => savePerm(m.id, a.id, lv, m.perms)}>{(t as any)['lvl_' + lv]}</button>
-                        ))}
+                  return AREA_GROUPS.map((grp) => {
+                    const areas = AREAS.filter((a) => a.group === grp.id);
+                    if (!areas.length) return null;
+                    // Resumen del grupo: cuántas áreas tiene con acceso (view o manage).
+                    const nOn = areas.filter((a) => ((eff[a.id] as string) || 'none') !== 'none').length;
+                    const key = m.id + ':' + grp.id;
+                    const open = openGrp === key;
+                    return (
+                      <div key={grp.id} style={{ borderTop: '1px solid var(--line)' }}>
+                        <button
+                          onClick={() => setOpenGrp(open ? '' : key)}
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 4px', background: 'transparent', border: 'none', color: 'var(--tx)', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <span style={{ fontSize: 12, width: 14, color: 'var(--muted)', transition: 'transform .15s', transform: open ? 'rotate(90deg)' : 'none' }}>▶</span>
+                          <OnyxIcon emoji={grp.emoji} size={16} />
+                          <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{lang === 'en' ? grp.en : grp.es}</span>
+                          <span className="muted" style={{ fontSize: 11, background: nOn ? 'color-mix(in srgb,var(--green) 16%,transparent)' : 'var(--card)', color: nOn ? 'var(--soft-green)' : 'var(--muted)', padding: '2px 8px', borderRadius: 999 }}>{nOn}/{areas.length}</span>
+                        </button>
+                        {open && (
+                          <div style={{ paddingBottom: 6 }}>
+                            {areas.map((a) => {
+                              const cur = (eff[a.id] as string) || 'none';
+                              const dcol = cur === 'manage' ? 'var(--green)' : cur === 'view' ? 'var(--brand)' : 'var(--line)';
+                              const hv = hoverArea === key + ':' + a.id;
+                              return (
+                                <div
+                                  key={a.id}
+                                  className="row"
+                                  onMouseEnter={() => setHoverArea(key + ':' + a.id)}
+                                  onMouseLeave={() => setHoverArea('')}
+                                  style={{ padding: '8px 8px', margin: '0 -4px', borderRadius: 8, gap: 10, flexWrap: 'wrap', background: hv ? 'color-mix(in srgb,var(--brand) 9%,transparent)' : 'transparent', transition: 'background .12s' }}
+                                >
+                                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: dcol, flex: 'none', marginLeft: 18 }} />
+                                  <span style={{ fontSize: 13, flex: 1, minWidth: 120 }}>{(t as any)['nav_' + a.id] || a.label}</span>
+                                  <div className="seg">
+                                    {(['none', 'view', 'manage'] as const).map((lv) => (
+                                      <button key={lv} className={'segbtn' + (cur === lv ? ' on-' + lv : '')} onClick={() => savePerm(m.id, a.id, lv, m.perms)}>{(t as any)['lvl_' + lv]}</button>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             )}
 
