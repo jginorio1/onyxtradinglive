@@ -1013,6 +1013,9 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'usuarios' && (
               <>
               <Head ic="👥" t={t.h_usuarios_t} s={`${filtered.length} ${t.h_usuarios_registered}`} />
+              {/* Estadísticas y filtros: solo en escritorio. En móvil se ocultan (CSS
+                  .u-stats-desktop) para que el admin móvil vea directo la lista de usuarios. */}
+              <div className="u-stats-desktop">
               <RangeBar value={uRange} onChange={setURange}
                 pdfUrl={(f, tt) => `/api/admin/users/report?from=${f}&to=${tt}&lang=${lang}`}
                 csvUrl={(f, tt) => `/api/admin/users/report?export=csv&from=${f}&to=${tt}&lang=${lang}`} />
@@ -1121,6 +1124,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     {lang === 'en' ? 'Showing' : 'Mostrando'}: <b style={{ color: 'var(--tx)' }}>{segLabel}</b> · {filtered.length} {lang === 'en' ? 'users' : 'usuarios'}
                   </div>
                 )}
+              </div>
               </div>
               <div className="card">
                 <div className="row between" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>

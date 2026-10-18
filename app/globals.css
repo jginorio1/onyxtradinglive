@@ -1467,3 +1467,8 @@ html:not(.is-auth) body.onyx-vivid > *:not(.promobar):not(.topbar):not(.secnav):
 }
 /* Divisores verticales del encabezado: se ocultan en móvil (cuando el texto se apila). */
 @media (max-width: 640px){ .copy-head-div{ display:none !important; } }
+
+/* Admin → Usuarios: en móvil ocultamos el bloque de estadísticas y filtros
+   (limpieza, tarjetas, gráfica de registros, fuentes y pastillas de plan) para
+   que la pantalla entre directo a la lista de usuarios. En escritorio se ve todo. */
+@media (max-width:760px){ .u-stats-desktop{ display:none !important; } }

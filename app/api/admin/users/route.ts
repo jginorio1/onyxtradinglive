@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin, requirePerm, requireUserAction } from '@/lib/admin';
+import { canUserAction } from '@/lib/perms';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { grantComp, revokeComp } from '@/lib/compTrial';
 import { setPlanOverride } from '@/lib/entitlements';
@@ -10,11 +11,17 @@ export const runtime = 'nodejs';
 
 // GET · lista de usuarios con nº de cuentas y última sincronización
 export async function GET() {
-  const { isAdmin } = await getAdmin();
-  if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  const a = await getAdmin();
+  if (!a.isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const _p = await requirePerm('usuarios', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
-  const { data: profiles } = await supabaseAdmin.from('profiles').select('*').order('created_at', { ascending: false });
+  // ¿Este empleado puede VER cuentas administrador? Solo el dueño o quien tenga el
+  // permiso fino 'admins'. Si no, las cuentas admin se filtran de la lista (no solo
+  // se ocultan en pantalla): así un empleado normal no puede ver ni tocar a otros admins.
+  const canSeeAdmins = canUserAction(a.role, a.perms as any, 'admins');
+
+  let { data: profiles } = await supabaseAdmin.from('profiles').select('*').order('created_at', { ascending: false });
+  if (!canSeeAdmins) profiles = (profiles || []).filter((p: any) => !p.is_admin);
   const { data: accts } = await supabaseAdmin.from('trading_accounts').select('user_id,last_sync_at');
 
   const byUser: Record<string, { accounts: number; lastSync: string | null }> = {};
@@ -63,9 +70,11 @@ export async function GET() {
 
 // PATCH · acciones: plan | ban | unban | admin
 export async function PATCH(req: Request) {
-  const { isAdmin, user } = await getAdmin();
+  const a = await getAdmin();
+  const { isAdmin, user } = a;
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const _p = await requirePerm('usuarios', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  const canSeeAdmins = canUserAction(a.role, a.perms as any, 'admins');
 
   const { id, action, value, note } = await req.json();
   if (!action) return NextResponse.json({ error: 'faltan datos' }, { status: 400 });
@@ -110,8 +119,11 @@ export async function PATCH(req: Request) {
     if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
 
     // Email del usuario objetivo, para que el log diga a QUIÉN afectó (no solo el id).
-    const { data: tprof } = await supabaseAdmin.from('profiles').select('email,plan').eq('id', id).maybeSingle();
+    const { data: tprof } = await supabaseAdmin.from('profiles').select('email,plan,is_admin').eq('id', id).maybeSingle();
     const email = (tprof as any)?.email || '';
+    // Candado: si el objetivo es una cuenta ADMINISTRADOR, solo el dueño o quien
+    // tenga el permiso 'admins' puede gestionarla (nadie más toca a otros admins).
+    if ((tprof as any)?.is_admin && !canSeeAdmins) return NextResponse.json({ error: 'no autorizado', code: 'perm_admins' }, { status: 403 });
     const meta: any = { value, email, note: note || null };
 
     // Permisos FINOS: cada acción sensible exige su concesión específica (o dueño).

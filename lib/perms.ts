@@ -89,6 +89,7 @@ export const USER_ACTIONS: { id: string; es: string; en: string }[] = [
   { id: 'ban', es: 'Banear / desbanear', en: 'Ban / unban' },
   { id: 'admin', es: 'Hacer / quitar administrador', en: 'Grant / revoke admin' },
   { id: 'delete', es: 'Borrar usuario (definitivo)', en: 'Delete user (permanent)' },
+  { id: 'admins', es: 'Ver y gestionar cuentas administrador', en: 'See and manage admin accounts' },
 ];
 
 // ¿Este admin puede ejecutar la acción `action` sobre un usuario? El dueño siempre.
