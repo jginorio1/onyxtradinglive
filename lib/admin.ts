@@ -1,6 +1,6 @@
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { effectivePerms, meets, permMeets, type PermLevel } from '@/lib/perms';
+import { effectivePerms, meets, permMeets, canUserAction, type PermLevel } from '@/lib/perms';
 import { serverLocked, has2faOk } from '@/lib/adminSecurity';
 
 // ¿La sesión superó el 2FA (AAL2) en este dispositivo? Si el usuario tiene un
@@ -46,6 +46,20 @@ export async function requirePerm(area: string, need: PermLevel = 'view') {
   if (ok) {
     if (serverLocked()) { ok = false; reason = 'locked'; }          // bloqueo por inactividad
     else if (await needs2FA(createSupabaseServer(), a.user.id)) { ok = false; reason = '2fa'; }  // 2FA no verificado
+  }
+  return { ...a, ok, reason };
+}
+
+// Comprueba un permiso FINO de acción sobre un usuario (plan, pin, ban, admin,
+// delete, edit). Owner siempre pasa. Aplica también el bloqueo por inactividad y
+// el 2FA, igual que requirePerm. La entrada de "ver usuarios" se chequea aparte.
+export async function requireUserAction(action: string) {
+  const a = await getAdmin();
+  let ok = a.isAdmin && canUserAction(a.role, a.perms, action);
+  let reason: '' | 'locked' | '2fa' = '';
+  if (ok) {
+    if (serverLocked()) { ok = false; reason = 'locked'; }
+    else if (await needs2FA(createSupabaseServer(), a.user.id)) { ok = false; reason = '2fa'; }
   }
   return { ...a, ok, reason };
 }

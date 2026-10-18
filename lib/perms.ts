@@ -76,6 +76,31 @@ export const AREAS: { id: string; label: string; group: string }[] = [
 
 const rank: Record<PermLevel, number> = { none: 0, view: 1, manage: 2 };
 
+// ─── Permisos FINOS de acciones sobre un usuario ──────────────────────────────
+// Además del nivel del módulo "Usuarios" (ver / gestionar), cada acción sensible
+// sobre un cliente se concede por separado. Así puedes tener un empleado que
+// administra usuarios pero NO puede, p. ej., resetear PIN ni borrar.
+// Se guardan en perms con la clave `usuarios.<id>` = 'manage' (concedida) o ausente.
+export const USER_ACTIONS: { id: string; es: string; en: string }[] = [
+  { id: 'edit', es: 'Editar perfil (nombre, reenviar confirmación)', en: 'Edit profile (name, resend confirmation)' },
+  { id: 'plan', es: 'Cambiar plan / dar cortesía', en: 'Change plan / grant comp' },
+  { id: 'pin', es: 'Resetear PIN de Onyx Copy', en: 'Reset Onyx Copy PIN' },
+  { id: 'ban', es: 'Banear / desbanear', en: 'Ban / unban' },
+  { id: 'admin', es: 'Hacer / quitar administrador', en: 'Grant / revoke admin' },
+  { id: 'delete', es: 'Borrar usuario (definitivo)', en: 'Delete user (permanent)' },
+];
+
+// ¿Este admin puede ejecutar la acción `action` sobre un usuario? El dueño siempre.
+// 'edit' se cubre con el nivel manage del módulo Usuarios (acciones de bajo riesgo).
+// Las demás (plan, pin, ban, admin, delete) exigen su concesión específica.
+export function canUserAction(role: string | null | undefined, perms: Record<string, PermLevel> | undefined, action: string): boolean {
+  if (role === 'owner') return true;
+  const p = perms || {};
+  if (p['usuarios.' + action] === 'manage') return true;
+  if (action === 'edit' && meets(p['usuarios'], 'manage')) return true;
+  return false;
+}
+
 // Roles predefinidos con sus permisos por defecto.
 export const ROLES = ['owner', 'admin', 'support', 'marketing', 'custom'] as const;
 
@@ -84,7 +109,7 @@ export function roleDefaults(role?: string | null): Record<string, PermLevel> {
   if (role === 'owner') return all('manage');
   // Admin: gestiona casi todo, pero NO el equipo, RR. HH. ni las finanzas del
   // dueño (esas se conceden a mano). Ajustes solo lectura.
-  if (role === 'admin') return { ...all('manage'), equipo: 'none', nomina: 'none', carreras: 'none', formacion: 'none', finanzas: 'none', ajustes: 'view' };
+  if (role === 'admin') return { ...all('manage'), equipo: 'none', nomina: 'none', carreras: 'none', formacion: 'none', finanzas: 'none', ajustes: 'view', ...Object.fromEntries(USER_ACTIONS.map((a) => ['usuarios.' + a.id, 'manage'])) };
   // Soporte: atención al cliente. Gestiona tickets, Base IA y el chat de equipo;
   // ve el Resumen. (Ya NO ve Diagnóstico/Command Center/Pruebas por defecto: si lo
   // necesitas, se concede a mano.)

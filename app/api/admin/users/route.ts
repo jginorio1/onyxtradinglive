@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAdmin, logAdmin, requirePerm } from '@/lib/admin';
+import { getAdmin, logAdmin, requirePerm, requireUserAction } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { grantComp, revokeComp } from '@/lib/compTrial';
 import { setPlanOverride } from '@/lib/entitlements';
@@ -114,6 +114,18 @@ export async function PATCH(req: Request) {
     const email = (tprof as any)?.email || '';
     const meta: any = { value, email, note: note || null };
 
+    // Permisos FINOS: cada acción sensible exige su concesión específica (o dueño).
+    // 'edit' (name / resend_confirm) se cubre con el nivel manage del módulo Usuarios.
+    const needFor: Record<string, string> = {
+      plan: 'plan', comp_grant: 'plan', comp_revoke: 'plan',
+      reset_copy_pin: 'pin', ban: 'ban', unban: 'ban', admin: 'admin',
+      name: 'edit', resend_confirm: 'edit',
+    };
+    if (needFor[action]) {
+      const gp = await requireUserAction(needFor[action]);
+      if (!gp.ok) return NextResponse.json({ error: 'no autorizado', code: 'perm_' + needFor[action] }, { status: 403 });
+    }
+
     if (action === 'plan') {
       const from = (tprof as any)?.plan || 'free';
       // Fija el override manual (fuente propia). Así NO lo revierten el webhook de Stripe
@@ -147,8 +159,7 @@ export async function PATCH(req: Request) {
       if (rErr) return NextResponse.json({ error: rErr.message || 'no se pudo reenviar' }, { status: 500 });
     } else if (action === 'reset_copy_pin') {
       // Resetear el PIN de Onyx Copy del cliente (lo borra). El cliente podrá fijar
-      // uno nuevo desde su módulo de Copy. Requiere permiso de gestión de usuarios.
-      const pm = await requirePerm('usuarios', 'manage'); if (!pm.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+      // uno nuevo desde su módulo de Copy. (Permiso fino 'pin', ya verificado arriba.)
       await supabaseAdmin.from('profiles').update({ copy_pin_hash: null }).eq('id', id);
     } else {
       return NextResponse.json({ error: 'acción desconocida' }, { status: 400 });
@@ -164,7 +175,8 @@ export async function PATCH(req: Request) {
 export async function DELETE(req: Request) {
   const { isAdmin, user } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
-    const _p = await requirePerm('usuarios', 'view'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  // Borrar un usuario es definitivo: exige el permiso fino 'delete' (o dueño).
+  const _p = await requireUserAction('delete'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado', code: 'perm_delete' }, { status: 403 });
 
   const { id, note } = await req.json();
   if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });

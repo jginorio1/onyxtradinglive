@@ -67,7 +67,7 @@ const Payroll = dynamic(() => import('./Payroll'), { ssr: false, loading: tabLoa
 const CareersAdmin = dynamic(() => import('./CareersAdmin'), { ssr: false, loading: tabLoad });
 const Training = dynamic(() => import('./Training'), { ssr: false, loading: tabLoad });
 const CopyTradersAdmin = dynamic(() => import('./CopyTradersAdmin'), { ssr: false, loading: tabLoad });
-import { AREAS, AREA_GROUPS, effectivePerms } from '@/lib/perms';
+import { AREAS, AREA_GROUPS, USER_ACTIONS, effectivePerms } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
 import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
@@ -2195,8 +2195,8 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                               const dcol = cur === 'manage' ? 'var(--green)' : cur === 'view' ? 'var(--brand)' : 'var(--line)';
                               const hv = hoverArea === key + ':' + a.id;
                               return (
+                                <div key={a.id}>
                                 <div
-                                  key={a.id}
                                   className="row"
                                   onMouseEnter={() => setHoverArea(key + ':' + a.id)}
                                   onMouseLeave={() => setHoverArea('')}
@@ -2210,6 +2210,32 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                                     ))}
                                   </div>
                                 </div>
+                                {/* Permisos FINOS de Usuarios: cada acción sensible por separado.
+                                    Solo cuando el módulo Usuarios tiene al menos "Ver". */}
+                                {a.id === 'usuarios' && cur !== 'none' && (
+                                  <div style={{ margin: '2px 8px 8px 44px', padding: '8px 10px', background: 'var(--card)', border: '1px dashed var(--line)', borderRadius: 8 }}>
+                                    <div className="muted" style={{ fontSize: 10.5, marginBottom: 6, textTransform: 'uppercase', letterSpacing: .3 }}>{lang === 'en' ? 'Allowed actions on a user' : 'Acciones permitidas sobre un usuario'}</div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                      {USER_ACTIONS.filter((ua) => ua.id !== 'edit').map((ua) => {
+                                        const on = (eff['usuarios.' + ua.id] as string) === 'manage';
+                                        return (
+                                          <button
+                                            key={ua.id}
+                                            onClick={() => savePerm(m.id, 'usuarios.' + ua.id, on ? 'none' : 'manage', m.perms)}
+                                            style={{ fontSize: 12, padding: '5px 10px', borderRadius: 999, cursor: 'pointer',
+                                              border: '1px solid ' + (on ? 'var(--green)' : 'var(--line)'),
+                                              background: on ? 'color-mix(in srgb,var(--green) 16%,transparent)' : 'transparent',
+                                              color: on ? 'var(--soft-green)' : 'var(--muted)', fontWeight: on ? 700 : 500 }}
+                                          >
+                                            {on ? '✓ ' : ''}{lang === 'en' ? ua.en : ua.es}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                    <div className="muted" style={{ fontSize: 10.5, marginTop: 6 }}>{lang === 'en' ? 'Editing name / resending confirmation is included in “Manage”.' : 'Editar nombre / reenviar confirmación va incluido en “Gestionar”.'}</div>
+                                  </div>
+                                )}
+                              </div>
                               );
                             })}
                           </div>
