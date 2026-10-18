@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAdmin, logAdmin } from '@/lib/admin';
+import { getAdmin, logAdmin, requireUserAction } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { sendEmail, mailEnabled } from '@/lib/mail';
 import { emailTplLive, userLangByEmail } from '@/lib/emailTemplates';
@@ -18,6 +18,7 @@ export const runtime = 'nodejs';
 export async function POST(req: Request) {
   const { isAdmin, user } = await getAdmin();
   if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  const _p = await requireUserAction('password'); if (!_p.ok) return NextResponse.json({ error: 'no autorizado', code: 'perm_password' }, { status: 403 });
 
   const { email } = await req.json();
   if (!email) return NextResponse.json({ error: 'falta email' }, { status: 400 });

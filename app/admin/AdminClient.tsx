@@ -67,7 +67,7 @@ const Payroll = dynamic(() => import('./Payroll'), { ssr: false, loading: tabLoa
 const CareersAdmin = dynamic(() => import('./CareersAdmin'), { ssr: false, loading: tabLoad });
 const Training = dynamic(() => import('./Training'), { ssr: false, loading: tabLoad });
 const CopyTradersAdmin = dynamic(() => import('./CopyTradersAdmin'), { ssr: false, loading: tabLoad });
-import { AREAS, AREA_GROUPS, USER_ACTIONS, effectivePerms } from '@/lib/perms';
+import { AREAS, AREA_GROUPS, USER_ACTIONS, effectivePerms, canUserAction } from '@/lib/perms';
 import { useT } from '@/lib/adminText';
 import { useLang } from '@/lib/lang';
 import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
@@ -1186,23 +1186,23 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                                   <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setMenuFor(null))(); }} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
                                   <div style={{ position: 'fixed', left: menuPos.left, top: menuPos.top, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 14px 34px rgba(0,0,0,.4)', zIndex: 41, width: 214, overflow: 'hidden' }}>
                                     {[
-                                      { ic: '✏️', label: lang === 'en' ? 'Edit name' : 'Editar nombre', on: () => { setMenuFor(null); const nn = window.prompt(lang === 'en' ? 'Full name for ' + u.email : 'Nombre para ' + u.email, u.full_name || ''); if (nn !== null) userAction(u.id, 'name', nn.trim()); } },
-                                      ...(u.email_confirmed === false ? [{ ic: '✉️', label: lang === 'en' ? 'Resend confirmation' : 'Reenviar confirmación', on: async () => { setMenuFor(null); await userAction(u.id, 'resend_confirm'); toast(lang === 'en' ? 'Confirmation email sent.' : 'Correo de confirmación enviado.'); } }] : []),
-                                      { ic: '🔑', label: lang === 'en' ? 'Reset password' : 'Restablecer contraseña', on: () => { setMenuFor(null); resetPass(u); } },
-                                      { ic: '🔓', label: lang === 'en' ? 'Reset Copy PIN' : 'Resetear PIN de Copy', on: async () => { setMenuFor(null); if (!(await confirmDialog(lang === 'en' ? 'Reset the Onyx Copy PIN for ' + u.email + '? They can set a new one in Copy.' : '¿Resetear el PIN de Onyx Copy de ' + u.email + '? Podrá fijar uno nuevo en Copy.'))) return; await userAction(u.id, 'reset_copy_pin'); toast(lang === 'en' ? 'Copy PIN reset.' : 'PIN de Copy reseteado.'); } },
+                                      { perm: 'edit', ic: '✏️', label: lang === 'en' ? 'Edit name' : 'Editar nombre', on: () => { setMenuFor(null); const nn = window.prompt(lang === 'en' ? 'Full name for ' + u.email : 'Nombre para ' + u.email, u.full_name || ''); if (nn !== null) userAction(u.id, 'name', nn.trim()); } },
+                                      ...(u.email_confirmed === false ? [{ perm: 'edit', ic: '✉️', label: lang === 'en' ? 'Resend confirmation' : 'Reenviar confirmación', on: async () => { setMenuFor(null); await userAction(u.id, 'resend_confirm'); toast(lang === 'en' ? 'Confirmation email sent.' : 'Correo de confirmación enviado.'); } }] : []),
+                                      { perm: 'password', ic: '🔑', label: lang === 'en' ? 'Reset password' : 'Restablecer contraseña', on: () => { setMenuFor(null); resetPass(u); } },
+                                      { perm: 'pin', ic: '🔓', label: lang === 'en' ? 'Reset Copy PIN' : 'Resetear PIN de Copy', on: async () => { setMenuFor(null); if (!(await confirmDialog(lang === 'en' ? 'Reset the Onyx Copy PIN for ' + u.email + '? They can set a new one in Copy.' : '¿Resetear el PIN de Onyx Copy de ' + u.email + '? Podrá fijar uno nuevo en Copy.'))) return; await userAction(u.id, 'reset_copy_pin'); toast(lang === 'en' ? 'Copy PIN reset.' : 'PIN de Copy reseteado.'); } },
                                       (u.comp_until && new Date(u.comp_until).getTime() > Date.now())
-                                        ? { ic: '⛔', label: lang === 'en' ? 'Remove paid trial' : 'Quitar prueba de pago', on: () => { setMenuFor(null); userAction(u.id, 'comp_revoke'); toast(lang === 'en' ? 'Trial removed.' : 'Prueba quitada.'); } }
-                                        : { ic: '🎁', label: lang === 'en' ? 'Give paid trial' : 'Dar prueba de pago', on: () => { setMenuFor(null); grantTrial(u); } },
+                                        ? { perm: 'plan', ic: '⛔', label: lang === 'en' ? 'Remove paid trial' : 'Quitar prueba de pago', on: () => { setMenuFor(null); userAction(u.id, 'comp_revoke'); toast(lang === 'en' ? 'Trial removed.' : 'Prueba quitada.'); } }
+                                        : { perm: 'plan', ic: '🎁', label: lang === 'en' ? 'Give paid trial' : 'Dar prueba de pago', on: () => { setMenuFor(null); grantTrial(u); } },
                                       u.banned
-                                        ? { ic: '✅', label: lang === 'en' ? 'Unban account' : 'Desbloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Unban ' : 'Desbloquear ') + u.email, false, u.id, 'unban'); } }
-                                        : { ic: '🚫', label: lang === 'en' ? 'Ban account' : 'Bloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Ban ' : 'Bloquear ') + u.email, true, u.id, 'ban'); } },
-                                      { ic: '🛡️', label: u.is_admin ? (lang === 'en' ? 'Remove admin' : 'Quitar admin') : (lang === 'en' ? 'Make admin' : 'Hacer admin'), on: () => { setMenuFor(null); askAction((u.is_admin ? (lang === 'en' ? 'Remove admin from ' : 'Quitar admin a ') : (lang === 'en' ? 'Make admin ' : 'Hacer admin a ')) + u.email, false, u.id, 'admin', !u.is_admin); } },
-                                    ].map((it, i) => (
+                                        ? { perm: 'ban', ic: '✅', label: lang === 'en' ? 'Unban account' : 'Desbloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Unban ' : 'Desbloquear ') + u.email, false, u.id, 'unban'); } }
+                                        : { perm: 'ban', ic: '🚫', label: lang === 'en' ? 'Ban account' : 'Bloquear cuenta', on: () => { setMenuFor(null); askAction((lang === 'en' ? 'Ban ' : 'Bloquear ') + u.email, true, u.id, 'ban'); } },
+                                      { perm: 'admin', ic: '🛡️', label: u.is_admin ? (lang === 'en' ? 'Remove admin' : 'Quitar admin') : (lang === 'en' ? 'Make admin' : 'Hacer admin'), on: () => { setMenuFor(null); askAction((u.is_admin ? (lang === 'en' ? 'Remove admin from ' : 'Quitar admin a ') : (lang === 'en' ? 'Make admin ' : 'Hacer admin a ')) + u.email, false, u.id, 'admin', !u.is_admin); } },
+                                    ].filter((it) => canUserAction(role, perms as any, it.perm)).map((it, i) => (
                                       <button key={i} onClick={it.on} style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--line)', padding: '10px 13px', cursor: 'pointer', color: 'var(--tx)', fontSize: 13 }}>
                                         <span style={{ width: 16, textAlign: 'center' }}>{it.ic}</span>{it.label}
                                       </button>
                                     ))}
-                                    {u.email !== meEmail && (
+                                    {u.email !== meEmail && canUserAction(role, perms as any, 'delete') && (
                                       <button onClick={() => { setMenuFor(null); delUser(u); }} style={{ display: 'flex', gap: 10, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '10px 13px', cursor: 'pointer', color: 'var(--red)', fontSize: 13 }}>
                                         <span style={{ width: 16, textAlign: 'center' }}>🗑️</span>{lang === 'en' ? 'Delete account' : 'Borrar cuenta'}
                                       </button>

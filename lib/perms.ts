@@ -83,6 +83,7 @@ const rank: Record<PermLevel, number> = { none: 0, view: 1, manage: 2 };
 // Se guardan en perms con la clave `usuarios.<id>` = 'manage' (concedida) o ausente.
 export const USER_ACTIONS: { id: string; es: string; en: string }[] = [
   { id: 'edit', es: 'Editar perfil (nombre, reenviar confirmación)', en: 'Edit profile (name, resend confirmation)' },
+  { id: 'password', es: 'Restablecer contraseña', en: 'Reset password' },
   { id: 'plan', es: 'Cambiar plan / dar cortesía', en: 'Change plan / grant comp' },
   { id: 'pin', es: 'Resetear PIN de Onyx Copy', en: 'Reset Onyx Copy PIN' },
   { id: 'ban', es: 'Banear / desbanear', en: 'Ban / unban' },
