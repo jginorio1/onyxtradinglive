@@ -16,11 +16,14 @@ export async function GET() {
   try {
     // Canales abiertos + DMs donde soy miembro
     const [{ data: chans }, { data: mine }] = await Promise.all([
-      supabaseAdmin.from('chat_channels').select('id,name,kind,topic,created_at').order('created_at', { ascending: true }),
+      supabaseAdmin.from('chat_channels').select('id,name,kind,topic,created_by,created_at').order('created_at', { ascending: true }),
       supabaseAdmin.from('chat_members').select('channel_id').eq('user_id', me),
     ]);
     const mineSet = new Set((mine || []).map((r: any) => r.channel_id));
-    const visible = (chans || []).filter((c: any) => c.kind !== 'dm' || mineSet.has(c.id));
+    // Visibilidad: los canales ABIERTOS ('channel') los ve todo el equipo; los DMs y
+    // los GRUPOS PRIVADOS ('group') solo quien es miembro. Así un grupo privado no
+    // aparece en la lista de quien no fue invitado.
+    const visible = (chans || []).filter((c: any) => c.kind === 'channel' || mineSet.has(c.id));
     const ids = visible.map((c: any) => c.id);
 
     // No leídas: mensajes tras mi last_read_at (por canal) que no envié yo
@@ -48,7 +51,7 @@ export async function GET() {
       const { data: mem } = await supabaseAdmin.from('chat_members').select('channel_id,user_id').in('channel_id', ids);
       (mem || []).forEach((r: any) => { (membersByCh[r.channel_id] ||= []).push(r.user_id); });
     }
-    const channels = visible.map((c: any) => ({ ...c, unread: unread[c.id] || 0, last: last[c.id] || null, members: membersByCh[c.id] || [] }));
+    const channels = visible.map((c: any) => ({ ...c, unread: unread[c.id] || 0, last: last[c.id] || null, members: membersByCh[c.id] || [], created_by: c.created_by || null }));
     return NextResponse.json({ channels, team: (team || []).map((p: any) => ({ id: p.id, name: nameOf(p), email: p.email, role: p.role || 'admin', available: p.available, last_active: p.last_active })), me });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', channels: [], team: [] }, { status: 500 });
@@ -61,12 +64,15 @@ export async function POST(req: Request) {
   if (!g.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   try {
     const b = await req.json().catch(() => ({}));
-    const kind = b.kind === 'dm' ? 'dm' : 'channel';
-    const name = String(b.name || '').trim().slice(0, 60) || (kind === 'dm' ? 'Mensaje directo' : 'nuevo-canal');
+    // 'dm' = mensaje directo · 'group' = grupo privado con miembros elegidos ·
+    // 'channel' = canal abierto (lo ve todo el equipo).
+    const kind = b.kind === 'dm' ? 'dm' : b.kind === 'group' ? 'group' : 'channel';
+    const name = String(b.name || '').trim().slice(0, 60) || (kind === 'dm' ? 'Mensaje directo' : kind === 'group' ? 'Grupo privado' : 'nuevo-canal');
     const { data: ch, error } = await supabaseAdmin.from('chat_channels').insert({ name, kind, topic: String(b.topic || '').slice(0, 120) || null, created_by: g.user.id }).select('id').single();
     if (error || !ch) return NextResponse.json({ error: error?.message || 'error' }, { status: 500 });
-    // Miembros de un DM (yo + los elegidos)
-    if (kind === 'dm') {
+    // Miembros de un DM o un grupo privado (yo + los elegidos). El creador siempre
+    // queda dentro. En un grupo privado la lista define quién puede verlo.
+    if (kind === 'dm' || kind === 'group') {
       const members = Array.from(new Set([g.user.id, ...((b.members || []) as string[])]));
       await supabaseAdmin.from('chat_members').upsert(members.map((uid) => ({ channel_id: ch.id, user_id: uid })));
     }

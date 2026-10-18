@@ -97,6 +97,9 @@ function TeamChatInner() {
   const [showAdd, setShowAdd] = useState(false);
   const [filter, setFilter] = useState('');            // buscador de conversaciones
   const [showCompose, setShowCompose] = useState(false); // panel "nueva conversación"
+  const [composeTab, setComposeTab] = useState<'channel' | 'group' | 'dm'>('channel'); // tipo en el panel nuevo
+  const [grpName, setGrpName] = useState('');          // nombre del grupo privado
+  const [grpMembers, setGrpMembers] = useState<string[]>([]); // miembros elegidos del grupo
   const [showDate, setShowDate] = useState(false);     // buscar por día (toggle)
   const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
   const [docks, setDocks] = useState<string[]>([]);   // canales abiertos como ventanas
@@ -151,24 +154,31 @@ function TeamChatInner() {
   // Lista de conversaciones (canales + DMs) para la lista tipo WhatsApp, filtrable.
   const convos = channels.map((c) => {
     const isDm = c.kind === 'dm';
+    const isGroup = c.kind === 'group';
     const otherId = isDm ? (c.members.find((id) => id !== me) || '') : '';
     const display = isDm ? (teamById[otherId]?.name || c.name) : c.name;
-    return { ...c, isDm, otherId, display };
+    return { ...c, isDm, isGroup, otherId, display };
   }).filter((c) => c.display.toLowerCase().includes(filter.trim().toLowerCase()));
+  const isGroupCh = activeCh?.kind === 'group';
   const dmOther = activeCh?.kind === 'dm' ? (activeCh.members.find((id) => id !== me) || '') : '';
   const headerName = activeCh ? (activeCh.kind === 'dm' ? (teamById[dmOther]?.name || activeCh.name) : activeCh.name) : '';
+  const grpOnline = isGroupCh ? (activeCh?.members || []).filter((id) => onlineIds.has(id)).length : 0;
   const headerStatus = typingLabel ? typingLabel
     : activeCh ? (activeCh.kind === 'dm'
         ? (onlineIds.has(dmOther) ? L('en línea', 'online') : L('desconectado', 'offline'))
+        : isGroupCh
+        ? `${(activeCh.members || []).length} ${L('miembros', 'members')} · ${grpOnline} ${L('en línea', 'online')}`
         : `${team.length} ${L('miembros', 'members')} · ${online.length} ${L('en línea', 'online')}`)
     : '';
   const iconBtn: any = { background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--mut)', padding: '5px 6px', lineHeight: 1 };
 
-  // Miembros de la conversación (con nombre + rol). Canal abierto = todo el equipo.
+  // Miembros de la conversación (con nombre + rol). Canal abierto = todo el equipo;
+  // DM y grupo privado = solo sus miembros explícitos.
+  const gated = !!activeCh && (activeCh.kind === 'dm' || activeCh.kind === 'group');
   const convoMembers: Member[] = activeCh
-    ? (activeCh.kind === 'dm' ? activeCh.members.map((id) => teamById[id]).filter(Boolean) : team)
+    ? (gated ? activeCh.members.map((id) => teamById[id]).filter(Boolean) : team)
     : [];
-  const canAdd = team.filter((t) => activeCh && activeCh.kind === 'dm' && !activeCh.members.includes(t.id));
+  const canAdd = team.filter((t) => gated && !activeCh!.members.includes(t.id));
 
   async function addMember(uid: string) {
     await fetch('/api/team/chat/members', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: active, user_id: uid }) });
@@ -179,6 +189,24 @@ function TeamChatInner() {
     const r = await fetch('/api/team/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
     const j = await r.json(); setNewCh(''); setShowNew(false);
     await loadChannels(); if (j.id) setActive(j.id);
+  }
+  // Crear un GRUPO PRIVADO: nombre + miembros elegidos (yo siempre dentro). Solo lo
+  // ven quienes estén en la lista; no aparece para el resto del equipo.
+  async function createGroup() {
+    const name = grpName.trim(); if (!name) return;
+    const r = await fetch('/api/team/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'group', name, members: grpMembers }) });
+    const j = await r.json(); setGrpName(''); setGrpMembers([]); setShowCompose(false);
+    await loadChannels(); if (j.id) { setActive(j.id); setMobileOpen(true); }
+  }
+  // Quitar a alguien de un grupo/DM (o salir uno mismo si uid === me).
+  async function removeMember(uid: string) {
+    if (!activeCh) return;
+    const leaving = uid === me;
+    if (leaving && !window.confirm(L('¿Salir de esta conversación?', 'Leave this conversation?'))) return;
+    const j = await fetch('/api/team/chat/members', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: active, user_id: uid }) }).then((r) => r.json()).catch(() => ({}));
+    setShowAdd(false);
+    if (leaving) { loadedOnce.current = false; setActive(''); setMobileOpen(false); }
+    await loadChannels();
   }
   // Abrir DM con un compañero (reusa uno existente si ya lo hay).
   async function openDM(otherId: string) {
@@ -212,22 +240,50 @@ function TeamChatInner() {
             </div>
             {showCompose && (
               <div style={{ padding: '4px 12px 10px', borderBottom: '1px solid var(--line)' }}>
-                <div className="muted" style={{ fontSize: 11, margin: '2px 0 6px' }}>{L('Nuevo canal', 'New channel')}</div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <input value={newCh} onChange={(e) => setNewCh(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { createChannel(); setShowCompose(false); } }} placeholder={L('nombre-del-canal', 'channel-name')} style={{ margin: 0, fontSize: 13 }} />
-                  <button className="btn btn-ghost" onClick={() => { createChannel(); setShowCompose(false); }} style={{ padding: '0 12px', flex: 'none' }}>{L('Crear', 'Create')}</button>
+                {/* Selector de tipo de conversación */}
+                <div style={{ display: 'flex', gap: 4, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, padding: 3, marginBottom: 10 }}>
+                  {([['channel', L('Canal', 'Channel'), 'hash'], ['group', L('Grupo privado', 'Private group'), 'lock'], ['dm', L('Directo', 'Direct'), 'message']] as const).map(([k, lbl, ic]) => (
+                    <button key={k} onClick={() => setComposeTab(k as any)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '6px 4px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 11.5, fontWeight: 600, background: composeTab === k ? 'var(--tx)' : 'transparent', color: composeTab === k ? 'var(--card)' : 'var(--mut)' }}><Icon name={ic as any} size={13} /> {lbl}</button>
+                  ))}
                 </div>
-                <div className="muted" style={{ fontSize: 11, margin: '10px 0 4px' }}>{L('Mensaje directo con…', 'Direct message with…')}</div>
-                <div style={{ maxHeight: 150, overflowY: 'auto' }}>
-                  {team.filter((t) => t.id !== me).map((t) => { const av = avatarOf(t.name); return (
-                    <button key={t.id} onClick={() => { openDM(t.id); setShowCompose(false); }} style={{ display: 'flex', gap: 9, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '6px 4px', cursor: 'pointer', color: 'var(--tx)', borderRadius: 8 }}>
-                      <span style={{ position: 'relative', width: 30, height: 30, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{initials(t.name)}
-                        <span style={{ position: 'absolute', right: -1, bottom: -1, width: 8, height: 8, borderRadius: '50%', background: onlineIds.has(t.id) ? 'var(--soft-green)' : 'var(--mut)', border: '1.5px solid var(--card)' }} />
-                      </span>
-                      <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 13, display: 'block' }}>{t.name}</span><span className="muted" style={{ fontSize: 10.5 }}>{roleLabel(t.role, en)}</span></span>
-                    </button>
-                  ); })}
-                </div>
+
+                {composeTab === 'channel' && (<>
+                  <div className="muted" style={{ fontSize: 11, margin: '2px 0 6px' }}>{L('Canal abierto — lo ve todo el equipo', 'Open channel — the whole team sees it')}</div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input value={newCh} onChange={(e) => setNewCh(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') createChannel(); }} placeholder={L('nombre-del-canal', 'channel-name')} style={{ margin: 0, fontSize: 13 }} />
+                    <button className="btn btn-ghost" onClick={() => createChannel()} style={{ padding: '0 12px', flex: 'none' }}>{L('Crear', 'Create')}</button>
+                  </div>
+                </>)}
+
+                {composeTab === 'group' && (<>
+                  <div className="muted" style={{ fontSize: 11, margin: '2px 0 6px' }}><Icon name="lock" size={11} /> {L('Grupo privado — solo lo ven quienes elijas', 'Private group — only the people you pick can see it')}</div>
+                  <input value={grpName} onChange={(e) => setGrpName(e.target.value)} placeholder={L('Nombre del grupo', 'Group name')} style={{ margin: '0 0 8px', fontSize: 13 }} />
+                  <div className="muted" style={{ fontSize: 11, margin: '0 0 4px', display: 'flex', justifyContent: 'space-between' }}><span>{L('Miembros', 'Members')}</span><span>{grpMembers.length} {L('elegidos', 'picked')}</span></div>
+                  <div style={{ maxHeight: 150, overflowY: 'auto', border: '1px solid var(--line)', borderRadius: 10, padding: 4 }}>
+                    {team.filter((t) => t.id !== me).map((t) => { const av = avatarOf(t.name); const on = grpMembers.includes(t.id); return (
+                      <button key={t.id} onClick={() => setGrpMembers((m) => (m.includes(t.id) ? m.filter((x) => x !== t.id) : [...m, t.id]))} style={{ display: 'flex', gap: 9, alignItems: 'center', width: '100%', textAlign: 'left', background: on ? 'var(--bg2)' : 'transparent', border: 'none', padding: '6px 6px', cursor: 'pointer', color: 'var(--tx)', borderRadius: 8 }}>
+                        <span style={{ width: 28, height: 28, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{initials(t.name)}</span>
+                        <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 13, display: 'block' }}>{t.name}</span><span className="muted" style={{ fontSize: 10.5 }}>{roleLabel(t.role, en)}</span></span>
+                        <span style={{ width: 20, height: 20, borderRadius: 6, flex: 'none', border: on ? 'none' : '1.5px solid var(--line)', background: on ? 'var(--tx)' : 'transparent', color: 'var(--card)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on && <Icon name="check" size={13} />}</span>
+                      </button>
+                    ); })}
+                  </div>
+                  <button className="btn btn-ghost" onClick={() => createGroup()} disabled={!grpName.trim() || !grpMembers.length} style={{ marginTop: 8, width: '100%', opacity: (!grpName.trim() || !grpMembers.length) ? .5 : 1 }}>{L('Crear grupo', 'Create group')}</button>
+                </>)}
+
+                {composeTab === 'dm' && (<>
+                  <div className="muted" style={{ fontSize: 11, margin: '2px 0 4px' }}>{L('Mensaje directo con…', 'Direct message with…')}</div>
+                  <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+                    {team.filter((t) => t.id !== me).map((t) => { const av = avatarOf(t.name); return (
+                      <button key={t.id} onClick={() => { openDM(t.id); setShowCompose(false); }} style={{ display: 'flex', gap: 9, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '6px 4px', cursor: 'pointer', color: 'var(--tx)', borderRadius: 8 }}>
+                        <span style={{ position: 'relative', width: 30, height: 30, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{initials(t.name)}
+                          <span style={{ position: 'absolute', right: -1, bottom: -1, width: 8, height: 8, borderRadius: '50%', background: onlineIds.has(t.id) ? 'var(--soft-green)' : 'var(--mut)', border: '1.5px solid var(--card)' }} />
+                        </span>
+                        <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 13, display: 'block' }}>{t.name}</span><span className="muted" style={{ fontSize: 10.5 }}>{roleLabel(t.role, en)}</span></span>
+                      </button>
+                    ); })}
+                  </div>
+                </>)}
               </div>
             )}
             <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
@@ -243,25 +299,41 @@ function TeamChatInner() {
             {activeCh ? (<>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', background: 'var(--bg2)' }}>
                 <button className="tc-back" onClick={() => setMobileOpen(false)} style={{ display: 'none', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--tx)', lineHeight: 1, padding: '4px 2px' }}><Icon name="back" size={22} /></button>
-                {(() => { const av = avatarOf(headerName); const dm = activeCh.kind === 'dm'; return (
-                  <span style={{ width: 38, height: 38, borderRadius: 12, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dm ? 12 : 17, fontWeight: 700, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--tx)' }}>{dm ? initials(headerName) : <Icon name="hash" size={18} />}</span>
+                {(() => { const dm = activeCh.kind === 'dm'; const grp = activeCh.kind === 'group'; return (
+                  <span style={{ width: 38, height: 38, borderRadius: 12, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dm ? 12 : 17, fontWeight: 700, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--tx)' }}>{dm ? initials(headerName) : grp ? <Icon name="lock" size={16} /> : <Icon name="hash" size={18} />}</span>
                 ); })()}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(activeCh.kind === 'dm' ? '' : '# ') + headerName}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(activeCh.kind === 'dm' ? '' : activeCh.kind === 'group' ? '' : '# ') + headerName}</div>
                   <div style={{ fontSize: 11.5, color: typingLabel ? 'var(--soft-green)' : 'var(--mut)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{headerStatus}</div>
                 </div>
                 <button title={L('Buscar por día', 'Search by day')} onClick={() => setShowDate((s) => !s)} style={iconBtn}><Icon name="calendar" size={18} /></button>
                 <div style={{ position: 'relative' }}>
-                  <button title={L('Añadir compañero', 'Add teammate')} onClick={() => setShowAdd((s) => !s)} style={iconBtn}><Icon name="userPlus" size={18} /></button>
+                  <button title={isGroupCh ? L('Miembros del grupo', 'Group members') : L('Añadir compañero', 'Add teammate')} onClick={() => setShowAdd((s) => !s)} style={iconBtn}><Icon name={isGroupCh ? 'users' : 'userPlus'} size={18} /></button>
                   {showAdd && (
-                    <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.3)', zIndex: 30, width: 230, maxHeight: 260, overflowY: 'auto' }}>
-                      {(activeCh.kind === 'dm' ? canAdd : team.filter((t) => t.id !== me)).map((t) => { const av = avatarOf(t.name); return (
+                    <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.3)', zIndex: 30, width: 244, maxHeight: 320, overflowY: 'auto' }}>
+                      {/* En un grupo: miembros actuales (con quitar) + añadir + salir */}
+                      {isGroupCh && (<>
+                        <div className="muted" style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: .3, textTransform: 'uppercase', padding: '9px 11px 5px' }}>{L('En el grupo', 'In the group')}</div>
+                        {convoMembers.map((t) => { const av = avatarOf(t.name); const self = t.id === me; return (
+                          <div key={t.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '7px 11px', borderBottom: '1px solid var(--line)' }}>
+                            <span style={{ width: 26, height: 26, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flex: 'none' }}>{initials(t.name)}</span>
+                            <span style={{ fontSize: 12.5, flex: 1, minWidth: 0 }}>{t.name}{self && <span className="muted"> · {L('tú', 'you')}</span>}</span>
+                            {!self && <button title={L('Quitar', 'Remove')} onClick={() => removeMember(t.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', padding: 2, display: 'flex' }}><Icon name="x" size={14} /></button>}
+                          </div>
+                        ); })}
+                        {!!canAdd.length && <div className="muted" style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: .3, textTransform: 'uppercase', padding: '9px 11px 5px' }}>{L('Añadir', 'Add')}</div>}
+                      </>)}
+                      {(isGroupCh || activeCh.kind === 'dm' ? canAdd : team.filter((t) => t.id !== me)).map((t) => { const av = avatarOf(t.name); return (
                         <button key={t.id} onClick={() => addMember(t.id)} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--line)', padding: '8px 11px', cursor: 'pointer', color: 'var(--tx)' }}>
                           <span style={{ width: 26, height: 26, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flex: 'none' }}>{initials(t.name)}</span>
                           <span style={{ fontSize: 12.5, flex: 1 }}>{t.name}<span className="muted" style={{ fontSize: 11 }}> · {roleLabel(t.role, en)}</span></span>
+                          <Icon name="plus" size={14} style={{ color: 'var(--mut)' }} />
                         </button>
                       ); })}
-                      {activeCh.kind === 'dm' && !canAdd.length && <div className="muted" style={{ fontSize: 12, padding: 10 }}>{L('Ya están todos.', 'Everyone is in.')}</div>}
+                      {(isGroupCh || activeCh.kind === 'dm') && !canAdd.length && <div className="muted" style={{ fontSize: 12, padding: 10 }}>{L('Ya están todos.', 'Everyone is in.')}</div>}
+                      {isGroupCh && (
+                        <button onClick={() => removeMember(me)} style={{ display: 'flex', gap: 7, alignItems: 'center', justifyContent: 'center', width: '100%', background: 'transparent', border: 'none', borderTop: '1px solid var(--line)', padding: '9px 11px', cursor: 'pointer', color: 'var(--soft-red, #ff8a97)', fontSize: 12.5, fontWeight: 600 }}><Icon name="back" size={14} /> {L('Salir del grupo', 'Leave group')}</button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -287,7 +359,7 @@ function TeamChatInner() {
       <div className="teamchat-docks" style={{ position: 'fixed', right: 16, bottom: 12, display: 'flex', gap: 12, alignItems: 'flex-end', zIndex: 1500 }}>
         {docks.map((id, i) => {
           const c = channels.find((x) => x.id === id); if (!c) return null;
-          const title = c.kind === 'dm' ? (teamById[c.members.find((m) => m !== me) || '']?.name || c.name) : '# ' + c.name;
+          const title = c.kind === 'dm' ? (teamById[c.members.find((m) => m !== me) || '']?.name || c.name) : c.kind === 'group' ? '🔒 ' + c.name : '# ' + c.name;
           return <DockWindow key={id} channelId={id} title={title} me={meP} lang={lang as any} onClose={() => closeDock(id)} onActivity={loadChannels} index={i} />;
         })}
       </div>
@@ -318,7 +390,7 @@ function ConvCard({ c, active, online, en, onClick }: { c: any; active: boolean;
   return (
     <div onClick={onClick} style={{ display: 'flex', gap: 11, alignItems: 'center', margin: '0 8px', padding: '10px', borderRadius: 12, cursor: 'pointer', background: active ? 'var(--bg2)' : 'transparent', boxShadow: active ? 'inset 2px 0 0 var(--tx)' : 'none' }}>
       <span style={{ position: 'relative', width: 42, height: 42, borderRadius: 13, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: c.isDm ? 14 : 18, fontWeight: 700, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--tx)' }}>
-        {c.isDm ? initials(c.display) : <Icon name="hash" size={18} />}
+        {c.isDm ? initials(c.display) : c.isGroup ? <Icon name="lock" size={16} /> : <Icon name="hash" size={18} />}
         {c.isDm && <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', background: online ? 'var(--soft-green)' : 'var(--mut)', border: '2px solid var(--bg2)' }} />}
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
