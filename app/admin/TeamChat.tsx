@@ -46,18 +46,27 @@ function toChat(rows: any[], me: string): ChatMsg[] {
     id: m.id, mine: m.sender_id === me && m.sender_id != null,
     authorName: m.sender_name, authorKind: m.sender_id == null ? 'ai' : 'admin',
     body: m.body, attachments: m.attachments || [], createdAt: m.created_at,
+    replyTo: m.reply_snippet || null, pinned: !!m.pinned, reactions: m.reactions || [],
   }));
+}
+
+// Reaccionar (toggle) o fijar/desfijar un mensaje del equipo.
+async function reactMsg(message: string, emoji: string) {
+  try { await fetch('/api/team/chat/messages', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message, action: 'react', emoji }) }); } catch {}
+}
+async function pinMsg(message: string, pinned: boolean) {
+  try { await fetch('/api/team/chat/messages', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message, action: 'pin', pinned }) }); } catch {}
 }
 
 const mentionSource = async (q: string): Promise<MentionItem[]> => {
   try { const r = await fetch('/api/team/mentions?q=' + encodeURIComponent(q)); const j = await r.json(); return j.items || []; } catch { return []; }
 };
 
-async function postMessage(channel: string, text: string, attachments: Att[]) {
+async function postMessage(channel: string, text: string, attachments: Att[], replyTo?: string) {
   const mentions: any[] = [];
   if (/@onyx/i.test(text)) mentions.push({ type: 'user', id: 'onyx', label: 'Onyx AI' });
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; } })();
-  const r = await fetch('/api/team/chat/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel, body: text, attachments, mentions, tz }) });
+  const r = await fetch('/api/team/chat/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel, body: text, attachments, mentions, tz, reply_to: replyTo || null }) });
   return r.json().catch(() => ({}));
 }
 
@@ -142,10 +151,13 @@ function TeamChatInner() {
   const { online, typing, ping, sendTyping } = useChatRealtime(active ? `team:${active}` : null, meP, () => loadMsgs(active, date));
   const onlineIds = new Set(online.map((o) => o.id));
 
-  async function send(text: string, attachments: Att[]) {
-    const j = await postMessage(active, text, attachments);
+  async function send(text: string, attachments: Att[], opts?: { replyTo?: string }) {
+    const j = await postMessage(active, text, attachments, opts?.replyTo);
     if (j.ok) { await loadMsgs(active, date); ping(); loadChannels(); }
   }
+  // Reaccionar / fijar en el panel principal: aplica y recarga el hilo.
+  async function onReactMain(id: string, emoji: string) { await reactMsg(id, emoji); await loadMsgs(active, date); }
+  async function onPinMain(id: string, pinned: boolean) { await pinMsg(id, pinned); await loadMsgs(active, date); }
 
   const activeCh = channels.find((c) => c.id === active);
   const mapped = toChat(msgs, me);
@@ -346,7 +358,7 @@ function TeamChatInner() {
                 </div>
               )}
               <div style={{ padding: '10px 14px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg)' }}>
-                <ChatThread variant="mono" messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={Math.max(240, gridH - 150)} typingLabel={typingLabel}
+                <ChatThread variant="mono" enableActions onReact={onReactMain} onPin={onPinMain} messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={Math.max(240, gridH - 150)} typingLabel={typingLabel}
                   placeholder={L('Escribe… @ para etiquetar, @Onyx para la IA', 'Type… @ to tag, @Onyx for AI')}
                   emptyText={date ? L('Sin mensajes ese día.', 'No messages that day.') : L('Sé el primero en escribir 👋', 'Be the first to write 👋')} />
               </div>
@@ -436,7 +448,9 @@ function DockWindow({ channelId, title, me, lang, onClose, onActivity, index }: 
   }
   useEffect(() => { load(); }, [channelId]);
   const { typing, ping, sendTyping } = useChatRealtime(`team:${channelId}`, me, load);
-  async function send(text: string, attachments: Att[]) { const j = await postMessage(channelId, text, attachments); if (j.ok) { await load(); ping(); onActivity(); } }
+  async function send(text: string, attachments: Att[], opts?: { replyTo?: string }) { const j = await postMessage(channelId, text, attachments, opts?.replyTo); if (j.ok) { await load(); ping(); onActivity(); } }
+  async function onReactDock(id: string, emoji: string) { await reactMsg(id, emoji); await load(); }
+  async function onPinDock(id: string, pinned: boolean) { await pinMsg(id, pinned); await load(); }
   const typingLabel = typing.length ? `${typing[0]} ${lang === 'en' ? 'is typing…' : 'está escribiendo…'}` : '';
 
   // Al montar: leer tamaño/posición guardados; si no hay, esquina inferior derecha (apilando).
@@ -496,7 +510,7 @@ function DockWindow({ channelId, title, me, lang, onClose, onActivity, index }: 
       </div>
       {!min && (
         <div style={{ flex: 1, minHeight: 0, padding: '8px 10px', display: 'flex', flexDirection: 'column' }}>
-          <ChatThread variant="mono" messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={mobile ? 300 : innerH} typingLabel={typingLabel}
+          <ChatThread variant="mono" enableActions onReact={onReactDock} onPin={onPinDock} messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={mobile ? 300 : innerH} typingLabel={typingLabel}
             placeholder={lang === 'en' ? 'Type…' : 'Escribe…'} />
         </div>
       )}

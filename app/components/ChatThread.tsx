@@ -34,6 +34,10 @@ export type ChatMsg = {
   // tanto el original como su traducción). trLabel describe qué es esa línea.
   trBody?: string;
   trLabel?: string;
+  // Ola 4 (chat de equipo): responder/citar, fijar y reacciones.
+  replyTo?: { id: string; authorName?: string; body: string } | null; // mensaje citado
+  pinned?: boolean;                                                     // fijado en el canal
+  reactions?: { emoji: string; count: number; mine: boolean }[];        // reacciones agregadas
 };
 
 const EMOJIS = [
@@ -71,10 +75,12 @@ const THEMES = {
 export default function ChatThread({
   messages, lang, onSend, onTyping, canReply = true, placeholder, typingLabel,
   mentionSource, showAuthors = false, height = 380, emptyText, variant = 'default',
+  enableActions = false, onReact, onPin,
 }: {
   messages: ChatMsg[];
   lang: 'es' | 'en';
-  onSend: (text: string, attachments: Att[]) => Promise<void> | void;
+  // onSend admite un 3er argumento opcional con el id del mensaje citado (responder).
+  onSend: (text: string, attachments: Att[], opts?: { replyTo?: string }) => Promise<void> | void;
   onTyping?: () => void;
   canReply?: boolean;
   placeholder?: string;
@@ -84,6 +90,10 @@ export default function ChatThread({
   height?: number;
   emptyText?: string;
   variant?: 'default' | 'mono';
+  // Ola 4: responder/citar, fijar y reacciones (solo chat de equipo).
+  enableActions?: boolean;
+  onReact?: (msgId: string, emoji: string) => Promise<void> | void;
+  onPin?: (msgId: string, pinned: boolean) => Promise<void> | void;
 }) {
   const th = THEMES[variant] || THEMES.default;
   const mono = variant === 'mono';
@@ -110,6 +120,11 @@ export default function ChatThread({
   const [mentions, setMentions] = useState<MentionItem[]>([]);
   const [mQuery, setMQuery] = useState<string | null>(null);
   const [picked, setPicked] = useState<MentionItem[]>([]);
+  // Ola 4: responder (mensaje citado activo), menú de acciones y paleta de reacción.
+  const [replyTarget, setReplyTarget] = useState<ChatMsg | null>(null);
+  const [actionsFor, setActionsFor] = useState<string | null>(null); // id con menú abierto
+  const [reactFor, setReactFor] = useState<string | null>(null);     // id con paleta de emojis
+  const QUICK = ['👍', '❤️', '😂', '🎉', '✅', '🔥', '🙏', '👀'];
   const endRef = useRef<HTMLDivElement>(null);
   const scrollBox = useRef<HTMLDivElement>(null);
   // No bajar de golpe si el usuario subió a leer mensajes anteriores.
@@ -161,10 +176,15 @@ export default function ChatThread({
     if ((!body && !atts.length) || busy) return;
     setBusy(true);
     try {
-      await onSend(body, atts);
-      setText(''); setAtts([]); setPicked([]); setShowEmoji(false); setMQuery(null);
+      await onSend(body, atts, replyTarget ? { replyTo: replyTarget.id } : undefined);
+      setText(''); setAtts([]); setPicked([]); setShowEmoji(false); setMQuery(null); setReplyTarget(null);
     } finally { setBusy(false); }
   }
+  // Reaccionar (toggle) y fijar/desfijar desde el menú de cada mensaje.
+  function react(id: string, emoji: string) { onReact?.(id, emoji); setReactFor(null); setActionsFor(null); }
+  function pin(m: ChatMsg) { onPin?.(m.id, !m.pinned); setActionsFor(null); }
+  function startReply(m: ChatMsg) { setReplyTarget(m); setActionsFor(null); setTimeout(() => taRef.current?.focus(), 0); }
+  const pinnedMsgs = enableActions ? messages.filter((m) => m.pinned && m.authorKind !== 'system') : [];
 
   // Marca de leído para MIS mensajes (palomitas).
   const tick = (m: ChatMsg) => {
@@ -177,7 +197,22 @@ export default function ChatThread({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* En móvil los campos deben ser ≥16px o iOS hace zoom al enfocarlos. */}
-      <style>{`.ct-input::placeholder{color:#9aa0ac;opacity:1}@media(max-width:600px){.ct-input{font-size:16px !important}}`}</style>
+      <style>{`.ct-input::placeholder{color:#9aa0ac;opacity:1}@media(max-width:600px){.ct-input{font-size:16px !important}}.ct-msg .ct-acts{opacity:0;transition:opacity .12s}.ct-msg:hover .ct-acts{opacity:1}@media(max-width:760px){.ct-msg .ct-acts{opacity:.55}}`}</style>
+      {/* Mensajes fijados del canal (equipo): barra fina, se puede saltar a ellos. */}
+      {pinnedMsgs.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
+          {pinnedMsgs.slice(0, 3).map((m) => (
+            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 10, padding: '6px 10px' }}>
+              <span style={{ color: 'var(--mut)', flex: 'none', display: 'flex' }}><Icon name="lock" size={13} /></span>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--mut)', textTransform: 'uppercase', letterSpacing: .3, marginRight: 6 }}>{L('Fijado', 'Pinned')}</span>
+                <span style={{ fontSize: 12.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.authorName ? m.authorName + ': ' : ''}{(m.body || '📎').slice(0, 90)}</span>
+              </span>
+              {onPin && <button title={L('Desfijar', 'Unpin')} onClick={() => onPin(m.id, false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', display: 'flex', flex: 'none' }}><Icon name="x" size={13} /></button>}
+            </div>
+          ))}
+        </div>
+      )}
       {/* Alto MÁXIMO con scroll: si no, en un contenedor flex el hilo crecería sin
           fin con conversaciones largas (usar height+flex se anulan entre sí). */}
       <div ref={scrollBox} onScroll={onBoxScroll} style={{ overflowY: 'auto', overscrollBehavior: 'contain', maxHeight: height, minHeight: 60, padding: '4px 2px', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -201,21 +236,32 @@ export default function ChatThread({
           return (
             <div key={m.id}>
               {showDay && <div style={{ textAlign: 'center', margin: '10px 0 6px' }}><span className="muted" style={{ fontSize: 11, background: 'var(--bg2)', border: '1px solid var(--line)', padding: '3px 12px', borderRadius: 999 }}>{dl}</span></div>}
-              <div style={{ display: 'flex', gap: 7, alignItems: 'flex-end', flexDirection: m.mine ? 'row-reverse' : 'row', margin: '2px 0' }}>
+              <div className="ct-msg" style={{ display: 'flex', gap: 7, alignItems: 'flex-end', flexDirection: m.mine ? 'row-reverse' : 'row', margin: '2px 0', position: 'relative' }}>
                 {!m.mine && (
                   <div style={{ width: 28, height: 28, borderRadius: 9, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, background: ai ? (mono ? 'var(--tx)' : 'linear-gradient(135deg,#34e2a0,#7c8cff)') : 'var(--bg2)', color: ai ? (mono ? 'var(--card)' : '#0b0d17') : 'var(--mut)' }}>{ai ? <Icon name="sparkles" size={15} /> : initials(m.authorName)}</div>
                 )}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: m.mine ? 'flex-end' : 'flex-start', maxWidth: '78%', minWidth: 0 }}>
                 <div style={{
-                  maxWidth: '76%', padding: '8px 12px', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  maxWidth: '100%', padding: '8px 12px', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                   borderRadius: m.mine ? '15px 15px 5px 15px' : '15px 15px 15px 5px',
                   background: note ? 'rgba(255,192,77,.12)' : m.mine ? th.mine : ai ? (mono ? 'var(--bg2)' : 'linear-gradient(135deg,rgba(52,226,160,.12),rgba(124,140,255,.10))') : 'var(--bg2)',
                   color: m.mine ? th.mineTx : 'var(--tx)',
                   border: m.mine ? 'none' : note ? '1px solid rgba(255,192,77,.4)' : ai ? (mono ? '1px solid var(--line)' : '1px solid rgba(52,226,160,.3)') : '1px solid var(--line)',
                   boxShadow: m.mine && !mono ? '0 1px 1px rgba(0,0,0,.2)' : 'none',
+                  outline: m.pinned ? '1.5px solid var(--soft-brand, #7c8cff)' : 'none', outlineOffset: 1,
                 }}>
                   {(showAuthors && !m.mine || ai || note) && (
                     <div style={{ fontSize: 10.5, fontWeight: 600, marginBottom: 2, color: ai ? (mono ? 'var(--tx)' : 'var(--soft-brand, #7c8cff)') : note ? 'var(--amber, #ffc04d)' : 'var(--mut)' }}>
                       {ai ? 'Onyx AI' : note ? L('Nota interna', 'Internal note') : m.authorName}
+                    </div>
+                  )}
+                  {/* Mensaje citado (responder): tira pequeña con autor + texto. */}
+                  {m.replyTo && (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'stretch', marginBottom: 5, padding: '4px 8px', borderRadius: 8, background: m.mine ? 'rgba(255,255,255,.12)' : 'var(--card)', borderLeft: '3px solid ' + (m.mine ? 'rgba(255,255,255,.5)' : 'var(--soft-brand, #7c8cff)') }}>
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, display: 'block', opacity: .9 }}>{m.replyTo.authorName || L('Mensaje', 'Message')}</span>
+                        <span style={{ fontSize: 11.5, opacity: .8, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 220 }}>{m.replyTo.body || '📎'}</span>
+                      </span>
                     </div>
                   )}
                   {renderBody(m.body, th.mention)}
@@ -233,10 +279,37 @@ export default function ChatThread({
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'flex-end', marginTop: 2 }}>
+                    {m.pinned && <span title={L('Fijado', 'Pinned')} style={{ opacity: m.mine ? .8 : .55, color: m.mine ? th.mineTime : 'var(--mut)', display: 'flex' }}><Icon name="lock" size={10} /></span>}
                     <span style={{ fontSize: 10, opacity: m.mine ? .8 : .6, color: m.mine ? th.mineTime : 'var(--mut)' }}>{hm(m.createdAt)}</span>
                     {tick(m)}
                   </div>
                 </div>
+                {/* Reacciones (chips) debajo de la burbuja. */}
+                {!!m.reactions?.length && (
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
+                    {m.reactions.map((r) => (
+                      <button key={r.emoji} onClick={() => onReact?.(m.id, r.emoji)} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11.5, padding: '1px 7px', borderRadius: 999, cursor: onReact ? 'pointer' : 'default', background: r.mine ? 'var(--bg2)' : 'transparent', border: '1px solid ' + (r.mine ? 'var(--soft-brand, #7c8cff)' : 'var(--line)'), color: 'var(--tx)' }}>
+                        <span>{r.emoji}</span><span style={{ fontSize: 10.5, color: 'var(--mut)' }}>{r.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                </div>
+                {/* Menú de acciones del mensaje (equipo): reaccionar, responder, fijar. */}
+                {enableActions && m.authorKind !== 'note' && (
+                  <div className="ct-acts" style={{ position: 'relative', alignSelf: 'center', flex: 'none' }}>
+                    <button title={L('Acciones', 'Actions')} onClick={() => { setActionsFor(actionsFor === m.id ? null : m.id); setReactFor(null); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', padding: 3, display: 'flex', borderRadius: 6 }}><Icon name="smile" size={16} /></button>
+                    {actionsFor === m.id && (
+                      <div style={{ position: 'absolute', top: '100%', [m.mine ? 'right' : 'left']: 0, marginTop: 2, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 10px 26px rgba(0,0,0,.3)', zIndex: 25, minWidth: 150, overflow: 'hidden' } as any}>
+                        <div style={{ display: 'flex', gap: 2, padding: 5, borderBottom: '1px solid var(--line)' }}>
+                          {QUICK.slice(0, 6).map((e) => <button key={e} onClick={() => react(m.id, e)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 16, padding: '2px 3px', borderRadius: 6 }}>{e}</button>)}
+                        </div>
+                        <button onClick={() => startReply(m)} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '8px 11px', cursor: 'pointer', color: 'var(--tx)', fontSize: 12.5 }}><Icon name="back" size={14} /> {L('Responder', 'Reply')}</button>
+                        {onPin && <button onClick={() => pin(m)} style={{ display: 'flex', gap: 8, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: '1px solid var(--line)', padding: '8px 11px', cursor: 'pointer', color: 'var(--tx)', fontSize: 12.5 }}><Icon name="lock" size={14} /> {m.pinned ? L('Desfijar', 'Unpin') : L('Fijar', 'Pin')}</button>}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -291,6 +364,17 @@ export default function ChatThread({
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+          {/* Respondiendo a: barra de cita encima del composer. */}
+          {replyTarget && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, padding: '6px 10px', borderRadius: 10, background: 'var(--bg2)', borderLeft: '3px solid var(--soft-brand, #7c8cff)' }}>
+              <span style={{ color: 'var(--mut)', flex: 'none', display: 'flex' }}><Icon name="back" size={14} /></span>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, display: 'block', color: 'var(--mut)' }}>{L('Respondiendo a', 'Replying to')} {replyTarget.authorName || ''}</span>
+                <span style={{ fontSize: 12, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--tx)' }}>{(replyTarget.body || '📎').slice(0, 90)}</span>
+              </span>
+              <button title={L('Cancelar', 'Cancel')} onClick={() => setReplyTarget(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', display: 'flex', flex: 'none' }}><Icon name="x" size={14} /></button>
             </div>
           )}
           {/* Chips de adjuntos por enviar */}

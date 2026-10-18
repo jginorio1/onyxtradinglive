@@ -10,11 +10,12 @@ export const runtime = 'nodejs';
 
 function nameOf(p: any) { return (p?.name || p?.full_name || (p?.email || '').split('@')[0] || 'Equipo'); }
 
-// Acceso al canal: los canales abiertos los ve todo el equipo; los DM, solo miembros.
+// Acceso al canal: los canales abiertos los ve todo el equipo; los DM y los GRUPOS
+// PRIVADOS, solo sus miembros.
 async function canSee(channelId: string, userId: string) {
   const { data: ch } = await supabaseAdmin.from('chat_channels').select('id,kind').eq('id', channelId).maybeSingle();
   if (!ch) return false;
-  if (ch.kind !== 'dm') return true;
+  if (ch.kind !== 'dm' && ch.kind !== 'group') return true;
   const { data: m } = await supabaseAdmin.from('chat_members').select('user_id').eq('channel_id', channelId).eq('user_id', userId).maybeSingle();
   return !!m;
 }
@@ -28,7 +29,7 @@ export async function GET(req: Request) {
     const channel = u.searchParams.get('channel') || '';
     if (!channel || !(await canSee(channel, g.user.id))) return NextResponse.json({ error: 'no autorizado', messages: [] }, { status: 403 });
 
-    let q = supabaseAdmin.from('chat_messages').select('id,channel_id,sender_id,sender_name,body,attachments,mentions,created_at').eq('channel_id', channel);
+    let q = supabaseAdmin.from('chat_messages').select('id,channel_id,sender_id,sender_name,body,attachments,mentions,reply_to,pinned,pinned_by,created_at').eq('channel_id', channel);
     const date = u.searchParams.get('date');
     if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
       const from = new Date(date + 'T00:00:00').toISOString();
@@ -36,7 +37,38 @@ export async function GET(req: Request) {
       q = q.gte('created_at', from).lte('created_at', to);
     }
     const { data } = await q.order('created_at', { ascending: true }).limit(400);
-    return NextResponse.json({ messages: data || [], me: g.user.id });
+    const rows = (data || []) as any[];
+
+    // Snippet del mensaje citado (responder): resolvemos id → {autor, texto}.
+    const replyIds = Array.from(new Set(rows.map((m) => m.reply_to).filter(Boolean)));
+    const replyMap: Record<string, any> = {};
+    if (replyIds.length) {
+      const inSet = new Map(rows.map((m) => [m.id, m]));
+      const missing = replyIds.filter((id) => !inSet.has(id));
+      let extra: any[] = [];
+      if (missing.length) { const { data: ex } = await supabaseAdmin.from('chat_messages').select('id,sender_name,body,attachments').in('id', missing); extra = ex || []; }
+      for (const id of replyIds) {
+        const r = inSet.get(id) || extra.find((x) => x.id === id);
+        if (r) replyMap[id] = { id, authorName: r.sender_name, body: (r.body || (Array.isArray(r.attachments) && r.attachments.length ? '📎' : '')).slice(0, 120) };
+      }
+    }
+
+    // Reacciones agrupadas por mensaje+emoji, marcando las mías.
+    const ids = rows.map((m) => m.id);
+    const reactMap: Record<string, { emoji: string; count: number; mine: boolean }[]> = {};
+    if (ids.length) {
+      const { data: rx } = await supabaseAdmin.from('chat_reactions').select('message_id,user_id,emoji').in('message_id', ids);
+      const agg: Record<string, Record<string, { count: number; mine: boolean }>> = {};
+      for (const r of (rx || []) as any[]) {
+        const byEmoji = (agg[r.message_id] ||= {});
+        const e = (byEmoji[r.emoji] ||= { count: 0, mine: false });
+        e.count++; if (r.user_id === g.user.id) e.mine = true;
+      }
+      for (const mid of Object.keys(agg)) reactMap[mid] = Object.entries(agg[mid]).map(([emoji, v]) => ({ emoji, count: v.count, mine: v.mine }));
+    }
+
+    const messages = rows.map((m) => ({ ...m, reply_snippet: m.reply_to ? replyMap[m.reply_to] || null : null, reactions: reactMap[m.id] || [] }));
+    return NextResponse.json({ messages, me: g.user.id });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error', messages: [] }, { status: 500 });
   }
@@ -55,11 +87,18 @@ export async function POST(req: Request) {
     const mentions = Array.isArray(b.mentions) ? b.mentions.slice(0, 10) : [];
     if (!body && !attachments.length) return NextResponse.json({ error: 'vacío' }, { status: 400 });
 
+    // Responder/citar: el id del mensaje citado (debe ser del mismo canal).
+    let replyTo: string | null = null;
+    if (b.reply_to) {
+      const { data: rp } = await supabaseAdmin.from('chat_messages').select('id,channel_id').eq('id', String(b.reply_to)).maybeSingle();
+      if (rp && rp.channel_id === channel) replyTo = rp.id;
+    }
+
     const { data: prof } = await supabaseAdmin.from('profiles').select('email,full_name,lang').eq('id', g.user.id).maybeSingle();
     const senderName = nameOf({ ...prof, email: prof?.email || g.user.email });
 
     const { data: msg, error } = await supabaseAdmin.from('chat_messages')
-      .insert({ channel_id: channel, sender_id: g.user.id, sender_name: senderName, body, attachments, mentions })
+      .insert({ channel_id: channel, sender_id: g.user.id, sender_name: senderName, body, attachments, mentions, reply_to: replyTo })
       .select('id,created_at').single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     await supabaseAdmin.from('chat_reads').upsert({ channel_id: channel, user_id: g.user.id, last_read_at: new Date().toISOString() });
@@ -89,6 +128,42 @@ export async function POST(req: Request) {
 
     await logAdmin(g.user.email || '', 'team_chat', channel, { ai: askedAI });
     return NextResponse.json({ ok: true, id: msg?.id, created_at: msg?.created_at, ai });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+  }
+}
+
+// PATCH · acciones sobre un mensaje: reaccionar (toggle) o fijar/desfijar.
+// { message, action:'react', emoji }  ·  { message, action:'pin', pinned:boolean }
+export async function PATCH(req: Request) {
+  const g = await requirePerm('chat', 'view');
+  if (!g.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  try {
+    const b = await req.json().catch(() => ({}));
+    const message = String(b.message || '');
+    if (!message) return NextResponse.json({ error: 'falta mensaje' }, { status: 400 });
+
+    // El mensaje debe existir y yo debo poder ver su canal.
+    const { data: m } = await supabaseAdmin.from('chat_messages').select('id,channel_id,pinned').eq('id', message).maybeSingle();
+    if (!m || !(await canSee(m.channel_id, g.user.id))) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+
+    if (b.action === 'react') {
+      const emoji = String(b.emoji || '').slice(0, 8);
+      if (!emoji) return NextResponse.json({ error: 'falta emoji' }, { status: 400 });
+      // Toggle: si ya reaccioné con ese emoji, lo quito; si no, lo pongo.
+      const { data: ex } = await supabaseAdmin.from('chat_reactions').select('emoji').eq('message_id', message).eq('user_id', g.user.id).eq('emoji', emoji).maybeSingle();
+      if (ex) await supabaseAdmin.from('chat_reactions').delete().eq('message_id', message).eq('user_id', g.user.id).eq('emoji', emoji);
+      else await supabaseAdmin.from('chat_reactions').insert({ message_id: message, user_id: g.user.id, emoji });
+      return NextResponse.json({ ok: true, on: !ex });
+    }
+
+    if (b.action === 'pin') {
+      const pinned = !!b.pinned;
+      await supabaseAdmin.from('chat_messages').update({ pinned, pinned_at: pinned ? new Date().toISOString() : null, pinned_by: pinned ? g.user.id : null }).eq('id', message);
+      return NextResponse.json({ ok: true, pinned });
+    }
+
+    return NextResponse.json({ error: 'acción desconocida' }, { status: 400 });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
