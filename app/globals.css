@@ -375,8 +375,21 @@ section[id],div[id]{scroll-margin-top:120px;}
 }
 .code{font-family:Consolas,monospace;background:#0a0d14;border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:13px;color:#bcd6ff;}
 .center{max-width:420px;margin:8vh auto;padding:0 20px;}
-h1{font-size:30px;letter-spacing:-.5px;} h2{font-size:22px;} h3{font-size:16px;}
+h1{font-size:30px;letter-spacing:-.5px;line-height:1.15;} h2{font-size:22px;line-height:1.25;} h3{font-size:16px;}
+/* En móvil los títulos bajan un punto y respiran más, para que no queden
+   apretados de borde a borde. */
+@media(max-width:560px){ h1{font-size:26px;} h2{font-size:20px;} }
 .section{padding:34px 0;}
+
+/* Tabla comparativa de planes: en móvil aprieta menos y deja fija la primera
+   columna (los nombres de cada fila) mientras se deslizan los planes, para que
+   no se vea cortada ni apretada. */
+.cmp-tbl th:first-child,.cmp-tbl td:first-child{position:sticky;left:0;background:var(--card);z-index:1;}
+@media(max-width:560px){
+  .cmp-tbl th,.cmp-tbl td{padding-top:11px!important;padding-bottom:11px!important;padding-left:11px!important;padding-right:11px!important;}
+  .cmp-tbl th:first-child,.cmp-tbl td:first-child{max-width:130px;font-size:12.5px;}
+}
+.cmp-scroll{-webkit-overflow-scrolling:touch;}
 
 /* Contenedor de TODAS las secciones (dashboard, cuentas, robots, copy, academia,
    admin…): llena monitores grandes. Tope alto para que en pantallas anchas de PC

@@ -104,8 +104,8 @@ export default function PlansCompareTable({
   return (
     <div style={{ marginTop: 46 }}>
       <h2 style={{ textAlign: 'center', marginBottom: 18 }}>{lang === 'es' ? 'Compara los planes' : 'Compare plans'}</h2>
-      <div className="card" style={{ overflowX: 'auto', padding: 0 }}>
-        <table style={{ minWidth: 640 }}>
+      <div className="card cmp-scroll" style={{ overflowX: 'auto', padding: 0 }}>
+        <table className="cmp-tbl" style={{ minWidth: 560 }}>
           <thead>
             <tr>
               <th style={{ textAlign: 'left', padding: '14px 16px' }}></th>
