@@ -14,7 +14,10 @@ import { mkL } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import Icon from '@/app/components/Icons';
 
-export type Att = { name: string; url: string; type: string; size?: number };
+// Adjunto normal (foto/documento) O una REFERENCIA accionable: un ticket, un
+// cliente o una conversación de soporte. Las referencias se guardan igual que un
+// adjunto (jsonb) con refType/refId; al tocar la tarjeta se abre en Soporte/Usuarios.
+export type Att = { name: string; url: string; type: string; size?: number; refType?: 'ticket' | 'client'; refId?: string; sub?: string };
 export type MentionItem = { type: 'user' | 'client' | 'ticket'; id: string; label: string; sub?: string };
 
 export type ChatMsg = {
@@ -89,6 +92,21 @@ export default function ChatThread({
   const [atts, setAtts] = useState<Att[]>([]);
   const [busy, setBusy] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
+  // Picker de "Adjuntar referencia" (ticket / cliente / conversación de soporte).
+  const [showRef, setShowRef] = useState(false);
+  const [refQ, setRefQ] = useState('');
+  const [refItems, setRefItems] = useState<MentionItem[]>([]);
+  useEffect(() => {
+    if (!showRef || !mentionSource) { setRefItems([]); return; }
+    let live = true;
+    mentionSource(refQ || 'a').then((r) => { if (live) setRefItems(r.filter((x) => x.type === 'client' || x.type === 'ticket').slice(0, 8)); }).catch(() => {});
+    return () => { live = false; };
+  }, [refQ, showRef, mentionSource]);
+  function addRef(it: MentionItem) {
+    const url = it.type === 'ticket' ? `/admin?ticket=${it.id}#soporte` : `/admin#usuarios`;
+    setAtts((a) => (a.some((x) => x.refType === it.type && x.refId === it.id) ? a : [...a, { name: it.label, url, type: 'ref/' + it.type, refType: it.type as any, refId: it.id, sub: it.sub }]));
+    setShowRef(false); setRefQ('');
+  }
   const [mentions, setMentions] = useState<MentionItem[]>([]);
   const [mQuery, setMQuery] = useState<string | null>(null);
   const [picked, setPicked] = useState<MentionItem[]>([]);
@@ -255,12 +273,32 @@ export default function ChatThread({
               {EMOJIS.map((e) => <button key={e} onClick={() => { setText((v) => v + e); setShowEmoji(false); taRef.current?.focus(); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, padding: 3, borderRadius: 6 }}>{e}</button>)}
             </div>
           )}
+          {/* Picker de referencia: ticket / cliente / conversación */}
+          {showRef && mentionSource && (
+            <div style={{ position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.3)', overflow: 'hidden', zIndex: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 11px', borderBottom: '1px solid var(--line)' }}>
+                <Icon name="search" size={15} />
+                <input autoFocus value={refQ} onChange={(e) => setRefQ(e.target.value)} placeholder={L('Buscar ticket o cliente…', 'Search ticket or client…')} style={{ flex: 1, margin: 0, border: 'none', background: 'transparent', fontSize: 13, color: 'var(--tx)' }} />
+                <button onClick={() => setShowRef(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', display: 'flex' }}><Icon name="x" size={14} /></button>
+              </div>
+              <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                {!refItems.length && <div className="muted" style={{ fontSize: 12, padding: 12, textAlign: 'center' }}>{L('Escribe para buscar un ticket o cliente.', 'Type to find a ticket or client.')}</div>}
+                {refItems.map((it) => (
+                  <button key={it.type + it.id} onClick={() => addRef(it)} style={{ display: 'flex', gap: 9, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--line)', padding: '8px 11px', cursor: 'pointer', color: 'var(--tx)' }}>
+                    <span style={{ color: 'var(--mut)' }}><Icon name={it.type === 'ticket' ? 'ticket' : 'user'} size={16} /></span>
+                    <span style={{ fontSize: 13, flex: 1 }}>{it.label}{it.sub && <span className="muted" style={{ fontSize: 11 }}> · {it.sub}</span>}</span>
+                    <span className="muted" style={{ fontSize: 10.5 }}>{it.type === 'ticket' ? L('ticket', 'ticket') : L('cliente', 'client')}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Chips de adjuntos por enviar */}
           {!!atts.length && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
               {atts.map((a, i) => (
                 <span key={i} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 8, padding: '4px 8px', fontSize: 12 }}>
-                  <Icon name={a.type.startsWith('image/') ? 'image' : 'file'} size={14} /> {a.name.slice(0, 22)}
+                  <Icon name={a.refType === 'ticket' ? 'ticket' : a.refType === 'client' ? 'user' : a.type.startsWith('image/') ? 'image' : 'file'} size={14} /> {a.name.slice(0, 22)}
                   <button onClick={() => setAtts((x) => x.filter((_, j) => j !== i))} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', display: 'flex' }}><Icon name="x" size={13} /></button>
                 </span>
               ))}
@@ -272,6 +310,7 @@ export default function ChatThread({
               <textarea ref={taRef} className="ct-input" value={text} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
                 rows={1} placeholder={placeholder || L('Escribe un mensaje…', 'Type a message…')} enterKeyHint="send"
                 style={{ flex: 1, margin: 0, resize: 'none', maxHeight: 132, minHeight: 36, padding: '8px 4px', border: 'none', background: 'transparent', fontSize: 14, color: '#15181f', overflowY: 'auto' }} />
+              {mentionSource && <button title={L('Adjuntar ticket / cliente', 'Attach ticket / client')} onClick={() => { setShowRef((s) => !s); setShowEmoji(false); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '8px 6px' }}><Icon name="ticket" size={18} /></button>}
               <button title={L('Adjuntar', 'Attach')} onClick={() => fileRef.current?.click()} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '8px 6px' }}><Icon name="paperclip" size={18} /></button>
               <input ref={fileRef} type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.currentTarget.value = ''; }} />
             </div>
@@ -297,6 +336,22 @@ function renderBody(body: string, mentionColor = 'var(--soft-brand, #7c8cff)') {
 }
 
 function Attachment({ a, mine }: { a: Att; mine: boolean }) {
+  // Referencia accionable (ticket / cliente / conversación): tarjeta con "Abrir".
+  if (a.refType) {
+    const isTicket = a.refType === 'ticket';
+    return (
+      <a href={a.url} style={{ display: 'block', textDecoration: 'none', border: mine ? '1px solid rgba(255,255,255,.25)' : '1px solid var(--line)', borderRadius: 10, overflow: 'hidden', background: mine ? 'rgba(255,255,255,.08)' : 'var(--card)', color: mine ? '#fff' : 'var(--tx)', maxWidth: 260 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px' }}>
+          <span style={{ width: 28, height: 28, borderRadius: 8, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: mine ? 'rgba(255,255,255,.14)' : 'var(--bg2)' }}><Icon name={isTicket ? 'ticket' : 'user'} size={16} /></span>
+          <span style={{ minWidth: 0 }}><span style={{ fontSize: 12.5, fontWeight: 600, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>{a.sub && <span style={{ fontSize: 10.5, opacity: .75, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.sub}</span>}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderTop: mine ? '1px solid rgba(255,255,255,.18)' : '1px solid var(--line)' }}>
+          <span style={{ fontSize: 10.5, opacity: .75 }}>{isTicket ? (mine ? 'Ticket' : 'Ticket / conversación') : (mine ? 'Cliente' : 'Ficha de cliente')}</span>
+          <span style={{ fontSize: 11.5, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>Abrir <Icon name="chevronRight" size={13} /></span>
+        </div>
+      </a>
+    );
+  }
   const isImg = a.type?.startsWith('image/');
   if (isImg) return (
     <a href={a.url} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
