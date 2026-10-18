@@ -8,7 +8,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 // Cumple la regla 3.1.1: los planes se compran con Apple (Face ID / Apple Pay). El
 // plan se activa en el servidor por el webhook de RevenueCat.
 // ============================================================
-type Plan = { id: string; name: string; name_en: string; price_month: number; price_year?: number; features?: string[]; features_en?: string[] };
+type Plan = { id: string; name: string; name_en: string; price_month: number; price_year?: number; features?: string[]; features_en?: string[]; capabilities?: any };
 
 // Un plan "de pago" para iOS = no es Free y tiene algún precio (mensual O anual).
 // Antes solo miraba el mensual, así que un plan SOLO anual (p. ej. Onyx Builder)
@@ -105,7 +105,7 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
   // Mostramos TODOS los planes de pago; el precio de Apple llega de forma asíncrona,
   // así que si aún no está usamos el precio de la BD como respaldo y el botón queda
   // en "Cargando…". Así ninguna tarjeta (p. ej. Builder) desaparece por timing.
-  const paid = plans.filter(isPaid);
+  const paid = plans.filter(isPaid).sort((a, b) => (Number(a.price_month) || Number(a.price_year) || 0) - (Number(b.price_month) || Number(b.price_year) || 0));
 
   return (
     <div className="wrap" style={{ padding: '44px 18px 60px', maxWidth: 560, margin: '0 auto' }}>
@@ -119,6 +119,18 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
           const priceStr = ip?.priceString || `$${(Number(p.price_month) || Number(p.price_year) || 0).toFixed(2)}`; // respaldo: precio BD (mensual o anual)
           const nm = es ? p.name : (p.name_en || p.name);
           const feats = (es ? p.features : p.features_en) || [];
+          // Cupo de Onyx AI al mes (capabilities.ai_monthly, Admin → Planes). Es una
+          // FUNCIÓN, no un precio, así que Apple sí permite mostrarlo en iOS. 0 = ilimitado;
+          // respaldo igual que el backend si el plan no lo definió.
+          const aiRaw = p.capabilities?.ai_monthly;
+          const aiM = (aiRaw !== undefined && aiRaw !== null && Number.isFinite(Number(aiRaw)))
+            ? Number(aiRaw)
+            : (p.id === 'free' ? 20 : (['black', 'black_onyx', 'blackonyx'].includes(String(p.id).toLowerCase()) ? 0 : 150));
+          const aiLine = aiM === 0
+            ? (es ? 'Análisis de Onyx AI ilimitados' : 'Unlimited Onyx AI analyses')
+            : (es ? `${aiM} análisis de Onyx AI al mes` : `${aiM} Onyx AI analyses per month`);
+          const hasAiFeat = feats.some((f) => /onyx\s*ai|an[aá]lisis\s+de\s+.*ai|ai\s+anal/i.test(String(f)));
+          const featsAll = hasAiFeat ? feats : [aiLine, ...feats];
           const active = (activePlan || currentPlan) === p.id;
           return (
             <div
@@ -172,9 +184,9 @@ export default function IosPlans({ plans, lang, currentPlan }: { plans: Plan[]; 
                   </div>
                 );
               })()}
-              {feats.length > 0 && (
+              {featsAll.length > 0 && (
                 <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--mut)', lineHeight: 1.7 }}>
-                  {feats.slice(0, 5).map((f, i) => <li key={i}>{f}</li>)}
+                  {featsAll.slice(0, 6).map((f, i) => <li key={i}>{f}</li>)}
                 </ul>
               )}
               <button

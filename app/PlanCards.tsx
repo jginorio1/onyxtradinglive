@@ -54,9 +54,13 @@ export default function PlanCards({
   const cols = Math.max(1, plans.length);
   const perRow = Math.min(3, cols);
   const maxW = perRow * 272 + (perRow - 1) * 16;
+  // Orden por NIVEL DE PRECIO (de menor a mayor): Gratis primero y luego cada plan
+  // por su precio mensual. Así la escalera "Todo lo de X, y además…" queda coherente
+  // (cada plan parte del anterior más barato), sin depender del orden del admin.
+  const ordered = [...plans].sort((a, b) => (Number(a.price_month) || 0) - (Number(b.price_month) || 0));
   return (
     <div className="pricing-grid" style={{ textAlign: 'left', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'stretch', gap: 16, maxWidth: maxW, margin: '0 auto' }}>
-      {plans.map((p, i) => {
+      {ordered.map((p, i) => {
         const price = annual ? p.price_year : p.price_month;
         const name = lang === 'es' ? p.name : (p.name_en || p.name);
         const desc = lang === 'es' ? p.desc_es : (p.desc_en || p.desc_es);
@@ -90,7 +94,7 @@ export default function PlanCards({
         const gold = '#e8b923';
         const goldGrad = 'linear-gradient(100deg,#ffe08a,#e8b923)';
         const goldDark = '#3a2a06';
-        const prev = plans[i - 1];
+        const prev = ordered[i - 1];
         const prevName = prev ? (lang === 'es' ? prev.name : (prev.name_en || prev.name)) : '';
         const isFree = p.id === 'free' || price === 0;
         const botTag = !!botTagId && p.id === botTagId;
