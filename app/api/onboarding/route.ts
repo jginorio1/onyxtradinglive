@@ -52,8 +52,40 @@ export async function POST(req: Request) {
     // usuario lo ve (ya sea que compre, vea planes o siga gratis).
     if (b?.paywall_seen === true) fields.onboard_paywall_seen = true;
 
-    const { error } = await supabaseAdmin.from('profiles').update(fields).eq('id', user.id);
+    // Lead source (de dónde nos conoció). Modelo híbrido: el front manda la
+    // atribución auto-detectada (UTM + referrer) y, si quedó "directo/desconocido",
+    // también la respuesta del usuario a "¿Cómo nos conociste?". No pisamos un
+    // origen fuerte ya guardado (la columna puede no existir: va aparte y tolerante).
+    const leadFields: any = {};
+    if (b?.attr && typeof b.attr === 'object') {
+      const a = b.attr;
+      const src = String(a.source || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24);
+      if (src) { leadFields.lead_source = src; leadFields.lead_detected = true; }
+      if (a.utm_source) leadFields.lead_utm_source = String(a.utm_source).slice(0, 60);
+      if (a.utm_medium) leadFields.lead_utm_medium = String(a.utm_medium).slice(0, 60);
+      if (a.utm_campaign) leadFields.lead_utm_campaign = String(a.utm_campaign).slice(0, 80);
+      if (a.landing) leadFields.lead_landing = String(a.landing).slice(0, 120);
+    }
+    // Respuesta explícita del usuario: manda sobre "web/direct" pero no sobre una
+    // fuente real ya detectada.
+    const ans = String(b?.lead_answer || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24);
+    if (ans && (!leadFields.lead_source || ['web', 'direct'].includes(leadFields.lead_source))) {
+      leadFields.lead_source = ans; leadFields.lead_detected = false;
+    }
+
+    const payload = { ...fields };
+    const { error } = await supabaseAdmin.from('profiles').update(payload).eq('id', user.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Guardado del lead en un update aparte y tolerante: si las columnas aún no
+    // existen (SQL sin correr), no rompe el onboarding. Solo setea lo que falta.
+    if (Object.keys(leadFields).length) {
+      try {
+        const { data: cur } = await supabaseAdmin.from('profiles').select('lead_source').eq('id', user.id).maybeSingle();
+        const strong = cur && (cur as any).lead_source && !['web', 'direct', ''].includes(String((cur as any).lead_source).toLowerCase());
+        if (!strong) await supabaseAdmin.from('profiles').update(leadFields).eq('id', user.id);
+      } catch { /* columnas inexistentes: ignorar */ }
+    }
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

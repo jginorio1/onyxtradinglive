@@ -25,11 +25,14 @@ export default function SupportMetrics() {
   const [days, setDays] = useState(30);
   const [m, setM] = useState<M | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lm, setLm] = useState<M | null>(null);   // Lead manager (clientes + ingreso por fuente)
 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/admin/support/metrics?days=${days}`).then((r) => r.json()).then((j) => { setM(j); setLoading(false); }).catch(() => setLoading(false));
+    fetch(`/api/admin/support/lead-manager?days=${days}`).then((r) => r.json()).then((j) => setLm(j)).catch(() => {});
   }, [days]);
+  const usd = (n: number) => '$' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const card = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 14 } as const;
   const big = { fontSize: 26, fontWeight: 800, color: 'var(--tx)', lineHeight: 1.1 } as const;
@@ -97,12 +100,43 @@ export default function SupportMetrics() {
           </div>
         </div>
         <div className="muted" style={{ fontSize: 11 }}>{es ? 'Primera respuesta = primer mensaje de un humano del equipo. Resolución = de creado a resuelto.' : 'First response = first human team reply. Resolution = created to resolved.'}</div>
+
+        {/* ───────── LEAD MANAGER: de dónde vienen los CLIENTES + ingreso por fuente ───────── */}
+        {lm && (
+          <div style={{ marginTop: 6, paddingTop: 16, borderTop: '2px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 30, height: 30, borderRadius: 9, flex: 'none', background: 'linear-gradient(135deg,#34d399,#2563eb)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>📍</span>
+              <b style={{ fontSize: 15 }}>{es ? 'Lead manager · de dónde vienen los clientes' : 'Lead manager · where customers come from'}</b>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+              <div style={card}><div style={big}>{lm.totals?.customers ?? 0}</div><div style={lbl}>{es ? `Clientes nuevos (${days}d)` : `New customers (${days}d)`}</div></div>
+              <div style={card}><div style={big}>{lm.revenueConfigured ? usd(lm.totals?.revenueMonthly || 0) : '—'}</div><div style={lbl}>{es ? 'Ingreso mensual (MRR)' : 'Monthly revenue (MRR)'}</div></div>
+              <div style={card}><div style={big}>{lm.totals?.activeSubs ?? 0}</div><div style={lbl}>{es ? 'Suscripciones activas' : 'Active subscriptions'}</div></div>
+              <div style={card}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--tx)', lineHeight: 1.15 }}>{lm.totals?.leading ? `${SRC_EMOJI[lm.totals.leading] || '•'} ${SRC_LABEL[lm.totals.leading] || lm.totals.leading}` : '—'}</div>
+                <div style={lbl}>{es ? 'Fuente líder' : 'Leading source'}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 12 }}>
+              <Bars title={es ? '👥 Clientes por fuente' : '👥 Customers by source'}
+                rows={(lm.bySourceCustomers || []).map((s: any) => ({ label: `${SRC_EMOJI[s.key] || '•'} ${SRC_LABEL[s.key] || s.key}`, count: s.count }))}
+                empty={es ? 'Aún sin datos de origen' : 'No source data yet'} />
+              <Bars title={es ? '💵 Ingreso por fuente (MRR)' : '💵 Revenue by source (MRR)'}
+                rows={(lm.bySourceRevenue || []).map((s: any) => ({ label: `${SRC_EMOJI[s.key] || '•'} ${SRC_LABEL[s.key] || s.key}`, count: s.amount }))}
+                empty={lm.revenueConfigured ? (es ? 'Sin suscripciones activas' : 'No active subscriptions') : (es ? 'Stripe no configurado' : 'Stripe not configured')}
+                fmt={usd} />
+            </div>
+            <div className="muted" style={{ fontSize: 11 }}>{es ? 'Fuente = auto-detectada (UTM + referrer) o respondida en el onboarding ("¿Cómo nos conociste?"). "Directo" = sin origen conocido.' : 'Source = auto-detected (UTM + referrer) or answered at onboarding ("How did you hear?"). "Direct" = unknown origin.'}</div>
+          </div>
+        )}
       </>)}
     </div>
   );
 }
 
-function Bars({ title, rows, empty }: { title: string; rows: Array<{ label: string; count: number }>; empty: string }) {
+function Bars({ title, rows, empty, fmt }: { title: string; rows: Array<{ label: string; count: number }>; empty: string; fmt?: (n: number) => string }) {
   const max = Math.max(1, ...rows.map((r) => r.count));
   return (
     <div style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 14 }}>
@@ -115,7 +149,7 @@ function Bars({ title, rows, empty }: { title: string; rows: Array<{ label: stri
             <span style={{ flex: 1, height: 10, borderRadius: 5, background: 'var(--line)', overflow: 'hidden' }}>
               <span style={{ display: 'block', height: '100%', width: `${Math.round((r.count / max) * 100)}%`, background: 'var(--grad)', borderRadius: 5 }} />
             </span>
-            <span style={{ fontSize: 12, fontWeight: 700, width: 34, textAlign: 'right' }}>{r.count}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, width: fmt ? 68 : 34, textAlign: 'right' }}>{fmt ? fmt(r.count) : r.count}</span>
           </div>
         ))}
       </div>

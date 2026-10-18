@@ -8,6 +8,20 @@ import CountrySelect from '@/app/components/CountrySelect';
 import { useCatalog } from '@/lib/useCatalog';
 import { getPending, pendingPricingUrl } from '@/lib/pendingCheckout';
 import { supabaseBrowser } from '@/lib/supabaseBrowser';
+import { readAttribution } from '@/lib/leadSource';
+
+// Opciones de "¿Cómo nos conociste?" (respaldo cuando no se auto-detecta).
+// value = código que guardamos como lead_source; label bilingüe + emoji.
+const HEARD_OPTS: Array<{ v: string; es: string; en: string; e: string }> = [
+  { v: 'instagram', es: 'Instagram', en: 'Instagram', e: '📸' },
+  { v: 'facebook', es: 'Facebook', en: 'Facebook', e: '📘' },
+  { v: 'youtube', es: 'YouTube', en: 'YouTube', e: '▶️' },
+  { v: 'tiktok', es: 'TikTok', en: 'TikTok', e: '🎵' },
+  { v: 'google', es: 'Google / búsqueda', en: 'Google / search', e: '🔍' },
+  { v: 'referral', es: 'Un amigo / referido', en: 'A friend / referral', e: '🤝' },
+  { v: 'telegram', es: 'Telegram', en: 'Telegram', e: '✈️' },
+  { v: 'otro', es: 'Otro', en: 'Other', e: '•' },
+];
 
 const T = {
   es: {
@@ -72,6 +86,19 @@ export default function Onboarding() {
   const [inAt, setInAt] = useState('08:00');
   const [outAt, setOutAt] = useState('21:00');
   const [busy, setBusy] = useState(false);
+  // Lead source híbrido: leemos la atribución auto-detectada; la pregunta de
+  // respaldo "¿Cómo nos conociste?" solo se muestra si quedó directo/desconocido.
+  const [attr, setAttr] = useState<any>(null);
+  const [heard, setHeard] = useState('');
+  const [askHeard, setAskHeard] = useState(false);
+  useEffect(() => {
+    try {
+      const a = readAttribution();
+      setAttr(a);
+      const s = String(a?.source || '').toLowerCase();
+      setAskHeard(!s || ['direct', 'web'].includes(s));
+    } catch { setAskHeard(true); }
+  }, []);
 
   // Prefill del nombre con lo que puso en el registro (para no volver a pedírselo).
   useEffect(() => {
@@ -87,9 +114,13 @@ export default function Onboarding() {
   async function finish(skip: boolean) {
     setBusy(true);
     try {
-      const body = skip ? { skip: true } : {
+      // Siempre mandamos la atribución auto-detectada (aunque salten) + la
+      // respuesta de "¿Cómo nos conociste?" si la contestaron.
+      const lead = { attr: attr || undefined, lead_answer: askHeard ? heard : '' };
+      const body = skip ? { skip: true, ...lead } : {
         full_name, country, experience, trade_style, platform, goal,
         prop_firm: funded === 'si' ? prop_firm : 'ninguna',
+        ...lead,
       };
       await fetch('/api/onboarding', { method: 'POST', body: JSON.stringify(body) });
       // Guarda las horas de Check-in/Check-out que eligió (si no es skip). La zona
@@ -173,6 +204,29 @@ export default function Onboarding() {
             {t.goals.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>
+
+        {/* ¿Cómo nos conociste? — solo si NO se auto-detectó el origen (directo/desconocido).
+            Un toque, opcional, para no añadir fricción a quien ya sabemos de dónde vino. */}
+        {askHeard && (
+          <div style={{ marginTop: 16, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600 }}>{lang === 'en' ? 'How did you hear about us?' : '¿Cómo nos conociste?'}</div>
+            <p className="muted" style={{ fontSize: 12, margin: '2px 0 10px' }}>{lang === 'en' ? 'Helps us improve · optional' : 'Nos ayuda a mejorar · opcional'}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 8 }}>
+              {HEARD_OPTS.map((o) => {
+                const on = heard === o.v;
+                return (
+                  <button key={o.v} type="button" onClick={() => setHeard(on ? '' : o.v)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 11px', borderRadius: 10, cursor: 'pointer',
+                      border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'),
+                      background: on ? 'color-mix(in srgb, var(--brand) 14%, var(--bg))' : 'var(--card)',
+                      color: on ? 'var(--brand)' : 'var(--tx)', fontSize: 13, textAlign: 'left' }}>
+                    <span style={{ fontSize: 16 }}>{o.e}</span>{lang === 'en' ? o.en : o.es}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Rutina diaria: recordatorios de Check-in (mañana) y Check-out (noche), a su hora local. */}
         <div style={{ marginTop: 16, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>

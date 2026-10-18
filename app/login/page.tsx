@@ -10,9 +10,26 @@ import LangToggle from '@/app/LangToggle';
 import Turnstile, { TURNSTILE_KEY, type TurnstileHandle } from '@/app/Turnstile';
 import { setPending } from '@/lib/pendingCheckout';
 import { isNativeApp, signupSource } from '@/lib/native';
+import { readAttribution } from '@/lib/leadSource';
 import LoginParticles from './LoginParticles';
 
 type Lang = 'es' | 'en';
+
+// Lead source auto-detectado (UTM + referrer) para la metadata del registro: así
+// sabemos de dónde vino cada cliente aunque salte el onboarding. Tolerante.
+function leadMeta(): Record<string, any> {
+  try {
+    const a = readAttribution();
+    const m: Record<string, any> = {};
+    if (a?.source) m.lead_source = String(a.source).slice(0, 24);
+    if (a?.utm_source) m.lead_utm_source = String(a.utm_source).slice(0, 60);
+    if (a?.utm_medium) m.lead_utm_medium = String(a.utm_medium).slice(0, 60);
+    if (a?.utm_campaign) m.lead_utm_campaign = String(a.utm_campaign).slice(0, 80);
+    if (a?.landing) m.lead_landing = String(a.landing).slice(0, 120);
+    m.lead_detected = 'true';
+    return m;
+  } catch { return {}; }
+}
 
 const T = {
   es: {
@@ -262,7 +279,7 @@ function LoginInner() {
         const { data, error } = await sb.auth.signUp({
           email: email.trim(), password: pass, options: {
             emailRedirectTo,
-            data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim(), lang, pending_plan: planParam || null, pending_plan_annual: annualParam, pending_promo: promoParam || null, signup_source: signupSource() },
+            data: { full_name: fullName, first_name: name.trim(), last_name: lastName.trim(), lang, pending_plan: planParam || null, pending_plan_annual: annualParam, pending_promo: promoParam || null, signup_source: signupSource(), ...leadMeta() },
             captchaToken: cap,
           },
         });
