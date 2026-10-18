@@ -598,6 +598,11 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   // El tab vive en la URL (#soporte) para que el refresh te deje donde estabas.
   const [tab, setTab] = useState<Tab>(() => {
     if (typeof window !== 'undefined') { const h = window.location.hash.replace('#', ''); if (h) return h as Tab; }
+    // Aterrizaje por rol: un empleado cuyo trabajo es SOPORTE (puede gestionar
+    // soporte y no es dueño ni gestiona cobros) entra directo a la bandeja de
+    // Soporte, no a Resumen, para que no tenga que buscar dónde se atiende a los
+    // clientes. El Owner y los demás roles siguen entrando a Resumen.
+    if (role !== 'owner' && (perms as any)?.soporte === 'manage' && (perms as any)?.planes !== 'manage' && (perms as any)?.finanzas !== 'manage') return 'soporte';
     return 'resumen';
   });
   useEffect(() => { try { window.history.replaceState(null, '', '#' + tab); } catch {} }, [tab]);
