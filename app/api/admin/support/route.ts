@@ -67,13 +67,16 @@ export async function GET() {
     if (ids.length) {
       const [m, p] = await Promise.all([
         supabaseAdmin.from('support_messages').select('id,ticket_id,sender,sender_id,body,attachments,meta,read_at,created_at').in('ticket_id', ids).order('created_at', { ascending: true }),
-        supabaseAdmin.from('ticket_participants').select('ticket_id,user_id').in('ticket_id', ids),
+        supabaseAdmin.from('ticket_participants').select('ticket_id,user_id,invited_by').in('ticket_id', ids),
       ]);
       // Si la columna meta no existe aún, reintentamos sin ella.
       messages = m.error
         ? ((await supabaseAdmin.from('support_messages').select('id,ticket_id,sender,sender_id,body,attachments,read_at,created_at').in('ticket_id', ids).order('created_at', { ascending: true })).data || [])
         : (m.data || []);
-      participants = p.data || [];
+      // Si la columna invited_by no existe aún, reintentamos sin ella.
+      participants = p.error
+        ? ((await supabaseAdmin.from('ticket_participants').select('ticket_id,user_id').in('ticket_id', ids)).data || [])
+        : (p.data || []);
     }
     // Marca presencia: el admin que carga la bandeja está activo ahora.
     if (g.user?.id) { try { await supabaseAdmin.from('profiles').update({ last_active: new Date().toISOString() }).eq('id', g.user.id); } catch {} }
@@ -151,9 +154,40 @@ export async function PATCH(req: Request) {
     const invite = String(b.invite_email || '').trim().toLowerCase();
     if (invite) {
       const { data: m } = await supabaseAdmin.from('profiles').select('id').eq('email', invite).eq('is_admin', true).maybeSingle();
-      if (m) {
-        await supabaseAdmin.from('ticket_participants').upsert({ ticket_id: ticketId, user_id: m.id });
+      if (m && m.id !== user.id) {
+        // Candado: quien fue invitado NO puede invitar de vuelta al que lo invitó.
+        // Si el invitado (m) ya figura como quien invitó al usuario actual en este
+        // ticket, rechazamos (evita el ping-pong de invitaciones).
+        let blocked = false;
+        try {
+          const { data: mine } = await supabaseAdmin.from('ticket_participants').select('invited_by').eq('ticket_id', ticketId).eq('user_id', user.id).maybeSingle();
+          if ((mine as any)?.invited_by && (mine as any).invited_by === m.id) blocked = true;
+        } catch {}
+        if (blocked) return NextResponse.json({ error: 'no puedes invitar a quien te invitó', code: 'invite_back' }, { status: 400 });
+
+        // Guardamos quién invitó (invited_by). Si la columna no existe aún, caemos
+        // al upsert simple para no romper la invitación.
+        let up = await supabaseAdmin.from('ticket_participants').upsert({ ticket_id: ticketId, user_id: m.id, invited_by: user.id } as any);
+        if ((up as any)?.error) await supabaseAdmin.from('ticket_participants').upsert({ ticket_id: ticketId, user_id: m.id });
         await logAdmin(user?.email || '', 'support_invite', ticketId, { invite });
+
+        // Recuadro INTERNO en el chat (solo lo ve el equipo, nunca el cliente: las
+        // rutas del trader filtran sender 'note'). Dice quién invitó a quién.
+        const inviteeEmail = invite;
+        const inviterEmail = (user?.email || '').toLowerCase() || 'un compañero';
+        await supabaseAdmin.from('support_messages').insert({
+          ticket_id: ticketId, sender: 'note',
+          body: `👥 ${inviterEmail} invitó a ${inviteeEmail} para ayudar con este ticket.`,
+        });
+
+        // Línea VISIBLE para el cliente (neutra, sin nombres del equipo). Se guarda
+        // como sender 'system' → ambas vistas la muestran como línea centrada de
+        // sistema; el cliente solo entiende que se sumó otra persona de soporte.
+        await supabaseAdmin.from('support_messages').insert({
+          ticket_id: ticketId, sender: 'system',
+          body: 'Se ha sumado otra persona de nuestro equipo de soporte para ayudarte.',
+        });
+
         // Avisar al compañero invitado (campana + push + Telegram), con enlace.
         try {
           const { data: tkI } = await supabaseAdmin.from('support_tickets').select('subject').eq('id', ticketId).maybeSingle();

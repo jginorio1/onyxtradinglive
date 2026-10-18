@@ -247,7 +247,7 @@ export default function SupportClient() {
                     messages={tm.map((m): ChatMsg => ({
                       id: m.id, mine: m.sender === 'user',
                       authorName: m.sender === 'admin' ? t.team : m.sender === 'ai' ? t.ai : t.me,
-                      authorKind: m.sender === 'ai' ? 'ai' : m.sender === 'note' ? 'note' : m.sender === 'admin' ? 'admin' : 'user',
+                      authorKind: m.sender === 'ai' ? 'ai' : m.sender === 'note' ? 'note' : m.sender === 'system' ? 'system' : m.sender === 'admin' ? 'admin' : 'user',
                       body: m.body, attachments: m.attachments || [], createdAt: m.created_at, readAt: m.read_at,
                     }))}
                     onSend={(text, att) => replyWith(tk.id, text, att)}

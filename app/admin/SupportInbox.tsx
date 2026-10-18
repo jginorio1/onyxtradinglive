@@ -694,6 +694,11 @@ export default function SupportInbox() {
                 const lc = String(meta.altLang || '').toUpperCase();
                 trLabel = (m.sender === 'admin' || m.sender === 'ai') ? `${lc} · ${es ? 'enviado' : 'sent'}` : lc;
               }
+              // Línea de sistema visible (p. ej. "se sumó otra persona de soporte"):
+              // se muestra centrada tanto al equipo como al cliente.
+              if (m.sender === 'system') {
+                return { id: m.id, mine: false, authorKind: 'system' as any, body: m.body, attachments: [], createdAt: m.created_at } as ChatMsg;
+              }
               return {
                 id: m.id,
                 mine: m.sender === 'admin' || m.sender === 'ai',
@@ -703,7 +708,17 @@ export default function SupportInbox() {
               };
             }).filter(Boolean) as ChatMsg[];
             const inConvo = new Set([tk.assignee_id, me, ...parts.map((p) => p.user_id)].filter(Boolean));
-            const cands = team.filter((tm2) => !inConvo.has(tm2.id));
+            // Candado: si a MÍ me invitó alguien a este ticket, no puedo invitarlo de
+            // vuelta (se saca de la lista de candidatos).
+            const myInviter = (parts.find((p) => p.user_id === me) || {}).invited_by || '';
+            const cands = team.filter((tm2) => !inConvo.has(tm2.id) && tm2.id !== myInviter);
+            // Roster "ya en la conversación": a cargo (asignado) + invitados, con correo
+            // y quién los invitó. Se muestra arriba de la lista para que quede claro.
+            const emailById: Record<string, string> = {};
+            team.forEach((tm2: any) => { emailById[tm2.id] = tm2.email; });
+            const roster: { id: string; email: string; role: 'assignee' | 'invited'; by?: string }[] = [];
+            if (tk.assignee_id) roster.push({ id: tk.assignee_id, email: emailById[tk.assignee_id] || tk.assignee_id, role: 'assignee' });
+            parts.forEach((p) => { if (p.user_id !== tk.assignee_id) roster.push({ id: p.user_id, email: emailById[p.user_id] || p.user_id, role: 'invited', by: p.invited_by ? (emailById[p.invited_by] || '') : '' }); });
             return (
               <>
                 {/* Cabecera WhatsApp */}
@@ -765,6 +780,28 @@ export default function SupportInbox() {
                 {/* Invitar (desplegable) */}
                 {showInvite && (
                   <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)', background: 'var(--bg2)' }}>
+                    {/* Ya en la conversación: deja claro quién está (a cargo / invitado). */}
+                    {roster.length > 0 && (
+                      <div style={{ marginBottom: 10 }}>
+                        <div className="muted" style={{ fontSize: 11, marginBottom: 5, textTransform: 'uppercase', letterSpacing: .3 }}>{es ? 'En esta conversación' : 'In this conversation'}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          {roster.map((r) => (
+                            <div key={r.id} className="row between" style={{ gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '6px 9px' }}>
+                              <div className="row" style={{ gap: 8, minWidth: 0 }}>
+                                <span style={{ width: 20, height: 20, borderRadius: '50%', flex: 'none', display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 700, background: avatarOf(r.email).bg, color: avatarOf(r.email).fg }}>{initials(r.email)}</span>
+                                <span style={{ fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {r.email}{r.id === me ? (es ? ' (tú)' : ' (you)') : ''}
+                                  {r.role === 'invited' && r.by ? <span className="muted" style={{ fontSize: 11 }}> · {es ? 'invitó: ' : 'invited by: '}{r.by}</span> : null}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: 10.5, fontWeight: 700, flex: 'none', padding: '2px 8px', borderRadius: 999, background: r.role === 'assignee' ? 'color-mix(in srgb,var(--brand) 18%,transparent)' : 'color-mix(in srgb,var(--green) 16%,transparent)', color: r.role === 'assignee' ? 'var(--brand)' : 'var(--soft-green)' }}>
+                                {r.role === 'assignee' ? (es ? 'A cargo' : 'Owner') : (es ? 'Invitado' : 'Invited')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{l.invTitle}</div>
                     {!cands.length ? <div className="muted" style={{ fontSize: 12 }}>{l.allIn}</div> : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto' }}>
