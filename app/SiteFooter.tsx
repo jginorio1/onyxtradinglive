@@ -40,6 +40,7 @@ export default function SiteFooter() {
       ['/bot-lab', L('Bot Lab · Marketplace', 'Bot Lab · Marketplace')],
       ['/bot-builder', L('Crea tu bot', 'Build a bot')],
       ['/pricing', L('Planes', 'Plans')],
+      ['/monedero', L('Monedero', 'Wallet')],
       ['/copy', 'Onyx Copy'],
     ] },
     { title: L('Empresa', 'Company'), items: [
