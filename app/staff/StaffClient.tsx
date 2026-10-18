@@ -40,6 +40,7 @@ export default function StaffClient() {
       {msg && <div style={{ ...card, padding: '10px 14px', marginBottom: 12, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', fontSize: 13 }}>{msg}</div>}
 
       <ScheduleCard card={card} btn={btn} btnP={btnP} />
+      <LeaveCard card={card} btn={btn} btnP={btnP} inp={inp} />
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div style={{ ...card, flex: 1, minWidth: 160 }}>
@@ -158,6 +159,88 @@ function ScheduleCard({ card, btn, btnP }: { card: React.CSSProperties; btn: Rea
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Mis días libres (saldo + solicitar) ──────────────────────────────
+const TYPE_ES: any = { vacation: 'Vacaciones', sick: 'Enfermedad', personal: 'Personal' };
+const ST_ES: any = { pending: 'pendiente', approved: 'aprobada', rejected: 'rechazada', cancelled: 'cancelada' };
+const ST_COLOR: any = { pending: 'var(--amber,#e0a33e)', approved: 'var(--green,#5ed6a0)', rejected: 'var(--red,#e5484d)', cancelled: 'var(--mut,#9aa6bd)' };
+
+function LeaveCard({ card, btn, btnP, inp }: { card: React.CSSProperties; btn: React.CSSProperties; btnP: React.CSSProperties; inp: React.CSSProperties }) {
+  const [d, setD] = useState<any>(null);
+  const [type, setType] = useState('vacation');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  async function load() { try { const r = await fetch('/api/staff/leave', { cache: 'no-store' }); const j = await r.json(); setD(j); } catch {} }
+  useEffect(() => { load(); }, []);
+
+  async function submit() {
+    if (!start || !end) { setMsg('Elige las fechas.'); return; }
+    setBusy(true); setMsg('');
+    try {
+      const r = await fetch('/api/staff/leave', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'request', type, start_day: start, end_day: end, reason }) });
+      const j = await r.json();
+      if (j.ok) { setMsg(`Solicitud enviada (${j.days} día(s)).`); setStart(''); setEnd(''); setReason(''); await load(); }
+      else setMsg('⚠ ' + (j.error || 'Error'));
+    } catch { setMsg('Error'); } finally { setBusy(false); }
+  }
+  async function cancel(id: string) {
+    setBusy(true);
+    try { await fetch('/api/staff/leave', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'cancel', id }) }); await load(); } catch {} finally { setBusy(false); }
+  }
+
+  if (!d || d.isStaff === false) return null;
+  const bal = d.balances || {};
+  const reqs: any[] = d.requests || [];
+
+  return (
+    <div style={{ ...card, marginBottom: 16 }}>
+      <b>Mis días libres</b>
+      {/* Saldos */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+        {['vacation', 'sick', 'personal'].map((t) => (
+          <div key={t} style={{ flex: 1, minWidth: 110, background: 'var(--bg2,#0e1220)', borderRadius: 10, padding: '10px 12px' }}>
+            <div className="muted" style={{ fontSize: 11.5 }}>{TYPE_ES[t]}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: (bal[t]?.remaining || 0) > 0 ? 'var(--green,#5ed6a0)' : 'var(--mut,#9aa6bd)' }}>{bal[t]?.remaining ?? 0}</div>
+            <div className="muted" style={{ fontSize: 10.5 }}>de {bal[t]?.allotted ?? 0} · usados {bal[t]?.used ?? 0}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Solicitar */}
+      <div style={{ marginTop: 12, borderTop: '1px solid var(--line,#2a3350)', paddingTop: 12 }}>
+        <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>Solicitar días libres</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <select value={type} onChange={(e) => setType(e.target.value)} style={inp}><option value="vacation">Vacaciones</option><option value="sick">Enfermedad</option><option value="personal">Personal</option></select>
+          <input type="date" value={start} onChange={(e) => setStart(e.target.value)} style={inp} />
+          <span className="muted">→</span>
+          <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} style={inp} />
+          <input placeholder="Motivo (opcional)" value={reason} onChange={(e) => setReason(e.target.value)} style={{ ...inp, flex: 1, minWidth: 160 }} />
+          <button style={btnP} disabled={busy} onClick={submit}>Solicitar</button>
+        </div>
+        {msg && <div style={{ fontSize: 12, marginTop: 8, color: msg.startsWith('⚠') ? 'var(--red,#e5484d)' : 'var(--green,#5ed6a0)' }}>{msg}</div>}
+      </div>
+
+      {/* Mis solicitudes */}
+      {reqs.length > 0 && (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {reqs.map((r) => (
+            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, background: 'var(--bg2,#0e1220)', borderRadius: 8, padding: '7px 11px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12.5 }}>{TYPE_ES[r.type]} · {r.start_day.slice(5)}→{r.end_day.slice(5)} · {r.days}d{r.admin_note ? ` · “${r.admin_note}”` : ''}</span>
+              <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: ST_COLOR[r.status] }}>{ST_ES[r.status]}</span>
+                {r.status === 'pending' && <button style={{ ...btn, fontSize: 11, padding: '2px 8px' }} disabled={busy} onClick={() => cancel(r.id)}>Cancelar</button>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

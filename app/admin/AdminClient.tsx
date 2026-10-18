@@ -65,6 +65,7 @@ const HowToEditor = dynamic(() => import('./HowToEditor'), { ssr: false, loading
 const TeamChat = dynamic(() => import('./TeamChat'), { ssr: false, loading: tabLoad });
 const Payroll = dynamic(() => import('./Payroll'), { ssr: false, loading: tabLoad });
 const Schedule = dynamic(() => import('./Schedule'), { ssr: false, loading: tabLoad });
+const Leave = dynamic(() => import('./Leave'), { ssr: false, loading: tabLoad });
 const CareersAdmin = dynamic(() => import('./CareersAdmin'), { ssr: false, loading: tabLoad });
 const Training = dynamic(() => import('./Training'), { ssr: false, loading: tabLoad });
 const CopyTradersAdmin = dynamic(() => import('./CopyTradersAdmin'), { ssr: false, loading: tabLoad });
@@ -76,7 +77,7 @@ import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean; signup_source?: string | null };
 type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
-type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'nomina' | 'horarios' | 'carreras' | 'formacion' | 'embajadores' | 'ventas' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'mtbrokers' | 'tlservers' | 'dxservers' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'comousar' | 'copytraders' | 'botlab' | 'factory' | 'pagos' | 'monedero' | 'antifraude' | 'trackrecord' | 'monitor' | 'ads' | 'ajustes';
+type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'nomina' | 'horarios' | 'diaslibres' | 'carreras' | 'formacion' | 'embajadores' | 'ventas' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'mtbrokers' | 'tlservers' | 'dxservers' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'comousar' | 'copytraders' | 'botlab' | 'factory' | 'pagos' | 'monedero' | 'antifraude' | 'trackrecord' | 'monitor' | 'ads' | 'ajustes';
 
 const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'advMetrics', 'portfolioLab', 'expenses', 'coach', 'academy', 'challenge', 'habits', 'edge', 'copymkt', 'share', 'push', 'platforms'];
 const CAP_FALLBACK: Record<string, string> = { tv: 'TradingView (señales → EA)' };
@@ -598,7 +599,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
     campanas: 'campanas', blog: 'blog', seo: 'seo', ads: 'ads', landing: 'landing', landingnew: 'landing',
     embajadores: 'embajadores', ventas: 'ventas', copytraders: 'copytraders', trackrecord: 'trackrecord',
     modulos: 'modulos', academy: 'academy', botlab: 'botlab', factory: 'factory', firms: 'firms', catalogos: 'catalogos', mtbrokers: 'brokers', tlservers: 'brokers', dxservers: 'brokers',
-    equipo: 'equipo', nomina: 'nomina', horarios: 'equipo', carreras: 'carreras', formacion: 'formacion', chat: 'chat',
+    equipo: 'equipo', nomina: 'nomina', horarios: 'equipo', diaslibres: 'equipo', carreras: 'carreras', formacion: 'formacion', chat: 'chat',
     guias: 'guias', comousar: 'guias', diag: 'diag', pruebas: 'pruebas', recursos: 'recursos', audit: 'audit', backups: 'backups', optim: 'optim', ajustes: 'ajustes',
   };
   const has = (a: string) => role === 'owner' || (perms[a] && perms[a] !== 'none');
@@ -851,7 +852,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
     { g: 'Marketing', c: '#ef6ea0', items: [['campanas', '📣', en ? 'Campaigns' : 'Campañas'], ['blog', '📝', 'Blog'], ['seo', '🔎', 'SEO'], ['ads', '📢', en ? 'Ads' : 'Anuncios'], ['landing', '🧩', 'Landing Builder'], ['landingnew', '✨', en ? 'New landing' : 'Landing nueva']] },
     { g: en ? 'Partners' : 'Socios', c: '#d9b661', items: [['embajadores', '🎁', t.nav_embajadores], ['ventas', '🧑‍💼', en ? 'Sales team' : 'Red de ventas'], ['copytraders', '🏆', 'Onyx Copy'], ['trackrecord', '📈', en ? 'Public trackrecord' : 'Trackrecord público']] },
     { g: en ? 'Product' : 'Producto', c: '#a679ff', items: [['modulos', '🧩', t.nav_modulos], ['academy', '🎓', en ? 'Academy' : 'Academia'], ['botlab', '🤖', 'Onyx Bot Lab'], ['factory', '🏭', en ? 'Bot Factory' : 'Fábrica de bots'], ['firms', '🏛️', t.nav_firms], ['catalogos', '🗂️', en ? 'Catalogs' : 'Catálogos'], ['mtbrokers', '🔌', en ? 'MatchTrader brokers' : 'Brókers MatchTrader'], ['tlservers', '🔗', en ? 'TradeLocker brokers' : 'Brókers TradeLocker'], ['dxservers', '🔗', en ? 'DXtrade brokers' : 'Brókers DXtrade']] },
-    { g: en ? 'Team' : 'Equipo', c: '#f5a742', items: [['equipo', '🛡️', t.nav_equipo], ['nomina', '💵', en ? 'Payroll' : 'Nómina'], ['horarios', '🗓️', en ? 'Schedules' : 'Horarios'], ['carreras', '💼', en ? 'Careers' : 'Carreras'], ['formacion', '🎓', en ? 'Training' : 'Formación'], ['chat', '💬', en ? 'Team chat' : 'Chat equipo']] },
+    { g: en ? 'Team' : 'Equipo', c: '#f5a742', items: [['equipo', '🛡️', t.nav_equipo], ['nomina', '💵', en ? 'Payroll' : 'Nómina'], ['horarios', '🗓️', en ? 'Schedules' : 'Horarios'], ['diaslibres', '🏖️', en ? 'Time off' : 'Días libres'], ['carreras', '💼', en ? 'Careers' : 'Carreras'], ['formacion', '🎓', en ? 'Training' : 'Formación'], ['chat', '💬', en ? 'Team chat' : 'Chat equipo']] },
     { g: en ? 'System' : 'Sistema', c: '#8b93a7', items: [['kb', '🧠', t.nav_kb], ['guias', '📚', en ? 'Guides' : 'Guías'], ['comousar', '🧭', en ? 'How-to (/como-usar)' : 'Cómo usar (/como-usar)'], ['diag', '🩺', t.nav_diag], ['audit', '📈', t.nav_audit], ['recursos', '📟', en ? 'Resources' : 'Recursos'], ['backups', '🗄️', t.nav_backups], ['optim', '🚀', t.nav_optim], ['pruebas', '🧪', t.nav_pruebas], ['ajustes', '⚙️', t.nav_ajustes]] },
   ];
   const groups = NAV_GROUPS.map((gr) => ({ ...gr, items: gr.items.filter(([k]) => canSee(k)) })).filter((gr) => gr.items.length);
@@ -1388,6 +1389,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'equipo' && <Equipo team={team} role={role} meEmail={meEmail} reload={loadTeam} canManage={role === 'owner' || perms.equipo === 'manage'} />}
             {tab === 'nomina' && <Payroll canManage={role === 'owner' || perms.nomina === 'manage'} />}
             {tab === 'horarios' && <Schedule canManage={role === 'owner' || perms.equipo === 'manage'} lang={lang as any} />}
+            {tab === 'diaslibres' && <Leave canManage={role === 'owner' || perms.equipo === 'manage'} lang={lang as any} />}
             {tab === 'carreras' && <CareersAdmin canManage={role === 'owner' || perms.carreras === 'manage'} />}
             {tab === 'formacion' && <Training canManage={role === 'owner' || perms.formacion === 'manage'} lang={lang} />}
             {tab === 'embajadores' && <Ambassadors />}

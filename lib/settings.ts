@@ -213,6 +213,12 @@ export const addonSettings = () => getSetting<Addons>('addons', A);
 export type StaffPush = { required: boolean };
 export const staffPushSettings = () => getSetting<StaffPush>('staff_push', { required: true });
 
+// Política de DÍAS LIBRES por defecto (días/año por tipo). El admin puede dar a un
+// empleado concreto una asignación distinta en staff_leave_balance; si no hay fila,
+// se usa esta política. Vive encima de la nómina + horarios.
+export type LeavePolicy = { vacation: number; sick: number; personal: number };
+export const leavePolicySettings = () => getSetting<LeavePolicy>('leave_policy', { vacation: 15, sick: 10, personal: 5 });
+
 // Prompt editable de Onyx AI (soporte/chat) desde el Admin. Si un campo está vacío,
 // se usa el valor por defecto del código. `extra` se AÑADE a las instrucciones;
 // `brief` REEMPLAZA el conocimiento de marca (los hechos que la IA da sobre Onyx).
