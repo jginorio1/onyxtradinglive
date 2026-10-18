@@ -23,7 +23,7 @@ export async function GET() {
     isStaff: true,
     staff: {
       id: st.id, name: st.name, department: st.department, position: st.position,
-      salary: st.salary, currency: st.currency, payout_method: st.payout_method, status: st.status,
+      salary: st.salary, currency: st.currency, pay_cycle: st.pay_cycle || 'monthly', payout_method: st.payout_method, status: st.status,
       start_date: st.start_date,
     },
     connect,

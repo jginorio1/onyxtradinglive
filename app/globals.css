@@ -9,6 +9,11 @@
      sobre el fondo oscuro y no se vea apagado. Los botones usan texto oscuro
      sobre este color, así que aclararlo mejora el contraste (no lo rompe). */
   --brand:#ff9d3d; --brand2:#ffcf5c;
+  /* ALIAS de compatibilidad: variables "heredadas" que algunos componentes usaban
+     (--accent, --panel). Antes NO existían, así que caían en su fallback escrito a
+     mano (morado #8b93ff) y rompían la congruencia. Ahora apuntan a la marca, de
+     modo que cualquier uso presente o futuro de --accent/--panel se ve dorado. */
+  --accent:var(--brand); --accent2:var(--brand2); --panel:var(--card);
   --green:#34e2a0; --green2:#12b981; --red:#ff6b7d; --red2:#e23b55; --amber:#ffc04d; --cyan:#3ad0ff; --gold:#ffd45e; --purple:#c49bff;
   --grad:linear-gradient(100deg,#ffcf5c,#ff9d3d 46%,#ff5e4d);
   --grad-green:linear-gradient(120deg,#34e2a0,#12b981);
@@ -36,6 +41,8 @@ html[data-theme="light"]{
      texto blanco sobre var(--brand) y #5b6cff solo daba 4.17:1 (WCAG pide 4.5).
      #5261e6 da 4.72:1 y es visualmente casi idéntico. El modo oscuro no cambia. */
   --brand:#c2410c; --brand2:#e0781f;
+  /* Mismos alias de compatibilidad en tema claro (ver nota arriba). */
+  --accent:var(--brand); --accent2:var(--brand2); --panel:var(--card);
   /* --amber un punto más oscuro (#c9860a→#a8710a): el chip "Viendo datos de
      ejemplo" usaba texto ámbar sobre fondo ámbar claro y casi no se leía. */
   /* --gold más oscuro (#c98b17→#946800): como TEXTO (Oro/ORO, "Guardian Pro",

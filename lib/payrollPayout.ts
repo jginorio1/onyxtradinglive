@@ -1,6 +1,6 @@
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { payrollSettings, staffById, buildPayrun, paymentsForPeriod, thisPeriod } from '@/lib/payroll';
+import { payrollSettings, staffById, buildPayrun, paymentsForPeriod, thisPeriod, listStaff, periodForCycle, normCycle } from '@/lib/payroll';
 
 // ============================================================
 // Pagos de NÓMINA. Reutiliza el nodo Stripe Connect compartido (ventas /
@@ -66,17 +66,24 @@ export async function payStaffStripe(paymentId: string): Promise<{ ok: boolean; 
 export async function autoPayPayrollDue(): Promise<{ built: number; paid: number; skipped: number }> {
   const s = await payrollSettings();
   if (!s.enabled || !s.auto_pay || s.review_before_pay) return { built: 0, paid: 0, skipped: 0 };
+  // Cadencia-consciente: corre a diario. Arma el periodo ACTUAL de cada empleado
+  // según su frecuencia (idempotente: solo crea cuando empieza un periodo nuevo).
+  const { created } = await buildPayrun();
   const day = new Date().getDate();
-  if (day !== (s.pay_day || 1)) return { built: 0, paid: 0, skipped: 0 };
-  const p = thisPeriod();
-  const { created } = await buildPayrun(p);
-  const pays = await paymentsForPeriod(p);
+  const monthlyPayDay = s.pay_day || 1;
+  const staff = (await listStaff()).filter((x) => x.status === 'active' && Number(x.salary) > 0);
   let paid = 0, skipped = 0;
-  for (const x of pays) {
-    if (x.status === 'paid' || x.status === 'skipped') continue;
-    const st = x.staff;
-    if (!st || st.on_hold || st.payout_method !== 'stripe' || !st.payouts_enabled) { skipped++; continue; }
-    const r = await payStaffStripe(x.id);
+  for (const st of staff) {
+    const cyc = normCycle(st.pay_cycle);
+    // Mensual: solo se paga en el día de pago configurado. Sub-mensual (semanal/
+    // bisemanal/quincenal): se paga en cuanto el periodo arranca (su día ancla).
+    if (cyc === 'monthly' && day !== monthlyPayDay) continue;
+    const period = periodForCycle(cyc, new Date());
+    const { data: pay } = await supabaseAdmin.from('staff_payments')
+      .select('id,status').eq('staff_id', st.id).eq('period', period).maybeSingle();
+    if (!pay || (pay as any).status === 'paid' || (pay as any).status === 'skipped') continue;
+    if (st.on_hold || st.payout_method !== 'stripe' || !st.payouts_enabled) { skipped++; continue; }
+    const r = await payStaffStripe((pay as any).id);
     if (r.ok) paid++; else skipped++;
   }
   return { built: created, paid, skipped };

@@ -128,6 +128,7 @@ export default function Payroll({ canManage = true }: { canManage?: boolean }) {
               <div key={p.id} style={{ ...card, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                 <div>
                   <b style={{ color: 'var(--tx,#e8ecf5)' }}>{p.staff?.name || '—'}</b>
+                  {p.period_label && <span className="muted" style={{ fontSize: 11, background: 'var(--bg2)', borderRadius: 6, padding: '1px 6px', marginLeft: 6 }}>{p.period_label}</span>}
                   <span className="muted" style={{ fontSize: 12 }}> · neto {money(p.net ?? p.amount, p.currency)}{p.gross && p.gross !== (p.net ?? p.amount) ? ` (bruto ${money(p.gross, p.currency)})` : ''} · {p.method}</span>
                   <div style={{ fontSize: 11, color: p.status === 'paid' ? '#5ed6a0' : p.status === 'skipped' ? '#9aa6bd' : '#f0b74e' }}>
                     {p.status === 'paid' ? `pagado · ${p.ref || ''}` : p.status === 'skipped' ? 'saltado' : 'pendiente'}
@@ -161,6 +162,9 @@ function PayRow({ p, act, btn, btnP, inp }: any) {
   );
 }
 
+// Pista al lado de "Sueldo por período" según la frecuencia elegida.
+const CYC_HINT: Record<string, string> = { weekly: '(por semana)', biweekly: '(por quincena · cada 2 sem.)', semimonthly: '(por quincena)', monthly: '(por mes)' };
+
 function StaffModal({ e, act, onClose, inp, btn, btnP, depts }: any) {
   const [f, setF] = useState<any>({ ...e });
   const u = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
@@ -179,7 +183,15 @@ function StaffModal({ e, act, onClose, inp, btn, btnP, depts }: any) {
           <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Correo (para ligar su cuenta y panel; opcional)</span><input style={{ ...inp, width: '100%' }} value={f.email || ''} onChange={(ev) => u('email', ev.target.value)} placeholder="juan@correo.com" /></label>
           <label><span style={lbl}>Departamento</span><select style={{ ...inp, width: '100%' }} value={f.department} onChange={(ev) => u('department', ev.target.value)}>{depts.map((dk: string) => <option key={dk} value={dk}>{DL[dk] || dk}</option>)}</select></label>
           <label><span style={lbl}>Puesto</span><input style={{ ...inp, width: '100%' }} value={f.position || ''} onChange={(ev) => u('position', ev.target.value)} placeholder="Backend Sr." /></label>
-          <label><span style={lbl}>Sueldo mensual</span><input type="number" style={{ ...inp, width: '100%' }} value={f.salary ?? 0} onChange={(ev) => u('salary', ev.target.value)} /></label>
+          <label style={{ gridColumn: '1 / -1' }}><span style={lbl}>Frecuencia de pago</span>
+            <select style={{ ...inp, width: '100%' }} value={f.pay_cycle || 'monthly'} onChange={(ev) => u('pay_cycle', ev.target.value)}>
+              <option value="weekly">Semanal (cada semana)</option>
+              <option value="biweekly">Bisemanal (cada 2 semanas)</option>
+              <option value="semimonthly">Quincenal (2 veces al mes)</option>
+              <option value="monthly">Mensual (1 vez al mes)</option>
+            </select>
+          </label>
+          <label><span style={lbl}>Sueldo por período {CYC_HINT[f.pay_cycle || 'monthly']}</span><input type="number" style={{ ...inp, width: '100%' }} value={f.salary ?? 0} onChange={(ev) => u('salary', ev.target.value)} /></label>
           <label><span style={lbl}>Moneda</span><input style={{ ...inp, width: '100%' }} value={f.currency || 'USD'} onChange={(ev) => u('currency', ev.target.value)} /></label>
           <label><span style={lbl}>Método de cobro</span><select style={{ ...inp, width: '100%' }} value={f.payout_method} onChange={(ev) => u('payout_method', ev.target.value)}><option value="stripe">Stripe</option><option value="usdt">USDT</option><option value="manual">Manual</option></select></label>
           <label><span style={lbl}>Fecha de inicio</span><input type="date" style={{ ...inp, width: '100%' }} value={f.start_date || ''} onChange={(ev) => u('start_date', ev.target.value)} /></label>

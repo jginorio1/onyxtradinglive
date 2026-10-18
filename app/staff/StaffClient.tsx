@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 
 const money = (n: number, c = 'USD') => (c === 'USD' ? '$' : '') + (Math.round((n || 0) * 100) / 100).toLocaleString('en-US') + (c !== 'USD' ? ' ' + c : '');
 const DL: Record<string, string> = { dev: 'Desarrollo', management: 'Gerencia', marketing: 'Marketing', design: 'Diseño', ops: 'Operaciones', other: 'Equipo' };
+// Etiqueta del sueldo según la frecuencia de pago del empleado.
+const CYC_LBL: Record<string, string> = { weekly: 'semanal', biweekly: 'bisemanal', semimonthly: 'quincenal', monthly: 'mensual' };
 
 export default function StaffClient() {
   const [d, setD] = useState<any>(null);
@@ -22,10 +24,11 @@ export default function StaffClient() {
   }
 
   const wrap: React.CSSProperties = { maxWidth: 760, margin: '0 auto', padding: '24px 16px 70px' };
-  const card: React.CSSProperties = { background: 'var(--panel,#161c2e)', border: '1px solid var(--line,#2a3350)', borderRadius: 14, padding: 18 };
-  const btn: React.CSSProperties = { padding: '9px 14px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--card,#1b2338)', color: 'var(--tx,#e8ecf5)', cursor: 'pointer', fontSize: 13 };
-  const btnP: React.CSSProperties = { ...btn, background: 'var(--accent,#8b93ff)', color: '#fff', border: 'none', fontWeight: 600 };
-  const inp: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line,#2a3350)', background: 'var(--bg,#0e1220)', color: 'var(--tx,#e8ecf5)', fontSize: 13.5 };
+  // Tokens REALES del tema (congruente con admin/dashboard): sin morados inventados.
+  const card: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: 18 };
+  const btn: React.CSSProperties = { padding: '9px 14px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--card2)', color: 'var(--tx)', cursor: 'pointer', fontSize: 13 };
+  const btnP: React.CSSProperties = { ...btn, background: 'var(--brand)', color: '#0b1020', border: 'none', fontWeight: 700 };
+  const inp: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border: '1px solid var(--line)', background: 'var(--bg2)', color: 'var(--tx)', fontSize: 13.5, fontFamily: 'inherit' };
 
   if (!d) return <div style={wrap}><div className="muted">Cargando…</div></div>;
   if (!d.isStaff) return <div style={wrap}><div style={card}><h2 style={{ marginTop: 0 }}>No estás en la nómina</h2><p className="muted">Si crees que es un error, contacta al administrador.</p></div></div>;
@@ -37,14 +40,14 @@ export default function StaffClient() {
       <h1 style={{ fontSize: 23, margin: '0 0 4px' }}>Mi nómina</h1>
       <div className="muted" style={{ fontSize: 13, marginBottom: 16 }}>{st.name} · {DL[st.department] || st.department}{st.position ? ` · ${st.position}` : ''}</div>
 
-      {msg && <div style={{ ...card, padding: '10px 14px', marginBottom: 12, borderColor: 'var(--accent,#8b93ff)', color: 'var(--accent,#8b93ff)', fontSize: 13 }}>{msg}</div>}
+      {msg && <div style={{ ...card, padding: '10px 14px', marginBottom: 12, borderColor: 'var(--brand)', color: 'var(--brand)', fontSize: 13 }}>{msg}</div>}
 
       <ScheduleCard card={card} btn={btn} btnP={btnP} />
       <LeaveCard card={card} btn={btn} btnP={btnP} inp={inp} />
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <div style={{ ...card, flex: 1, minWidth: 160 }}>
-          <div className="muted" style={{ fontSize: 12 }}>Sueldo mensual</div>
+          <div className="muted" style={{ fontSize: 12 }}>Sueldo {CYC_LBL[st.pay_cycle || 'monthly'] || 'por período'}</div>
           <div style={{ fontSize: 26, fontWeight: 700 }}>{money(st.salary, st.currency)}</div>
         </div>
         <div style={{ ...card, flex: 1, minWidth: 160 }}>
@@ -87,7 +90,7 @@ export default function StaffClient() {
                 <td style={{ padding: '8px 4px', fontWeight: 600 }}>{money(p.net ?? p.amount, p.currency)}<span className="muted" style={{ fontWeight: 400, fontSize: 11 }}> neto</span></td>
                 <td style={{ padding: '8px 4px', color: 'var(--mut,#9aa6bd)' }}>{p.method}</td>
                 <td style={{ padding: '8px 4px', color: p.status === 'paid' ? 'var(--green,#5ed6a0)' : 'var(--mut,#9aa6bd)' }}>{p.status === 'paid' ? 'pagado' : p.status}</td>
-                <td style={{ padding: '8px 4px', textAlign: 'right' }}><a href={`/api/staff/payslip?payment_id=${p.id}`} target="_blank" rel="noopener" style={{ color: 'var(--accent,#8b93ff)', fontSize: 12 }}>recibo</a></td>
+                <td style={{ padding: '8px 4px', textAlign: 'right' }}><a href={`/api/staff/payslip?payment_id=${p.id}`} target="_blank" rel="noopener" style={{ color: 'var(--brand)', fontSize: 12 }}>recibo</a></td>
               </tr>
             ))}
           </tbody></table>}
