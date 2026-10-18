@@ -80,7 +80,21 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   useEffect(() => { if (open && !queue) setQueue(rollQueue()); }, [open]);
   useEffect(() => {
     if (!open || human) return;
-    const t = setInterval(() => setQueue((q) => { if (!q) return q; const secs = q.secs - 1; return secs <= 0 ? rollQueue() : { ...q, secs }; }), 1000);
+    const t = setInterval(() => setQueue((q) => {
+      if (!q) return q;
+      let { n, secs } = q;
+      secs -= 1;
+      if (secs <= 0) {
+        // Atendimos a alguien: la cola baja 1 (o sube un poco si ya estaba baja),
+        // y empieza la cuenta para el siguiente. Así el número también "se mueve".
+        n = n <= 3 ? Math.min(11, n + 1 + Math.floor(Math.random() * 2)) : n - 1;
+        secs = n * 18 + 20 + Math.floor(Math.random() * 25);
+      } else if (Math.random() < 0.015) {
+        // De vez en cuando entra/sale alguien de la cola (±1), dentro de 3–11.
+        n = Math.min(11, Math.max(3, n + (Math.random() < 0.5 ? -1 : 1)));
+      }
+      return { n, secs };
+    }), 1000);
     return () => clearInterval(t);
   }, [open, human]);
   const [leadMsg, setLeadMsg] = useState('');
@@ -900,8 +914,11 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 800, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? (agentName || x.humanTitle) : x.title}</div>
               <div style={{ fontSize: 12, opacity: .85, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                {cfg.showPulse && <span className={human ? 'onyx-pulse' : ''} style={{ width: 7, height: 7, borderRadius: '50%', background: human ? '#128a4f' : 'rgba(255,255,255,.4)', flex: 'none' }} />}
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? x.online : (x.offline || x.online)}</span>
+                {cfg.showPulse && <span className={(human || (!human && queue)) ? 'onyx-pulse' : ''} style={{ width: 7, height: 7, borderRadius: '50%', background: human ? '#128a4f' : (queue ? '#fff' : 'rgba(255,255,255,.4)'), flex: 'none' }} />}
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{
+                  human ? x.online
+                    : (queue ? `${queue.n} ${es ? 'en cola' : 'in queue'} · ~${Math.floor(queue.secs / 60)}:${(queue.secs % 60) < 10 ? '0' : ''}${queue.secs % 60}` : (x.offline || x.online))
+                }</span>
               </div>
             </div>
             {/* Solo el botón de cerrar en la cabecera (sin Expand ni menú de 3 puntos). */}
@@ -911,19 +928,13 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
           <div ref={scrollBox} onScroll={onBodyScroll} style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
             <div style={{ maxWidth: '86%', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, ...bubble('assistant') }}>{linkify(greet)}</div>
 
-            {/* Cola simulada (solo antes de estar con un asesor humano). */}
-            {!human && queue && (() => {
-              const m = Math.floor(queue.secs / 60), s = queue.secs % 60;
-              return (
-                <div style={{ background: 'color-mix(in srgb, var(--amber) 14%, var(--card))', border: '1px solid color-mix(in srgb, var(--amber) 40%, var(--line))', borderRadius: 12, padding: '9px 12px', display: 'flex', gap: 9, alignItems: 'center' }}>
-                  <OnyxIcon emoji="👥" size={18} glow={false} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--amber)' }}>{es ? `${queue.n} personas en cola · espera ~${m}:${s < 10 ? '0' : ''}${s}` : `${queue.n} people in queue · wait ~${m}:${s < 10 ? '0' : ''}${s}`}</div>
-                    <div style={{ fontSize: 11, color: 'var(--mut)' }}>{es ? 'Deja tu mensaje: te atendemos en cuanto se pueda.' : 'Leave your message: we’ll get to you as soon as we can.'}</div>
-                  </div>
-                </div>
-              );
-            })()}
+            {/* El contador de cola va en la CABECERA (siempre visible). Aquí solo una
+                frase corta de tranquilidad, una vez, antes de hablar con un humano. */}
+            {!human && queue && (
+              <div style={{ fontSize: 11, color: 'var(--mut)', display: 'flex', alignItems: 'center', gap: 5, margin: '-2px 2px 0' }}>
+                <OnyxIcon emoji="👥" size={12} glow={false} /> {es ? 'Deja tu mensaje: te atendemos en cuanto se pueda.' : 'Leave your message: we’ll get to you as soon as we can.'}
+              </div>
+            )}
 
             {/* Puerta de entrada: nombre + correo antes de chatear (solo invitados). Da
                 el lead, frena bots y evita el consumo de IA, y crea el hilo para guardar todo. */}
