@@ -197,7 +197,7 @@ function TeamChatInner() {
           {/* Lista de conversaciones (tipo WhatsApp) */}
           <div className={'teamchat-side' + (mobileOpen ? ' tc-hidden-m' : '')} style={{ borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg2)' }}>
             <div style={{ padding: '14px 14px 10px', display: 'flex', gap: 10, alignItems: 'center' }}>
-              <span style={{ width: 34, height: 34, borderRadius: 10, flex: 'none', background: 'linear-gradient(135deg,#7c8cff,#34e2a0)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0b0d17' }}><Icon name="message" size={18} /></span>
+              <span style={{ width: 34, height: 34, borderRadius: 10, flex: 'none', background: 'var(--tx)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--card)' }}><Icon name="message" size={18} /></span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 700 }}>{L('Equipo', 'Team')}</div>
                 <div className="muted" style={{ fontSize: 11 }}><span style={{ color: 'var(--soft-green)' }}>●</span> {online.length} {L('en línea', 'online')}</div>
@@ -208,7 +208,7 @@ function TeamChatInner() {
                 <Icon name="search" size={15} />
                 <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={L('Buscar', 'Search')} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%', color: 'var(--tx)' }} />
               </div>
-              <button className="btn btn-primary" onClick={() => setShowCompose((s) => !s)} title={L('Nueva conversación', 'New chat')} style={{ width: 36, height: 36, padding: 0, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><Icon name="plus" size={19} /></button>
+              <button onClick={() => setShowCompose((s) => !s)} title={L('Nueva conversación', 'New chat')} style={{ width: 36, height: 36, padding: 0, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', background: 'var(--tx)', color: 'var(--card)', border: 'none', cursor: 'pointer' }}><Icon name="plus" size={19} /></button>
             </div>
             {showCompose && (
               <div style={{ padding: '4px 12px 10px', borderBottom: '1px solid var(--line)' }}>
@@ -241,10 +241,10 @@ function TeamChatInner() {
           {/* Panel de chat */}
           <div className={'teamchat-main' + (mobileOpen ? ' tc-fs-m' : ' tc-hidden-m')} style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
             {activeCh ? (<>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', background: 'linear-gradient(90deg, rgba(124,140,255,.10), transparent 70%)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: '1px solid var(--line)', background: 'var(--bg2)' }}>
                 <button className="tc-back" onClick={() => setMobileOpen(false)} style={{ display: 'none', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--tx)', lineHeight: 1, padding: '4px 2px' }}><Icon name="back" size={22} /></button>
                 {(() => { const av = avatarOf(headerName); const dm = activeCh.kind === 'dm'; return (
-                  <span style={{ width: 38, height: 38, borderRadius: 12, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dm ? 12 : 17, fontWeight: 700, background: dm ? av.bg : 'rgba(124,140,255,.14)', color: dm ? av.fg : 'var(--soft-brand)' }}>{dm ? initials(headerName) : <Icon name="hash" size={18} />}</span>
+                  <span style={{ width: 38, height: 38, borderRadius: 12, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: dm ? 12 : 17, fontWeight: 700, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--tx)' }}>{dm ? initials(headerName) : <Icon name="hash" size={18} />}</span>
                 ); })()}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(activeCh.kind === 'dm' ? '' : '# ') + headerName}</div>
@@ -273,8 +273,8 @@ function TeamChatInner() {
                   {date && <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setDate('')}>{L('Todo', 'All')}</button>}
                 </div>
               )}
-              <div style={{ padding: '10px 14px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'radial-gradient(120% 80% at 100% 0%, rgba(124,140,255,.06), transparent 60%), radial-gradient(120% 80% at 0% 100%, rgba(52,226,160,.05), transparent 55%)' }}>
-                <ChatThread messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={Math.max(240, gridH - 150)} typingLabel={typingLabel}
+              <div style={{ padding: '10px 14px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg)' }}>
+                <ChatThread variant="mono" messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={Math.max(240, gridH - 150)} typingLabel={typingLabel}
                   placeholder={L('Escribe… @ para etiquetar, @Onyx para la IA', 'Type… @ to tag, @Onyx for AI')}
                   emptyText={date ? L('Sin mensajes ese día.', 'No messages that day.') : L('Sé el primero en escribir 👋', 'Be the first to write 👋')} />
               </div>
@@ -316,19 +316,19 @@ function TeamChatInner() {
 function ConvCard({ c, active, online, en, onClick }: { c: any; active: boolean; online?: boolean; en: boolean; onClick: () => void }) {
   const av = avatarOf(c.display);
   return (
-    <div onClick={onClick} style={{ display: 'flex', gap: 11, alignItems: 'center', margin: '0 8px', padding: '10px', borderRadius: 12, cursor: 'pointer', background: active ? 'linear-gradient(90deg,rgba(124,140,255,.18),transparent 85%)' : 'transparent', boxShadow: active ? 'inset 2px 0 0 var(--brand)' : 'none' }}>
-      <span style={{ position: 'relative', width: 42, height: 42, borderRadius: 13, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: c.isDm ? 14 : 18, fontWeight: 700, background: c.isDm ? av.bg : 'rgba(124,140,255,.14)', color: c.isDm ? av.fg : 'var(--soft-brand)' }}>
+    <div onClick={onClick} style={{ display: 'flex', gap: 11, alignItems: 'center', margin: '0 8px', padding: '10px', borderRadius: 12, cursor: 'pointer', background: active ? 'var(--bg2)' : 'transparent', boxShadow: active ? 'inset 2px 0 0 var(--tx)' : 'none' }}>
+      <span style={{ position: 'relative', width: 42, height: 42, borderRadius: 13, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: c.isDm ? 14 : 18, fontWeight: 700, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--tx)' }}>
         {c.isDm ? initials(c.display) : <Icon name="hash" size={18} />}
         {c.isDm && <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', background: online ? 'var(--soft-green)' : 'var(--mut)', border: '2px solid var(--bg2)' }} />}
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
           <span style={{ fontSize: 13.5, fontWeight: c.unread ? 700 : 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.display}</span>
-          <span style={{ fontSize: 11, color: c.unread ? 'var(--soft-brand)' : 'var(--mut)', flex: 'none' }}>{shortWhen(c.last?.created_at, en)}</span>
+          <span style={{ fontSize: 11, color: c.unread ? 'var(--tx)' : 'var(--mut)', fontWeight: c.unread ? 700 : 400, flex: 'none' }}>{shortWhen(c.last?.created_at, en)}</span>
         </span>
         <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'center', marginTop: 1 }}>
           <span className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.last ? (c.last.body || (en ? '📎 attachment' : '📎 adjunto')) : (en ? 'No messages' : 'Sin mensajes')}</span>
-          {c.unread > 0 && <span style={{ background: 'var(--brand)', color: '#fff', fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', flex: 'none' }}>{c.unread}</span>}
+          {c.unread > 0 && <span style={{ background: 'var(--tx)', color: 'var(--card)', fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px', flex: 'none' }}>{c.unread}</span>}
         </span>
       </span>
     </div>
@@ -424,7 +424,7 @@ function DockWindow({ channelId, title, me, lang, onClose, onActivity, index }: 
       </div>
       {!min && (
         <div style={{ flex: 1, minHeight: 0, padding: '8px 10px', display: 'flex', flexDirection: 'column' }}>
-          <ChatThread messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={mobile ? 300 : innerH} typingLabel={typingLabel}
+          <ChatThread variant="mono" messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={mobile ? 300 : innerH} typingLabel={typingLabel}
             placeholder={lang === 'en' ? 'Type…' : 'Escribe…'} />
         </div>
       )}

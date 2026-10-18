@@ -58,9 +58,16 @@ function dayLabel(iso: string, lang: 'es' | 'en') {
 const hm = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const kb = (n?: number) => (!n ? '' : n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 
+// Paletas de burbuja/acento. 'default' = estilo WhatsApp del SOPORTE (verde);
+// 'mono' = corporativo monocromo (tinta/grises) para el chat INTERNO del equipo.
+const THEMES = {
+  default: { mine: '#005c4b', mineTx: '#e9edef', mineTime: '#fff', send: '#00a884', mention: 'var(--soft-brand, #7c8cff)' },
+  mono: { mine: '#2a2e37', mineTx: '#f4f5f7', mineTime: '#eef0f3', send: '#2a2e37', mention: 'var(--tx)' },
+} as const;
+
 export default function ChatThread({
   messages, lang, onSend, onTyping, canReply = true, placeholder, typingLabel,
-  mentionSource, showAuthors = false, height = 380, emptyText,
+  mentionSource, showAuthors = false, height = 380, emptyText, variant = 'default',
 }: {
   messages: ChatMsg[];
   lang: 'es' | 'en';
@@ -73,7 +80,10 @@ export default function ChatThread({
   showAuthors?: boolean;
   height?: number;
   emptyText?: string;
+  variant?: 'default' | 'mono';
 }) {
+  const th = THEMES[variant] || THEMES.default;
+  const mono = variant === 'mono';
   const L = mkL(lang);
   const [text, setText] = useState('');
   const [atts, setAtts] = useState<Att[]>([]);
@@ -175,22 +185,22 @@ export default function ChatThread({
               {showDay && <div style={{ textAlign: 'center', margin: '10px 0 6px' }}><span className="muted" style={{ fontSize: 11, background: 'var(--bg2)', border: '1px solid var(--line)', padding: '3px 12px', borderRadius: 999 }}>{dl}</span></div>}
               <div style={{ display: 'flex', gap: 7, alignItems: 'flex-end', flexDirection: m.mine ? 'row-reverse' : 'row', margin: '2px 0' }}>
                 {!m.mine && (
-                  <div style={{ width: 28, height: 28, borderRadius: 9, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, background: ai ? 'linear-gradient(135deg,#34e2a0,#7c8cff)' : 'var(--bg2)', color: ai ? '#0b0d17' : 'var(--mut)' }}>{ai ? <Icon name="sparkles" size={15} /> : initials(m.authorName)}</div>
+                  <div style={{ width: 28, height: 28, borderRadius: 9, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, background: ai ? (mono ? 'var(--tx)' : 'linear-gradient(135deg,#34e2a0,#7c8cff)') : 'var(--bg2)', color: ai ? (mono ? 'var(--card)' : '#0b0d17') : 'var(--mut)' }}>{ai ? <Icon name="sparkles" size={15} /> : initials(m.authorName)}</div>
                 )}
                 <div style={{
                   maxWidth: '76%', padding: '8px 12px', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                   borderRadius: m.mine ? '15px 15px 5px 15px' : '15px 15px 15px 5px',
-                  background: note ? 'rgba(255,192,77,.12)' : m.mine ? '#005c4b' : ai ? 'linear-gradient(135deg,rgba(52,226,160,.12),rgba(124,140,255,.10))' : 'var(--bg2)',
-                  color: m.mine ? '#e9edef' : 'var(--tx)',
-                  border: m.mine ? 'none' : note ? '1px solid rgba(255,192,77,.4)' : ai ? '1px solid rgba(52,226,160,.3)' : '1px solid var(--line)',
-                  boxShadow: m.mine ? '0 1px 1px rgba(0,0,0,.2)' : 'none',
+                  background: note ? 'rgba(255,192,77,.12)' : m.mine ? th.mine : ai ? (mono ? 'var(--bg2)' : 'linear-gradient(135deg,rgba(52,226,160,.12),rgba(124,140,255,.10))') : 'var(--bg2)',
+                  color: m.mine ? th.mineTx : 'var(--tx)',
+                  border: m.mine ? 'none' : note ? '1px solid rgba(255,192,77,.4)' : ai ? (mono ? '1px solid var(--line)' : '1px solid rgba(52,226,160,.3)') : '1px solid var(--line)',
+                  boxShadow: m.mine && !mono ? '0 1px 1px rgba(0,0,0,.2)' : 'none',
                 }}>
                   {(showAuthors && !m.mine || ai || note) && (
-                    <div style={{ fontSize: 10.5, fontWeight: 600, marginBottom: 2, color: ai ? 'var(--soft-brand, #7c8cff)' : note ? 'var(--amber, #ffc04d)' : 'var(--mut)' }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 600, marginBottom: 2, color: ai ? (mono ? 'var(--tx)' : 'var(--soft-brand, #7c8cff)') : note ? 'var(--amber, #ffc04d)' : 'var(--mut)' }}>
                       {ai ? 'Onyx AI' : note ? L('Nota interna', 'Internal note') : m.authorName}
                     </div>
                   )}
-                  {renderBody(m.body)}
+                  {renderBody(m.body, th.mention)}
                   {/* Soporte bilingüe: línea punteada con la versión traducida, para
                       que el empleado lea el original y su traducción a la vez. */}
                   {!!m.trBody && m.trBody !== m.body && (
@@ -205,7 +215,7 @@ export default function ChatThread({
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'flex-end', marginTop: 2 }}>
-                    <span style={{ fontSize: 10, opacity: m.mine ? .8 : .6, color: m.mine ? '#fff' : 'var(--mut)' }}>{hm(m.createdAt)}</span>
+                    <span style={{ fontSize: 10, opacity: m.mine ? .8 : .6, color: m.mine ? th.mineTime : 'var(--mut)' }}>{hm(m.createdAt)}</span>
                     {tick(m)}
                   </div>
                 </div>
@@ -266,7 +276,7 @@ export default function ChatThread({
               <input ref={fileRef} type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.currentTarget.value = ''; }} />
             </div>
             <button onClick={submit} disabled={busy || (!text.trim() && !atts.length)} title={L('Enviar', 'Send')}
-              style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', border: 'none', cursor: (text.trim() || atts.length) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: (text.trim() || atts.length) ? '#00a884' : 'var(--line)', boxShadow: 'none', transition: 'all .15s' }}>
+              style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', border: 'none', cursor: (text.trim() || atts.length) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: (text.trim() || atts.length) ? th.send : 'var(--line)', boxShadow: 'none', transition: 'all .15s' }}>
               {busy ? <Icon name="clock" size={18} /> : <Icon name="send" size={19} />}
             </button>
           </div>
@@ -277,11 +287,13 @@ export default function ChatThread({
   );
 }
 
-// Resalta @menciones dentro del texto.
-function renderBody(body: string) {
+// Resalta @menciones dentro del texto. El color del acento depende de la variante
+// (soporte = morado; equipo monocromo = tinta subrayada).
+function renderBody(body: string, mentionColor = 'var(--soft-brand, #7c8cff)') {
   if (!body) return null;
+  const underline = mentionColor === 'var(--tx)';
   const parts = body.split(/(@[\p{L}0-9_.\- ]{1,40})/u);
-  return <span>{parts.map((p, i) => (p.startsWith('@') ? <span key={i} style={{ color: 'var(--soft-brand, #7c8cff)', fontWeight: 600 }}>{p}</span> : <span key={i}>{p}</span>))}</span>;
+  return <span>{parts.map((p, i) => (p.startsWith('@') ? <span key={i} style={{ color: mentionColor, fontWeight: 600, textDecoration: underline ? 'underline' : 'none' }}>{p}</span> : <span key={i}>{p}</span>))}</span>;
 }
 
 function Attachment({ a, mine }: { a: Att; mine: boolean }) {
