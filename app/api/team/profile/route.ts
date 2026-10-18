@@ -5,17 +5,18 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// PATCH · guardar el perfil de equipo (puesto, país, idiomas). Por defecto edita
-// el MÍO; el dueño puede editar a otro pasando { id }. Campos bilingües libres.
+// PATCH · guardar el perfil de equipo (puesto, país, idiomas). Lo controla el
+// ADMIN: solo dueño/admin pueden editar (la suya o la de cualquier empleado
+// pasando { id }). Un empleado normal NO puede editar su propia ficha.
 // { id?, job_title?, country?, languages? }
 export async function PATCH(req: Request) {
   const g = await requirePerm('chat', 'view');
   if (!g.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  // Solo dueño/admin controlan las fichas del equipo.
+  if (g.role !== 'owner' && g.role !== 'admin') return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   try {
     const b = await req.json().catch(() => ({}));
     const target = b.id && b.id !== g.user.id ? String(b.id) : g.user.id;
-    // Editar a OTRO empleado solo lo permite el dueño.
-    if (target !== g.user.id && g.role !== 'owner') return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
 
     const patch: any = {};
     if (b.job_title !== undefined) patch.job_title = String(b.job_title || '').slice(0, 60) || null;

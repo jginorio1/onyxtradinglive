@@ -3,6 +3,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { loadNotifConfig } from '@/lib/notifConfig';
 import { staffPushSettings } from '@/lib/settings';
+import { TEAM_FORCED_KEYS } from '@/lib/emitNotif';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -63,10 +64,12 @@ export async function GET() {
         // El push solo está disponible si el tipo lo permite Y el plan lo incluye.
         // pushType = el tipo de aviso admite push (para distinguir "bloqueado por plan" de "no aplica").
         bellAvail: !!d.bell, pushType: !!d.push, pushAvail: !!d.push && planHasPush,
-        // Si hay candado de staff, forzamos on en lo que el dueño tenga activo.
-        bell: staffLock && !!d.bell ? true : (prefs[d.key]?.bell ?? true),
-        push: staffLock && !!d.push && planHasPush ? true : (prefs[d.key]?.push ?? true),
-        locked: staffLock,
+        // El candado del staff SOLO aplica a los avisos del EQUIPO (tickets, menciones,
+        // ventas). Los personales (check-in, diario, robots, reto, pagos…) quedan
+        // editables aunque seas staff, para no contradecir "Mi rutina diaria".
+        bell: (staffLock && TEAM_FORCED_KEYS.has(d.key)) && !!d.bell ? true : (prefs[d.key]?.bell ?? true),
+        push: (staffLock && TEAM_FORCED_KEYS.has(d.key)) && !!d.push && planHasPush ? true : (prefs[d.key]?.push ?? true),
+        locked: staffLock && TEAM_FORCED_KEYS.has(d.key),
       }));
     // planHasPush se usa en la UI para distinguir "bloqueado por plan" de "no aplica".
     // staffLock → la UI muestra los interruptores como candado (siempre on, no editable).
@@ -93,7 +96,8 @@ export async function POST(req: Request) {
     const clean: Record<string, { bell: boolean; push: boolean }> = {};
     for (const [k, v] of Object.entries(b.prefs || {})) {
       if (!cfg[k] || !v || typeof v !== 'object') continue;
-      if (staffLock) { clean[k] = { bell: true, push: true }; continue; }
+      // Solo los avisos del EQUIPO se fuerzan on; los personales respetan la elección.
+      if (staffLock && TEAM_FORCED_KEYS.has(k)) { clean[k] = { bell: true, push: true }; continue; }
       clean[k] = { bell: !!(v as any).bell, push: !!(v as any).push };
     }
     const r = await supabaseAdmin.from('profiles').update({ notif_prefs: clean }).eq('id', user.id);

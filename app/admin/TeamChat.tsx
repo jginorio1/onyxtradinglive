@@ -22,10 +22,32 @@ type Member = { id: string; name: string; email: string; role: string; available
 // Idiomas comunes para el selector de chips (captura cómoda del perfil).
 const LANGS = ['Español', 'Inglés', 'Portugués', 'Francés', 'Italiano', 'Alemán', 'Chino', 'Árabe'];
 
+// Países comunes (nombre en ES + bandera). Se guarda el NOMBRE en el perfil; la
+// bandera se deriva para mostrarla en la ficha. Lista enfocada en LATAM + mercados
+// clave; si el país no está, se muestra solo 📍 con el texto.
+const COUNTRIES: { name: string; flag: string }[] = [
+  { name: 'México', flag: '🇲🇽' }, { name: 'Colombia', flag: '🇨🇴' }, { name: 'Argentina', flag: '🇦🇷' },
+  { name: 'Perú', flag: '🇵🇪' }, { name: 'Chile', flag: '🇨🇱' }, { name: 'Ecuador', flag: '🇪🇨' },
+  { name: 'Venezuela', flag: '🇻🇪' }, { name: 'Guatemala', flag: '🇬🇹' }, { name: 'Bolivia', flag: '🇧🇴' },
+  { name: 'República Dominicana', flag: '🇩🇴' }, { name: 'Honduras', flag: '🇭🇳' }, { name: 'Paraguay', flag: '🇵🇾' },
+  { name: 'El Salvador', flag: '🇸🇻' }, { name: 'Nicaragua', flag: '🇳🇮' }, { name: 'Costa Rica', flag: '🇨🇷' },
+  { name: 'Panamá', flag: '🇵🇦' }, { name: 'Uruguay', flag: '🇺🇾' }, { name: 'Puerto Rico', flag: '🇵🇷' },
+  { name: 'España', flag: '🇪🇸' }, { name: 'Estados Unidos', flag: '🇺🇸' }, { name: 'Brasil', flag: '🇧🇷' },
+  { name: 'Portugal', flag: '🇵🇹' }, { name: 'Italia', flag: '🇮🇹' }, { name: 'Francia', flag: '🇫🇷' },
+  { name: 'Alemania', flag: '🇩🇪' }, { name: 'Reino Unido', flag: '🇬🇧' }, { name: 'Canadá', flag: '🇨🇦' },
+  { name: 'China', flag: '🇨🇳' }, { name: 'India', flag: '🇮🇳' }, { name: 'Filipinas', flag: '🇵🇭' },
+  { name: 'Marruecos', flag: '🇲🇦' }, { name: 'Otro', flag: '🌍' },
+];
+function flagOf(country?: string): string {
+  if (!country) return '';
+  const hit = COUNTRIES.find((c) => c.name.toLowerCase() === country.trim().toLowerCase());
+  return hit ? hit.flag : '📍';
+}
+
 function metaOf(t: Member, roleTxt: string): string {
   const pos = t.job_title ? `${roleTxt} · ${t.job_title}` : roleTxt;
   const bits = [pos];
-  if (t.country) bits.push('📍 ' + t.country);
+  if (t.country) bits.push(flagOf(t.country) + ' ' + t.country);
   if (t.languages) bits.push('🗣 ' + t.languages);
   return bits.filter(Boolean).join(' · ');
 }
@@ -132,6 +154,7 @@ function TeamChatInner() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showProfile, setShowProfile] = useState(false); // editar mi ficha de equipo
   const [pf, setPf] = useState({ job_title: '', country: '', languages: '' });
+  const [pfTarget, setPfTarget] = useState(''); // id del empleado que se está editando ('' = yo)
   useEffect(() => {
     if (!showSearch) return;
     const t = searchQ.trim();
@@ -252,19 +275,36 @@ function TeamChatInner() {
     await loadChannels();
   }
   // Abrir DM con un compañero (reusa uno existente si ya lo hay).
+  // En móvil las conversaciones se abren a PANTALLA COMPLETA (no ventana flotante,
+  // que se salía de la pantalla). En escritorio, como ventana acoplada.
+  function openConv(id: string) {
+    const mobile = typeof window !== 'undefined' && window.innerWidth <= 720;
+    if (mobile) { setActive(id); setMobileOpen(true); } else openDock(id);
+  }
   async function openDM(otherId: string) {
     const existing = channels.find((c) => c.kind === 'dm' && c.members.length === 2 && c.members.includes(me) && c.members.includes(otherId));
-    if (existing) { openDock(existing.id); return; }
+    if (existing) { openConv(existing.id); return; }
     const r = await fetch('/api/team/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'dm', name: teamById[otherId]?.name || 'DM', members: [otherId] }) });
-    const j = await r.json(); await loadChannels(); if (j.id) openDock(j.id);
+    const j = await r.json(); await loadChannels(); if (j.id) openConv(j.id);
   }
   function openDock(id: string) { setDocks((d) => (d.includes(id) ? d : [...d, id].slice(-3))); }
   function closeDock(id: string) { setDocks((d) => d.filter((x) => x !== id)); }
-  // Abrir/guardar MI ficha de equipo (puesto · país · idiomas).
-  function openProfile() { const m = teamById[me]; setPf({ job_title: m?.job_title || '', country: m?.country || '', languages: m?.languages || '' }); setShowProfile(true); }
+  // Abrir/guardar ficha de equipo (puesto · país · idiomas). Sin id = la mía;
+  // con id = la de otro empleado (solo dueño/admin pueden).
+  const myRole = teamById[me]?.role;
+  const canEditOthers = myRole === 'owner' || myRole === 'admin';
+  function openProfile(id?: string) {
+    const target = id && id !== me ? id : '';
+    const m = teamById[target || me];
+    setPfTarget(target);
+    setPf({ job_title: m?.job_title || '', country: m?.country || '', languages: m?.languages || '' });
+    setShowProfile(true);
+  }
   async function saveProfile() {
-    await fetch('/api/team/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(pf) }).catch(() => {});
-    setShowProfile(false); await loadChannels();
+    const body: any = { ...pf };
+    if (pfTarget) body.id = pfTarget;
+    await fetch('/api/team/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+    setShowProfile(false); setPfTarget(''); await loadChannels();
   }
 
   return (
@@ -279,7 +319,7 @@ function TeamChatInner() {
                 <div style={{ fontSize: 15, fontWeight: 700 }}>{L('Equipo', 'Team')}</div>
                 <div className="muted" style={{ fontSize: 11 }}><span style={{ color: 'var(--soft-green)' }}>●</span> {online.length} {L('en línea', 'online')}</div>
               </div>
-              <button title={L('Mi ficha de equipo', 'My team profile')} onClick={openProfile} style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card)', color: 'var(--mut)', border: '1px solid var(--line)', cursor: 'pointer' }}><Icon name="user" size={16} /></button>
+              {canEditOthers && <button title={L('Fichas del equipo (puesto · país · idiomas)', 'Team profiles (role · country · languages)')} onClick={() => openProfile()} style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card)', color: 'var(--mut)', border: '1px solid var(--line)', cursor: 'pointer' }}><Icon name="user" size={16} /></button>}
               <button title={L('Buscar en los mensajes', 'Search in messages')} onClick={() => { setShowSearch((s) => !s); setSearchQ(''); setSearchResults([]); }} style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: showSearch ? 'var(--tx)' : 'var(--card)', color: showSearch ? 'var(--card)' : 'var(--mut)', border: '1px solid var(--line)', cursor: 'pointer' }}><Icon name="search" size={16} /></button>
             </div>
             {/* Buscar DENTRO de los mensajes de todas las conversaciones visibles. */}
@@ -355,12 +395,17 @@ function TeamChatInner() {
                   <div className="muted" style={{ fontSize: 11, margin: '2px 0 4px' }}>{L('Mensaje directo con…', 'Direct message with…')}</div>
                   <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                     {team.filter((t) => t.id !== me).map((t) => { const av = avatarOf(t.name); return (
-                      <button key={t.id} onClick={() => { openDM(t.id); setShowCompose(false); }} style={{ display: 'flex', gap: 9, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', padding: '6px 4px', cursor: 'pointer', color: 'var(--tx)', borderRadius: 8 }}>
-                        <span style={{ position: 'relative', width: 30, height: 30, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{initials(t.name)}
-                          <span style={{ position: 'absolute', right: -1, bottom: -1, width: 8, height: 8, borderRadius: '50%', background: onlineIds.has(t.id) ? 'var(--soft-green)' : 'var(--mut)', border: '1.5px solid var(--card)' }} />
-                        </span>
-                        <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 13, display: 'block' }}>{t.name}</span><span className="muted" style={{ fontSize: 10.5, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{metaOf(t, roleLabel(t.role, en))}</span></span>
-                      </button>
+                      <div key={t.id} style={{ display: 'flex', gap: 9, alignItems: 'center', width: '100%', padding: '6px 4px', borderRadius: 8 }}>
+                        <button onClick={() => { openDM(t.id); setShowCompose(false); }} style={{ display: 'flex', gap: 9, alignItems: 'center', flex: 1, minWidth: 0, textAlign: 'left', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--tx)' }}>
+                          <span style={{ position: 'relative', width: 30, height: 30, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{initials(t.name)}
+                            <span style={{ position: 'absolute', right: -1, bottom: -1, width: 8, height: 8, borderRadius: '50%', background: onlineIds.has(t.id) ? 'var(--soft-green)' : 'var(--mut)', border: '1.5px solid var(--card)' }} />
+                          </span>
+                          <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 13, display: 'block' }}>{t.name}</span><span className="muted" style={{ fontSize: 10.5, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{metaOf(t, roleLabel(t.role, en))}</span></span>
+                        </button>
+                        {canEditOthers && (
+                          <button onClick={(e) => { e.stopPropagation(); openProfile(t.id); }} title={L('Editar ficha (puesto · país · idiomas)', 'Edit profile (role · country · languages)')} style={{ width: 28, height: 28, flex: 'none', borderRadius: 8, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--mut)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><OnyxIcon emoji="✏️" size={13} glow={false} /></button>
+                        )}
+                      </div>
                     ); })}
                   </div>
                 </>)}
@@ -418,7 +463,7 @@ function TeamChatInner() {
                     </div>
                   )}
                 </div>
-                <button title={L('Abrir en ventana', 'Open in window')} onClick={() => openDock(active)} style={iconBtn}><Icon name="window" size={18} /></button>
+                <button className="tc-hidden-m" title={L('Abrir en ventana', 'Open in window')} onClick={() => openDock(active)} style={iconBtn}><Icon name="window" size={18} /></button>
               </div>
               {showDate && (
                 <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'center' }}>
@@ -441,12 +486,15 @@ function TeamChatInner() {
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16, padding: 20, width: 360, maxWidth: '100%', boxShadow: '0 20px 50px rgba(0,0,0,.4)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <span style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="user" size={17} /></span>
-              <b style={{ fontSize: 15 }}>{L('Mi ficha de equipo', 'My team profile')}</b>
+              <b style={{ fontSize: 15 }}>{pfTarget ? (L('Ficha de ', 'Profile of ') + (teamById[pfTarget]?.name || '')) : L('Mi ficha de equipo', 'My team profile')}</b>
             </div>
             <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 4 }}>{L('Puesto', 'Job title')}</label>
             <input value={pf.job_title} onChange={(e) => setPf({ ...pf, job_title: e.target.value })} placeholder={L('p. ej. Soporte N2', 'e.g. Support L2')} style={{ margin: '0 0 12px', fontSize: 13 }} />
             <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 4 }}>{L('País', 'Country')}</label>
-            <input value={pf.country} onChange={(e) => setPf({ ...pf, country: e.target.value })} placeholder={L('p. ej. México', 'e.g. Mexico')} style={{ margin: '0 0 12px', fontSize: 13 }} />
+            <select value={COUNTRIES.some((c) => c.name.toLowerCase() === (pf.country || '').toLowerCase()) ? pf.country : ''} onChange={(e) => setPf({ ...pf, country: e.target.value })} style={{ margin: '0 0 12px', fontSize: 13, width: '100%' }}>
+              <option value="">{L('— Elige tu país —', '— Choose your country —')}</option>
+              {COUNTRIES.map((c) => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}
+            </select>
             <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 6 }}>{L('Idiomas que hablas', 'Languages you speak')}</label>
             {(() => {
               const sel = (pf.languages || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -486,6 +534,7 @@ function TeamChatInner() {
           .tc-hidden-m{display:none !important}
           .tc-fs-m{display:flex !important; height:80vh}
           .tc-back{display:block !important}
+          .teamchat-docks{display:none !important}
         }
         @media(max-width:560px){
           .teamchat-docks{left:0 !important; right:0 !important; bottom:0 !important; gap:0 !important; padding:0 8px; flex-direction:column; align-items:stretch}

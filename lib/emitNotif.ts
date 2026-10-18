@@ -7,6 +7,12 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 // Cada tipo de aviso cae en un CANAL de notificación de Android (los canales se
 // crean en la app, ver NativeInit). Así el usuario controla cada categoría y
 // cada push muestra su nombre de canal (Plan, Robots, Soporte…).
+// Avisos del EQUIPO que son obligatorios para el staff (no se pueden apagar cuando
+// el dueño exige el push al equipo): tickets asignados, menciones del equipo y
+// alertas de ventas. El resto (check-in, diario, robots, reto, pagos, academia…)
+// son PERSONALES: el empleado los controla como cualquier usuario.
+export const TEAM_FORCED_KEYS = new Set<string>(['support_assigned', 'team_mention', 'sales_alert']);
+
 export function notifCategory(key: string): string {
   if (['checkin', 'checkin_evening', 'no_trade', 'journal_reminder'].includes(key)) return 'onyx_plan';
   if (['ea_down', 'goal_reached', 'funding_near', 'challenge_violation', 'challenge_passed', 'big_trade', 'news_high', 'challenge_alert'].includes(key)) return 'onyx_trading';
@@ -84,7 +90,9 @@ export async function emitNotif(
     // canales en los tipos que el dueño tenga activos. (Telegram queda aparte: es
     // opt-in por vinculación, no se puede forzar.) El plan ya lo cubre: isStaff salta
     // el candado de plan más abajo. Si el requisito está apagado, se respeta su pref.
-    const staffForce = isStaff && (await staffPushRequired());
+    // El candado del staff SOLO aplica a los avisos del equipo (tickets, menciones,
+    // ventas). Los personales respetan la preferencia del empleado, aunque sea staff.
+    const staffForce = isStaff && TEAM_FORCED_KEYS.has(key) && (await staffPushRequired());
 
     if (d.bell && (staffForce || pref.bell !== false)) { try { await notify(userId, { kind: key, title, body, url }); } catch {} }
     // La categoría define el CANAL de la push nativa (Android) para que el usuario

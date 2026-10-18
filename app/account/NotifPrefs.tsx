@@ -62,7 +62,7 @@ export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
           <span style={{ flex: 'none', marginTop: 1 }}><OnyxIcon name="lock" size={16} glow={false} /></span>
           <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>
             <b>{es ? 'Notificaciones del equipo obligatorias.' : 'Team notifications are required.'}</b>{' '}
-            {es ? 'Como eres parte del equipo, los avisos de la campana y el push se mantienen activos y no se pueden apagar. Lo gestiona la dirección para que nadie se pierda un ticket urgente o un mensaje del equipo.' : 'As a team member, bell and push alerts stay on and cannot be turned off. Management controls this so no one misses an urgent ticket or a team message.'}
+            {es ? 'Como eres parte del equipo, los avisos del EQUIPO (tickets, menciones y ventas) se mantienen activos y no se pueden apagar — los marcados con 🔒. El resto (tu rutina, diario, robots…) los controlas tú normalmente.' : 'As a team member, TEAM alerts (tickets, mentions and sales) stay on and cannot be turned off — those marked with 🔒. Everything else (your routine, journal, robots…) is yours to control.'}
           </div>
         </div>
       )}
