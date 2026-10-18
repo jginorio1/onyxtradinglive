@@ -30,7 +30,19 @@ export async function POST(req: Request) {
     const amountCents = Math.round(price * 100 * qty);
     const consultas = perPack * qty;
 
-    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id,plan,stripe_subscription_id').eq('id', user.id).maybeSingle();
+    const { data: prof } = await supabaseAdmin.from('profiles').select('stripe_customer_id,plan,stripe_subscription_id,is_admin,role').eq('id', user.id).maybeSingle();
+
+    // Gating por plan (igual que aiAllowance.canBuy): el paquete de análisis es un
+    // BENEFICIO de los planes de pago. Un usuario del plan gratis NO puede comprarlo
+    // por API (la UI ya le oculta el botón): si pudiera, tendría análisis baratos
+    // sin hacer upgrade y rompería el incentivo de subir de plan. Debe usar el pago
+    // por uso (monedero) o subir de plan. El equipo (staff) no compra: no tiene tope.
+    const plan = (prof as any)?.plan || 'free';
+    const staff = !!((prof as any)?.is_admin || (prof as any)?.role);
+    if (plan === 'free' || staff) {
+      return NextResponse.json({ error: 'El paquete de análisis es para planes de pago. Sube de plan o usa el pago por uso.', code: 'plan_required' }, { status: 403 });
+    }
+
     const customer = (prof as any)?.stripe_customer_id;
     if (!customer) return NextResponse.json({ error: 'No payment method on file. Add a card first.', code: 'no_customer' }, { status: 400 });
 
