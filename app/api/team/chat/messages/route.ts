@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     const channel = u.searchParams.get('channel') || '';
     if (!channel || !(await canSee(channel, g.user.id))) return NextResponse.json({ error: 'no autorizado', messages: [] }, { status: 403 });
 
-    let q = supabaseAdmin.from('chat_messages').select('id,channel_id,sender_id,sender_name,body,attachments,mentions,reply_to,pinned,pinned_by,created_at').eq('channel_id', channel);
+    let q = supabaseAdmin.from('chat_messages').select('id,channel_id,sender_id,sender_name,body,attachments,mentions,reply_to,pinned,pinned_by,urgent,created_at').eq('channel_id', channel);
     const date = u.searchParams.get('date');
     if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
       const from = new Date(date + 'T00:00:00').toISOString();
@@ -97,18 +97,47 @@ export async function POST(req: Request) {
     const { data: prof } = await supabaseAdmin.from('profiles').select('email,full_name,lang').eq('id', g.user.id).maybeSingle();
     const senderName = nameOf({ ...prof, email: prof?.email || g.user.email });
 
+    // URGENTE y @todos: marca urgente + aviso a todos los miembros del canal.
+    const urgent = !!b.urgent;
+    const toAll = /@(todos|todes|all|everyone|canal|channel)\b/i.test(body);
+
     const { data: msg, error } = await supabaseAdmin.from('chat_messages')
-      .insert({ channel_id: channel, sender_id: g.user.id, sender_name: senderName, body, attachments, mentions, reply_to: replyTo })
+      .insert({ channel_id: channel, sender_id: g.user.id, sender_name: senderName, body, attachments, mentions, reply_to: replyTo, urgent })
       .select('id,created_at').single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     await supabaseAdmin.from('chat_reads').upsert({ channel_id: channel, user_id: g.user.id, last_read_at: new Date().toISOString() });
 
     // Aviso (campana) a los compañeros mencionados
+    const notified = new Set<string>();
     for (const m of mentions as any[]) {
       if (m?.type === 'user' && m.id && m.id !== 'onyx' && m.id !== g.user.id) {
+        notified.add(m.id);
         // Campana + push por el catálogo editable en Admin (tipo 'team_mention').
         try { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(m.id, 'team_mention', { vars: { name: senderName, body: body.slice(0, 90) }, url: `/admin?chat=${channel}#chat`, ignorePlan: true }); } catch {}
       }
+    }
+
+    // Urgente o @todos: avisar a TODOS los destinatarios del canal (sin repetir a
+    // los ya mencionados ni a mí mismo). En un canal abierto, todo el equipo; en
+    // DM/grupo, sus miembros.
+    if (urgent || toAll) {
+      try {
+        const { data: ch } = await supabaseAdmin.from('chat_channels').select('kind,name').eq('id', channel).maybeSingle();
+        let recipients: string[] = [];
+        if (ch?.kind === 'channel') {
+          const { data: team } = await supabaseAdmin.from('profiles').select('id').eq('is_admin', true);
+          recipients = (team || []).map((p: any) => p.id);
+        } else {
+          const { data: mem } = await supabaseAdmin.from('chat_members').select('user_id').eq('channel_id', channel);
+          recipients = (mem || []).map((r: any) => r.user_id);
+        }
+        const { emitNotif } = await import('@/lib/emitNotif');
+        const label = urgent ? '🔴 ' : '';
+        for (const uid of recipients) {
+          if (uid === g.user.id || notified.has(uid)) continue;
+          await emitNotif(uid, 'team_mention', { vars: { name: senderName, body: label + body.slice(0, 90) }, url: `/admin?chat=${channel}#chat`, ignorePlan: true });
+        }
+      } catch {}
     }
 
     // @Onyx AI: si mencionan a la IA, responde en el canal como bot.

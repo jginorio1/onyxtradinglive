@@ -38,6 +38,7 @@ export type ChatMsg = {
   replyTo?: { id: string; authorName?: string; body: string } | null; // mensaje citado
   pinned?: boolean;                                                     // fijado en el canal
   reactions?: { emoji: string; count: number; mine: boolean }[];        // reacciones agregadas
+  urgent?: boolean;                                                     // marcado urgente
 };
 
 const EMOJIS = [
@@ -79,8 +80,8 @@ export default function ChatThread({
 }: {
   messages: ChatMsg[];
   lang: 'es' | 'en';
-  // onSend admite un 3er argumento opcional con el id del mensaje citado (responder).
-  onSend: (text: string, attachments: Att[], opts?: { replyTo?: string }) => Promise<void> | void;
+  // onSend admite un 3er argumento opcional: id del mensaje citado y/o urgente.
+  onSend: (text: string, attachments: Att[], opts?: { replyTo?: string; urgent?: boolean }) => Promise<void> | void;
   onTyping?: () => void;
   canReply?: boolean;
   placeholder?: string;
@@ -124,6 +125,7 @@ export default function ChatThread({
   const [replyTarget, setReplyTarget] = useState<ChatMsg | null>(null);
   const [actionsFor, setActionsFor] = useState<string | null>(null); // id con menú abierto
   const [reactFor, setReactFor] = useState<string | null>(null);     // id con paleta de emojis
+  const [urgent, setUrgent] = useState(false);                        // próximo mensaje marcado urgente
   const QUICK = ['👍', '❤️', '😂', '🎉', '✅', '🔥', '🙏', '👀'];
   const endRef = useRef<HTMLDivElement>(null);
   const scrollBox = useRef<HTMLDivElement>(null);
@@ -176,8 +178,8 @@ export default function ChatThread({
     if ((!body && !atts.length) || busy) return;
     setBusy(true);
     try {
-      await onSend(body, atts, replyTarget ? { replyTo: replyTarget.id } : undefined);
-      setText(''); setAtts([]); setPicked([]); setShowEmoji(false); setMQuery(null); setReplyTarget(null);
+      await onSend(body, atts, (replyTarget || urgent) ? { replyTo: replyTarget?.id, urgent } : undefined);
+      setText(''); setAtts([]); setPicked([]); setShowEmoji(false); setMQuery(null); setReplyTarget(null); setUrgent(false);
     } finally { setBusy(false); }
   }
   // Reaccionar (toggle) y fijar/desfijar desde el menú de cada mensaje.
@@ -246,10 +248,14 @@ export default function ChatThread({
                   borderRadius: m.mine ? '15px 15px 5px 15px' : '15px 15px 15px 5px',
                   background: note ? 'rgba(255,192,77,.12)' : m.mine ? th.mine : ai ? (mono ? 'var(--bg2)' : 'linear-gradient(135deg,rgba(52,226,160,.12),rgba(124,140,255,.10))') : 'var(--bg2)',
                   color: m.mine ? th.mineTx : 'var(--tx)',
-                  border: m.mine ? 'none' : note ? '1px solid rgba(255,192,77,.4)' : ai ? (mono ? '1px solid var(--line)' : '1px solid rgba(52,226,160,.3)') : '1px solid var(--line)',
+                  border: m.urgent ? '1px solid var(--soft-red, #ff6b7d)' : m.mine ? 'none' : note ? '1px solid rgba(255,192,77,.4)' : ai ? (mono ? '1px solid var(--line)' : '1px solid rgba(52,226,160,.3)') : '1px solid var(--line)',
                   boxShadow: m.mine && !mono ? '0 1px 1px rgba(0,0,0,.2)' : 'none',
                   outline: m.pinned ? '1.5px solid var(--soft-brand, #7c8cff)' : 'none', outlineOffset: 1,
+                  borderLeft: m.urgent ? '3px solid var(--soft-red, #ff6b7d)' : undefined,
                 }}>
+                  {m.urgent && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 800, letterSpacing: .4, textTransform: 'uppercase', color: m.mine ? '#fff' : 'var(--soft-red, #ff6b7d)', marginBottom: 3 }}>🔴 {L('Urgente', 'Urgent')}</div>
+                  )}
                   {(showAuthors && !m.mine || ai || note) && (
                     <div style={{ fontSize: 10.5, fontWeight: 600, marginBottom: 2, color: ai ? (mono ? 'var(--tx)' : 'var(--soft-brand, #7c8cff)') : note ? 'var(--amber, #ffc04d)' : 'var(--mut)' }}>
                       {ai ? 'Onyx AI' : note ? L('Nota interna', 'Internal note') : m.authorName}
@@ -394,6 +400,7 @@ export default function ChatThread({
               <textarea ref={taRef} className="ct-input" value={text} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }}
                 rows={1} placeholder={placeholder || L('Escribe un mensaje…', 'Type a message…')} enterKeyHint="send"
                 style={{ flex: 1, margin: 0, resize: 'none', maxHeight: 132, minHeight: 36, padding: '8px 4px', border: 'none', background: 'transparent', fontSize: 14, color: '#15181f', overflowY: 'auto' }} />
+              {enableActions && <button title={urgent ? L('Urgente activado — avisa a todos', 'Urgent on — pings everyone') : L('Marcar como urgente', 'Mark as urgent')} onClick={() => setUrgent((u) => !u)} style={{ background: urgent ? 'rgba(255,107,125,.15)' : 'transparent', border: 'none', borderRadius: 8, cursor: 'pointer', color: urgent ? 'var(--soft-red, #ff6b7d)' : '#6b7280', padding: '8px 6px', fontSize: 15, lineHeight: 1 }}>{urgent ? '🔴' : '○'}</button>}
               {mentionSource && <button title={L('Adjuntar ticket / cliente', 'Attach ticket / client')} onClick={() => { setShowRef((s) => !s); setShowEmoji(false); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '8px 6px' }}><Icon name="ticket" size={18} /></button>}
               <button title={L('Adjuntar', 'Attach')} onClick={() => fileRef.current?.click()} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '8px 6px' }}><Icon name="paperclip" size={18} /></button>
               <input ref={fileRef} type="file" multiple accept="image/*,application/pdf,.doc,.docx,.csv,.xlsx,.txt" style={{ display: 'none' }} onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.currentTarget.value = ''; }} />
@@ -403,7 +410,7 @@ export default function ChatThread({
               {busy ? <Icon name="clock" size={18} /> : <Icon name="send" size={19} />}
             </button>
           </div>
-          {mentionSource && <div className="muted" style={{ fontSize: 10.5, marginTop: 4 }}>{L('Usa @ para etiquetar un compañero, cliente o ticket', 'Use @ to tag a teammate, client or ticket')}</div>}
+          {mentionSource && <div className="muted" style={{ fontSize: 10.5, marginTop: 4 }}>{L('Usa @ para etiquetar; @todos avisa a todo el canal', 'Use @ to tag; @todos pings the whole channel')}</div>}
         </div>
       )}
     </div>

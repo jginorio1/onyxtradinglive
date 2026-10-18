@@ -46,7 +46,7 @@ function toChat(rows: any[], me: string): ChatMsg[] {
     id: m.id, mine: m.sender_id === me && m.sender_id != null,
     authorName: m.sender_name, authorKind: m.sender_id == null ? 'ai' : 'admin',
     body: m.body, attachments: m.attachments || [], createdAt: m.created_at,
-    replyTo: m.reply_snippet || null, pinned: !!m.pinned, reactions: m.reactions || [],
+    replyTo: m.reply_snippet || null, pinned: !!m.pinned, reactions: m.reactions || [], urgent: !!m.urgent,
   }));
 }
 
@@ -62,11 +62,11 @@ const mentionSource = async (q: string): Promise<MentionItem[]> => {
   try { const r = await fetch('/api/team/mentions?q=' + encodeURIComponent(q)); const j = await r.json(); return j.items || []; } catch { return []; }
 };
 
-async function postMessage(channel: string, text: string, attachments: Att[], replyTo?: string) {
+async function postMessage(channel: string, text: string, attachments: Att[], opts?: { replyTo?: string; urgent?: boolean }) {
   const mentions: any[] = [];
   if (/@onyx/i.test(text)) mentions.push({ type: 'user', id: 'onyx', label: 'Onyx AI' });
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return ''; } })();
-  const r = await fetch('/api/team/chat/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel, body: text, attachments, mentions, tz, reply_to: replyTo || null }) });
+  const r = await fetch('/api/team/chat/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel, body: text, attachments, mentions, tz, reply_to: opts?.replyTo || null, urgent: !!opts?.urgent }) });
   return r.json().catch(() => ({}));
 }
 
@@ -109,6 +109,17 @@ function TeamChatInner() {
   const [composeTab, setComposeTab] = useState<'channel' | 'group' | 'dm'>('channel'); // tipo en el panel nuevo
   const [grpName, setGrpName] = useState('');          // nombre del grupo privado
   const [grpMembers, setGrpMembers] = useState<string[]>([]); // miembros elegidos del grupo
+  const [showSearch, setShowSearch] = useState(false); // buscar DENTRO de los mensajes
+  const [searchQ, setSearchQ] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  useEffect(() => {
+    if (!showSearch) return;
+    const t = searchQ.trim();
+    if (t.length < 2) { setSearchResults([]); return; }
+    let live = true;
+    const id = setTimeout(() => { fetch('/api/team/chat/search?q=' + encodeURIComponent(t)).then((r) => r.json()).then((j) => { if (live) setSearchResults(j.results || []); }).catch(() => {}); }, 250);
+    return () => { live = false; clearTimeout(id); };
+  }, [searchQ, showSearch]);
   const [showDate, setShowDate] = useState(false);     // buscar por día (toggle)
   const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
   const [docks, setDocks] = useState<string[]>([]);   // canales abiertos como ventanas
@@ -151,8 +162,8 @@ function TeamChatInner() {
   const { online, typing, ping, sendTyping } = useChatRealtime(active ? `team:${active}` : null, meP, () => loadMsgs(active, date));
   const onlineIds = new Set(online.map((o) => o.id));
 
-  async function send(text: string, attachments: Att[], opts?: { replyTo?: string }) {
-    const j = await postMessage(active, text, attachments, opts?.replyTo);
+  async function send(text: string, attachments: Att[], opts?: { replyTo?: string; urgent?: boolean }) {
+    const j = await postMessage(active, text, attachments, opts);
     if (j.ok) { await loadMsgs(active, date); ping(); loadChannels(); }
   }
   // Reaccionar / fijar en el panel principal: aplica y recarga el hilo.
@@ -242,7 +253,37 @@ function TeamChatInner() {
                 <div style={{ fontSize: 15, fontWeight: 700 }}>{L('Equipo', 'Team')}</div>
                 <div className="muted" style={{ fontSize: 11 }}><span style={{ color: 'var(--soft-green)' }}>●</span> {online.length} {L('en línea', 'online')}</div>
               </div>
+              <button title={L('Buscar en los mensajes', 'Search in messages')} onClick={() => { setShowSearch((s) => !s); setSearchQ(''); setSearchResults([]); }} style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: showSearch ? 'var(--tx)' : 'var(--card)', color: showSearch ? 'var(--card)' : 'var(--mut)', border: '1px solid var(--line)', cursor: 'pointer' }}><Icon name="search" size={16} /></button>
             </div>
+            {/* Buscar DENTRO de los mensajes de todas las conversaciones visibles. */}
+            {showSearch && (
+              <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+                <div style={{ padding: '0 12px 8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 999, padding: '7px 12px', color: 'var(--mut)' }}>
+                    <Icon name="search" size={15} />
+                    <input autoFocus value={searchQ} onChange={(e) => setSearchQ(e.target.value)} placeholder={L('Buscar en los mensajes…', 'Search messages…')} style={{ margin: 0, border: 'none', background: 'transparent', padding: 0, fontSize: 13, width: '100%', color: 'var(--tx)' }} />
+                    {searchQ && <button onClick={() => setSearchQ('')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--mut)', display: 'flex' }}><Icon name="x" size={14} /></button>}
+                  </div>
+                </div>
+                <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: '0 8px 8px' }}>
+                  {searchQ.trim().length < 2 && <div className="muted" style={{ fontSize: 12, padding: 18, textAlign: 'center' }}>{L('Escribe al menos 2 letras.', 'Type at least 2 letters.')}</div>}
+                  {searchQ.trim().length >= 2 && !searchResults.length && <div className="muted" style={{ fontSize: 12, padding: 18, textAlign: 'center' }}>{L('Sin resultados.', 'No results.')}</div>}
+                  {searchResults.map((r) => {
+                    const name = r.channel_kind === 'group' ? '🔒 ' + r.channel_name : r.channel_kind === 'dm' ? (r.channel_name || L('Directo', 'DM')) : '# ' + r.channel_name;
+                    return (
+                      <button key={r.id} onClick={() => { setActive(r.channel_id); setMobileOpen(true); setShowSearch(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderBottom: '1px solid var(--line)', padding: '9px 8px', cursor: 'pointer', color: 'var(--tx)' }}>
+                        <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--mut)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</span>
+                          <span style={{ fontSize: 10.5, color: 'var(--mut)', flex: 'none' }}>{shortWhen(r.created_at, en)}</span>
+                        </span>
+                        <span style={{ fontSize: 12.5, display: 'block', lineHeight: 1.4 }}>{r.sender_name ? <b style={{ fontWeight: 600 }}>{r.sender_name}: </b> : ''}{r.body}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {!showSearch && (<>
             <div style={{ padding: '0 12px 8px', display: 'flex', gap: 8, alignItems: 'center' }}>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 999, padding: '7px 12px', color: 'var(--mut)' }}>
                 <Icon name="search" size={15} />
@@ -304,6 +345,7 @@ function TeamChatInner() {
                 <ConvCard key={c.id} c={c} active={c.id === active} online={c.isDm ? onlineIds.has(c.otherId) : undefined} en={en} onClick={() => { setActive(c.id); setMobileOpen(true); }} />
               ))}
             </div>
+            </>)}
           </div>
 
           {/* Panel de chat */}
@@ -448,7 +490,7 @@ function DockWindow({ channelId, title, me, lang, onClose, onActivity, index }: 
   }
   useEffect(() => { load(); }, [channelId]);
   const { typing, ping, sendTyping } = useChatRealtime(`team:${channelId}`, me, load);
-  async function send(text: string, attachments: Att[], opts?: { replyTo?: string }) { const j = await postMessage(channelId, text, attachments, opts?.replyTo); if (j.ok) { await load(); ping(); onActivity(); } }
+  async function send(text: string, attachments: Att[], opts?: { replyTo?: string; urgent?: boolean }) { const j = await postMessage(channelId, text, attachments, opts); if (j.ok) { await load(); ping(); onActivity(); } }
   async function onReactDock(id: string, emoji: string) { await reactMsg(id, emoji); await load(); }
   async function onPinDock(id: string, pinned: boolean) { await pinMsg(id, pinned); await load(); }
   const typingLabel = typing.length ? `${typing[0]} ${lang === 'en' ? 'is typing…' : 'está escribiendo…'}` : '';
