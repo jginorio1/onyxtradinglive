@@ -586,10 +586,23 @@ function BetaControl() {
 export default function AdminClient({ meEmail, role, perms = {}, accounts, trades, hasPin = false, idleMin = 20 }: { meEmail: string; role: string; perms?: Record<string, string>; accounts: number; trades: number; hasPin?: boolean; idleMin?: number }) {
   const t = useT();
   // Qué áreas puede ver este admin (owner ve todo). Mapa tab → área de permiso.
-  const areaOf: Record<string, string> = { resumen: 'resumen', facturacion: 'planes', ingresos: 'planes', finanzas: 'finanzas', academy: 'academy', usuarios: 'usuarios', correos: 'usuarios', campanas: 'campanas', planes: 'planes', landing: 'planes', equipo: 'equipo', nomina: 'equipo', carreras: 'equipo', formacion: 'equipo', embajadores: 'embajadores', ventas: 'embajadores', retencion: 'retencion', pruebas: 'diag', firms: 'firms', catalogos: 'catalogos', mtbrokers: 'modulos', tlservers: 'modulos', modulos: 'modulos', botlab: 'modulos', blog: 'modulos', soporte: 'soporte', chat: 'chat', kb: 'soporte', diag: 'diag', recursos: 'diag', backups: 'ajustes', audit: 'ajustes', optim: 'ajustes', ajustes: 'ajustes', seo: 'ajustes', pagos: 'embajadores', monedero: 'finanzas', antifraude: 'planes', monitor: 'diag', ads: 'planes' };
+  // Cada pestaña del panel → su ÁREA de permiso (una fila por módulo en Equipo).
+  // Tres pestañas comparten área por ser casi idénticas: los catálogos de brókers
+  // (mtbrokers/tlservers/dxservers → 'brokers'), las dos landing → 'landing' y
+  // Guía + Cómo usar → 'guias'. Base IA tiene su propia área 'baseia'.
+  const areaOf: Record<string, string> = {
+    resumen: 'resumen', monitor: 'monitor', notif: 'notif',
+    usuarios: 'usuarios', soporte: 'soporte', kb: 'baseia', correos: 'correos', retencion: 'retencion',
+    facturacion: 'facturacion', ingresos: 'facturacion', finanzas: 'finanzas', planes: 'planes', pagos: 'pagos', monedero: 'monedero', antifraude: 'antifraude',
+    campanas: 'campanas', blog: 'blog', seo: 'seo', ads: 'ads', landing: 'landing', landingnew: 'landing',
+    embajadores: 'embajadores', ventas: 'ventas', copytraders: 'copytraders', trackrecord: 'trackrecord',
+    modulos: 'modulos', academy: 'academy', botlab: 'botlab', factory: 'factory', firms: 'firms', catalogos: 'catalogos', mtbrokers: 'brokers', tlservers: 'brokers', dxservers: 'brokers',
+    equipo: 'equipo', nomina: 'nomina', carreras: 'carreras', formacion: 'formacion', chat: 'chat',
+    guias: 'guias', comousar: 'guias', diag: 'diag', pruebas: 'pruebas', recursos: 'recursos', audit: 'audit', backups: 'backups', optim: 'optim', ajustes: 'ajustes',
+  };
   const has = (a: string) => role === 'owner' || (perms[a] && perms[a] !== 'none');
-  // Facturación (hub) es visible si el admin puede ver CUALQUIERA de las tres áreas.
-  const canBilling = has('planes') || has('finanzas') || has('academy');
+  // Facturación (hub) es visible si el admin puede ver CUALQUIERA de las áreas de dinero que agrupa.
+  const canBilling = has('facturacion') || has('planes') || has('finanzas') || has('academy');
   // Ajustes siempre visible: cada admin/empleado necesita entrar a fijar su PIN
   // de bloqueo. Dentro, lo del Owner (roles, promo, beta) se muestra solo a él.
   const canSee = (k: string) => k === 'ajustes' || (k === 'facturacion' ? canBilling : (role === 'owner' || (perms[areaOf[k]] && perms[areaOf[k]] !== 'none')));
@@ -1172,6 +1185,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                                       { ic: '✏️', label: lang === 'en' ? 'Edit name' : 'Editar nombre', on: () => { setMenuFor(null); const nn = window.prompt(lang === 'en' ? 'Full name for ' + u.email : 'Nombre para ' + u.email, u.full_name || ''); if (nn !== null) userAction(u.id, 'name', nn.trim()); } },
                                       ...(u.email_confirmed === false ? [{ ic: '✉️', label: lang === 'en' ? 'Resend confirmation' : 'Reenviar confirmación', on: async () => { setMenuFor(null); await userAction(u.id, 'resend_confirm'); toast(lang === 'en' ? 'Confirmation email sent.' : 'Correo de confirmación enviado.'); } }] : []),
                                       { ic: '🔑', label: lang === 'en' ? 'Reset password' : 'Restablecer contraseña', on: () => { setMenuFor(null); resetPass(u); } },
+                                      { ic: '🔓', label: lang === 'en' ? 'Reset Copy PIN' : 'Resetear PIN de Copy', on: async () => { setMenuFor(null); if (!(await confirmDialog(lang === 'en' ? 'Reset the Onyx Copy PIN for ' + u.email + '? They can set a new one in Copy.' : '¿Resetear el PIN de Onyx Copy de ' + u.email + '? Podrá fijar uno nuevo en Copy.'))) return; await userAction(u.id, 'reset_copy_pin'); toast(lang === 'en' ? 'Copy PIN reset.' : 'PIN de Copy reseteado.'); } },
                                       (u.comp_until && new Date(u.comp_until).getTime() > Date.now())
                                         ? { ic: '⛔', label: lang === 'en' ? 'Remove paid trial' : 'Quitar prueba de pago', on: () => { setMenuFor(null); userAction(u.id, 'comp_revoke'); toast(lang === 'en' ? 'Trial removed.' : 'Prueba quitada.'); } }
                                         : { ic: '🎁', label: lang === 'en' ? 'Give paid trial' : 'Dar prueba de pago', on: () => { setMenuFor(null); grantTrial(u); } },
@@ -1363,13 +1377,13 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
               </div>
             )}
             {tab === 'equipo' && <Equipo team={team} role={role} meEmail={meEmail} reload={loadTeam} canManage={role === 'owner' || perms.equipo === 'manage'} />}
-            {tab === 'nomina' && <Payroll canManage={role === 'owner' || perms.equipo === 'manage'} />}
-            {tab === 'carreras' && <CareersAdmin canManage={role === 'owner' || perms.equipo === 'manage'} />}
-            {tab === 'formacion' && <Training canManage={role === 'owner' || perms.equipo === 'manage'} lang={lang} />}
+            {tab === 'nomina' && <Payroll canManage={role === 'owner' || perms.nomina === 'manage'} />}
+            {tab === 'carreras' && <CareersAdmin canManage={role === 'owner' || perms.carreras === 'manage'} />}
+            {tab === 'formacion' && <Training canManage={role === 'owner' || perms.formacion === 'manage'} lang={lang} />}
             {tab === 'embajadores' && <Ambassadors />}
-            {tab === 'ventas' && <SalesAdmin canManage={role === 'owner' || perms.embajadores === 'manage'} />}
-            {tab === 'pagos' && <PayoutsHub canManage={role === 'owner' || perms.finanzas === 'manage' || perms.embajadores === 'manage'} />}
-            {tab === 'monedero' && <WalletAdmin canManage={role === 'owner' || perms.finanzas === 'manage'} />}
+            {tab === 'ventas' && <SalesAdmin canManage={role === 'owner' || perms.ventas === 'manage'} />}
+            {tab === 'pagos' && <PayoutsHub canManage={role === 'owner' || perms.pagos === 'manage'} />}
+            {tab === 'monedero' && <WalletAdmin canManage={role === 'owner' || perms.monedero === 'manage'} />}
             {tab === 'antifraude' && <PayCheck lang={lang} />}
             {tab === 'retencion' && <Retention />}
             {tab === 'trackrecord' && <TrackrecordSettings />}
@@ -1394,8 +1408,8 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'academy' && <AcademyAdmin canManage={role === 'owner' || perms.academy === 'manage'} />}
 
             {tab === 'modulos' && <Modules />}
-            {tab === 'botlab' && <BotLab canManage={role === 'owner' || perms.modulos === 'manage'} />}
-            {tab === 'factory' && <Factory canManage={role === 'owner' || perms.modulos === 'manage'} />}
+            {tab === 'botlab' && <BotLab canManage={role === 'owner' || perms.botlab === 'manage'} />}
+            {tab === 'factory' && <Factory canManage={role === 'owner' || perms.factory === 'manage'} />}
 
             {tab === 'soporte' && <SupportInbox />}
 

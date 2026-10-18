@@ -1,6 +1,6 @@
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
-import { effectivePerms, meets, type PermLevel } from '@/lib/perms';
+import { effectivePerms, meets, permMeets, type PermLevel } from '@/lib/perms';
 import { serverLocked, has2faOk } from '@/lib/adminSecurity';
 
 // ¿La sesión superó el 2FA (AAL2) en este dispositivo? Si el usuario tiene un
@@ -41,7 +41,7 @@ export async function getAdmin() {
 // Devuelve `reason` para que la ruta pueda distinguir el motivo si quiere.
 export async function requirePerm(area: string, need: PermLevel = 'view') {
   const a = await getAdmin();
-  let ok = a.isAdmin && (a.role === 'owner' || meets(a.perms[area], need));
+  let ok = a.isAdmin && (a.role === 'owner' || permMeets(a.perms, area, need));
   let reason: '' | 'locked' | '2fa' = '';
   if (ok) {
     if (serverLocked()) { ok = false; reason = 'locked'; }          // bloqueo por inactividad

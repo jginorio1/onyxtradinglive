@@ -145,6 +145,11 @@ export async function PATCH(req: Request) {
       // Reenvía el correo de confirmación de registro (usa el SMTP de Supabase).
       const { error: rErr } = await (supabaseAdmin.auth as any).resend({ type: 'signup', email });
       if (rErr) return NextResponse.json({ error: rErr.message || 'no se pudo reenviar' }, { status: 500 });
+    } else if (action === 'reset_copy_pin') {
+      // Resetear el PIN de Onyx Copy del cliente (lo borra). El cliente podrá fijar
+      // uno nuevo desde su módulo de Copy. Requiere permiso de gestión de usuarios.
+      const pm = await requirePerm('usuarios', 'manage'); if (!pm.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+      await supabaseAdmin.from('profiles').update({ copy_pin_hash: null }).eq('id', id);
     } else {
       return NextResponse.json({ error: 'acción desconocida' }, { status: 400 });
     }
