@@ -78,23 +78,48 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     return { n, secs: n * 18 + 25 + Math.floor(Math.random() * 30) };
   }
   useEffect(() => { if (open && !queue) setQueue(rollQueue()); }, [open]);
+  // Turno del cliente: al enviar su mensaje le "reservamos" un lugar en la cola.
+  // Es congruente con la cola simulada (congela el nº del momento) y se guarda en
+  // su navegador, así lo vuelve a ver si reabre el chat. La posición baja sola.
+  const [turn, setTurn] = useState<{ pos0: number; secs0: number; secs: number } | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('onyx_support_turn'); if (!raw) return;
+      const o = JSON.parse(raw);
+      const left = Math.max(0, (o.secs0 || 0) - Math.floor((Date.now() - (o.ts || 0)) / 1000));
+      // Caduca a las 2h: si pasó mucho, ya lo atendimos; limpiamos.
+      if (Date.now() - (o.ts || 0) > 2 * 3600 * 1000) { localStorage.removeItem('onyx_support_turn'); return; }
+      setTurn({ pos0: o.pos0 || 3, secs0: o.secs0 || 60, secs: left });
+    } catch {}
+  }, []);
+  function assignTurn() {
+    const pos0 = queue ? queue.n : Math.min(11, Math.max(3, 3 + Math.floor(Math.random() * 5)));
+    const secs0 = queue ? queue.secs : pos0 * 18 + 25;
+    setTurn({ pos0, secs0, secs: secs0 });
+    try { localStorage.setItem('onyx_support_turn', JSON.stringify({ pos0, secs0, ts: Date.now() })); } catch {}
+    return pos0;
+  }
   useEffect(() => {
     if (!open || human) return;
-    const t = setInterval(() => setQueue((q) => {
-      if (!q) return q;
-      let { n, secs } = q;
-      secs -= 1;
-      if (secs <= 0) {
-        // Atendimos a alguien: la cola baja 1 (o sube un poco si ya estaba baja),
-        // y empieza la cuenta para el siguiente. Así el número también "se mueve".
-        n = n <= 3 ? Math.min(11, n + 1 + Math.floor(Math.random() * 2)) : n - 1;
-        secs = n * 18 + 20 + Math.floor(Math.random() * 25);
-      } else if (Math.random() < 0.015) {
-        // De vez en cuando entra/sale alguien de la cola (±1), dentro de 3–11.
-        n = Math.min(11, Math.max(3, n + (Math.random() < 0.5 ? -1 : 1)));
-      }
-      return { n, secs };
-    }), 1000);
+    const t = setInterval(() => {
+      setQueue((q) => {
+        if (!q) return q;
+        let { n, secs } = q;
+        secs -= 1;
+        if (secs <= 0) {
+          // Atendimos a alguien: la cola baja 1 (o sube un poco si ya estaba baja),
+          // y empieza la cuenta para el siguiente. Así el número también "se mueve".
+          n = n <= 3 ? Math.min(11, n + 1 + Math.floor(Math.random() * 2)) : n - 1;
+          secs = n * 18 + 20 + Math.floor(Math.random() * 25);
+        } else if (Math.random() < 0.015) {
+          // De vez en cuando entra/sale alguien de la cola (±1), dentro de 3–11.
+          n = Math.min(11, Math.max(3, n + (Math.random() < 0.5 ? -1 : 1)));
+        }
+        return { n, secs };
+      });
+      // El turno del cliente avanza hacia 0 (su lugar va subiendo).
+      setTurn((tn) => (tn && tn.secs > 0 ? { ...tn, secs: tn.secs - 1 } : tn));
+    }, 1000);
     return () => clearInterval(t);
   }, [open, human]);
   const [leadMsg, setLeadMsg] = useState('');
@@ -510,6 +535,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
         const j = await r.json().catch(() => ({}));
         if (j.threadId) { try { localStorage.setItem('botlab_tid', j.threadId); } catch {} }
       } catch {}
+      assignTurn();
       setBusy(false); setSent(true); setShowEmail(false); setAttach(null);
       return;
     }
@@ -530,6 +556,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
         const history = chat.filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({ role: m.role, content: m.content }));
         await fetch('/api/support/tickets', { method: 'POST', body: JSON.stringify({ subject, body: msg, category: 'general', attachments: atts, history }) });
       } catch {}
+      assignTurn();
       setBusy(false); setSent(true); setShowEmail(false); setAttach(null);
       return;
     }
@@ -543,9 +570,10 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     setBusy(false); setShowEmail(false); setAttach(null);
     // Si el servidor nos dio token, seguimos la conversación EN EL WIDGET (no solo
     // por correo): guardamos el token y el sondeo traerá las respuestas del agente.
+    const pos = assignTurn();
     if (lj?.token) {
       setLeadToken(lj.token); try { localStorage.setItem('onyx_support_token', lj.token); } catch {}
-      setChat((c) => [...c, { role: 'assistant', content: es ? 'Listo ✅ Te respondemos aquí mismo y también por correo. Puedes seguir escribiendo.' : "Done ✅ We'll reply right here and by email. Feel free to keep writing." }]);
+      setChat((c) => [...c, { role: 'assistant', content: es ? `Listo ✅ Tu lugar en la cola es el #${pos}. Te respondemos aquí mismo y también por correo — puedes seguir escribiendo.` : `Done ✅ Your place in line is #${pos}. We'll reply right here and by email — feel free to keep writing.` }]);
     } else {
       setSent(true);
     }
@@ -928,13 +956,36 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
           <div ref={scrollBox} onScroll={onBodyScroll} style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
             <div style={{ maxWidth: '86%', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, ...bubble('assistant') }}>{linkify(greet)}</div>
 
-            {/* El contador de cola va en la CABECERA (siempre visible). Aquí solo una
-                frase corta de tranquilidad, una vez, antes de hablar con un humano. */}
-            {!human && queue && (
-              <div style={{ fontSize: 11, color: 'var(--mut)', display: 'flex', alignItems: 'center', gap: 5, margin: '-2px 2px 0' }}>
-                <OnyxIcon emoji="👥" size={12} glow={false} /> {es ? 'Deja tu mensaje: te atendemos en cuanto se pueda.' : 'Leave your message: we’ll get to you as soon as we can.'}
-              </div>
-            )}
+            {/* Celda destacada de cola / turno. Antes de enviar muestra cuánta gente
+                hay en cola; después de enviar muestra el turno reservado del cliente
+                (su posición va bajando y una barra de progreso avanza). */}
+            {!human && (turn || queue) && (() => {
+              const secs = turn ? turn.secs : queue!.secs;
+              const mm = Math.floor(secs / 60), ss = secs % 60;
+              const eta = `~${mm}:${ss < 10 ? '0' : ''}${ss}`;
+              const pos = turn ? Math.max(1, Math.ceil(turn.pos0 * turn.secs / Math.max(1, turn.secs0))) : queue!.n;
+              const pct = turn ? Math.min(100, Math.max(4, Math.round((1 - turn.secs / Math.max(1, turn.secs0)) * 100))) : 28;
+              const title = turn
+                ? (secs > 0 ? (es ? `Tu turno · eres el #${pos} en la cola` : `Your turn · you're #${pos} in line`) : (es ? '¡Casi! Eres el siguiente' : 'Almost! You are next'))
+                : (es ? `${pos} personas en cola ahora` : `${pos} people in queue right now`);
+              const sub = secs > 0
+                ? (es ? `Te atendemos en ${eta}` : `We'll reach you in ${eta}`)
+                : (es ? 'Un asesor te atiende en breve' : 'An advisor will be with you shortly');
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '10px 12px', margin: '3px 0 1px', boxShadow: '0 4px 14px rgba(0,0,0,.14)' }}>
+                  <span style={{ width: 36, height: 36, borderRadius: 11, background: 'var(--grad)', color: '#241002', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                    <OnyxIcon emoji={turn ? '🎫' : '👥'} size={19} glow={false} />
+                  </span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--mut)', marginTop: 1 }}>{sub}</div>
+                    <div style={{ height: 5, borderRadius: 4, background: 'var(--line)', marginTop: 7, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: 'var(--grad)', borderRadius: 4, transition: 'width .9s linear' }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Puerta de entrada: nombre + correo antes de chatear (solo invitados). Da
                 el lead, frena bots y evita el consumo de IA, y crea el hilo para guardar todo. */}
@@ -1091,6 +1142,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
               <div style={{ background: 'rgba(52,226,160,.10)', border: '1px solid var(--green)', borderRadius: 10, padding: 12, marginTop: 4, textAlign: 'center' }}>
                 <div style={{ fontWeight: 700, color: 'var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}><OnyxIcon name="check" size={16} glow={false} /> {t.sentT}</div>
                 <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{t.sentD}</div>
+                {turn && <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--tx)', marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><OnyxIcon emoji="🎫" size={13} glow={false} /> {es ? `Tu turno: #${Math.max(1, Math.ceil(turn.pos0 * turn.secs / Math.max(1, turn.secs0)))} en la cola` : `Your turn: #${Math.max(1, Math.ceil(turn.pos0 * turn.secs / Math.max(1, turn.secs0)))} in line`}</div>}
                 {!loggedIn && <Link href="/login?mode=signup" onClick={() => setOpen(false)} className="btn btn-ghost" style={{ marginTop: 10, fontSize: 13 }}>{t.createAcc}</Link>}
               </div>
             )}
