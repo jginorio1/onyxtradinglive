@@ -82,7 +82,7 @@ export async function GET() {
     if (g.user?.id) { try { await supabaseAdmin.from('profiles').update({ last_active: new Date().toISOString() }).eq('id', g.user.id); } catch {} }
 
     // Equipo (para mostrar quién tiene asignado / disponible / última vez)
-    const { data: team } = await supabaseAdmin.from('profiles').select('id,email,available,last_active').eq('is_admin', true);
+    const { data: team } = await supabaseAdmin.from('profiles').select('id,email,name,role,available,last_active,job_title,country,languages').eq('is_admin', true);
 
     const counts = { open: 0, in_progress: 0, resolved: 0, mine: 0, invited: 0 } as any;
     tickets.forEach((t: any) => { counts[t.status] = (counts[t.status] || 0) + 1; });

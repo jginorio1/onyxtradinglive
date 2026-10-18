@@ -16,9 +16,15 @@ import Calendar from '@/app/components/Calendar';
 type Channel = { id: string; name: string; kind: string; topic?: string; unread: number; last: any; members: string[] };
 type Member = { id: string; name: string; email: string; role: string; available: boolean; last_active: string; job_title?: string; country?: string; languages?: string };
 
-// Línea de ficha de un compañero: puesto · país · idiomas (lo que tenga relleno).
+// Línea de ficha de un compañero: ÁREA · puesto específico · país · idiomas.
+// El puesto específico combina el área (Admin/Ventas/…) con el puesto propio del
+// perfil (ej. "Admin · Soporte N2", "Ventas · Oro"), para saber exactamente el nivel.
+// Idiomas comunes para el selector de chips (captura cómoda del perfil).
+const LANGS = ['Español', 'Inglés', 'Portugués', 'Francés', 'Italiano', 'Alemán', 'Chino', 'Árabe'];
+
 function metaOf(t: Member, roleTxt: string): string {
-  const bits = [t.job_title || roleTxt];
+  const pos = t.job_title ? `${roleTxt} · ${t.job_title}` : roleTxt;
+  const bits = [pos];
   if (t.country) bits.push('📍 ' + t.country);
   if (t.languages) bits.push('🗣 ' + t.languages);
   return bits.filter(Boolean).join(' · ');
@@ -420,7 +426,7 @@ function TeamChatInner() {
                 </div>
               )}
               <div style={{ padding: '10px 14px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg)' }}>
-                <ChatThread variant="mono" fill enableActions onReact={onReactMain} onPin={onPinMain} messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={Math.max(240, gridH - 150)} typingLabel={typingLabel}
+                <ChatThread variant="mono" fill enableActions vivid onReact={onReactMain} onPin={onPinMain} messages={mapped} lang={lang as any} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={Math.max(240, gridH - 150)} typingLabel={typingLabel}
                   placeholder={L('Escribe… @ para etiquetar, @Onyx para la IA', 'Type… @ to tag, @Onyx for AI')}
                   emptyText={date ? L('Sin mensajes ese día.', 'No messages that day.') : L('Sé el primero en escribir 👋', 'Be the first to write 👋')} />
               </div>
@@ -441,8 +447,20 @@ function TeamChatInner() {
             <input value={pf.job_title} onChange={(e) => setPf({ ...pf, job_title: e.target.value })} placeholder={L('p. ej. Soporte N2', 'e.g. Support L2')} style={{ margin: '0 0 12px', fontSize: 13 }} />
             <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 4 }}>{L('País', 'Country')}</label>
             <input value={pf.country} onChange={(e) => setPf({ ...pf, country: e.target.value })} placeholder={L('p. ej. México', 'e.g. Mexico')} style={{ margin: '0 0 12px', fontSize: 13 }} />
-            <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 4 }}>{L('Idiomas que hablas', 'Languages you speak')}</label>
-            <input value={pf.languages} onChange={(e) => setPf({ ...pf, languages: e.target.value })} placeholder={L('p. ej. Español, Inglés', 'e.g. Spanish, English')} style={{ margin: '0 0 16px', fontSize: 13 }} />
+            <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 6 }}>{L('Idiomas que hablas', 'Languages you speak')}</label>
+            {(() => {
+              const sel = (pf.languages || '').split(',').map((s) => s.trim()).filter(Boolean);
+              const has = (x: string) => sel.some((s) => s.toLowerCase() === x.toLowerCase());
+              const toggle = (x: string) => { const next = has(x) ? sel.filter((s) => s.toLowerCase() !== x.toLowerCase()) : [...sel, x]; setPf({ ...pf, languages: next.join(', ') }); };
+              return (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '0 0 16px' }}>
+                  {LANGS.map((lg) => {
+                    const on = has(lg);
+                    return <button key={lg} type="button" onClick={() => toggle(lg)} style={{ fontSize: 11.5, padding: '4px 10px', borderRadius: 999, cursor: 'pointer', border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb, var(--brand) 18%, var(--bg2))' : 'var(--bg2)', color: on ? 'var(--brand)' : 'var(--tx)' }}>{lg}</button>;
+                  })}
+                </div>
+              );
+            })()}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => setShowProfile(false)}>{L('Cancelar', 'Cancel')}</button>
               <button className="btn btn-ghost" style={{ background: 'var(--tx)', color: 'var(--card)', border: 'none' }} onClick={saveProfile}>{L('Guardar', 'Save')}</button>
@@ -594,7 +612,7 @@ function DockWindow({ channelId, title, me, lang, onClose, onActivity, index }: 
       </div>
       {!min && (
         <div style={{ flex: 1, minHeight: 0, padding: '8px 10px', display: 'flex', flexDirection: 'column' }}>
-          <ChatThread variant="mono" fill enableActions onReact={onReactDock} onPin={onPinDock} messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={mobile ? 300 : innerH} typingLabel={typingLabel}
+          <ChatThread variant="mono" fill enableActions vivid onReact={onReactDock} onPin={onPinDock} messages={toChat(rows, me?.id || '')} lang={lang} onSend={send} onTyping={sendTyping} mentionSource={mentionSource} showAuthors height={mobile ? 300 : innerH} typingLabel={typingLabel}
             placeholder={lang === 'en' ? 'Type…' : 'Escribe…'} />
         </div>
       )}

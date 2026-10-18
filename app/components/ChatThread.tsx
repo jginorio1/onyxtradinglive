@@ -55,6 +55,15 @@ const EMOJIS = [
 
 const initials = (name?: string) => (name || '?').trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join('').toUpperCase() || '?';
 
+// Color estable por persona (para dar VIDA al chat de equipo sin saturar el fondo).
+// El mismo nombre siempre recibe el mismo color; se usa en el avatar y el nombre.
+const NAME_HUES = ['#7c8cff', '#34e2a0', '#ff9d3d', '#3ad0ff', '#ff6b9d', '#c49bff', '#ffc04d', '#5ed6a0', '#f0736f', '#6fd3ff'];
+function hueFor(name?: string): string {
+  const s = (name || '').trim() || '?';
+  let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return NAME_HUES[h % NAME_HUES.length];
+}
+
 function dayLabel(iso: string, lang: 'es' | 'en') {
   const d = new Date(iso); const now = new Date();
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
@@ -75,7 +84,7 @@ const THEMES = {
 
 export default function ChatThread({
   messages, lang, onSend, onTyping, canReply = true, placeholder, typingLabel,
-  mentionSource, showAuthors = false, height = 380, emptyText, variant = 'default',
+  mentionSource, showAuthors = false, height = 380, emptyText, variant = 'default', vivid = false,
   enableActions = false, onReact, onPin, fill = false,
 }: {
   messages: ChatMsg[];
@@ -88,6 +97,7 @@ export default function ChatThread({
   typingLabel?: string;
   mentionSource?: (q: string) => Promise<MentionItem[]>;
   showAuthors?: boolean;
+  vivid?: boolean;   // color por persona en avatar+nombre (chat de equipo con vida)
   height?: number;
   emptyText?: string;
   variant?: 'default' | 'mono';
@@ -240,7 +250,9 @@ export default function ChatThread({
               {showDay && <div style={{ textAlign: 'center', margin: '10px 0 6px' }}><span className="muted" style={{ fontSize: 11, background: 'var(--bg2)', border: '1px solid var(--line)', padding: '3px 12px', borderRadius: 999 }}>{dl}</span></div>}
               <div className="ct-msg" style={{ display: 'flex', gap: 7, alignItems: 'flex-end', flexDirection: m.mine ? 'row-reverse' : 'row', margin: '2px 0', position: 'relative' }}>
                 {!m.mine && (
-                  <div style={{ width: 28, height: 28, borderRadius: 9, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, background: ai ? (mono ? 'var(--tx)' : 'linear-gradient(135deg,#34e2a0,#7c8cff)') : 'var(--bg2)', color: ai ? (mono ? 'var(--card)' : '#0b0d17') : 'var(--mut)' }}>{ai ? <Icon name="sparkles" size={15} /> : initials(m.authorName)}</div>
+                  <div style={{ width: 28, height: 28, borderRadius: 9, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700,
+                    background: ai ? (mono ? 'var(--tx)' : 'linear-gradient(135deg,#34e2a0,#7c8cff)') : (vivid && !note ? `color-mix(in srgb, ${hueFor(m.authorName)} 24%, var(--bg2))` : 'var(--bg2)'),
+                    color: ai ? (mono ? 'var(--card)' : '#0b0d17') : (vivid && !note ? hueFor(m.authorName) : 'var(--mut)') }}>{ai ? <Icon name="sparkles" size={15} /> : initials(m.authorName)}</div>
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: m.mine ? 'flex-end' : 'flex-start', maxWidth: '78%', minWidth: 0 }}>
                 <div style={{
@@ -257,7 +269,7 @@ export default function ChatThread({
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 800, letterSpacing: .4, textTransform: 'uppercase', color: m.mine ? '#fff' : 'var(--soft-red, #ff6b7d)', marginBottom: 3 }}>🔴 {L('Urgente', 'Urgent')}</div>
                   )}
                   {(showAuthors && !m.mine || ai || note) && (
-                    <div style={{ fontSize: 10.5, fontWeight: 600, marginBottom: 2, color: ai ? (mono ? 'var(--tx)' : 'var(--soft-brand, #7c8cff)') : note ? 'var(--amber, #ffc04d)' : 'var(--mut)' }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 600, marginBottom: 2, color: ai ? (mono ? 'var(--tx)' : 'var(--soft-brand, #7c8cff)') : note ? 'var(--amber, #ffc04d)' : (vivid ? hueFor(m.authorName) : 'var(--mut)') }}>
                       {ai ? 'Onyx AI' : note ? L('Nota interna', 'Internal note') : m.authorName}
                     </div>
                   )}

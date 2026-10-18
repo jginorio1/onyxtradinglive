@@ -817,7 +817,14 @@ export default function SupportInbox() {
                             <div key={tm2.id} className="row between" style={{ gap: 8, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '6px 9px' }}>
                               <div className="row" style={{ gap: 8, minWidth: 0 }}>
                                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: online ? 'var(--green)' : 'var(--mut)', flex: 'none' }} />
-                                <span style={{ fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tm2.email}</span>
+                                <span style={{ minWidth: 0 }}>
+                                  <span style={{ fontSize: 12.5, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tm2.name || tm2.email}</span>
+                                  {(tm2.job_title || tm2.country || tm2.languages) && (
+                                    <span className="muted" style={{ fontSize: 10.5, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {[tm2.job_title, tm2.country && '📍 ' + tm2.country, tm2.languages && '🗣 ' + tm2.languages].filter(Boolean).join(' · ')}
+                                    </span>
+                                  )}
+                                </span>
                               </div>
                               <button className="btn btn-ghost" style={{ fontSize: 12, padding: '4px 10px', flex: 'none' }} onClick={() => { act(tk.id, { invite_email: tm2.email }); setShowInvite(false); }} disabled={busy === tk.id}>{t.s_inviteBtn}</button>
                             </div>

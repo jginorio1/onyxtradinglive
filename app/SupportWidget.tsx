@@ -65,6 +65,24 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
   const [email, setEmail] = useState('');
   const [leadName, setLeadName] = useState('');   // nombre del visitante (puerta de entrada)
   const [teamOnline, setTeamOnline] = useState(false); // ¿hay agentes disponibles? (informativo)
+  // Cola simulada: da sensación de demanda. Número REALISTA por hora (más en horas
+  // pico, menos de madrugada), siempre entre 3 y 11, con cuenta regresiva viva. No
+  // bloquea nada: el mensaje llega al instante a soporte y se atiende lo antes posible.
+  const [queue, setQueue] = useState<{ n: number; secs: number } | null>(null);
+  function rollQueue() {
+    const h = new Date().getHours();
+    const peak = (h >= 9 && h <= 13) || (h >= 18 && h <= 22);   // mañana/tarde-noche = pico
+    const lull = h >= 1 && h <= 6;                               // madrugada = bajo
+    const base = lull ? 3 : peak ? 7 : 5;
+    const n = Math.min(11, Math.max(3, base + Math.floor(Math.random() * 4)));
+    return { n, secs: n * 18 + 25 + Math.floor(Math.random() * 30) };
+  }
+  useEffect(() => { if (open && !queue) setQueue(rollQueue()); }, [open]);
+  useEffect(() => {
+    if (!open || human) return;
+    const t = setInterval(() => setQueue((q) => { if (!q) return q; const secs = q.secs - 1; return secs <= 0 ? rollQueue() : { ...q, secs }; }), 1000);
+    return () => clearInterval(t);
+  }, [open, human]);
   const [leadMsg, setLeadMsg] = useState('');
   const [sent, setSent] = useState(false);
   // Token del hilo del invitado (sin sesión). Con él, el widget sigue mostrando y
@@ -892,6 +910,20 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
 
           <div ref={scrollBox} onScroll={onBodyScroll} style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: 12, background: 'var(--bg2)', display: 'flex', flexDirection: 'column', gap: 8, minHeight: 200 }}>
             <div style={{ maxWidth: '86%', minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word', padding: '9px 12px', fontSize: 14, lineHeight: 1.6, ...bubble('assistant') }}>{linkify(greet)}</div>
+
+            {/* Cola simulada (solo antes de estar con un asesor humano). */}
+            {!human && queue && (() => {
+              const m = Math.floor(queue.secs / 60), s = queue.secs % 60;
+              return (
+                <div style={{ background: 'color-mix(in srgb, var(--amber) 14%, var(--card))', border: '1px solid color-mix(in srgb, var(--amber) 40%, var(--line))', borderRadius: 12, padding: '9px 12px', display: 'flex', gap: 9, alignItems: 'center' }}>
+                  <OnyxIcon emoji="👥" size={18} glow={false} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--amber)' }}>{es ? `${queue.n} personas en cola · espera ~${m}:${s < 10 ? '0' : ''}${s}` : `${queue.n} people in queue · wait ~${m}:${s < 10 ? '0' : ''}${s}`}</div>
+                    <div style={{ fontSize: 11, color: 'var(--mut)' }}>{es ? 'Deja tu mensaje: te atendemos en cuanto se pueda.' : 'Leave your message: we’ll get to you as soon as we can.'}</div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Puerta de entrada: nombre + correo antes de chatear (solo invitados). Da
                 el lead, frena bots y evita el consumo de IA, y crea el hilo para guardar todo. */}
