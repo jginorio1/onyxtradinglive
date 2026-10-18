@@ -48,6 +48,80 @@ export const CATEGORIES = [
   { id: 'botlab',  icon: '🛒', color: 'var(--gold)',   name: { es: 'Onyx Bot Lab',           en: 'Onyx Bot Lab' } },
 ];
 
+// ---------- Guía del monedero con cifras EN VIVO ----------
+// Builder PURO (sin imports de servidor, se puede usar en cliente y servidor).
+// El artículo estático de abajo lo usa con los valores por defecto; la ruta
+// /api/guide lo vuelve a construir con los valores reales de usageConfig() del
+// Admin, igual que el reparto 80/20 de Bot Lab. Así el hub muestra siempre las
+// tarifas actuales sin que nadie edite la guía a mano.
+export type WalletRates = {
+  aiCents: number;          // costo de un análisis de IA extra
+  acctCents: number;        // costo de una cuenta extra por mes
+  tiers: { min: number; pct: number }[]; // comisión de recarga por tramo
+  feeMinCents: number;      // comisión mínima por recarga con tarjeta
+};
+export const WALLET_RATES_DEFAULT: WalletRates = {
+  aiCents: 20, acctCents: 400,
+  tiers: [{ min: 200, pct: 2 }, { min: 100, pct: 3 }, { min: 50, pct: 4 }, { min: 25, pct: 5 }, { min: 0, pct: 7 }],
+  feeMinCents: 0,
+};
+export function walletGuideBody(lang: Lang, r: WalletRates): Block[] {
+  const money = (c: number) => '$' + (c / 100).toFixed(2).replace(/\.00$/, '');
+  const aiC = Math.max(1, Math.round(r.aiCents));
+  const acctC = Math.max(0, Math.round(r.acctCents));
+  const pack = Math.round(1000 / aiC); // análisis que rinde una recarga de $10
+  const tiers = [...(r.tiers || [])].sort((a, b) => a.min - b.min);
+  const es = lang === 'es';
+  const feeLines = tiers.map((t) =>
+    es ? `Recargas desde ${money(t.min * 100)}: ${t.pct}% de comisión`
+       : `Top-ups from ${money(t.min * 100)}: ${t.pct}% fee`);
+  const feeMin = Math.max(0, Math.round(r.feeMinCents));
+  if (es) return [
+    { p: 'El monedero de Onyx (tu “saldo”) te deja usar la plataforma pagando solo por lo que consumes, sin mensualidad. Empiezas gratis, y si un mes necesitas más de lo que incluye el plan gratis, se descuenta de tu saldo recargable. Esta guía te explica exactamente cuánto cuesta cada cosa, con los precios de hoy.' },
+    { h: '¿Qué va gratis cada mes?' },
+    { p: 'El plan gratis incluye, sin pagar nada, 1 cuenta conectada y un cupo mensual de análisis de Onyx AI. Mientras te mantengas dentro de ese cupo, no se toca tu saldo. El monedero solo entra cuando te pasas de lo incluido.' },
+    { h: 'Cuánto cuesta pasarse (tarifas de hoy)' },
+    { list: [
+      `Cada análisis de Onyx AI extra: ${money(aiC)}.`,
+      ...(acctC > 0 ? [`Cada cuenta conectada extra (además de la gratis): ${money(acctC)} al mes.`] : []),
+    ] },
+    { note: `Ejemplo: con una recarga de $10 haces alrededor de ${pack} análisis extra. Pagas solo cuando usas de más; si no te pasas del cupo, no gastas saldo.`, title: 'Ejemplo real' },
+    { h: 'Cómo recargas el saldo' },
+    { p: 'Recargas con tarjeta o con USDT. Con tarjeta se añade una pequeña comisión de servicio que baja cuanto más recargas de una vez. Con USDT la recarga es a valor nominal (0% de comisión).' },
+    { list: feeLines },
+    ...(feeMin > 0 ? [{ p: `La comisión de servicio con tarjeta nunca es menor a ${money(feeMin)}.` } as Block] : []),
+    { tip: 'Con USDT no hay comisión: recargas exactamente lo que envías. Si recargas seguido, conviene hacerlo en montos más grandes para pagar menos % de comisión.' },
+    { h: 'Auto-recarga (para que nunca se corte)' },
+    { p: 'Puedes guardar una tarjeta y activar la auto-recarga: cuando tu saldo baja de un mínimo, Onyx vuelve a cargar el monto que tú elijas, para que tus análisis y tus cuentas no se pausen a mitad de camino.' },
+    { warn: 'El saldo NO es retirable: solo se usa dentro de Onyx para pagar tu consumo. Si llega a $0, las funciones de pago se pausan hasta que recargues.' },
+    { h: '¿Cuándo me conviene un plan en vez de pagar por uso?' },
+    { p: 'El pago por uso es ideal si usas poco o de forma irregular. Si mes tras mes gastas de saldo más de lo que costaría un plan, un plan te sale más barato y además incluye más funciones. La propia app te avisa cuando llegas a ese punto, así que no tienes que estar calculándolo.' },
+    { warn: 'Dentro de la app de iPhone no se muestran el monedero, las recargas ni los precios por uso (regla de Apple): ahí se gestiona desde el sitio web o con los planes del App Store.' },
+  ];
+  return [
+    { p: 'The Onyx wallet (your “balance”) lets you use the platform paying only for what you consume, with no monthly fee. You start free, and if one month you need more than the free plan includes, it is charged to your top-up balance. This guide explains exactly how much each thing costs, with today\'s prices.' },
+    { h: 'What\'s free every month?' },
+    { p: 'The free plan includes, at no cost, 1 connected account and a monthly Onyx AI allowance. As long as you stay within that allowance, your balance is untouched. The wallet only kicks in when you go over what\'s included.' },
+    { h: 'What going over costs (today\'s rates)' },
+    { list: [
+      `Each extra Onyx AI analysis: ${money(aiC)}.`,
+      ...(acctC > 0 ? [`Each extra connected account (beyond the free one): ${money(acctC)} per month.`] : []),
+    ] },
+    { note: `Example: a $10 top-up gets you about ${pack} extra analyses. You only pay when you go over; if you stay within the allowance, you spend no balance.`, title: 'Real example' },
+    { h: 'How you top up' },
+    { p: 'You top up with card or USDT. Card top-ups carry a small service fee that drops the more you add at once. USDT top-ups are at face value (0% fee).' },
+    { list: feeLines },
+    ...(feeMin > 0 ? [{ p: `The card service fee is never lower than ${money(feeMin)}.` } as Block] : []),
+    { tip: 'With USDT there is no fee: you top up exactly what you send. If you top up often, larger amounts pay a lower % fee.' },
+    { h: 'Auto-reload (so it never cuts off)' },
+    { p: 'You can save a card and turn on auto-reload: when your balance drops below a minimum, Onyx tops it up by the amount you choose, so your analyses and accounts don\'t pause midway.' },
+    { warn: 'The balance is NOT withdrawable: it is only used inside Onyx to pay for your usage. If it reaches $0, paid features pause until you top up.' },
+    { h: 'When is a plan cheaper than pay-as-you-go?' },
+    { p: 'Pay-as-you-go is ideal if you use Onyx lightly or irregularly. If month after month you spend more balance than a plan would cost, a plan is cheaper and also includes more features. The app itself tells you when you reach that point, so you don\'t have to work it out.' },
+    { warn: 'Inside the iPhone app the wallet, top-ups and usage prices are not shown (Apple rule): there it\'s managed from the website or via App Store plans.' },
+  ];
+}
+
 export const ARTICLES: Article[] = [
   // ---------- APP MÓVIL (Android + iPhone) ----------
   {
@@ -2031,6 +2105,26 @@ export const ARTICLES: Article[] = [
         { p: 'When you save your USDT wallet we check its control digit (checksum) instantly: if you get one character wrong, the address is flagged invalid. That is why you don\'t need to retype it in full twice — you just confirm the last 6 characters, checking them against your exchange.' },
         { warn: 'Crypto sends are irreversible. Even though we validate format and checksum, always double-check that the network (TRON TRC20 or Ethereum ERC20) matches your exchange before withdrawing.' },
       ],
+    },
+  },
+  // ---------- MONEDERO / PAGO POR USO (cifras en vivo vía /api/guide) ----------
+  {
+    slug: 'monedero-pago-por-uso',
+    cat: 'account', icon: '👛', updated: true,
+    title: { es: 'Monedero y pago por uso: cuánto cuesta y cómo funciona', en: 'Wallet & pay-as-you-go: what it costs and how it works' },
+    summary: {
+      es: 'Usa Onyx sin mensualidad: paga solo por lo que consumes con tu saldo recargable. Aquí tienes las tarifas de hoy (IA, cuentas extra y comisiones de recarga) explicadas paso a paso.',
+      en: 'Use Onyx with no monthly fee: pay only for what you consume with your top-up balance. Here are today\'s rates (AI, extra accounts and top-up fees) explained step by step.',
+    },
+    cta: { href: '/monedero', label: { es: 'Ver la guía del monedero', en: 'See the wallet guide' } },
+    seo: {
+      title: { es: 'Monedero Onyx y pago por uso: precios y cómo funciona · Guía', en: 'Onyx wallet & pay-as-you-go: pricing and how it works · Guide' },
+      desc: { es: 'Cómo funciona el monedero de Onyx Trading Live: qué va gratis, cuánto cuesta cada análisis de IA y cada cuenta extra, comisiones de recarga con tarjeta o USDT y la auto-recarga.', en: 'How the Onyx Trading Live wallet works: what\'s free, how much each AI analysis and extra account costs, card or USDT top-up fees and auto-reload.' },
+      keywords: { es: ['monedero onyx', 'pago por uso', 'saldo onyx', 'recarga usdt', 'precio ia onyx', 'sin mensualidad', 'cuenta extra'], en: ['onyx wallet', 'pay as you go', 'onyx balance', 'usdt top-up', 'onyx ai price', 'no monthly fee', 'extra account'] },
+    },
+    body: {
+      es: walletGuideBody('es', WALLET_RATES_DEFAULT),
+      en: walletGuideBody('en', WALLET_RATES_DEFAULT),
     },
   },
 ];

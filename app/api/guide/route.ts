@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdmin } from '@/lib/admin';
-import { CATEGORIES, ARTICLES, type Article } from '@/lib/guide';
+import { CATEGORIES, ARTICLES, walletGuideBody, type Article } from '@/lib/guide';
 import { getAllArticles, getCustomArticles, saveCustomArticles } from '@/lib/guideStore';
 import { botLabSettings } from '@/lib/botlab';
 
@@ -27,6 +27,28 @@ async function applyBotlabFee(articles: Article[]): Promise<Article[]> {
   } catch { return articles; }
 }
 
+// La guía del monedero (slug 'monedero-pago-por-uso') se reconstruye con las
+// tarifas REALES de usageConfig() del Admin, igual que el reparto 80/20 de Bot
+// Lab. Así el hub siempre muestra el precio de IA, de cuenta extra y las
+// comisiones de recarga vigentes, sin que nadie edite la guía a mano.
+async function applyWalletRates(articles: Article[]): Promise<Article[]> {
+  const i = articles.findIndex((a) => a.slug === 'monedero-pago-por-uso');
+  if (i < 0) return articles;
+  try {
+    const { usageConfig } = await import('@/lib/usage');
+    const cfg = await usageConfig();
+    const rates = {
+      aiCents: Number(cfg.ai_call_cents) || 20,
+      acctCents: Number(cfg.account_month_cents) || 0,
+      tiers: Array.isArray(cfg.topup_fee_tiers) ? cfg.topup_fee_tiers : [],
+      feeMinCents: Number(cfg.topup_fee_min_cents) || 0,
+    };
+    const next = articles.slice();
+    next[i] = { ...next[i], body: { es: walletGuideBody('es', rates), en: walletGuideBody('en', rates) } };
+    return next;
+  } catch { return articles; }
+}
+
 function slugify(v: any): string {
   return String(v ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
@@ -37,7 +59,7 @@ const CODE_SLUGS = new Set(ARTICLES.map((a) => a.slug));
 // cuáles son del dueño (customSlugs) para el editor.
 export async function GET() {
   const [articlesRaw, custom] = await Promise.all([getAllArticles(), getCustomArticles().catch(() => [])]);
-  const articles = await applyBotlabFee(articlesRaw);
+  const articles = await applyWalletRates(await applyBotlabFee(articlesRaw));
   return NextResponse.json({
     articles, categories: CATEGORIES,
     customSlugs: (custom as Article[]).map((a) => a.slug),
