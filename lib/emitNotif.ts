@@ -78,7 +78,15 @@ export async function emitNotif(
     // El dueño puede no tener is_admin en la BD (solo en ADMIN_EMAILS). Lo cubrimos.
     if (!isStaff) { try { isStaff = await emailIsOwner(userId); } catch {} }
 
-    if (d.bell && pref.bell !== false) { try { await notify(userId, { kind: key, title, body, url }); } catch {} }
+    // PUSH OBLIGATORIO PARA EL EQUIPO: si el destinatario es staff (dueño/admin) y el
+    // dueño dejó activo el requisito (Admin → Notificaciones), el empleado NO puede
+    // silenciar campana ni push: ignoramos su preferencia personal y forzamos ambos
+    // canales en los tipos que el dueño tenga activos. (Telegram queda aparte: es
+    // opt-in por vinculación, no se puede forzar.) El plan ya lo cubre: isStaff salta
+    // el candado de plan más abajo. Si el requisito está apagado, se respeta su pref.
+    const staffForce = isStaff && (await staffPushRequired());
+
+    if (d.bell && (staffForce || pref.bell !== false)) { try { await notify(userId, { kind: key, title, body, url }); } catch {} }
     // La categoría define el CANAL de la push nativa (Android) para que el usuario
     // pueda activar/silenciar cada tipo por separado y se vea el nombre del canal.
     // PUSH además exige que el PLAN lo incluya (capabilities.push): si el plan no lo
@@ -86,11 +94,21 @@ export async function emitNotif(
     // Así se hace cumplir el candado que ya muestra la UI, y queda configurable por plan.
     // ignorePlan = envíos del dueño/admin (prueba "Probar ahora", difusión manual):
     // esos no deben respetar el candado de plan, deben poder llegar a cualquiera.
-    if (d.push && pref.push !== false && (opts.ignorePlan || isStaff || await planAllowsPush(planId))) {
+    if (d.push && (staffForce || pref.push !== false) && (opts.ignorePlan || isStaff || await planAllowsPush(planId))) {
       try { await sendPush(userId, { title, body, url, category: notifCategory(key) }); } catch {}
     }
     if (d.telegram) { try { await alertUser(userId, d.tgKind as any, `<b>${title}</b>\n${body}`); } catch {} }
   } catch { /* nunca romper el flujo que llamó */ }
+}
+
+// ¿El dueño exige push/campana al equipo? (Admin → Notificaciones). Cacheado 60s
+// para no pegarle a la BD en cada aviso (los crons mandan en bucle). Por defecto SÍ.
+let _staffPushAt = 0; let _staffPush = true;
+async function staffPushRequired(): Promise<boolean> {
+  const now = Date.now();
+  if (now - _staffPushAt < 60000) return _staffPush;
+  try { const { staffPushSettings } = await import('@/lib/settings'); const s = await staffPushSettings(); _staffPush = s?.required !== false; } catch { _staffPush = true; }
+  _staffPushAt = now; return _staffPush;
 }
 
 // ¿El email del usuario está en ADMIN_EMAILS (dueño)? Así el dueño recibe push

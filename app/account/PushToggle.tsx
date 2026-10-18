@@ -12,12 +12,16 @@ const T: any = {
     on: 'Activar', off: 'Desactivar', test: 'Enviar prueba', denied: 'Bloqueaste las notificaciones en el navegador. Actívalas en los ajustes del sitio.',
     iosHint: 'En iPhone primero instala la app (arriba), ábrela desde tu pantalla de inicio y luego activa esto.',
     okOn: 'Notificaciones activadas.', okOff: 'Notificaciones desactivadas.', sent: 'Te envié una notificación de prueba.',
+    reqOn: 'Tu empresa exige mantener las notificaciones activas (eres parte del equipo).',
+    reqOff: 'Actívalas ahora: tu empresa las exige para no perder tickets urgentes ni mensajes del equipo.',
   },
   en: {
     t: 'Phone notifications', s: 'Account and challenge alerts even when Onyx is closed.',
     on: 'Turn on', off: 'Turn off', test: 'Send test', denied: 'You blocked notifications in the browser. Enable them in the site settings.',
     iosHint: 'On iPhone, first install the app (above), open it from your home screen, then turn this on.',
     okOn: 'Notifications enabled.', okOff: 'Notifications disabled.', sent: 'I sent you a test notification.',
+    reqOn: 'Your company requires notifications to stay on (you are part of the team).',
+    reqOff: 'Turn them on now — your company requires them so you never miss urgent tickets or team messages.',
   },
 };
 
@@ -37,6 +41,7 @@ export default function PushToggle({ lang }: { lang: Lang }) {
   const [subscribed, setSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [iosBlocked, setIosBlocked] = useState(false);
+  const [staffRequired, setStaffRequired] = useState(false);   // equipo: no puede apagarlo
 
   const supported = typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
 
@@ -49,7 +54,7 @@ export default function PushToggle({ lang }: { lang: Lang }) {
       try {
         const r = await fetch('/api/push');
         const j = await r.json();
-        setEnabled(!!j.enabled); setPubKey(j.publicKey || '');
+        setEnabled(!!j.enabled); setPubKey(j.publicKey || ''); setStaffRequired(!!j.staffRequired);
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
         setSubscribed(!!sub);
@@ -96,10 +101,18 @@ export default function PushToggle({ lang }: { lang: Lang }) {
         <div className="row" style={{ gap: 8 }}>
           {subscribed && <button className="btn btn-ghost" onClick={test} disabled={busy}>{L.test}</button>}
           {subscribed
-            ? <button className="btn btn-ghost" onClick={turnOff} disabled={busy}>{L.off}</button>
+            // El equipo NO puede desactivar: ocultamos el botón "Desactivar" si es obligatorio.
+            ? (!staffRequired && <button className="btn btn-ghost" onClick={turnOff} disabled={busy}>{L.off}</button>)
             : <button className="btn btn-primary" onClick={turnOn} disabled={busy || iosBlocked}>{L.on}</button>}
         </div>
       </div>
+      {/* Aviso de obligatoriedad para el equipo: verde si ya está activo, ámbar si falta activarlo. */}
+      {staffRequired && (
+        <div style={{ fontSize: 12, marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10, display: 'flex', gap: 8, alignItems: 'flex-start', color: subscribed ? 'var(--green)' : 'var(--amber, #e0a33e)' }}>
+          <span style={{ flex: 'none', marginTop: 1 }}><OnyxIcon name="lock" size={14} glow={false} /></span>
+          <span>{subscribed ? L.reqOn : L.reqOff}</span>
+        </div>
+      )}
       {iosBlocked && <div className="muted" style={{ fontSize: 12, marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}><OnyxIcon emoji="ℹ" size={16} /> {L.iosHint}</div>}
     </div>
   );

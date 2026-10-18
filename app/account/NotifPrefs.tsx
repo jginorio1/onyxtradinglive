@@ -12,6 +12,7 @@ export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
   const es = lang === 'es';
   const [items, setItems] = useState<any[] | null>(null);
   const [planHasPush, setPlanHasPush] = useState(true);
+  const [staffLock, setStaffLock] = useState(false);
   const [saved, setSaved] = useState(false);
   // Rutina: horas de Check-in (mañana) y Check-out (noche), en la zona del trader.
   const [inAt, setInAt] = useState('08:00');
@@ -19,7 +20,7 @@ export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
   const [routSaved, setRoutSaved] = useState(false);
 
   async function load() {
-    try { const r = await fetch('/api/account/notif-prefs'); const j = await r.json(); setItems(j.items || []); setPlanHasPush(j.planHasPush !== false); } catch { setItems([]); }
+    try { const r = await fetch('/api/account/notif-prefs'); const j = await r.json(); setItems(j.items || []); setPlanHasPush(j.planHasPush !== false); setStaffLock(!!j.staffLock); } catch { setItems([]); }
     try { const r = await fetch('/api/account/routine'); const j = await r.json(); if (j.checkin_at) setInAt(j.checkin_at); if (j.checkout_at) setOutAt(j.checkout_at); } catch {}
   }
   useEffect(() => { load(); }, []);
@@ -34,10 +35,16 @@ export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
     try { await fetch('/api/account/notif-prefs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prefs }) }); setSaved(true); setTimeout(() => setSaved(false), 1400); } catch {}
   }
   function toggle(key: string, ch: 'bell' | 'push') {
-    if (!items) return;
+    if (!items || staffLock) return;   // equipo: no puede apagar (lo exige el dueño)
     const next = items.map((it) => it.key === key ? { ...it, [ch]: !it[ch] } : it);
     setItems(next); save(next);
   }
+  // Interruptor bloqueado (siempre on, no editable) para el equipo.
+  const LockedOn = () => (
+    <span title={es ? 'Lo exige tu empresa' : 'Required by your company'} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 20, borderRadius: 999, background: 'var(--green)', opacity: .85 }}>
+      <OnyxIcon name="lock" size={11} glow={false} />
+    </span>
+  );
 
   if (!items) return <div className="muted" style={{ fontSize: 13 }}>…</div>;
   if (!items.length) return null;
@@ -49,6 +56,16 @@ export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
         {saved && <span style={{ color: 'var(--green)', fontSize: 12 }}>{es ? 'Guardado' : 'Saved'}</span>}
       </div>
       <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>{es ? 'Elige qué recibir en la campana (dentro de la app) y en el push del móvil.' : 'Choose what to get in the bell (in-app) and mobile push.'}</p>
+
+      {staffLock && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'color-mix(in srgb, var(--green) 12%, var(--bg2))', border: '1px solid color-mix(in srgb, var(--green) 35%, var(--line))', borderRadius: 12, padding: '11px 13px', marginBottom: 14 }}>
+          <span style={{ flex: 'none', marginTop: 1 }}><OnyxIcon name="lock" size={16} glow={false} /></span>
+          <div style={{ fontSize: 12.5, lineHeight: 1.45 }}>
+            <b>{es ? 'Notificaciones del equipo obligatorias.' : 'Team notifications are required.'}</b>{' '}
+            {es ? 'Como eres parte del equipo, los avisos de la campana y el push se mantienen activos y no se pueden apagar. Lo gestiona la dirección para que nadie se pierda un ticket urgente o un mensaje del equipo.' : 'As a team member, bell and push alerts stay on and cannot be turned off. Management controls this so no one misses an urgent ticket or a team message.'}
+          </div>
+        </div>
+      )}
 
       {/* Mi rutina diaria: horas de Check-in y Check-out, en la zona horaria del trader. */}
       <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: '12px 14px', marginBottom: 14, border: '1px solid var(--line)' }}>
@@ -80,9 +97,11 @@ export default function NotifPrefs({ lang }: { lang: 'es' | 'en' }) {
               <div className="muted" style={{ fontSize: 11.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.body}</div>
             </div>
             <span className="row" style={{ gap: 22, flex: 'none' }}>
-              <span style={{ width: 46, display: 'flex', justifyContent: 'center' }}>{it.bellAvail ? <Toggle on={!!it.bell} onClick={() => toggle(it.key, 'bell')} /> : <span className="muted" style={{ fontSize: 11 }}>—</span>}</span>
+              <span style={{ width: 46, display: 'flex', justifyContent: 'center' }}>{it.bellAvail ? (it.locked ? <LockedOn /> : <Toggle on={!!it.bell} onClick={() => toggle(it.key, 'bell')} />) : <span className="muted" style={{ fontSize: 11 }}>—</span>}</span>
               <span style={{ width: 46, display: 'flex', justifyContent: 'center' }}>{
-                it.pushAvail
+                it.locked && it.pushAvail
+                  ? <LockedOn />
+                  : it.pushAvail
                   ? <Toggle on={!!it.push} onClick={() => toggle(it.key, 'push')} />
                   : it.pushType
                     // El tipo admite push pero el PLAN no lo incluye → candado gris (no un interruptor falso).

@@ -32,6 +32,24 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
     setBcBusy(false);
   }
 
+  // Push OBLIGATORIO para el equipo + cumplimiento (quién tiene push activo).
+  const [staffReq, setStaffReq] = useState(true);
+  const [comp, setComp] = useState<any>(null);
+  const [compBusy, setCompBusy] = useState(false);
+  async function loadComp() {
+    setCompBusy(true);
+    try { const r = await fetch('/api/admin/notifications?compliance=1'); const j = await r.json(); if (r.ok) { setComp(j); setStaffReq(j.required !== false); } } catch {}
+    setCompBusy(false);
+  }
+  async function toggleStaffReq() {
+    const next = !staffReq; setStaffReq(next);
+    try {
+      const r = await fetch('/api/admin/notifications', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ staffPush: { required: next } }) });
+      if (r.ok) toast(next ? (es ? 'Push obligatorio activado para el equipo' : 'Mandatory push enabled for the team') : (es ? 'Push obligatorio desactivado' : 'Mandatory push disabled'), 'ok');
+      else { setStaffReq(!next); toast('Error'); }
+    } catch { setStaffReq(!next); toast('Error'); }
+  }
+
   // Diagnóstico de push de TU cuenta (por qué llega o no una automática).
   const [diag, setDiag] = useState<any>(null);
   const [diagBusy, setDiagBusy] = useState(false);
@@ -61,7 +79,7 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
       setOv(seed);
     } catch {}
   }
-  useEffect(() => { load(); loadDiag(); }, []);
+  useEffect(() => { load(); loadDiag(); loadComp(); }, []);
 
   const set = (k: string, f: string, v: any) => setOv((p) => ({ ...p, [k]: { ...p[k], [f]: v } }));
   const [aiKey, setAiKey] = useState('');       // qué tarjeta tiene abierta la IA
@@ -127,6 +145,41 @@ export default function NotifAdmin({ lang }: { lang: 'es' | 'en' }) {
           <button className="btn btn-ghost" onClick={resetDefaults} disabled={busy} title={es ? 'Volver a la configuración recomendada de fábrica' : 'Return to recommended factory config'}>{es ? 'Valores de fábrica' : 'Factory defaults'}</button>
           <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? '…' : (es ? 'Guardar cambios' : 'Save changes')}</button>
         </div>
+      </div>
+
+      {/* Push OBLIGATORIO para el equipo: el empleado no puede apagar campana/push. */}
+      <div className="card" style={{ padding: 14, marginBottom: 18, border: '1px solid color-mix(in srgb, var(--green) 40%, var(--line))' }}>
+        <div className="row between" style={{ alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}><OnyxIcon name="lock" size={13} glow={false} /> {es ? 'Notificaciones obligatorias del equipo' : 'Mandatory team notifications'}</div>
+            <p className="muted" style={{ fontSize: 12, margin: '2px 0 0', maxWidth: 560 }}>{es ? 'Con esto activo, empleados y admins reciben SIEMPRE la campana y el push de los avisos que tengas encendidos: no pueden apagarlos desde su cuenta. Así nadie se pierde un ticket urgente ni un mensaje del equipo.' : 'When on, employees and admins ALWAYS receive bell and push for the alerts you have enabled: they cannot turn them off from their account. No one misses an urgent ticket or a team message.'}</p>
+          </div>
+          <Toggle on={staffReq} onClick={toggleStaffReq} />
+        </div>
+
+        {comp && (
+          <div style={{ marginTop: 12, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+            <div className="row between" style={{ alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600 }}>{es ? 'Estado del equipo' : 'Team status'} · <span style={{ color: comp.active === comp.total ? 'var(--green)' : 'var(--amber,#e0a33e)' }}>{comp.active}/{comp.total}</span> {es ? 'con push activo' : 'with push on'}</div>
+              <button className="btn btn-ghost" style={{ fontSize: 11.5 }} onClick={loadComp} disabled={compBusy}>{compBusy ? '…' : (es ? 'Actualizar' : 'Refresh')}</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 220, overflowY: 'auto' }}>
+              {(comp.staff || []).map((s: any) => (
+                <div key={s.id} className="row between" style={{ background: 'var(--bg2)', borderRadius: 8, padding: '6px 10px', gap: 8 }}>
+                  <div style={{ minWidth: 0, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {s.name}{s.owner && <span className="muted" style={{ fontSize: 10.5 }}> · {es ? 'dueño' : 'owner'}</span>}
+                  </div>
+                  <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: s.active ? 'var(--green)' : 'var(--amber,#e0a33e)' }}>
+                    {s.active ? (es ? '✓ activo' : '✓ on') : (es ? '⚠ sin activar' : '⚠ not on')}
+                    {s.active && <span className="muted" style={{ fontWeight: 500 }}> · {[s.native && (es ? 'app' : 'app'), s.web && 'web'].filter(Boolean).join(' + ')}</span>}
+                  </span>
+                </div>
+              ))}
+              {!(comp.staff || []).length && <div className="muted" style={{ fontSize: 12 }}>{es ? 'No hay miembros de equipo (perfiles con permiso de admin).' : 'No team members (profiles with admin permission).'}</div>}
+            </div>
+            <p className="muted" style={{ fontSize: 11, marginTop: 8 }}>{es ? 'El push obligatorio se fuerza en el envío. En web, el navegador aún pide permiso una vez; en la app (Android/iOS) se pide al abrir. Los que aparecen “sin activar” deben abrir la app o aceptar el permiso del navegador.' : 'Mandatory push is enforced on send. On web the browser still asks once; in the app (Android/iOS) it is requested on open. Those “not on” must open the app or accept the browser permission.'}</p>
+          </div>
+        )}
       </div>
 
       {/* Composer: push escrita a mano para TODOS los usuarios (ícono Onyx por defecto). */}

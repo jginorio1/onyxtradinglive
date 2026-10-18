@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { pushEnabled, pushPublicKey, sendPush } from '@/lib/push';
+import { staffPushSettings } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -21,7 +22,18 @@ export async function GET(req: Request) {
     const { data } = await supabaseAdmin.from('push_subscriptions').select('id').eq('user_id', user.id).eq('endpoint', endpoint).maybeSingle();
     subscribed = !!data;
   }
-  return NextResponse.json({ enabled: pushEnabled(), publicKey: pushPublicKey(), subscribed });
+  // ¿El push es OBLIGATORIO para este usuario? (staff + el dueño lo exige). La UI usa
+  // esto para ocultar el botón "Desactivar" y mostrar un aviso si aún no se suscribió.
+  let staffRequired = false;
+  if (user) {
+    try {
+      const { data: p } = await supabaseAdmin.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+      const admins = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+      const isStaff = !!(p as any)?.is_admin || admins.includes((user.email || '').toLowerCase());
+      staffRequired = isStaff && ((await staffPushSettings())?.required !== false);
+    } catch {}
+  }
+  return NextResponse.json({ enabled: pushEnabled(), publicKey: pushPublicKey(), subscribed, staffRequired });
 }
 
 // POST · guardar suscripción { subscription } | acción de prueba { test:true }

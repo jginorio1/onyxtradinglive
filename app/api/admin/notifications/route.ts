@@ -42,8 +42,32 @@ export async function GET(req: Request) {
     });
   }
 
+  // ?compliance=1 → lista del EQUIPO con si tienen push activo (nativo/web). Para que
+  // el dueño vea de un vistazo quién falta por activar. El push obligatorio se fuerza
+  // en el envío; aquí solo se muestra el estado real de dispositivos registrados.
+  if (new URL(req.url).searchParams.get('compliance')) {
+    const admins = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+    // Equipo = perfiles con is_admin=true (los owners por email se incluyen aparte).
+    const { data: staff } = await supabaseAdmin.from('profiles').select('id,full_name,email,is_admin').eq('is_admin', true).limit(500);
+    const rows = (staff || []) as any[];
+    const ids = rows.map((r) => r.id);
+    const nat = new Set<string>(); const web = new Set<string>();
+    if (ids.length) {
+      try { const { data } = await supabaseAdmin.from('native_push_tokens').select('user_id').in('user_id', ids); (data || []).forEach((d: any) => nat.add(d.user_id)); } catch {}
+      try { const { data } = await supabaseAdmin.from('push_subscriptions').select('user_id').in('user_id', ids); (data || []).forEach((d: any) => web.add(d.user_id)); } catch {}
+    }
+    const list = rows.map((r) => ({
+      id: r.id, name: r.full_name || (r.email || '').split('@')[0], email: r.email,
+      native: nat.has(r.id), web: web.has(r.id), active: nat.has(r.id) || web.has(r.id),
+      owner: admins.includes((r.email || '').toLowerCase()),
+    })).sort((x, y) => Number(x.active) - Number(y.active));   // primero los que FALTAN
+    const required = (await getSetting<{ required: boolean }>('staff_push', { required: true }))?.required !== false;
+    return NextResponse.json({ required, total: list.length, active: list.filter((x) => x.active).length, staff: list });
+  }
+
   const overrides = await getSetting<Record<string, NotifOverride>>('notif_config', {}) || {};
-  return NextResponse.json({ catalog: NOTIF_CATALOG, overrides });
+  const staffPush = (await getSetting<{ required: boolean }>('staff_push', { required: true }))?.required !== false;
+  return NextResponse.json({ catalog: NOTIF_CATALOG, overrides, staffPush });
 }
 
 // POST · guarda los cambios (on/off, canales, textos) del dueño.
@@ -81,6 +105,12 @@ export async function POST(req: Request) {
       await emitNotif(uid, key, { cfg, lang, vars: TEST_VARS, title: prefix + (def as any)[lang].title, ignorePlan: true });
     } catch (e: any) { return NextResponse.json({ error: 'no se pudo enviar', detail: String(e?.message || e) }, { status: 500 }); }
     return NextResponse.json({ ok: true, sent: true });
+  }
+
+  // ---- Push obligatorio para el equipo: on/off (solo dueño) ----
+  if (b.staffPush && typeof b.staffPush === 'object') {
+    await saveSetting('staff_push', { required: !!b.staffPush.required });
+    return NextResponse.json({ ok: true, staffPush: !!b.staffPush.required });
   }
 
   // ---- Restablecer a valores de fábrica: borra la config guardada ----

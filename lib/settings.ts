@@ -206,6 +206,13 @@ export async function botCapsForUser(userId: string): Promise<{ tier: string; ad
 export const retentionSettings = () => getSetting<Retention>('retention', R);
 export const addonSettings = () => getSetting<Addons>('addons', A);
 
+// Push OBLIGATORIO para el equipo. Cuando `required` está activo (por defecto sí),
+// los empleados y admins NO pueden silenciar la campana ni el push: lo controla el
+// dueño/admin desde Admin → Notificaciones. No duplica el motor de push; solo
+// decide si se respeta la preferencia personal del empleado o se fuerza (emitNotif).
+export type StaffPush = { required: boolean };
+export const staffPushSettings = () => getSetting<StaffPush>('staff_push', { required: true });
+
 // Prompt editable de Onyx AI (soporte/chat) desde el Admin. Si un campo está vacío,
 // se usa el valor por defecto del código. `extra` se AÑADE a las instrucciones;
 // `brief` REEMPLAZA el conocimiento de marca (los hechos que la IA da sobre Onyx).

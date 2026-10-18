@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { loadNotifConfig } from '@/lib/notifConfig';
+import { staffPushSettings } from '@/lib/settings';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -50,6 +51,10 @@ export async function GET() {
       if (acBotlab) feats.add('botlab');
     }
 
+    // PUSH OBLIGATORIO PARA EL EQUIPO: si eres staff y el dueño lo exige, no puedes
+    // apagar campana ni push. Lo mostramos siempre activo y bloqueado (locked) en la UI.
+    const staffLock = isStaff && ((await staffPushSettings())?.required !== false);
+
     const items = Object.values(cfg)
       .filter((d: any) => d.on && (d.bell || d.push) && (!d.feature || feats.has(d.feature)))
       .map((d: any) => ({
@@ -58,10 +63,14 @@ export async function GET() {
         // El push solo está disponible si el tipo lo permite Y el plan lo incluye.
         // pushType = el tipo de aviso admite push (para distinguir "bloqueado por plan" de "no aplica").
         bellAvail: !!d.bell, pushType: !!d.push, pushAvail: !!d.push && planHasPush,
-        bell: (prefs[d.key]?.bell ?? true), push: (prefs[d.key]?.push ?? true),
+        // Si hay candado de staff, forzamos on en lo que el dueño tenga activo.
+        bell: staffLock && !!d.bell ? true : (prefs[d.key]?.bell ?? true),
+        push: staffLock && !!d.push && planHasPush ? true : (prefs[d.key]?.push ?? true),
+        locked: staffLock,
       }));
     // planHasPush se usa en la UI para distinguir "bloqueado por plan" de "no aplica".
-    return NextResponse.json({ items, lang, planHasPush });
+    // staffLock → la UI muestra los interruptores como candado (siempre on, no editable).
+    return NextResponse.json({ items, lang, planHasPush, staffLock });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
   }
@@ -75,9 +84,16 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: 'no auth' }, { status: 401 });
     const b = await req.json().catch(() => ({} as any));
     const cfg = await loadNotifConfig();
+    // Candado de staff también en el POST (defensa en el servidor): un empleado no
+    // puede guardar bell/push en false si el dueño exige el push al equipo.
+    const { data: pp } = await supabaseAdmin.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+    const admins = (process.env.ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+    const isStaff = !!(pp as any)?.is_admin || admins.includes((user.email || '').toLowerCase());
+    const staffLock = isStaff && ((await staffPushSettings())?.required !== false);
     const clean: Record<string, { bell: boolean; push: boolean }> = {};
     for (const [k, v] of Object.entries(b.prefs || {})) {
       if (!cfg[k] || !v || typeof v !== 'object') continue;
+      if (staffLock) { clean[k] = { bell: true, push: true }; continue; }
       clean[k] = { bell: !!(v as any).bell, push: !!(v as any).push };
     }
     const r = await supabaseAdmin.from('profiles').update({ notif_prefs: clean }).eq('id', user.id);
