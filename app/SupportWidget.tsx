@@ -942,10 +942,10 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 800, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{human ? (agentName || x.humanTitle) : x.title}</div>
               <div style={{ fontSize: 12, opacity: .85, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                {cfg.showPulse && <span className={(human || (!human && queue)) ? 'onyx-pulse' : ''} style={{ width: 7, height: 7, borderRadius: '50%', background: human ? '#128a4f' : (queue ? '#fff' : 'rgba(255,255,255,.4)'), flex: 'none' }} />}
+                {cfg.showPulse && <span className="onyx-pulse" style={{ width: 7, height: 7, borderRadius: '50%', background: human ? '#128a4f' : '#fff', flex: 'none' }} />}
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{
                   human ? x.online
-                    : (queue ? `${queue.n} ${es ? 'en cola' : 'in queue'} · ~${Math.floor(queue.secs / 60)}:${(queue.secs % 60) < 10 ? '0' : ''}${queue.secs % 60}` : (x.offline || x.online))
+                    : (es ? 'Respuesta al instante' : 'Replies instantly')
                 }</span>
               </div>
             </div>
@@ -959,7 +959,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
             {/* Celda destacada de cola / turno. Antes de enviar muestra cuánta gente
                 hay en cola; después de enviar muestra el turno reservado del cliente
                 (su posición va bajando y una barra de progreso avanza). */}
-            {!human && (turn || queue) && (() => {
+            {!human && !started && (turn || queue) && (() => {
               const secs = turn ? turn.secs : queue!.secs;
               const mm = Math.floor(secs / 60), ss = secs % 60;
               const eta = `~${mm}:${ss < 10 ? '0' : ''}${ss}`;
