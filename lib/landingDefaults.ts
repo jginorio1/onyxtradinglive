@@ -180,6 +180,7 @@ export const DEFAULT_FOOTER = {
   links: [
     { es: 'Inicio', en: 'Home', href: '/' },
     { es: 'Planes', en: 'Plans', href: '/pricing' },
+    { es: 'Monedero', en: 'Wallet', href: '/monedero' },
     { es: 'Guía', en: 'Guide', href: '/guia' },
     { es: 'Embajadores', en: 'Ambassadors', href: '/embajadores' },
     { es: 'Invita y gana', en: 'Invite & earn', href: '/invita' },

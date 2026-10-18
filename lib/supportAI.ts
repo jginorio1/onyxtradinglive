@@ -261,6 +261,28 @@ export async function supportChatReply(question: string, lang: Lang, history: an
     }
   } catch {}
 
+  // TARIFAS DE PAGO POR USO / MONEDERO EN VIVO (desde usageConfig del Admin). Van FUERA
+  // de la caché porque el admin puede cambiarlas. Solo si no es iOS (regla 3.1.1). Así la
+  // IA cita el precio REAL por análisis, por cuenta extra y las comisiones de recarga por
+  // tramo, en lugar de mandar a "Mi cuenta → Suscripción".
+  if (!hidePricing) try {
+    const { usageConfig } = await import('@/lib/usage');
+    const cfg = await usageConfig();
+    const money = (c: number) => '$' + (c / 100).toFixed(2).replace(/\.00$/, '');
+    const aiC = Math.max(1, Math.round(Number(cfg.ai_call_cents) || 20));
+    const acctC = Math.max(0, Math.round(Number(cfg.account_month_cents) || 0));
+    const packAnalyses = Math.round(1000 / aiC); // cuántos análisis rinde una recarga de $10
+    const tiers = [...(cfg.topup_fee_tiers || [])].sort((a: any, b: any) => a.min - b.min);
+    const tierLines = tiers.map((t: any) => {
+      const from = t.min >= 100 ? `$${t.min}+` : `$${t.min}–$99`;
+      return en ? `from $${t.min}: ${t.pct}% fee` : `desde $${t.min}: ${t.pct}% de comisión`;
+    }).join(' · ');
+    const feeMin = Math.max(0, Math.round(Number(cfg.topup_fee_min_cents) || 0));
+    prices += en
+      ? `\n\n=== PAY-AS-YOU-GO / WALLET PRICES (live, do not invent) ===\n- Each extra Onyx AI analysis (beyond the free monthly allowance): ${money(aiC)}.\n${acctC > 0 ? `- Each extra connected account beyond the free one: ${money(acctC)}/mo, charged from the balance.\n` : ''}- Example: a $10 top-up ≈ ${packAnalyses} extra analyses.\n- Card top-up service fee by amount — ${tierLines}${feeMin > 0 ? ` (minimum ${money(feeMin)})` : ''}. The more you top up at once, the lower the % fee.\n- USDT top-ups: 0% fee (at face value).\n- The balance is NOT withdrawable (only for use inside Onyx). Auto-reload can be turned on so it never cuts off.\nQuote THESE exact figures when asked how much the AI / extra accounts / top-ups cost. Full guide at /monedero.`
+      : `\n\n=== PRECIOS DE PAGO POR USO / MONEDERO (en vivo, no inventes) ===\n- Cada análisis extra de Onyx AI (más allá del cupo gratis mensual): ${money(aiC)}.\n${acctC > 0 ? `- Cada cuenta conectada extra además de la gratis: ${money(acctC)}/mes, se descuenta del saldo.\n` : ''}- Ejemplo: una recarga de $10 ≈ ${packAnalyses} análisis extra.\n- Comisión de servicio al recargar con tarjeta según el monto — ${tierLines}${feeMin > 0 ? ` (mínimo ${money(feeMin)})` : ''}. Cuanto más recargas de una vez, menor el % de comisión.\n- Recargas con USDT: 0% de comisión (a valor nominal).\n- El saldo NO es retirable (solo se usa dentro de Onyx). Se puede activar la auto-recarga para que nunca se corte.\nCita ESTAS cifras exactas cuando pregunten cuánto cuesta la IA / las cuentas extra / las recargas. Guía completa en /monedero.`;
+  } catch {}
+
   // SOPORTE REMOTO DE PAGO (si el dueño lo activó). La IA puede OFRECERLO cuando la
   // persona necesita ayuda práctica (instalar el EA/cBot, configurar, conectar la
   // cuenta, un error que no logra resolver). En iOS NO se ofrece (hidePricing): es un
