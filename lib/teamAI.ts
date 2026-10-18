@@ -324,7 +324,21 @@ export async function onyxTeamAnswer(opts: { question: string; lang: Lang; tz?: 
 
   // Tarjetas accionables (deterministas, siempre con enlace al ticket) que se
   // anteponen a la prosa de la IA → la respuesta queda rica y clicable.
-  const attnCards = cardsBlock(waiting.map((w) => w.t), 6);
+  // Preferimos los que esperan NUESTRA respuesta (del más viejo). Si no hay ninguno
+  // esperando, caemos a los tickets SIN RESOLVER (abiertos/en curso), ordenados por
+  // urgencia: primero prioridad alta, luego los más viejos. Así @Onyx SIEMPRE
+  // devuelve tarjetas clicables cuando hay tickets vivos (nunca texto plano a secas).
+  let attnRows: any[] = waiting.map((w) => w.t);
+  if (!attnRows.length) {
+    attnRows = rows
+      .filter((t) => t.status !== 'resolved')
+      .sort((a, b) => {
+        const pa = a.priority === 'high' ? 0 : 1; const pb = b.priority === 'high' ? 0 : 1;
+        if (pa !== pb) return pa - pb;
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
+  }
+  const attnCards = cardsBlock(attnRows, 6);
   const attnHead = attnCards ? (en ? 'Tickets that need attention:\n' : 'Tickets que necesitan atención:\n') + attnCards + '\n\n' : '';
 
   const system = (en
