@@ -8,7 +8,7 @@ import { logError } from '@/lib/errlog';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const STATUSES = ['open', 'in_progress', 'resolved'];
+const STATUSES = ['open', 'in_progress', 'pending', 'on_hold', 'resolved'];
 
 // GET · bandeja compartida: tickets + mensajes (incluidas notas internas) + equipo
 export async function GET() {
@@ -123,7 +123,17 @@ export async function PATCH(req: Request) {
 
     const patch: any = { updated_at: new Date().toISOString() };
     if (b.status && STATUSES.includes(String(b.status))) patch.status = String(b.status);
-    if (b.priority && ['low', 'normal', 'high'].includes(String(b.priority))) patch.priority = String(b.priority);
+    if (b.priority && ['low', 'normal', 'high', 'urgent'].includes(String(b.priority))) patch.priority = String(b.priority);
+
+    // Ciclo de vida para métricas: marcar resuelto, o reabrir (resolved → otro).
+    if (patch.status) {
+      try {
+        const { data: cur } = await supabaseAdmin.from('support_tickets').select('status,resolved_at,reopen_count').eq('id', ticketId).maybeSingle();
+        const prev = (cur as any)?.status;
+        if (patch.status === 'resolved' && prev !== 'resolved') { patch.resolved_at = new Date().toISOString(); try { patch.csat_token = (globalThis.crypto as any)?.randomUUID?.() || String(Date.now()) + Math.random().toString(36).slice(2); } catch {} }
+        if (patch.status !== 'resolved' && prev === 'resolved') { patch.reopened_at = new Date().toISOString(); patch.reopen_count = Number((cur as any)?.reopen_count || 0) + 1; }
+      } catch {}
+    }
 
     // Tomar / asignar
     if (b.take) patch.assignee_id = user.id;
@@ -230,16 +240,29 @@ export async function PATCH(req: Request) {
         await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'admin', sender_id: user.id, body, attachments });
       }
       if (!patch.status) patch.status = 'in_progress';
+      // Primera respuesta de un HUMANO del equipo (para la métrica de "primera respuesta").
+      try {
+        const { data: fr } = await supabaseAdmin.from('support_tickets').select('first_response_at').eq('id', ticketId).maybeSingle();
+        if (!(fr as any)?.first_response_at) patch.first_response_at = new Date().toISOString();
+      } catch {}
       const { data: tk } = await supabaseAdmin.from('support_tickets').select('email,subject,user_id').eq('id', ticketId).maybeSingle();
       if (tk?.email && body) {
         // Reply-To con token del ticket: si el cliente responde el correo, Resend
         // Inbound lo devuelve al hilo (se ve en Soporte). Sin dominio inbound = '' → normal.
         let replyTo = '';
         try { const { ensureTicketToken, replyToForTicket } = await import('@/lib/supportInbound'); const tok = await ensureTicketToken(ticketId); replyTo = replyToForTicket(tok); } catch {}
+        // Si con esta respuesta se RESUELVE el ticket, invitamos a calificar (CSAT)
+        // con enlaces de un clic (1–5). El token ya se generó al marcar resuelto.
+        let csatLine = '';
+        if (patch.status === 'resolved' && patch.csat_token) {
+          const SITE = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.onyxtradinglive.com').replace(/\/$/, '');
+          const link = (s: number) => `${SITE}/api/support/csat?t=${patch.csat_token}&s=${s}`;
+          csatLine = `\n\n¿Cómo fue tu atención? Califícanos:\n😞 ${link(1)}\n😐 ${link(3)}\n😍 ${link(5)}`;
+        }
         emailed = await sendEmail(
           tk.email,
           `Re: ${tk.subject || 'Tu consulta en Onyx'}`,
-          `${clientBody}${attachments.length ? `\n\n(${attachments.length} ${attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} en tu Centro de soporte)` : ''}\n\n—\nEquipo de Onyx Trading Live\nResponde a este correo o entra a tu Centro de soporte para seguir la conversación.`,
+          `${clientBody}${attachments.length ? `\n\n(${attachments.length} ${attachments.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'} en tu Centro de soporte)` : ''}${csatLine}\n\n—\nEquipo de Onyx Trading Live\nResponde a este correo o entra a tu Centro de soporte para seguir la conversación.`,
           replyTo ? { replyTo } : undefined,
         );
       }
@@ -252,7 +275,16 @@ export async function PATCH(req: Request) {
     }
 
     if (Object.keys(patch).length > 1 || body || note) {
-      await supabaseAdmin.from('support_tickets').update(patch).eq('id', ticketId);
+      const up = await supabaseAdmin.from('support_tickets').update(patch).eq('id', ticketId);
+      // Tolerante: si alguna columna nueva (resolved_at, first_response_at…) no existe
+      // aún (SQL sin correr), reintenta solo con status/priority/assignee/updated_at.
+      if ((up as any)?.error) {
+        const basic: any = { updated_at: patch.updated_at };
+        if (patch.status) basic.status = patch.status;
+        if (patch.priority && patch.priority !== 'urgent') basic.priority = patch.priority;
+        if (patch.assignee_id !== undefined) basic.assignee_id = patch.assignee_id;
+        await supabaseAdmin.from('support_tickets').update(basic).eq('id', ticketId);
+      }
     }
     return NextResponse.json({ ok: true, emailed });
   } catch (e: any) {

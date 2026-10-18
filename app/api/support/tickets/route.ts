@@ -88,6 +88,13 @@ export async function POST(req: Request) {
     const tgeo: any = { ...tbase };
     if (geo.country) tgeo.country = geo.country;
     if (geo.city) tgeo.city = geo.city;
+    // Lead source (de dónde vino) — lo manda el cliente (UTM + referrer).
+    const attr = (b.attr && typeof b.attr === 'object') ? b.attr : {};
+    if (attr.source) tgeo.source = String(attr.source).slice(0, 24);
+    if (attr.utm_source) tgeo.utm_source = String(attr.utm_source).slice(0, 60);
+    if (attr.utm_medium) tgeo.utm_medium = String(attr.utm_medium).slice(0, 60);
+    if (attr.utm_campaign) tgeo.utm_campaign = String(attr.utm_campaign).slice(0, 80);
+    if (attr.landing) tgeo.landing = String(attr.landing).slice(0, 120);
     let ticket: any = null; let error: any = null;
     {
       const r = await supabaseAdmin.from('support_tickets').insert(tgeo).select('id').single();

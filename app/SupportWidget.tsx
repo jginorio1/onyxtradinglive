@@ -8,6 +8,7 @@ import OnyxIcon from '@/app/components/OnyxIcon';
 import GooglePlayBadge from '@/app/components/GooglePlayBadge';
 import AppStoreBadge from '@/app/components/AppStoreBadge';
 import { isNativeApp, nativePlatform } from '@/lib/native';
+import { readAttribution } from '@/lib/leadSource';
 import type { ChatWidget } from '@/lib/settings';
 
 // Textos fijos del flujo (captura de correo/ticket). El resto (marca, saludo,
@@ -469,7 +470,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e)) { setErr(t.errMail); return; }
     setErr(''); setBusy(true);
     try {
-      const r = await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ name: nm, email: e, lang }) });
+      const r = await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ name: nm, email: e, lang, attr: readAttribution() }) });
       const j = await r.json().catch(() => ({} as any));
       if (j?.token) { setLeadToken(j.token); try { localStorage.setItem('onyx_support_token', j.token); } catch {} }
     } catch {}
@@ -554,7 +555,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
         const subject = (firstQ || lastQ || msg || (es ? 'Consulta desde el chat' : 'Chat question')).slice(0, 120);
         // Mandamos TODO el hilo con la IA para que el equipo vea el primer mensaje, no solo la caja.
         const history = chat.filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({ role: m.role, content: m.content }));
-        await fetch('/api/support/tickets', { method: 'POST', body: JSON.stringify({ subject, body: msg, category: 'general', attachments: atts, history }) });
+        await fetch('/api/support/tickets', { method: 'POST', body: JSON.stringify({ subject, body: msg, category: 'general', attachments: atts, history, attr: readAttribution() }) });
       } catch {}
       assignTurn();
       setBusy(false); setSent(true); setShowEmail(false); setAttach(null);
@@ -565,7 +566,7 @@ export default function SupportWidget({ loggedIn = false, cfg, variant = 'onyx' 
     if (!msg && !attach) { setErr(t.errMsg); return; }
     setErr(''); setBusy(true);
     const history = chat.filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({ role: m.role, content: m.content }));
-    const lr = await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ email: e, message: msg, history, lang, attachment: attach ? { data: attach.data, name: attach.name, type: attach.type } : null }) });
+    const lr = await fetch('/api/support/lead', { method: 'POST', body: JSON.stringify({ email: e, message: msg, history, lang, attr: readAttribution(), attachment: attach ? { data: attach.data, name: attach.name, type: attach.type } : null }) });
     const lj = await lr.json().catch(() => ({} as any));
     setBusy(false); setShowEmail(false); setAttach(null);
     // Si el servidor nos dio token, seguimos la conversación EN EL WIDGET (no solo

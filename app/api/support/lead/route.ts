@@ -69,7 +69,18 @@ export async function POST(req: Request) {
     const extra: any = { name };
     if (geo.country) extra.country = geo.country;
     if (geo.city) extra.city = geo.city;
+    // Lead source: de dónde vino (web, facebook, instagram, google, email…). Lo
+    // manda el widget (UTM + referrer). Van APARTE para que, si esas columnas no
+    // existen aún, igual se guarde el nombre/país (candidato intermedio).
+    const attr = (b.attr && typeof b.attr === 'object') ? b.attr : {};
+    const src: any = {};
+    if (attr.source) src.source = String(attr.source).slice(0, 24);
+    if (attr.utm_source) src.utm_source = String(attr.utm_source).slice(0, 60);
+    if (attr.utm_medium) src.utm_medium = String(attr.utm_medium).slice(0, 60);
+    if (attr.utm_campaign) src.utm_campaign = String(attr.utm_campaign).slice(0, 80);
+    if (attr.landing) src.landing = String(attr.landing).slice(0, 120);
     const candidates: any[] = [
+      { ...base, public_token: publicToken, ...extra, ...src },
       { ...base, public_token: publicToken, ...extra },
       { ...base, public_token: publicToken },
       { ...base, ...extra },

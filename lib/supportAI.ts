@@ -43,6 +43,58 @@ export function classify(text: string): { category: Category; priority: Priority
   return { category, priority, sensitive };
 }
 
+// ---- Clasificación con IA (triage inteligente) ----
+// Devuelve categoría, prioridad de 4 niveles, idioma, sentimiento y un resumen de
+// una línea. Usa Claude; si no hay clave o falla, cae al triage por palabras clave
+// (nunca lanza). Es barata (modelo pequeño, respuesta JSON corta).
+export type Priority4 = 'low' | 'normal' | 'high' | 'urgent';
+export type Sentiment = 'positive' | 'neutral' | 'negative' | 'angry';
+export type Triage = { category: Category; priority: Priority4; sensitive: boolean; lang: Lang; sentiment: Sentiment; summary: string };
+
+export async function classifyAI(text: string, hintLang?: Lang): Promise<Triage> {
+  const base = classify(text);
+  const fallback: Triage = {
+    category: base.category,
+    priority: base.sensitive ? 'high' : base.priority,
+    sensitive: base.sensitive,
+    lang: hintLang || (enBase(hintLang || 'es') ? 'en' : 'es'),
+    sentiment: /(enoj|molest|indign|estafa|fraude|verg|terrible|p[eé]simo|angry|furious|scam|awful|worst)/i.test(text || '') ? 'angry' : 'neutral',
+    summary: (text || '').replace(/\s+/g, ' ').trim().slice(0, 90),
+  };
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey || !text || text.trim().length < 3) return fallback;
+  try {
+    const model = process.env.ONYX_AI_MODEL || 'claude-haiku-4-5-20251001';
+    const sys = `You are a support triage classifier for Onyx Trading Live (a trading SaaS: broker connection, EA/cBot install, Onyx Guardian risk rules, billing/plans).
+Reply with ONLY a compact JSON object, nothing else, with these exact keys:
+{"category": one of ["general","conexion","instalacion","guardian","facturacion"],
+ "priority": one of ["low","normal","high","urgent"],
+ "sensitive": boolean (true if about money/billing/refund/chargeback/legal/withdrawal/KYC/fraud/account-blocked),
+ "lang": ISO like "es","en","pt","fr","it","de",
+ "sentiment": one of ["positive","neutral","negative","angry"],
+ "summary": a <=90 char one-line summary in the SAME language as the message}
+Rules: "urgent" only for outages/blocked/lost-money/time-critical. Billing/legal/account-specific → sensitive:true. Be strict JSON, no markdown.`;
+    const body = JSON.stringify({ model, max_tokens: 200, system: sys, messages: [{ role: 'user', content: String(text).slice(0, 1500) }] });
+    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }, body });
+    if (!r.ok) return fallback;
+    const data = await r.json();
+    import('@/lib/aiCost').then((m) => m.logAiUsage('soporte', data)).catch(() => {});
+    const raw = (data?.content || []).map((c: any) => c.text || '').join('').trim();
+    const j = JSON.parse(raw.replace(/^```(json)?/i, '').replace(/```$/, '').trim());
+    const cats: Category[] = ['general', 'conexion', 'instalacion', 'guardian', 'facturacion'];
+    const pris: Priority4[] = ['low', 'normal', 'high', 'urgent'];
+    const sents: Sentiment[] = ['positive', 'neutral', 'negative', 'angry'];
+    return {
+      category: cats.includes(j.category) ? j.category : fallback.category,
+      priority: pris.includes(j.priority) ? j.priority : fallback.priority,
+      sensitive: typeof j.sensitive === 'boolean' ? j.sensitive : base.sensitive,
+      lang: (typeof j.lang === 'string' && j.lang.length >= 2 ? j.lang.slice(0, 2).toLowerCase() : fallback.lang) as Lang,
+      sentiment: sents.includes(j.sentiment) ? j.sentiment : fallback.sentiment,
+      summary: (typeof j.summary === 'string' && j.summary.trim()) ? j.summary.trim().slice(0, 90) : fallback.summary,
+    };
+  } catch { return fallback; }
+}
+
 // Aplana un artículo de la Guía a texto plano para dárselo a la IA.
 function articleText(a: Article, lang: Lang): string {
   const blocks = ((a.body[lang]||a.body.en) || []) as any[];
@@ -469,6 +521,26 @@ async function addNote(ticketId: string, body: string) {
   try { await supabaseAdmin.from('support_messages').insert({ ticket_id: ticketId, sender: 'note', body }); } catch {}
 }
 
+// Asigna el ticket al mejor agente (idioma + categoría + carga) si aún no tiene
+// dueño y el ruteo está activo. Avisa al agente (campana + push) y deja nota.
+// Nunca lanza. Devuelve el id asignado o null.
+async function autoRoute(ticketId: string, category: string, custLang: string, subject?: string): Promise<string | null> {
+  try {
+    const { data: t } = await supabaseAdmin.from('support_tickets').select('assignee_id').eq('id', ticketId).maybeSingle();
+    if ((t as any)?.assignee_id) return (t as any).assignee_id;   // ya tiene dueño
+    const { pickAssignee } = await import('@/lib/supportRoute');
+    const to = await pickAssignee({ category, lang: custLang });
+    if (!to) return null;
+    await supabaseAdmin.from('support_tickets').update({ assignee_id: to, updated_at: new Date().toISOString() }).eq('id', ticketId);
+    try {
+      const { emitNotif } = await import('@/lib/emitNotif');
+      await emitNotif(to, 'support_assigned', { ignorePlan: true, url: '/admin#soporte', body: subject || '' });
+    } catch {}
+    await addNote(ticketId, `🎯 Asignado automáticamente por ruteo (idioma/categoría/carga).`);
+    return to;
+  } catch { return null; }
+}
+
 // Orquesta el manejo automático de un ticket recién creado:
 // 1) Triage: fija categoría y prioridad (siempre, gratis).
 // 2) Auto-respuesta: si está activada y el tema NO es sensible y la IA tiene
@@ -477,15 +549,22 @@ export async function autoHandleTicket(opts: { ticketId: string; question: strin
   const { ticketId, question, lang } = opts;
   const email = opts.email || '';
   try {
-    const { category, priority, sensitive } = classify(question);
-    // Triage (tolerante: si la columna priority no existe, reintenta solo categoría)
-    const r = await supabaseAdmin.from('support_tickets').update({ category, priority, updated_at: new Date().toISOString() }).eq('id', ticketId);
-    if ((r as any)?.error) await supabaseAdmin.from('support_tickets').update({ category }).eq('id', ticketId);
+    // Triage INTELIGENTE con IA (categoría, prioridad 4 niveles, idioma, sentimiento,
+    // resumen). Cae al triage por palabras clave si no hay IA. Guardado tolerante:
+    // si una columna nueva no existe aún (SQL sin correr), reintenta con lo básico.
+    const tri = await classifyAI(question, lang);
+    const { category, priority, sensitive } = tri;
+    const full: any = { category, priority, lang: tri.lang, sentiment: tri.sentiment, ai_summary: tri.summary, updated_at: new Date().toISOString() };
+    const r = await supabaseAdmin.from('support_tickets').update(full).eq('id', ticketId);
+    if ((r as any)?.error) {
+      const r2 = await supabaseAdmin.from('support_tickets').update({ category, priority, updated_at: new Date().toISOString() }).eq('id', ticketId);
+      if ((r2 as any)?.error) await supabaseAdmin.from('support_tickets').update({ category }).eq('id', ticketId);
+    }
 
     const cfg = await autoReplySettings();
 
-    if (!cfg.enabled) { await addNote(ticketId, enBase(lang) ? 'AI auto-reply is off: needs a human.' : 'Auto-respuesta IA apagada: requiere un humano.'); return { answered: false }; }
-    if (sensitive) { await addNote(ticketId, enBase(lang) ? '⚠️ Sensitive topic (money/legal/account): needs a human, not auto-answered.' : '⚠️ Tema sensible (dinero/legal/cuenta): requiere un humano, no se auto-responde.'); return { answered: false }; }
+    if (!cfg.enabled) { await addNote(ticketId, enBase(lang) ? 'AI auto-reply is off: needs a human.' : 'Auto-respuesta IA apagada: requiere un humano.'); await autoRoute(ticketId, category, tri.lang, opts.subject); return { answered: false }; }
+    if (sensitive) { await addNote(ticketId, enBase(lang) ? '⚠️ Sensitive topic (money/legal/account): needs a human, not auto-answered.' : '⚠️ Tema sensible (dinero/legal/cuenta): requiere un humano, no se auto-responde.'); await autoRoute(ticketId, category, tri.lang, opts.subject); return { answered: false }; }
 
     const ai = await aiAnswer(question, lang, sensitive);
     if (ai.confident && ai.answer) {
@@ -509,6 +588,7 @@ export async function autoHandleTicket(opts: { ticketId: string; question: strin
     else if (ai.reason === 'error') why = enBase(lang) ? '⚠️ The AI had a temporary error. This ticket needs a human for now.' : '⚠️ La IA tuvo un error temporal. Este ticket necesita un humano por ahora.';
     else why = (enBase(lang) ? 'The AI escalated: the question needs private account data it cannot see. Needs a human.' : 'La IA escaló: la pregunta necesita datos privados de la cuenta que no puede ver. Requiere un humano.') + (ai.articles.length ? (enBase(lang) ? ' Suggested: ' : ' Sugerencia: ') + ai.articles.map((a) => a.title).join(', ') : '');
     await addNote(ticketId, why);
+    await autoRoute(ticketId, category, tri.lang, opts.subject);
     return { answered: false };
   } catch { return { answered: false }; }
 }

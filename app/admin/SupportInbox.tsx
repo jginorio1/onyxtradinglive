@@ -9,6 +9,7 @@ import UserDrawer from './UserDrawer';
 import { useChatRealtime } from '@/lib/chatRealtime';
 import ChatThread, { type Att, type ChatMsg } from '@/app/components/ChatThread';
 import Icon from '@/app/components/Icons';
+import SupportMetrics from '@/app/admin/SupportMetrics';
 import SupportInsights from './SupportInsights';
 import { flagEmoji } from '@/lib/geo';
 import { nativePlatform } from '@/lib/native';
@@ -119,6 +120,7 @@ export default function SupportInbox() {
   const [openId, setOpenId] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false); // en móvil: chat a pantalla completa
   const [cfgOpen, setCfgOpen] = useState(false);        // en móvil: panel de ajustes plegable
+  const [metricsOpen, setMetricsOpen] = useState(false); // tablero de métricas plegable
   const [smallScreen, setSmallScreen] = useState(false);
   const [helpKey, setHelpKey] = useState('');           // qué ayuda "?" está abierta
   const [agentLang, setAgentLang] = useState('es');     // idioma principal del empleado (traductor)
@@ -486,6 +488,20 @@ export default function SupportInbox() {
           <div className="muted" style={{ fontSize: 12 }}>{aiOn === false ? l.aiAutoOff : l.aiAutoOn}</div>
         </div>
         <Switch on={!!aiOn} onClick={toggleAi} disabled={aiOn === null} />
+      </div>
+
+      {/* Tablero de métricas de soporte (plegable): primera respuesta, resolución,
+          CSAT, backlog, y de dónde vienen los clientes (lead source) + por agente. */}
+      <div className="card" style={{ padding: '10px 14px', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ width: 30, height: 30, borderRadius: 9, flex: 'none', background: 'linear-gradient(135deg,#5ecf8f,#34a0ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>📊</span>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>{es ? 'Métricas y origen de clientes' : 'Metrics & lead source'}</div>
+            <div className="muted" style={{ fontSize: 12 }}>{es ? 'Tiempos, CSAT, desempeño por agente y de dónde vienen (web, Facebook, Google…).' : 'Times, CSAT, agent performance and where they come from.'}</div>
+          </div>
+          <button className="wa-hb" onClick={() => setMetricsOpen((v) => !v)} title={es ? 'Ver métricas' : 'View metrics'} style={{ transform: metricsOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }}><Icon name="chevronDown" size={16} /></button>
+        </div>
+        {metricsOpen && <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}><SupportMetrics /></div>}
       </div>
 
       {/* SLA de soporte: tiempos de recordatorio/cierre al cliente y de aviso/vencido al equipo. */}

@@ -213,6 +213,28 @@ export const addonSettings = () => getSetting<Addons>('addons', A);
 export type StaffPush = { required: boolean };
 export const staffPushSettings = () => getSetting<StaffPush>('staff_push', { required: true });
 
+// RUTEO automático de tickets: al crear un ticket (y no auto-resolverlo), el
+// sistema lo asigna al mejor agente por idioma del cliente + categoría + menor
+// carga. Se puede apagar para volver a asignación manual.
+export type SupportRouting = {
+  on: boolean;            // ruteo automático activado
+  byLanguage: boolean;    // priorizar agente que hable el idioma del cliente
+  byCategory: boolean;    // priorizar agente cuyo puesto encaje con la categoría
+  balanceLoad: boolean;   // entre empatados, el de menos tickets abiertos
+  onlyAvailable: boolean; // solo repartir a agentes marcados "disponible"
+};
+export const supportRoutingSettings = () => getSetting<SupportRouting>('support_routing', { on: true, byLanguage: true, byCategory: true, balanceLoad: true, onlyAvailable: true });
+
+// ESCALAMIENTO por niveles: cuando el SLA se incumple (ticket esperando al
+// equipo demasiado), sube de nivel (N1→N2→supervisor), reasigna y avisa.
+export type SupportEscalation = {
+  on: boolean;
+  l2AfterMin: number;    // min esperando al equipo → sube a N2 y reasigna
+  l3AfterMin: number;    // min más → sube a supervisor y avisa al dueño
+  supervisorEmail: string; // correo del supervisor (si vacío, usa el dueño/ADMIN_EMAILS)
+};
+export const supportEscalationSettings = () => getSetting<SupportEscalation>('support_escalation', { on: true, l2AfterMin: 120, l3AfterMin: 360, supervisorEmail: '' });
+
 // Política de DÍAS LIBRES por defecto (días/año por tipo). El admin puede dar a un
 // empleado concreto una asignación distinta en staff_leave_balance; si no hay fila,
 // se usa esta política. Vive encima de la nómina + horarios.

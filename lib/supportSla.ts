@@ -64,6 +64,8 @@ const M = {
   closed: '[[sla:closed]]',       // cerrado por inactividad
   ack: '[[sla:ack]]',             // ya se avisó al equipo que hay un cliente esperando
   overdue: '[[sla:overdue]]',     // ya se marcó vencido
+  esc2: '[[sla:esc2]]',           // ya se escaló a N2 (reasignado)
+  esc3: '[[sla:esc3]]',           // ya se escaló a supervisor
 };
 
 // ¿Existe una nota con `marker` creada DESPUÉS de `afterIso`? (reloj por tramo)
@@ -99,17 +101,34 @@ async function bellTeam(n: { title: string; body?: string; url?: string }, owner
   } catch {}
 }
 
-export async function runSupportSla(dry = false): Promise<{ scanned: number; reminded: number; closed: number; acked: number; overdue: number }> {
-  const out = { scanned: 0, reminded: 0, closed: 0, acked: 0, overdue: 0 };
+export async function runSupportSla(dry = false): Promise<{ scanned: number; reminded: number; closed: number; acked: number; overdue: number; escalated?: number }> {
+  const out: { scanned: number; reminded: number; closed: number; acked: number; overdue: number; escalated: number } = { scanned: 0, reminded: 0, closed: 0, acked: 0, overdue: 0, escalated: 0 };
   const cfg = await slaConfig();
   if (!cfg.on) return out;
+  // Config de escalamiento (tolerante: si no existe, trae el default).
+  let esc: any = { on: false };
+  try { const { supportEscalationSettings } = await import('@/lib/settings'); esc = await supportEscalationSettings(); } catch {}
 
-  // Tickets vivos (abiertos / en progreso). Los resueltos no entran.
-  const { data: tickets } = await supabaseAdmin
-    .from('support_tickets')
-    .select('id,email,subject,status,user_id,public_token')
-    .in('status', ['open', 'in_progress'])
-    .limit(500);
+  // Tickets vivos (abiertos / en progreso / esperando cliente). 'on_hold' (en pausa)
+  // queda fuera: está detenido a propósito. Traemos categoría/dueño/nivel para rutear y escalar.
+  let tickets: any[] | null = null;
+  {
+    const q = await supabaseAdmin
+      .from('support_tickets')
+      .select('id,email,subject,status,user_id,public_token,category,assignee_id,escalation_level')
+      .in('status', ['open', 'in_progress', 'pending'])
+      .limit(500);
+    if ((q as any)?.error) {
+      // Columnas nuevas aún no existen: traemos lo básico (sin escalamiento).
+      const q2 = await supabaseAdmin
+        .from('support_tickets')
+        .select('id,email,subject,status,user_id,public_token')
+        .in('status', ['open', 'in_progress'])
+        .limit(500);
+      tickets = (q2 as any)?.data || null;
+      esc = { on: false };
+    } else { tickets = (q as any)?.data || null; }
+  }
   if (!tickets?.length) return out;
 
   const ids = tickets.map((t: any) => t.id);
@@ -153,7 +172,8 @@ export async function runSupportSla(dry = false): Promise<{ scanned: number; rem
       // cliente → pasa a "esperando al equipo", no a este tramo).
       if (hrs >= cfg.closeH && !hasMarker(msgs, M.closed)) {
         if (!dry) {
-          await supabaseAdmin.from('support_tickets').update({ status: 'resolved', updated_at: new Date().toISOString() }).eq('id', t.id);
+          await supabaseAdmin.from('support_tickets').update({ status: 'resolved', resolved_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', t.id)
+            .then((r: any) => { if (r?.error) return supabaseAdmin.from('support_tickets').update({ status: 'resolved', updated_at: new Date().toISOString() }).eq('id', t.id); });
           await addNote(t.id, `${M.closed} Cerrado automáticamente por inactividad (sin respuesta del cliente en ${cfg.closeH}h). Se reabre solo si el cliente responde el correo.`);
         }
         out.closed++;
@@ -206,6 +226,46 @@ export async function runSupportSla(dry = false): Promise<{ scanned: number; rem
           await bellTeam({ title: 'Cliente esperando respuesta', body: `${subj} · hace ${Math.round(mins)} min`, url: link });
         }
         if (!quiet) out.acked++;
+      }
+
+      // --- ESCALAMIENTO por niveles (configurable) ---
+      // N2: reasigna a OTRO agente (idioma/categoría/carga, distinto del actual).
+      // N3: sube a supervisor/dueño. Ambos dejan nota + aviso; respetan silencio.
+      if (esc?.on && !quiet && !dry) {
+        try {
+          const lvl = Number((t as any).escalation_level || 1);
+          const subj = (t.subject || 'Sin asunto').slice(0, 100);
+          if (mins >= (esc.l3AfterMin || 360) && lvl < 3 && !hasMarkerAfter(msgs, M.esc3, lastAt)) {
+            await supabaseAdmin.from('support_tickets').update({ escalation_level: 3, priority: 'high', updated_at: new Date().toISOString() }).eq('id', t.id)
+              .then((r: any) => { if (r?.error) return supabaseAdmin.from('support_tickets').update({ updated_at: new Date().toISOString() }).eq('id', t.id); });
+            // Supervisor: por correo configurado, o el primer ADMIN_EMAILS/dueño.
+            let supId = '';
+            const supEmail = (esc.supervisorEmail || '').trim() || (process.env.ADMIN_EMAILS || '').split(',')[0]?.trim() || '';
+            if (supEmail) { const { data: sp } = await supabaseAdmin.from('profiles').select('id').eq('email', supEmail).maybeSingle(); supId = (sp as any)?.id || ''; }
+            if (supId) {
+              await supabaseAdmin.from('support_tickets').update({ assignee_id: supId }).eq('id', t.id);
+              try { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(supId, 'support_assigned', { ignorePlan: true, url: link, body: `⬆️ Escalado a ti: ${subj}` }); } catch {}
+            }
+            await addNote(t.id, `${M.esc3} ⬆️ Escalado a SUPERVISOR (N3): +${Math.round(mins)} min sin respuesta del equipo.`);
+            await pingTeamTelegram(`⬆️🔴 <b>ESCALADO a supervisor (N3)</b>\n<b>${subj}</b>\n+${Math.round(mins)} min sin respuesta. Requiere atención inmediata.`);
+            out.escalated = (out.escalated || 0) + 1;
+          } else if (mins >= (esc.l2AfterMin || 120) && lvl < 2 && !hasMarkerAfter(msgs, M.esc2, lastAt)) {
+            await supabaseAdmin.from('support_tickets').update({ escalation_level: 2, updated_at: new Date().toISOString() }).eq('id', t.id)
+              .then((r: any) => { if (r?.error) return supabaseAdmin.from('support_tickets').update({ updated_at: new Date().toISOString() }).eq('id', t.id); });
+            // Reasignar a otro agente (distinto del actual).
+            try {
+              const { pickAssignee } = await import('@/lib/supportRoute');
+              const to = await pickAssignee({ category: t.category, exclude: t.assignee_id ? [t.assignee_id] : [] });
+              if (to && to !== t.assignee_id) {
+                await supabaseAdmin.from('support_tickets').update({ assignee_id: to }).eq('id', t.id);
+                try { const { emitNotif } = await import('@/lib/emitNotif'); await emitNotif(to, 'support_assigned', { ignorePlan: true, url: link, body: `⬆️ Reasignado (N2): ${subj}` }); } catch {}
+              }
+            } catch {}
+            await addNote(t.id, `${M.esc2} ⬆️ Escalado a N2 y reasignado: +${Math.round(mins)} min sin respuesta.`);
+            await pingTeamTelegram(`⬆️ <b>Escalado a N2</b>\n<b>${subj}</b>\n+${Math.round(mins)} min sin respuesta. Reasignado a otro agente.`);
+            out.escalated = (out.escalated || 0) + 1;
+          }
+        } catch {}
       }
     }
   }
