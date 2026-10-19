@@ -2132,6 +2132,21 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
     setFichaId(''); reload();
   }
   const FICHA_LANGS = ['Español', 'Inglés', 'Português', 'Français', 'Italiano', 'Deutsch', '中文', 'العربية'];
+
+  // Catálogo de PUESTOS (matriz → puestos). Se edita aquí y la ficha elige de él.
+  const [jobCat, setJobCat] = useState<Array<{ id: string; label: string; items: string[] }>>([]);
+  const [jobSaved, setJobSaved] = useState(false);
+  const [newMatriz, setNewMatriz] = useState('');
+  const [newItem, setNewItem] = useState<Record<string, string>>({});
+  useEffect(() => { fetch('/api/admin/job-catalog').then((r) => r.json()).then((j) => setJobCat(j.matrices || [])).catch(() => {}); }, []);
+  async function saveJobCat(next: Array<{ id: string; label: string; items: string[] }>) {
+    setJobCat(next);
+    try { await fetch('/api/admin/job-catalog', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ matrices: next }) }); setJobSaved(true); setTimeout(() => setJobSaved(false), 1200); } catch {}
+  }
+  function addMatriz() { const l = newMatriz.trim(); if (!l) return; const id = l.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24) || 'm' + Date.now(); saveJobCat([...jobCat, { id, label: l, items: [] }]); setNewMatriz(''); }
+  function removeMatriz(id: string) { saveJobCat(jobCat.filter((m) => m.id !== id)); }
+  function addItem(id: string) { const v = (newItem[id] || '').trim(); if (!v) return; saveJobCat(jobCat.map((m) => m.id === id ? { ...m, items: Array.from(new Set([...m.items, v])) } : m)); setNewItem((s) => ({ ...s, [id]: '' })); }
+  function removeItem(id: string, item: string) { saveJobCat(jobCat.map((m) => m.id === id ? { ...m, items: m.items.filter((x) => x !== item) } : m)); }
   const [openGrp, setOpenGrp] = useState('');          // grupo de permisos desplegado
   const [hoverArea, setHoverArea] = useState('');       // fila resaltada al pasar el cursor
   const [log, setLog] = useState<any[]>([]);
@@ -2235,7 +2250,16 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                 <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
                   <div>
                     <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 3 }}>{lang === 'en' ? 'Job title' : 'Puesto'}</label>
-                    <input value={ficha.job_title} onChange={(e) => setFicha((f) => ({ ...f, job_title: e.target.value }))} placeholder={lang === 'en' ? 'Support Level 2' : 'Soporte Nivel 2'} style={{ width: '100%', margin: 0 }} />
+                    <select value={ficha.job_title} onChange={(e) => setFicha((f) => ({ ...f, job_title: e.target.value }))} style={{ width: '100%', margin: 0 }}>
+                      <option value="">{lang === 'en' ? '— Choose a job title —' : '— Elegir puesto —'}</option>
+                      {jobCat.map((m) => (
+                        <optgroup key={m.id} label={m.label}>
+                          {m.items.map((it) => <option key={it} value={it}>{it}</option>)}
+                        </optgroup>
+                      ))}
+                      {ficha.job_title && !jobCat.some((m) => m.items.includes(ficha.job_title)) && <option value={ficha.job_title}>{ficha.job_title}</option>}
+                    </select>
+                    <div className="muted" style={{ fontSize: 10.5, marginTop: 3 }}>{lang === 'en' ? 'Manage the list below in "Job catalog".' : 'Edita la lista abajo en "Catálogo de puestos".'}</div>
                   </div>
                   <div>
                     <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 3 }}>{lang === 'en' ? 'Country' : 'País'}</label>
@@ -2368,6 +2392,40 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
           </div>
         )}
       </div>
+
+      {/* Catálogo de puestos (matriz → puestos). La ficha de cada miembro elige de aquí. */}
+      {canManage && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div className="row between" style={{ marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
+            <h3 style={{ margin: 0 }}>🧰 {lang === 'en' ? 'Job catalog' : 'Catálogo de puestos'}</h3>
+            {jobSaved && <span style={{ fontSize: 12, color: 'var(--green)' }}>{lang === 'en' ? 'Saved ✓' : 'Guardado ✓'}</span>}
+          </div>
+          <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>{lang === 'en' ? 'Create a parent (matriz) and add job titles inside. They save automatically and show up in each member profile.' : 'Crea un puesto matriz y añade dentro los puestos. Se guardan solos y aparecen en la ficha de cada miembro.'}</p>
+          {jobCat.map((m) => (
+            <div key={m.id} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '10px 12px', marginBottom: 10, background: 'var(--bg2)' }}>
+              <div className="row between" style={{ alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 600 }}>{m.label}</span>
+                <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: 11.5, color: 'var(--red)' }} onClick={() => removeMatriz(m.id)}>{lang === 'en' ? 'Delete matriz' : 'Borrar matriz'}</button>
+              </div>
+              <div className="row" style={{ gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
+                {m.items.map((it) => (
+                  <span key={it} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '5px 10px', borderRadius: 999, background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)' }}>{it}
+                    <span onClick={() => removeItem(m.id, it)} style={{ cursor: 'pointer', opacity: .7 }}>✕</span>
+                  </span>
+                ))}
+              </div>
+              <div className="row" style={{ gap: 8, marginTop: 8 }}>
+                <input value={newItem[m.id] || ''} onChange={(e) => setNewItem((s) => ({ ...s, [m.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') addItem(m.id); }} placeholder={lang === 'en' ? 'Add a job title…' : 'Añadir un puesto…'} style={{ flex: 1, margin: 0, fontSize: 13 }} />
+                <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => addItem(m.id)}>+ {lang === 'en' ? 'Add' : 'Añadir'}</button>
+              </div>
+            </div>
+          ))}
+          <div className="row" style={{ gap: 8, marginTop: 4 }}>
+            <input value={newMatriz} onChange={(e) => setNewMatriz(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addMatriz(); }} placeholder={lang === 'en' ? 'New matriz (e.g. Administration)' : 'Nuevo puesto matriz (ej. Administración)'} style={{ flex: 1, margin: 0 }} />
+            <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: 12.5, whiteSpace: 'nowrap' }} onClick={addMatriz}>+ {lang === 'en' ? 'Matriz' : 'Matriz'}</button>
+          </div>
+        </div>
+      )}
 
       {/* Registro de actividad: filtro por fecha, tema y miembro */}
       <div className="card">

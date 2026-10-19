@@ -235,6 +235,20 @@ export type SupportEscalation = {
 };
 export const supportEscalationSettings = () => getSetting<SupportEscalation>('support_escalation', { on: true, l2AfterMin: 120, l3AfterMin: 360, supervisorEmail: '' });
 
+// CATÁLOGO DE PUESTOS (dos niveles). El admin crea "matrices" (categorías libres:
+// Soporte, Ventas, Técnico…) y dentro los puestos específicos. La ficha de cada
+// miembro elige SOLO de este catálogo (cerrado). Vive en app_settings.
+export type JobMatrix = { id: string; label: string; items: string[] };
+export type JobCatalog = { matrices: JobMatrix[] };
+export const jobCatalogSettings = () => getSetting<JobCatalog>('job_catalog', {
+  matrices: [
+    { id: 'soporte', label: 'Soporte', items: ['Soporte Nivel 1', 'Soporte Nivel 2', 'Supervisor de soporte'] },
+    { id: 'ventas', label: 'Ventas', items: ['Vendedor', 'Closer', 'Supervisor de ventas'] },
+    { id: 'tecnico', label: 'Técnico', items: ['Instalaciones (EA)', 'Conexión de cuentas'] },
+    { id: 'admin', label: 'Administración', items: ['Administrador', 'Finanzas'] },
+  ],
+});
+
 // Política de DÍAS LIBRES por defecto (días/año por tipo). El admin puede dar a un
 // empleado concreto una asignación distinta en staff_leave_balance; si no hay fila,
 // se usa esta política. Vive encima de la nómina + horarios.
