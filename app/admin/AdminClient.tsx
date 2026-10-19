@@ -76,7 +76,7 @@ import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean; signup_source?: string | null };
-type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null };
+type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null; job_title?: string | null; country?: string | null; languages?: string | null };
 type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'nomina' | 'horarios' | 'diaslibres' | 'carreras' | 'formacion' | 'embajadores' | 'ventas' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'mtbrokers' | 'tlservers' | 'dxservers' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'comousar' | 'copytraders' | 'botlab' | 'factory' | 'pagos' | 'monedero' | 'antifraude' | 'trackrecord' | 'monitor' | 'ads' | 'ajustes';
 
 const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'advMetrics', 'portfolioLab', 'expenses', 'coach', 'academy', 'challenge', 'habits', 'edge', 'copymkt', 'share', 'push', 'platforms'];
@@ -2112,6 +2112,26 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   const [newRole, setNewRole] = useState('support');
   const [busy, setBusy] = useState(false);
   const [editId, setEditId] = useState('');
+  // Ficha del miembro (puesto · país · idiomas) editable por dueño/admin desde aquí.
+  const [fichaId, setFichaId] = useState('');
+  const [ficha, setFicha] = useState<{ job_title: string; country: string; languages: string }>({ job_title: '', country: '', languages: '' });
+  function openFicha(m: Team) {
+    setFichaId(fichaId === m.id ? '' : m.id);
+    setFicha({ job_title: m.job_title || '', country: m.country || '', languages: m.languages || '' });
+  }
+  function toggleLang(code: string) {
+    setFicha((f) => {
+      const set = new Set(f.languages.split(',').map((s) => s.trim()).filter(Boolean));
+      if (set.has(code)) set.delete(code); else set.add(code);
+      return { ...f, languages: Array.from(set).join(', ') };
+    });
+  }
+  async function saveFicha(id: string) {
+    const r = await fetch('/api/team/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, job_title: ficha.job_title, country: ficha.country, languages: ficha.languages }) });
+    const j = await r.json(); if (!r.ok) { toastErr(j); return; }
+    setFichaId(''); reload();
+  }
+  const FICHA_LANGS = ['Español', 'Inglés', 'Português', 'Français', 'Italiano', 'Deutsch', '中文', 'العربية'];
   const [openGrp, setOpenGrp] = useState('');          // grupo de permisos desplegado
   const [hoverArea, setHoverArea] = useState('');       // fila resaltada al pasar el cursor
   const [log, setLog] = useState<any[]>([]);
@@ -2168,10 +2188,40 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                   </select>
                 ) : <span className="pill" style={{ color: roleColor(m.role), background: 'rgba(124,140,255,.12)' }}>{(t as any)['role_' + (m.role || 'admin')]}</span>}
                 {canManage && m.role !== 'owner' && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => setEditId(editId === m.id ? '' : m.id)}>{editId === m.id ? t.t_close : t.t_perms}</button>}
+                {canManage && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => openFicha(m)}><OnyxIcon emoji="🪪" size={15} /> {fichaId === m.id ? (lang === 'en' ? 'Close' : 'Cerrar') : (lang === 'en' ? 'Profile' : 'Ficha')}</button>}
                 {canManage && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => { setPinEditId(pinEditId === m.id ? '' : m.id); setPinVal(''); }}><OnyxIcon emoji="🔒" size={15} /> {secPins.includes(m.id) ? t.t_pinSet : t.t_pinAssign}</button>}
                 {canManage && m.role !== 'owner' && m.email !== meEmail && <button className="btn btn-danger" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => remove(m.id)}>{t.t_remove}</button>}
               </div>
             </div>
+
+            {fichaId === m.id && canManage && (
+              <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 14 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{lang === 'en' ? 'Profile used for support routing (role · country · languages).' : 'Ficha usada para el ruteo de soporte (puesto · país · idiomas).'}</div>
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
+                  <div>
+                    <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 3 }}>{lang === 'en' ? 'Job title' : 'Puesto'}</label>
+                    <input value={ficha.job_title} onChange={(e) => setFicha((f) => ({ ...f, job_title: e.target.value }))} placeholder={lang === 'en' ? 'Support Level 2' : 'Soporte Nivel 2'} style={{ width: '100%', margin: 0 }} />
+                  </div>
+                  <div>
+                    <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 3 }}>{lang === 'en' ? 'Country' : 'País'}</label>
+                    <input value={ficha.country} onChange={(e) => setFicha((f) => ({ ...f, country: e.target.value }))} placeholder={lang === 'en' ? 'Mexico' : 'México'} style={{ width: '100%', margin: 0 }} />
+                  </div>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 5 }}>{lang === 'en' ? 'Languages they speak' : 'Idiomas que habla'}</label>
+                  <div className="row" style={{ gap: 7, flexWrap: 'wrap' }}>
+                    {FICHA_LANGS.map((lng) => {
+                      const on = ficha.languages.split(',').map((s) => s.trim()).includes(lng);
+                      return <button key={lng} type="button" onClick={() => toggleLang(lng)} style={{ padding: '6px 12px', borderRadius: 999, cursor: 'pointer', fontSize: 12.5, border: '1px solid ' + (on ? 'var(--brand)' : 'var(--line)'), background: on ? 'color-mix(in srgb,var(--brand) 16%,transparent)' : 'var(--card)', color: on ? 'var(--brand)' : 'var(--tx)' }}>{lng}</button>;
+                    })}
+                  </div>
+                </div>
+                <div className="row" style={{ gap: 8, marginTop: 14, justifyContent: 'flex-end' }}>
+                  <button className="btn btn-ghost" style={{ padding: '6px 14px', fontSize: 12.5 }} onClick={() => setFichaId('')}>{lang === 'en' ? 'Cancel' : 'Cancelar'}</button>
+                  <button className="btn btn-primary" style={{ padding: '6px 16px', fontSize: 12.5 }} onClick={() => saveFicha(m.id)}>{lang === 'en' ? 'Save' : 'Guardar'}</button>
+                </div>
+              </div>
+            )}
 
             {editId === m.id && canManage && (
               <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 12 }}>

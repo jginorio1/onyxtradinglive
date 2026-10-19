@@ -10,7 +10,10 @@ export const runtime = 'nodejs';
 // pasando { id }). Un empleado normal NO puede editar su propia ficha.
 // { id?, job_title?, country?, languages? }
 export async function PATCH(req: Request) {
-  const g = await requirePerm('chat', 'view');
+  // Se puede entrar por el chat de equipo (perm 'chat') o por Admin → Equipo
+  // (perm 'equipo'). Basta tener acceso de lectura a cualquiera de las dos.
+  let g = await requirePerm('equipo', 'view');
+  if (!g.ok) g = await requirePerm('chat', 'view');
   if (!g.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
   // Solo dueño/admin controlan las fichas del equipo.
   if (g.role !== 'owner' && g.role !== 'admin') return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
