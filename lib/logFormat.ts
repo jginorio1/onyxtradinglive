@@ -21,6 +21,9 @@ export const CAT_STYLE: Record<LogCat, { color: string; bg: string; icon: string
 
 const money = (n: any) => `$${(Math.round(Number(n) * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const short = (s: any, n = 40) => (s == null ? '' : String(s).length > n ? String(s).slice(0, n) + '…' : String(s));
+// ¿Es un ID interno opaco (UUID o hex largo)? Esos no se muestran: no dicen nada
+// al humano. Ej.: 42864720-229d-43be-8def-34c97b304991.
+const isId = (v: any) => { const s = String(v ?? '').trim(); return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s) || /^[0-9a-f]{24,}$/i.test(s); };
 
 // Devuelve { text, cat } para una entrada. es = idioma español.
 export function describeLog(e: LogEntry, lang: 'es' | 'en' = 'es'): { text: string; cat: LogCat } {
@@ -128,6 +131,11 @@ export function describeLog(e: LogEntry, lang: 'es' | 'en' = 'es'): { text: stri
   if (a.startsWith('leave') || a === 'timeoff') return { text: L('Gestionó días libres', 'Managed time off'), cat: 'team' };
   if (a === 'notif_prefs' || a.startsWith('notif')) return { text: L('Cambió preferencias de notificaciones', 'Changed notification preferences'), cat: 'security' };
 
+  // ajustes / monedero / uso
+  if (a === 'usage_fees_save' || a === 'usage_fees') return { text: L('Guardó las tarifas de uso (IA y cuentas)', 'Saved usage fees (AI and accounts)'), cat: 'money' };
+  if (a === 'wallet_adjust') return R(`${L('Ajustó el monedero de un usuario', 'Adjusted a user wallet')}${m.amount ? ` · ${money(m.amount)}` : ''}`, 'money');
+  if (a === 'support_invite' || a === 'from_team') return { text: L('Invitó a un compañero a un ticket', 'Invited a teammate to a ticket'), cat: 'team' };
+
   // otros
   if (a === 'clean_signups') return { text: `${L('Limpió registros incompletos', 'Cleaned incomplete signups')} (${tgt})`, cat: 'other' };
   if (a && a.startsWith('settings_')) return { text: `${L('Cambió un ajuste:', 'Changed a setting:')} ${humanAction(a.replace('settings_', ''), es)}`, cat: 'other' };
@@ -136,7 +144,8 @@ export function describeLog(e: LogEntry, lang: 'es' | 'en' = 'es'): { text: stri
   // ── Fallback HUMANIZADO: nunca mostramos JSON crudo ni nombres técnicos. ──
   const human = humanAction(a, es);
   const chg = changeText(m, es);
-  const base = tgt && !['support_routing'].includes(a) ? `${human} · ${short(tgt, 30)}` : human;
+  // Solo añadimos el destino si es algo legible (no un ID interno opaco).
+  const base = tgt && !isId(tgt) && !['support_routing'].includes(a) ? `${human} · ${short(tgt, 30)}` : human;
   return { text: chg ? `${base} (${chg})` : base, cat: catOf(a) };
 }
 
@@ -183,13 +192,22 @@ export function detailLines(e: LogEntry, lang: 'es' | 'en' = 'es'): Array<{ labe
   const es = lang !== 'en';
   const out: Array<{ label: string; value: string }> = [];
   const m = e.meta || {};
-  if (e.target) out.push({ label: es ? 'Destino' : 'Target', value: short(e.target, 80) });
+  // El destino solo se muestra si es legible (no un ID interno opaco).
+  if (e.target && !isId(e.target)) out.push({ label: es ? 'Destino' : 'Target', value: short(e.target, 80) });
   const skip = new Set(['note']);
   for (const [k, v] of Object.entries(m)) {
     if (skip.has(k)) continue;
+    if (isId(v)) continue;   // valores que son IDs internos: no aportan nada legible
     let val: string;
     if (v == null) val = '—';
-    else if (typeof v === 'object') { try { val = Object.entries(v).map(([kk, vv]) => `${kk}: ${short(vv as any, 30)}`).join(' · ') || '—'; } catch { val = '—'; } }
+    else if (typeof v === 'object') {
+      // objeto anidado (ej. antes→después): "120 → 90" o "clave: valor".
+      try {
+        const o: any = v;
+        if (o.from !== undefined || o.to !== undefined) val = `${short(o.from ?? '—', 30)} → ${short(o.to ?? '—', 30)}`;
+        else val = Object.entries(o).filter(([, vv]) => !isId(vv)).map(([kk, vv]) => `${kk}: ${short(vv as any, 30)}`).join(' · ') || '—';
+      } catch { val = '—'; }
+    }
     else val = short(v as any, 120);
     out.push({ label: humanKey(k), value: val });
   }
