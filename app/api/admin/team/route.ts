@@ -16,7 +16,7 @@ export async function GET() {
     const { ok } = await requirePerm('equipo', 'view');
     if (!ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
     const { data } = await supabaseAdmin.from('profiles')
-      .select('id,email,role,is_admin,perms,available,last_active,job_title,country,languages')
+      .select('id,email,full_name,role,is_admin,perms,available,last_active,job_title,country,languages')
       .eq('is_admin', true).order('created_at', { ascending: true });
     return NextResponse.json({ team: data || [] });
   } catch (e: any) {

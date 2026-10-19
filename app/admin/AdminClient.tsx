@@ -76,7 +76,7 @@ import { blankPromo, newId, THEMES, pickActiveBar } from '@/lib/promo';
 
 type Plan = { id: string; name: string; name_en: string; desc_es: string | null; desc_en: string | null; price_month: number; price_year: number; stripe_price_id: string | null; stripe_price_id_year: string | null; max_accounts: number; features: string[]; features_en: string[]; badge: string | null; badge_en: string | null; active: boolean; sort: number; capabilities: any };
 type User = { id: string; email: string; full_name?: string | null; plan: string; subscription_status: string | null; banned: boolean; is_admin: boolean; created_at: string; accounts: number; lastSync: string | null; email_confirmed?: boolean; signup_source?: string | null };
-type Team = { id: string; email: string; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null; job_title?: string | null; country?: string | null; languages?: string | null };
+type Team = { id: string; email: string; full_name?: string | null; role: string | null; is_admin: boolean; perms?: any; available?: boolean; last_active?: string | null; job_title?: string | null; country?: string | null; languages?: string | null };
 type Tab = 'resumen' | 'facturacion' | 'ingresos' | 'finanzas' | 'academy' | 'usuarios' | 'correos' | 'campanas' | 'blog' | 'seo' | 'planes' | 'landing' | 'landingnew' | 'equipo' | 'nomina' | 'horarios' | 'diaslibres' | 'carreras' | 'formacion' | 'embajadores' | 'ventas' | 'retencion' | 'pruebas' | 'firms' | 'catalogos' | 'mtbrokers' | 'tlservers' | 'dxservers' | 'modulos' | 'soporte' | 'chat' | 'kb' | 'diag' | 'recursos' | 'backups' | 'audit' | 'optim' | 'notif' | 'guias' | 'comousar' | 'copytraders' | 'botlab' | 'factory' | 'pagos' | 'monedero' | 'antifraude' | 'trackrecord' | 'monitor' | 'ads' | 'ajustes';
 
 const CAPS: string[] = ['journal', 'compare', 'funding', 'costs', 'export', 'reports', 'telegram', 'manager', 'manager_advanced', 'manager_news', 'copy', 'tv', 'algo', 'advMetrics', 'portfolioLab', 'expenses', 'coach', 'academy', 'challenge', 'habits', 'edge', 'copymkt', 'share', 'push', 'platforms'];
@@ -2114,10 +2114,10 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   const [editId, setEditId] = useState('');
   // Ficha del miembro (puesto · país · idiomas) editable por dueño/admin desde aquí.
   const [fichaId, setFichaId] = useState('');
-  const [ficha, setFicha] = useState<{ job_title: string; country: string; languages: string }>({ job_title: '', country: '', languages: '' });
+  const [ficha, setFicha] = useState<{ full_name: string; job_title: string; country: string; languages: string }>({ full_name: '', job_title: '', country: '', languages: '' });
   function openFicha(m: Team) {
     setFichaId(fichaId === m.id ? '' : m.id);
-    setFicha({ job_title: m.job_title || '', country: m.country || '', languages: m.languages || '' });
+    setFicha({ full_name: m.full_name || '', job_title: m.job_title || '', country: m.country || '', languages: m.languages || '' });
   }
   function toggleLang(code: string) {
     setFicha((f) => {
@@ -2127,11 +2127,13 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
     });
   }
   async function saveFicha(id: string) {
-    const r = await fetch('/api/team/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, job_title: ficha.job_title, country: ficha.country, languages: ficha.languages }) });
+    const r = await fetch('/api/team/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, full_name: ficha.full_name, job_title: ficha.job_title, country: ficha.country, languages: ficha.languages }) });
     const j = await r.json(); if (!r.ok) { toastErr(j); return; }
     setFichaId(''); reload();
   }
-  const FICHA_LANGS = ['Español', 'Inglés', 'Português', 'Français', 'Italiano', 'Deutsch', '中文', 'العربية'];
+  const FICHA_LANGS = lang === 'en'
+    ? ['English', 'Spanish', 'Portuguese', 'French', 'Italian', 'German', 'Dutch', 'Russian', 'Polish', 'Turkish', 'Arabic', 'Hebrew', 'Hindi', 'Urdu', 'Bengali', 'Chinese', 'Japanese', 'Korean', 'Vietnamese', 'Thai', 'Indonesian', 'Malay', 'Tagalog', 'Swahili', 'Greek', 'Romanian', 'Czech', 'Hungarian', 'Swedish', 'Norwegian', 'Danish', 'Finnish', 'Ukrainian']
+    : ['Español', 'Inglés', 'Portugués', 'Francés', 'Italiano', 'Alemán', 'Neerlandés', 'Ruso', 'Polaco', 'Turco', 'Árabe', 'Hebreo', 'Hindi', 'Urdu', 'Bengalí', 'Chino', 'Japonés', 'Coreano', 'Vietnamita', 'Tailandés', 'Indonesio', 'Malayo', 'Tagalo', 'Suajili', 'Griego', 'Rumano', 'Checo', 'Húngaro', 'Sueco', 'Noruego', 'Danés', 'Finés', 'Ucraniano'];
 
   // Catálogo de PUESTOS (matriz → puestos). Se edita aquí y la ficha elige de él.
   const [jobCat, setJobCat] = useState<Array<{ id: string; label: string; items: string[] }>>([]);
@@ -2145,6 +2147,8 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   }
   function addMatriz() { const l = newMatriz.trim(); if (!l) return; const id = l.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24) || 'm' + Date.now(); saveJobCat([...jobCat, { id, label: l, items: [] }]); setNewMatriz(''); }
   function removeMatriz(id: string) { saveJobCat(jobCat.filter((m) => m.id !== id)); }
+  function renameMatriz(id: string, label: string) { setJobCat((cur) => cur.map((m) => m.id === id ? { ...m, label } : m)); }
+  function commitMatriz(id: string) { const m = jobCat.find((x) => x.id === id); saveJobCat(jobCat.map((x) => x.id === id ? { ...x, label: (x.label || '').trim() || m?.label || 'Matriz' } : x)); }
   function addItem(id: string) { const v = (newItem[id] || '').trim(); if (!v) return; saveJobCat(jobCat.map((m) => m.id === id ? { ...m, items: Array.from(new Set([...m.items, v])) } : m)); setNewItem((s) => ({ ...s, [id]: '' })); }
   function removeItem(id: string, item: string) { saveJobCat(jobCat.map((m) => m.id === id ? { ...m, items: m.items.filter((x) => x !== item) } : m)); }
   const [openGrp, setOpenGrp] = useState('');          // grupo de permisos desplegado
@@ -2227,15 +2231,18 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                   <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', border: '2px solid var(--card)', background: m.available ? 'var(--green)' : 'var(--line)' }} title={m.available ? 'Disponible' : 'Ausente'} />
                 </span>
                 <div>
-                  <div style={{ fontWeight: 600 }}>{m.email}{m.email === meEmail && <span className="muted" style={{ fontSize: 12 }}>{t.t_you}</span>}</div>
-                  <div className="muted" style={{ fontSize: 11 }}>{m.last_active ? t.t_lastActivity + fmtDateTime(m.last_active, lang) : t.t_noActivity}</div>
+                  <div style={{ fontWeight: 600 }}>{m.full_name || (m.email || '').split('@')[0]}{m.email === meEmail && <span className="muted" style={{ fontSize: 12 }}>{t.t_you}</span>}{m.job_title && <span className="pill" style={{ marginLeft: 7, fontSize: 10.5, color: 'var(--brand)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)' }}>{m.job_title}</span>}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>{m.email} · {m.last_active ? t.t_lastActivity + fmtDateTime(m.last_active, lang) : t.t_noActivity}</div>
                 </div>
               </div>
               <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 {canManage && m.role !== 'owner' ? (
-                  <select value={m.role || 'support'} onChange={(e) => changeRole(m.id, e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>
-                    <option value="admin">{t.role_admin}</option><option value="support">{t.role_support}</option><option value="marketing">{t.role_marketing}</option><option value="custom">{t.role_custom}</option>
-                  </select>
+                  <label className="row" style={{ gap: 5, alignItems: 'center', margin: 0 }} title={lang === 'en' ? 'Access level — controls which admin areas this person can open. Not their job title.' : 'Nivel de acceso — controla a qué áreas del panel puede entrar. No es su puesto.'}>
+                    <span className="muted" style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: .4 }}>{lang === 'en' ? 'Access' : 'Acceso'}</span>
+                    <select value={m.role || 'support'} onChange={(e) => changeRole(m.id, e.target.value)} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>
+                      <option value="admin">{t.role_admin}</option><option value="support">{t.role_support}</option><option value="marketing">{t.role_marketing}</option><option value="custom">{t.role_custom}</option>
+                    </select>
+                  </label>
                 ) : <span className="pill" style={{ color: roleColor(m.role), background: 'rgba(124,140,255,.12)' }}>{(t as any)['role_' + (m.role || 'admin')]}</span>}
                 {canManage && m.role !== 'owner' && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => setEditId(editId === m.id ? '' : m.id)}>{editId === m.id ? t.t_close : t.t_perms}</button>}
                 {canManage && <button className="btn btn-ghost" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => openFicha(m)}><OnyxIcon emoji="🪪" size={15} /> {fichaId === m.id ? (lang === 'en' ? 'Close' : 'Cerrar') : (lang === 'en' ? 'Profile' : 'Ficha')}</button>}
@@ -2246,8 +2253,13 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
 
             {fichaId === m.id && canManage && (
               <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 14 }}>
-                <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{lang === 'en' ? 'Profile used for support routing (role · country · languages).' : 'Ficha usada para el ruteo de soporte (puesto · país · idiomas).'}</div>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>{lang === 'en' ? 'Profile for this person. The name is their identity in chat, support and all messaging (not the email).' : 'Ficha de esta persona. El nombre es su identidad en el chat, soporte y todo medio de comunicación (no el email).'}</div>
                 <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
+                  <div>
+                    <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 3 }}>{lang === 'en' ? 'Display name' : 'Nombre visible'}</label>
+                    <input value={ficha.full_name} onChange={(e) => setFicha((f) => ({ ...f, full_name: e.target.value }))} placeholder={lang === 'en' ? 'e.g. Ana García' : 'ej. Ana García'} style={{ width: '100%', margin: 0 }} />
+                    <div className="muted" style={{ fontSize: 10.5, marginTop: 3 }}>{lang === 'en' ? 'Shown in chat & support instead of the email.' : 'Se muestra en chat y soporte en vez del email.'}</div>
+                  </div>
                   <div>
                     <label className="muted" style={{ fontSize: 11.5, display: 'block', marginBottom: 3 }}>{lang === 'en' ? 'Job title' : 'Puesto'}</label>
                     <select value={ficha.job_title} onChange={(e) => setFicha((f) => ({ ...f, job_title: e.target.value }))} style={{ width: '100%', margin: 0 }}>
@@ -2404,8 +2416,8 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
           {jobCat.map((m) => (
             <div key={m.id} style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '10px 12px', marginBottom: 10, background: 'var(--bg2)' }}>
               <div className="row between" style={{ alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 13.5, fontWeight: 600 }}>{m.label}</span>
-                <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: 11.5, color: 'var(--red)' }} onClick={() => removeMatriz(m.id)}>{lang === 'en' ? 'Delete matriz' : 'Borrar matriz'}</button>
+                <input value={m.label} onChange={(e) => renameMatriz(m.id, e.target.value)} onBlur={(e) => { commitMatriz(m.id); e.currentTarget.style.border = '1px solid transparent'; e.currentTarget.style.background = 'transparent'; }} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} title={lang === 'en' ? 'Rename this matriz' : 'Renombrar este puesto matriz'} style={{ flex: 1, margin: 0, fontSize: 13.5, fontWeight: 600, background: 'transparent', border: '1px solid transparent', borderRadius: 8, padding: '4px 6px' }} onFocus={(e) => { e.currentTarget.style.border = '1px solid var(--line)'; e.currentTarget.style.background = 'var(--card)'; }} />
+                <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: 11.5, color: 'var(--red)', whiteSpace: 'nowrap' }} onClick={() => removeMatriz(m.id)}>{lang === 'en' ? 'Delete matriz' : 'Borrar matriz'}</button>
               </div>
               <div className="row" style={{ gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
                 {m.items.map((it) => (

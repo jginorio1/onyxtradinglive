@@ -42,6 +42,7 @@ export default function StaffClient() {
 
       {msg && <div style={{ ...card, padding: '10px 14px', marginBottom: 12, borderColor: 'var(--brand)', color: 'var(--brand)', fontSize: 13 }}>{msg}</div>}
 
+      <MiFicha card={card} />
       <ScheduleCard card={card} btn={btn} btnP={btnP} />
       <LeaveCard card={card} btn={btn} btnP={btnP} inp={inp} />
 
@@ -95,6 +96,40 @@ export default function StaffClient() {
             ))}
           </tbody></table>}
       </div>
+    </div>
+  );
+}
+
+// ── Mi ficha (nombre, puesto, país, idiomas) — solo lectura ──────────
+function MiFicha({ card }: { card: React.CSSProperties }) {
+  const [d, setD] = useState<any>(null);
+  useEffect(() => { fetch('/api/team/profile', { cache: 'no-store' }).then((r) => r.json()).then(setD).catch(() => {}); }, []);
+  if (!d || d.error) return null;
+  const langs = String(d.languages || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+  const Row = ({ k, v }: { k: string; v: string }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '7px 0', borderTop: '1px solid var(--line)' }}>
+      <span className="muted" style={{ fontSize: 12.5 }}>{k}</span>
+      <span style={{ fontSize: 13.5, fontWeight: 600, textAlign: 'right' }}>{v || '—'}</span>
+    </div>
+  );
+  return (
+    <div style={{ ...card, marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+        <h3 style={{ margin: 0, fontSize: 16 }}>Mi ficha</h3>
+        <span className="muted" style={{ fontSize: 11 }}>La edita tu administrador</span>
+      </div>
+      <Row k="Nombre" v={d.full_name || (d.email || '').split('@')[0]} />
+      <Row k="Puesto" v={d.job_title} />
+      <Row k="País" v={d.country} />
+      <div style={{ padding: '7px 0', borderTop: '1px solid var(--line)' }}>
+        <div className="muted" style={{ fontSize: 12.5, marginBottom: 6 }}>Idiomas</div>
+        {langs.length ? (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {langs.map((l: string) => <span key={l} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 999, background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)' }}>{l}</span>)}
+          </div>
+        ) : <span style={{ fontSize: 13.5 }}>—</span>}
+      </div>
+      <div className="muted" style={{ fontSize: 10.5, marginTop: 8 }}>Tu nombre es tu identidad en el chat de equipo y en soporte.</div>
     </div>
   );
 }
