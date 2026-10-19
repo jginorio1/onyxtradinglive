@@ -1275,7 +1275,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
             {tab === 'ads' && <AdsAdmin es={lang !== 'en'} />}
             {tab === 'monitor' && <Monitor />}
             {tab === 'copytraders' && <CopyTradersAdmin />}
-            {uDrawer && <UserDrawer userId={uDrawer.id} email={uDrawer.email} onClose={() => setUDrawer(null)} />}
+            {uDrawer && <UserDrawer userId={uDrawer.id} email={uDrawer.email} role={role} perms={perms as any} onClose={() => setUDrawer(null)} />}
             {/* Confirmación con nota obligatoria para acciones críticas */}
             {pendAct && (
               <div onMouseDown={(e) => { if (e.target === e.currentTarget) (() => setPendAct(null))(); }} style={{ position: 'fixed', inset: 0, background: 'rgba(4,6,16,.62)', backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>

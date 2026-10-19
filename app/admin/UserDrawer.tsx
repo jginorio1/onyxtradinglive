@@ -6,6 +6,8 @@ import { useLang } from '@/lib/lang';
 import { fmtDateTime } from '@/lib/fmtDate';
 import { describeLog, CAT_STYLE } from '@/lib/logFormat';
 import OnyxIcon from '@/app/components/OnyxIcon';
+import { canUserAction, type PermLevel } from '@/lib/perms';
+import LockedAction from './LockedAction';
 
 type Lang = 'es' | 'en';
 const T: any = {
@@ -58,9 +60,12 @@ const THEME_STYLE: Record<string, { icon: string; color: string; bg: string }> =
   ia: { icon: '🤖', color: '#49c5c0', bg: 'rgba(73,197,192,.10)' },
 };
 
-export default function UserDrawer({ userId, email, onClose }: { userId: string; email: string; onClose: () => void }) {
+export default function UserDrawer({ userId, email, onClose, role = null, perms = {} }: { userId: string; email: string; onClose: () => void; role?: string | null; perms?: Record<string, PermLevel> }) {
   const { lang } = useLang() as { lang: Lang };
   const t = dictFor(T, lang);
+  // Permisos finos: lo que cuesta dinero se bloquea si el admin no lo tiene.
+  const canAi = canUserAction(role, perms, 'aicredits');
+  const canAddons = canUserAction(role, perms, 'addons');
   const [d, setD] = useState<any>(null);
   const [tab, setTab] = useState(0);
   const [subj, setSubj] = useState('');
@@ -264,22 +269,32 @@ export default function UserDrawer({ userId, email, onClose }: { userId: string;
                           </div>
                         )}
 
-                        {/* Gestión manual: dar consultas de cortesía o reiniciar las extra del mes */}
-                        <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 9 }}>
-                          <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>{lang === 'en' ? 'Give or reset AI questions (this month, no charge)' : 'Dar o reiniciar consultas de IA (este mes, sin cobro)'}</div>
-                          <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <input type="text" inputMode="numeric" value={aiQty} onChange={(e) => setAiQty(e.target.value.replace(/[^0-9]/g, ''))} style={{ margin: 0, width: 90, padding: '5px 8px', fontSize: 13 }} />
-                            <button className="btn btn-primary" onClick={() => aiCredits('grant')} disabled={!!aiBusy || !Number(aiQty)} style={{ fontSize: 12.5, padding: '5px 10px' }}>{aiBusy === 'grant' ? '…' : (lang === 'en' ? `Give +${Number(aiQty) || 0}` : `Dar +${Number(aiQty) || 0}`)}</button>
-                            <button className="btn btn-ghost" onClick={() => aiCredits('clear')} disabled={!!aiBusy} style={{ fontSize: 12.5, padding: '5px 10px' }}>{aiBusy === 'clear' ? '…' : (lang === 'en' ? 'Reset extra' : 'Reiniciar extra')}</button>
+                        {/* Gestión manual: dar consultas de cortesía o reiniciar las extra del mes.
+                            Cuesta dinero → detrás del permiso 'aicredits'. */}
+                        {canAi ? (
+                          <div style={{ borderTop: '1px solid var(--line)', marginTop: 10, paddingTop: 9 }}>
+                            <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>{lang === 'en' ? 'Give or reset AI questions (this month, no charge)' : 'Dar o reiniciar consultas de IA (este mes, sin cobro)'}</div>
+                            <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <input type="text" inputMode="numeric" value={aiQty} onChange={(e) => setAiQty(e.target.value.replace(/[^0-9]/g, ''))} style={{ margin: 0, width: 90, padding: '5px 8px', fontSize: 13 }} />
+                              <button className="btn btn-primary" onClick={() => aiCredits('grant')} disabled={!!aiBusy || !Number(aiQty)} style={{ fontSize: 12.5, padding: '5px 10px' }}>{aiBusy === 'grant' ? '…' : (lang === 'en' ? `Give +${Number(aiQty) || 0}` : `Dar +${Number(aiQty) || 0}`)}</button>
+                              <button className="btn btn-ghost" onClick={() => aiCredits('clear')} disabled={!!aiBusy} style={{ fontSize: 12.5, padding: '5px 10px' }}>{aiBusy === 'clear' ? '…' : (lang === 'en' ? 'Reset extra' : 'Reiniciar extra')}</button>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div style={{ marginTop: 10 }}>
+                            <LockedAction action="aicredits" label={lang === 'en' ? 'Give / reset AI credits' : 'Dar / reponer créditos de IA'} clientEmail={email} canDo={false} lang={lang}><span /></LockedAction>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
 
                   {/* Add-ons recurrentes de la suscripción (cuenta/esclava/master/robots).
-                      Lectura + añadir/quitar a mano si una activación falló. */}
-                  {ua?.hasSub && Array.isArray(ua.addons) && (
+                      Cambian la facturación → detrás del permiso 'addons'. */}
+                  {!canAddons && (
+                    <LockedAction action="addons" label={lang === 'en' ? 'Plan add-ons' : 'Add-ons del plan'} clientEmail={email} canDo={false} lang={lang}><span /></LockedAction>
+                  )}
+                  {canAddons && ua?.hasSub && Array.isArray(ua.addons) && (
                     <div className="card" style={{ marginBottom: 12 }}>
                       <div style={{ fontSize: 12, color: 'var(--mut)', marginBottom: 2 }}>{lang === 'en' ? 'Plan add-ons (subscription)' : 'Complementos del plan (suscripción)'}</div>
                       <div className="muted" style={{ fontSize: 11, marginBottom: 10 }}>{lang === 'en' ? 'Add manually if an activation failed · prorated on next invoice' : 'Añádelos a mano si falló una activación · se prorratea en la próxima factura'}</div>

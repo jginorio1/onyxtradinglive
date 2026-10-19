@@ -63,6 +63,7 @@ export const AREAS: { id: string; label: string; group: string }[] = [
   { id: 'carreras', label: 'Carreras', group: 'equipo' },
   { id: 'formacion', label: 'Formación', group: 'equipo' },
   { id: 'chat', label: 'Chat de equipo', group: 'equipo' },
+  { id: 'mipanel', label: 'Mi panel de empleado (ficha, horario, nómina)', group: 'equipo' },
   // Sistema
   { id: 'guias', label: 'Guías (Guía y Cómo usar)', group: 'sistema' },
   { id: 'diag', label: 'Diagnóstico', group: 'sistema' },
@@ -86,6 +87,9 @@ export const USER_ACTIONS: { id: string; es: string; en: string }[] = [
   { id: 'password', es: 'Restablecer contraseña', en: 'Reset password' },
   { id: 'plan', es: 'Cambiar plan / dar cortesía', en: 'Change plan / grant comp' },
   { id: 'pin', es: 'Resetear PIN de Onyx Copy', en: 'Reset Onyx Copy PIN' },
+  { id: 'aicredits', es: 'Dar / reponer créditos de IA (cuesta dinero)', en: 'Give / reset AI credits (costs money)' },
+  { id: 'addons', es: 'Asignar add-ons del plan (cuenta/esclava/master/robots)', en: 'Assign plan add-ons (account/slave/master/robots)' },
+  { id: 'accounts', es: 'Asignar / quitar brókers y cuentas', en: 'Assign / remove brokers and accounts' },
   { id: 'ban', es: 'Banear / desbanear', en: 'Ban / unban' },
   { id: 'admin', es: 'Hacer / quitar administrador', en: 'Grant / revoke admin' },
   { id: 'delete', es: 'Borrar usuario (definitivo)', en: 'Delete user (permanent)' },

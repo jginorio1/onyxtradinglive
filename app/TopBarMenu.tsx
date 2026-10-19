@@ -4,8 +4,8 @@ import Link from 'next/link';
 
 // Avatar con menú. Se cierra al pulsar fuera o con Escape, como cualquier
 // menú al que el usuario esté acostumbrado.
-export default function TopBarMenu({ email, initial, isAdmin, isRep = false, salesLabel = 'Mi panel de ventas', canTrain = false, trainLabel = 'Centro de formación', cardLabel = 'Mi tarjeta verificada', t, demo = false }:
-  { email: string; initial: string; isAdmin: boolean; isRep?: boolean; salesLabel?: string; canTrain?: boolean; trainLabel?: string; cardLabel?: string; t: Record<string, string>; demo?: boolean }) {
+export default function TopBarMenu({ email, initial, isAdmin, isRep = false, salesLabel = 'Mi panel de ventas', canTrain = false, trainLabel = 'Centro de formación', canStaff = false, staffLabel = 'Mi panel de empleado', cardLabel = 'Mi tarjeta verificada', t, demo = false }:
+  { email: string; initial: string; isAdmin: boolean; isRep?: boolean; salesLabel?: string; canTrain?: boolean; trainLabel?: string; canStaff?: boolean; staffLabel?: string; cardLabel?: string; t: Record<string, string>; demo?: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -34,6 +34,7 @@ export default function TopBarMenu({ email, initial, isAdmin, isRep = false, sal
           <Link className="menu-item" href="/dashboard/mi-tarjeta" onClick={() => setOpen(false)}>{cardLabel}</Link>
           <Link className="menu-item" href="/guia" onClick={() => setOpen(false)}>{t.guide}</Link>
           {isRep && <Link className="menu-item" href="/dashboard/ventas" onClick={() => setOpen(false)}>{salesLabel}</Link>}
+          {canStaff && <Link className="menu-item" href="/staff" onClick={() => setOpen(false)}>{staffLabel}</Link>}
           {canTrain && <Link className="menu-item" href="/entrenamiento" onClick={() => setOpen(false)}>{trainLabel}</Link>}
           {isAdmin && <Link className="menu-item" href="/admin" onClick={() => setOpen(false)}>{t.adminPanel}</Link>}
 

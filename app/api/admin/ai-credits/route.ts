@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAdmin, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { aiAllowance } from '@/lib/aiLimits';
+import { canUserAction } from '@/lib/perms';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -34,8 +35,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { isAdmin, user } = await getAdmin();
+    const { isAdmin, user, role, perms } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    // Dar/reponer créditos de IA cuesta dinero: exige el permiso fino 'aicredits'.
+    if (!canUserAction(role, perms, 'aicredits')) return NextResponse.json({ error: 'Sin permiso para dar/reponer créditos de IA', code: 'noperm' }, { status: 403 });
     const b = await req.json().catch(() => ({} as any));
     const id = String(b.id || '');
     const action = String(b.action || 'grant');   // 'grant' | 'clear'

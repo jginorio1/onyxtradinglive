@@ -3,6 +3,7 @@ import { getAdmin, logAdmin } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { stripe } from '@/lib/stripe';
 import { addonSettings } from '@/lib/settings';
+import { canUserAction } from '@/lib/perms';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -55,8 +56,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { isAdmin, user } = await getAdmin();
+    const { isAdmin, user, role, perms } = await getAdmin();
     if (!isAdmin) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+    // Asignar/quitar add-ons cambia la facturación: exige el permiso fino 'addons'.
+    if (!canUserAction(role, perms, 'addons')) return NextResponse.json({ error: 'Sin permiso para asignar add-ons del plan', code: 'noperm' }, { status: 403 });
     const b = await req.json().catch(() => ({} as any));
     const id = String(b.id || '');
     const key = String(b.key || '') as Key;

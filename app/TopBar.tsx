@@ -13,6 +13,7 @@ import WalletPill from './WalletPill';
 import MainNav from './MainNav';
 import PanelLogo from './PanelLogo';
 import PlanPill from './PlanPill';
+import { effectivePerms, meets } from '@/lib/perms';
 
 // ============================================================
 // Barra de navegación única, en el layout raíz.
@@ -32,6 +33,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
   let isAdmin = false;
   let isRep = false;        // ¿la cuenta es parte de la red de ventas?
   let canTrain = false;     // ¿tiene acceso al centro de formación interno?
+  let canStaff = false;     // ¿puede ver su panel de empleado /staff? (permiso 'mipanel')
   let eaLive: boolean | null = null;
   let caps: any = {};
   let addonAlgo = false;
@@ -58,10 +60,18 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
 
     if (user) {
       const { data: prof } = await supabaseAdmin
-        .from('profiles').select('plan,is_admin,copy_paused,addon_algo').eq('id', user.id).maybeSingle();
+        .from('profiles').select('plan,is_admin,copy_paused,addon_algo,role,perms').eq('id', user.id).maybeSingle();
       plan = prof?.plan || 'free';
       isAdmin = !!prof?.is_admin;
       addonAlgo = !!(prof as any)?.addon_algo;
+
+      // ¿Puede entrar a su panel de empleado? Solo si el admin le concedió el
+      // permiso 'mipanel' (grupo Equipo). El dueño siempre.
+      try {
+        const role = (prof as any)?.role as string | null;
+        if (role === 'owner') canStaff = true;
+        else if (isAdmin) canStaff = meets(effectivePerms(role, (prof as any)?.perms || {}).mipanel, 'view');
+      } catch {}
 
       // ¿Es vendedor de la red? Para mostrarle el acceso a su panel de ventas.
       try { const { data: rep } = await supabaseAdmin.from('sales_reps').select('id').eq('user_id', user.id).eq('status', 'active').maybeSingle(); isRep = !!rep; } catch {}
@@ -207,7 +217,7 @@ export default async function TopBar({ home = false }: { home?: boolean }) {
               <ThemeToggle />
               <LangToggle compact />
               <span className="topsep" />
-              <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} isRep={isRep} salesLabel={lang === 'en' ? 'My sales panel' : 'Mi panel de ventas'} canTrain={canTrain} trainLabel={lang === 'en' ? 'Training center' : 'Centro de formación'} cardLabel={lang === 'en' ? 'My verified card' : 'Mi tarjeta verificada'} t={t} demo={isDemo} />
+              <TopBarMenu email={user.email || ''} initial={initial} isAdmin={isAdmin} isRep={isRep} salesLabel={lang === 'en' ? 'My sales panel' : 'Mi panel de ventas'} canTrain={canTrain} trainLabel={lang === 'en' ? 'Training center' : 'Centro de formación'} canStaff={canStaff} staffLabel={lang === 'en' ? 'My employee panel' : 'Mi panel de empleado'} cardLabel={lang === 'en' ? 'My verified card' : 'Mi tarjeta verificada'} t={t} demo={isDemo} />
             </div>
           </div>
           {/* Fila 2: todos los tabs, a lo ancho. Si no caben, la fila se desliza. */}
