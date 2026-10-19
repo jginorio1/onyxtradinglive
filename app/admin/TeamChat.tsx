@@ -321,6 +321,20 @@ function TeamChatInner() {
     await fetch('/api/team/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
     setShowProfile(false); setPfTarget(''); await loadChannels();
   }
+  // Renombrar un canal o grupo (no un DM). Solo dueño/admin. Pide el nombre nuevo.
+  async function renameChannel() {
+    if (!activeCh || activeCh.kind === 'dm') return;
+    const next = window.prompt(L('Nuevo nombre del canal:', 'New channel name:'), activeCh.name || '');
+    if (next === null) return;
+    const name = next.trim();
+    if (!name || name === activeCh.name) return;
+    try {
+      const r = await fetch('/api/team/chat', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: activeCh.id, name }) });
+      const j = await r.json();
+      if (j.ok) await loadChannels();
+      else alert(j.error || L('No se pudo renombrar.', 'Could not rename.'));
+    } catch { alert(L('Error de red al renombrar.', 'Network error renaming.')); }
+  }
 
   return (
     <div ref={wrapRef} style={{ width: '100%' }}>
@@ -466,6 +480,7 @@ function TeamChatInner() {
                   <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(activeCh.kind === 'dm' ? '' : activeCh.kind === 'group' ? '' : '# ') + headerName}</div>
                   <div style={{ fontSize: 11.5, color: typingLabel ? 'var(--soft-green)' : 'var(--mut)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{headerStatus}</div>
                 </div>
+                {canEditOthers && activeCh.kind !== 'dm' && <button title={L('Renombrar canal', 'Rename channel')} onClick={renameChannel} style={iconBtn}><OnyxIcon emoji="✏️" size={15} glow={false} /></button>}
                 <button title={L('Buscar por día', 'Search by day')} onClick={() => setShowDate((s) => !s)} style={iconBtn}><Icon name="calendar" size={18} /></button>
                 <div style={{ position: 'relative' }}>
                   <button title={isGroupCh ? L('Miembros del grupo', 'Group members') : L('Añadir compañero', 'Add teammate')} onClick={() => setShowAdd((s) => !s)} style={iconBtn}><Icon name={isGroupCh ? 'users' : 'userPlus'} size={18} /></button>

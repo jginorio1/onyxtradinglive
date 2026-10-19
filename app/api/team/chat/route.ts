@@ -58,6 +58,30 @@ export async function GET() {
   }
 }
 
+// PATCH · renombrar un canal o grupo (y su tema). No aplica a DMs (su nombre es
+// el del otro). body: { id, name?, topic? }. Requiere permiso de gestión del chat.
+export async function PATCH(req: Request) {
+  const g = await requirePerm('chat', 'manage');
+  if (!g.ok) return NextResponse.json({ error: 'no autorizado' }, { status: 403 });
+  try {
+    const b = await req.json().catch(() => ({}));
+    const id = String(b.id || '').trim();
+    if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
+    const { data: ch } = await supabaseAdmin.from('chat_channels').select('kind').eq('id', id).maybeSingle();
+    if (!ch) return NextResponse.json({ error: 'canal no encontrado' }, { status: 404 });
+    if (ch.kind === 'dm') return NextResponse.json({ error: 'un mensaje directo no se renombra' }, { status: 400 });
+    const upd: any = {};
+    if (b.name !== undefined) { const n = String(b.name || '').trim().slice(0, 60); if (n) upd.name = n; }
+    if (b.topic !== undefined) upd.topic = String(b.topic || '').slice(0, 120) || null;
+    if (!Object.keys(upd).length) return NextResponse.json({ error: 'nada que cambiar' }, { status: 400 });
+    const { error } = await supabaseAdmin.from('chat_channels').update(upd).eq('id', id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });
+  }
+}
+
 // POST · crear un canal (o DM). body: { name, kind?, members?[] }
 export async function POST(req: Request) {
   const g = await requirePerm('chat', 'manage');
