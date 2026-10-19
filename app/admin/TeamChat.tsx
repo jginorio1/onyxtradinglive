@@ -348,26 +348,8 @@ function TeamChatInner() {
                 <div style={{ fontSize: 15, fontWeight: 700 }}>{L('Equipo', 'Team')}</div>
                 <div className="muted" style={{ fontSize: 11 }}><span style={{ color: 'var(--soft-green)' }}>●</span> {online.length} {L('en línea', 'online')}</div>
               </div>
-              {canEditOthers && (
-                <div style={{ position: 'relative' }}>
-                  <button title={L('Fichas del equipo (puesto · país · idiomas)', 'Team profiles (role · country · languages)')} onClick={() => setShowRoster((s) => !s)} style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: showRoster ? 'var(--tx)' : 'var(--card)', color: showRoster ? 'var(--card)' : 'var(--mut)', border: '1px solid var(--line)', cursor: 'pointer' }}><Icon name="user" size={16} /></button>
-                  {showRoster && (
-                    <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 6, background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,.3)', zIndex: 40, width: 270, maxHeight: 360, overflowY: 'auto' }}>
-                      <div className="muted" style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: .3, textTransform: 'uppercase', padding: '10px 12px 6px' }}>{L('Fichas del equipo', 'Team profiles')}</div>
-                      {team.map((t) => { const av = avatarOf(t.name); const self = t.id === me; return (
-                        <button key={t.id} onClick={() => { setShowRoster(false); openProfile(self ? undefined : t.id); }} style={{ display: 'flex', gap: 9, alignItems: 'center', width: '100%', textAlign: 'left', background: 'transparent', border: 'none', borderTop: '1px solid var(--line)', padding: '9px 12px', cursor: 'pointer', color: 'var(--tx)' }}>
-                          <span style={{ width: 28, height: 28, borderRadius: '50%', background: av.bg, color: av.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: 'none' }}>{initials(t.name)}</span>
-                          <span style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ fontSize: 13, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}{self && <span className="muted"> · {L('tú', 'you')}</span>}</span>
-                            <span className="muted" style={{ fontSize: 10.5, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{metaOf(t, roleLabel(t.role, en))}</span>
-                          </span>
-                          <OnyxIcon emoji="✏️" size={13} glow={false} />
-                        </button>
-                      ); })}
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Las fichas del equipo (puesto · país · idiomas) ahora se editan en
+                  Admin → Equipo. Aquí ya no, para no duplicar. */}
               <button title={L('Buscar en los mensajes', 'Search in messages')} onClick={() => { setShowSearch((s) => !s); setSearchQ(''); setSearchResults([]); }} style={{ width: 34, height: 34, flex: 'none', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: showSearch ? 'var(--tx)' : 'var(--card)', color: showSearch ? 'var(--card)' : 'var(--mut)', border: '1px solid var(--line)', cursor: 'pointer' }}><Icon name="search" size={16} /></button>
             </div>
             {/* Buscar DENTRO de los mensajes de todas las conversaciones visibles. */}
@@ -450,16 +432,13 @@ function TeamChatInner() {
                           </span>
                           <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 13, display: 'block' }}>{t.name}</span><span className="muted" style={{ fontSize: 10.5, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{metaOf(t, roleLabel(t.role, en))}</span></span>
                         </button>
-                        {canEditOthers && (
-                          <button onClick={(e) => { e.stopPropagation(); openProfile(t.id); }} title={L('Editar ficha (puesto · país · idiomas)', 'Edit profile (role · country · languages)')} style={{ width: 28, height: 28, flex: 'none', borderRadius: 8, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--mut)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><OnyxIcon emoji="✏️" size={13} glow={false} /></button>
-                        )}
                       </div>
                     ); })}
                   </div>
                 </>)}
               </div>
             )}
-            <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+            <div style={{ overflowY: 'auto', overflowX: 'hidden', flex: 1, minHeight: 0, minWidth: 0 }}>
               {convos.length === 0 && <div className="muted" style={{ fontSize: 12, padding: 18, textAlign: 'center' }}>{L('Sin conversaciones.', 'No chats.')}</div>}
               {convos.map((c) => (
                 <ConvCard key={c.id} c={c} active={c.id === active} online={c.isDm ? onlineIds.has(c.otherId) : undefined} en={en} onClick={() => { setActive(c.id); setMobileOpen(true); }} />
@@ -577,8 +556,8 @@ function TeamChatInner() {
 
       <style>{`
         @media(max-width:720px){
-          .teamchat-grid{grid-template-columns:1fr !important; height:auto !important}
-          .teamchat-side{height:70vh; border-right:none !important}
+          .teamchat-grid{grid-template-columns:minmax(0,1fr) !important; height:auto !important; max-width:100%; overflow:hidden}
+          .teamchat-side{height:70vh; border-right:none !important; max-width:100%; min-width:0; overflow-x:hidden}
           .teamchat-main{display:none}
           .tc-hidden-m{display:none !important}
           .tc-fs-m{display:flex !important; height:80vh}

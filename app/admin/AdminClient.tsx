@@ -2144,6 +2144,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   const [logTotal, setLogTotal] = useState(0);     // total de registros en el rango (servidor)
   const [logHasMore, setLogHasMore] = useState(false);
   const [logOpen, setLogOpen] = useState('');      // fila de detalle expandida (clave i)
+  const [logHover, setLogHover] = useState('');    // fila resaltada al pasar el cursor
   const [logBusy, setLogBusy] = useState(false);
   const [secPins, setSecPins] = useState<string[]>([]);      // ids de miembros con PIN (owner)
   const [pinEditId, setPinEditId] = useState('');
@@ -2433,7 +2434,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                 const open = logOpen === key;
                 const dets = open ? detailLines(e, lang) : [];
                 return (
-                  <div key={key} style={{ borderLeft: `3px solid ${cs.color}`, background: cs.bg, borderRadius: '0 8px 8px 0', padding: '8px 11px', marginTop: i ? 6 : 0 }}>
+                  <div key={key} onMouseEnter={() => setLogHover(key)} onMouseLeave={() => setLogHover((h) => (h === key ? '' : h))} style={{ borderLeft: `3px solid ${cs.color}`, background: cs.bg, borderRadius: '0 8px 8px 0', padding: '8px 11px', marginTop: i ? 6 : 0, boxShadow: (logHover === key || open) ? 'inset 0 0 0 999px rgba(128,128,128,.12)' : 'none', transition: 'box-shadow .12s' }}>
                     <div className="row between" style={{ flexWrap: 'wrap', gap: 6, cursor: 'pointer' }} onClick={() => setLogOpen(open ? '' : key)}>
                       <span style={{ fontSize: 13, color: 'var(--tx)' }}><span style={{ marginRight: 6 }}>{open ? '▾' : '▸'}</span><span style={{ marginRight: 6 }}>{cs.icon}</span><b>{e.admin_email?.split('@')[0]}</b> · {dl.text}</span>
                       <span className="muted" style={{ fontSize: 12 }}>{fmtDateTime(e.created_at, lang)}</span>
