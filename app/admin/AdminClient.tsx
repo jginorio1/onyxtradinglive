@@ -2231,7 +2231,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                   <span style={{ position: 'absolute', right: -1, bottom: -1, width: 11, height: 11, borderRadius: '50%', border: '2px solid var(--card)', background: m.available ? 'var(--green)' : 'var(--line)' }} title={m.available ? 'Disponible' : 'Ausente'} />
                 </span>
                 <div>
-                  <div style={{ fontWeight: 600 }}>{m.full_name || (m.email || '').split('@')[0]}{m.email === meEmail && <span className="muted" style={{ fontSize: 12 }}>{t.t_you}</span>}{m.job_title && <span className="pill" style={{ marginLeft: 7, fontSize: 10.5, color: 'var(--brand)', background: 'color-mix(in srgb,var(--brand) 14%,transparent)' }}>{m.job_title}</span>}</div>
+                  <div style={{ fontWeight: 600 }}>{m.full_name || (m.email || '').split('@')[0]}{m.email === meEmail && <span className="muted" style={{ fontSize: 12 }}>{t.t_you}</span>}</div>
                   <div className="muted" style={{ fontSize: 11 }}>{m.email} · {m.last_active ? t.t_lastActivity + fmtDateTime(m.last_active, lang) : t.t_noActivity}</div>
                 </div>
               </div>
@@ -2250,6 +2250,52 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
                 {canManage && m.role !== 'owner' && m.email !== meEmail && <button className="btn btn-danger" style={{ padding: '4px 9px', fontSize: 12 }} onClick={() => remove(m.id)}>{t.t_remove}</button>}
               </div>
             </div>
+
+            {/* Ficha completa INLINE: puesto · país · idiomas. Misma fuente que la ficha editable. */}
+            {(() => {
+              const inCat = !!m.job_title && jobCat.some((mx) => mx.items.includes(m.job_title || ''));
+              const langArr = String(m.languages || '').split(',').map((s) => s.trim()).filter(Boolean);
+              const shown = langArr.slice(0, 4); const extra = langArr.length - shown.length;
+              const dash = <span className="muted" style={{ fontWeight: 400 }}>—</span>;
+              const cell = (ic: string, label: string, val: React.ReactNode) => (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', minWidth: 0 }}>
+                  <OnyxIcon emoji={ic} size={15} />
+                  <div style={{ minWidth: 0 }}>
+                    <div className="muted" style={{ fontSize: 10.5 }}>{label}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600 }}>{val}</div>
+                  </div>
+                </div>
+              );
+              return (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--line)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '10px 16px' }}>
+                  {cell('💼', lang === 'en' ? 'Job title' : 'Puesto', m.job_title ? m.job_title : dash)}
+                  {cell('🌎', lang === 'en' ? 'Country' : 'País', m.country ? m.country : dash)}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', minWidth: 0 }}>
+                    <OnyxIcon emoji="🗣️" size={15} />
+                    <div style={{ minWidth: 0 }}>
+                      <div className="muted" style={{ fontSize: 10.5, marginBottom: 3 }}>{lang === 'en' ? 'Languages' : 'Idiomas'}</div>
+                      {shown.length ? (
+                        <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
+                          {shown.map((l) => <span key={l} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: 'color-mix(in srgb,var(--brand) 14%,transparent)', color: 'var(--brand)' }}>{l}</span>)}
+                          {extra > 0 && <span className="muted" style={{ fontSize: 11, alignSelf: 'center' }}>+{extra}</span>}
+                        </div>
+                      ) : <div style={{ fontSize: 12.5 }}>{dash}</div>}
+                    </div>
+                  </div>
+                  {canManage && !!m.job_title && !inCat && (
+                    <div style={{ gridColumn: '1/-1', display: 'flex', gap: 8, alignItems: 'flex-start', background: 'color-mix(in srgb,var(--amber) 12%,transparent)', border: '1px solid color-mix(in srgb,var(--amber) 35%,transparent)', borderRadius: 10, padding: '8px 11px' }}>
+                      <OnyxIcon emoji="⚠️" size={15} />
+                      <div style={{ fontSize: 12, color: 'var(--amber)' }}>
+                        {lang === 'en'
+                          ? <>This job title (&ldquo;{m.job_title}&rdquo;) isn&rsquo;t in the catalog. </>
+                          : <>Este puesto (&ldquo;{m.job_title}&rdquo;) no está en el catálogo. </>}
+                        <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 11.5, marginLeft: 2 }} onClick={() => openFicha(m)}>{lang === 'en' ? 'Pick from catalog' : 'Elegir del catálogo'}</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {fichaId === m.id && canManage && (
               <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 12, padding: 14 }}>
