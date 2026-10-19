@@ -694,6 +694,22 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
   }
 
   async function userAction(id: string, action: string, value?: any, note?: string) { setBusy(id + action); const r = await fetch('/api/admin/users', { method: 'PATCH', body: JSON.stringify({ id, action, value, note }) }); const j = await r.json(); if (!r.ok) toastErr(j); await loadUsers(); setBusy(''); }
+  // Pedir ayuda en el chat de equipo cuando no tienes permiso para una acción
+  // sobre un cliente (p. ej. cambiar el plan). Manda el contexto ya armado.
+  async function askActionHelp(email: string, actionLabel: string) {
+    try {
+      const cr = await fetch('/api/team/chat'); const cj = await cr.json();
+      const chans: any[] = cj.channels || []; const ch = chans.find((c) => c.kind !== 'dm') || chans[0];
+      if (!ch) { toast(lang === 'en' ? 'No team channel yet.' : 'No hay un canal de equipo todavía.'); return; }
+      const body = lang === 'en'
+        ? `Hi 👋 can someone with permission ${actionLabel} for customer ${email}? I need it to help them.`
+        : `Hola 👋 ¿alguien con permiso puede ${actionLabel} al cliente ${email}? Lo necesito para atenderlo.`;
+      const m = await fetch('/api/team/chat/messages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ channel: ch.id, body }) });
+      if (!m.ok) { toastErr(await m.json().catch(() => ({}))); return; }
+      toast(lang === 'en' ? 'Sent to the team chat ✓' : 'Pedido enviado al chat de equipo ✓', 'ok');
+    } catch { toast('⚠'); }
+  }
+  const canPlan = canUserAction(role, perms as any, 'plan');
   // Prueba de pago (cortesía): modal para elegir plan + días (1–90).
   const [trialFor, setTrialFor] = useState<any>(null);
   const [trialPlan, setTrialPlan] = useState<'pro' | 'elite' | 'black'>('pro');
@@ -1177,7 +1193,7 @@ export default function AdminClient({ meEmail, role, perms = {}, accounts, trade
                     </span>
                   ); })()}
                 </span></div></td>
-                          <td><div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><select value={u.plan} onChange={(e) => { if (e.target.value !== u.plan) askPlanChange(u, e.target.value); }} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select>{planTag(u) === 'paid' ? <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)', fontSize: 11 }}>{lang === 'en' ? 'Paid' : 'Pago'}</span> : planTag(u) === 'comp' ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)', fontSize: 11 }}><OnyxIcon emoji="🎁" size={15} /> {lang === 'en' ? 'Comp' : 'Cortesía'}</span> : null}</div></td>
+                          <td><div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>{canPlan ? (<select value={u.plan} onChange={(e) => { if (e.target.value !== u.plan) askPlanChange(u, e.target.value); }} style={{ margin: 0, padding: '5px 8px', width: 'auto' }}>{plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}{!plans.find((p) => p.id === u.plan) && <option value={u.plan}>{u.plan}</option>}</select>) : (<span className="row" style={{ gap: 6, alignItems: 'center' }}><span className="pill" style={{ background: 'var(--bg2)', fontSize: 12 }}>{plans.find((p) => p.id === u.plan)?.name || u.plan}</span><button className="btn btn-ghost" title={lang === 'en' ? "You don't have permission to change plans. Ask someone who does." : 'No tienes permiso para cambiar de plan. Pídele a quien sí.'} style={{ padding: '3px 8px', fontSize: 11 }} onClick={() => askActionHelp(u.email, lang === 'en' ? 'change the plan' : 'cambiar el plan')}><OnyxIcon emoji="🔒" size={12} /> {lang === 'en' ? 'Ask help' : 'Pedir ayuda'}</button></span>)}{planTag(u) === 'paid' ? <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)', fontSize: 11 }}>{lang === 'en' ? 'Paid' : 'Pago'}</span> : planTag(u) === 'comp' ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)', fontSize: 11 }}><OnyxIcon emoji="🎁" size={15} /> {lang === 'en' ? 'Comp' : 'Cortesía'}</span> : null}</div></td>
                           <td>{u.banned ? <span className="pill red">● {t.u_banned}</span> : u.email_confirmed === false ? <span className="pill" style={{ color: 'var(--amber)', background: 'rgba(240,160,20,.15)' }}><OnyxIcon emoji="✉" size={15} /> {lang === 'en' ? 'Unconfirmed' : 'Sin confirmar'}</span> : <span className="pill" style={{ color: 'var(--green)', background: 'rgba(52,226,160,.15)' }}>● {u.subscription_status || t.u_active}</span>}</td>
                           <td className="muted">{u.accounts}</td>
                           <td className="muted" style={{ fontSize: 12 }}>{u.lastSync ? fmtDate(u.lastSync, lang) : '—'}</td>
