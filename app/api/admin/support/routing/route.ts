@@ -51,9 +51,16 @@ export async function POST(req: Request) {
       if (e.l3AfterMin <= e.l2AfterMin) e.l3AfterMin = e.l2AfterMin + 60;   // N3 siempre después de N2
       await saveSetting('support_escalation', e);
     }
-    await logAdmin(g.user?.email || '', 'support_routing', 'support_routing', {});
     const routing = await supportRoutingSettings();
     const escalation = await supportEscalationSettings();
+    // Auditoría con antes→después de lo que realmente cambió.
+    try {
+      const { reqCtx } = await import('@/lib/admin');
+      const diff: any = {};
+      for (const k of Object.keys(routing)) if ((curR as any)[k] !== (routing as any)[k]) diff['routing.' + k] = { from: (curR as any)[k], to: (routing as any)[k] };
+      for (const k of Object.keys(escalation)) if ((curE as any)[k] !== (escalation as any)[k]) diff['esc.' + k] = { from: (curE as any)[k], to: (escalation as any)[k] };
+      await logAdmin(g.user?.email || '', 'support_routing', 'support_routing', diff, reqCtx(req, 'soporte'));
+    } catch { await logAdmin(g.user?.email || '', 'support_routing', 'support_routing', {}); }
     return NextResponse.json({ ok: true, routing, escalation });
   } catch (e: any) {
     await logError('support_routing', e);

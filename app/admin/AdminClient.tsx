@@ -9,7 +9,7 @@ import Addons from './Addons';
 import AdsAdmin from './AdsAdmin';
 import CleanSignups from './CleanSignups';
 import UserDrawer from './UserDrawer';
-import { describeLog, CAT_STYLE } from '@/lib/logFormat';
+import { describeLog, CAT_STYLE, detailLines } from '@/lib/logFormat';
 import ConfirmNote from './ConfirmNote';
 import AdminLock from './AdminLock';
 import OnyxIcon from '@/app/components/OnyxIcon';
@@ -2141,6 +2141,10 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   const [logTo, setLogTo] = useState('');
   const [logAll, setLogAll] = useState(false);
   const [logQ, setLogQ] = useState('');   // búsqueda por palabra en el registro
+  const [logTotal, setLogTotal] = useState(0);     // total de registros en el rango (servidor)
+  const [logHasMore, setLogHasMore] = useState(false);
+  const [logOpen, setLogOpen] = useState('');      // fila de detalle expandida (clave i)
+  const [logBusy, setLogBusy] = useState(false);
   const [secPins, setSecPins] = useState<string[]>([]);      // ids de miembros con PIN (owner)
   const [pinEditId, setPinEditId] = useState('');
   const [pinVal, setPinVal] = useState('');
@@ -2161,8 +2165,38 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
   async function changeRole(id: string, r2: string) { const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, role: r2 }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
   async function savePerm(id: string, area: string, level: string, current: any) { const perms = { ...(current || {}), [area]: level }; const r = await fetch('/api/admin/team', { method: 'PATCH', body: JSON.stringify({ id, perms }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
   async function remove(id: string) { if (!(await confirmDialog(lang === 'en' ? 'Remove admin access from this person?' : '¿Quitar acceso de administrador a esta persona?'))) return; const r = await fetch('/api/admin/team', { method: 'DELETE', body: JSON.stringify({ id }) }); const j = await r.json(); if (!r.ok) { toastErr(j); return; } reload(); }
-  async function loadLog(member = '') { setLogMember(member); const r = await fetch('/api/admin/activity' + (member ? '?member=' + encodeURIComponent(member) : '')); const j = await r.json(); setLog(j.log || []); }
+  // Historial COMPLETO: filtra en el servidor por miembro/fecha/texto y pagina.
+  // append=false reinicia; append=true suma los más viejos ("cargar más").
+  function logQueryParams(offset: number) {
+    const sp = new URLSearchParams();
+    if (logMember) sp.set('member', logMember);
+    if (logFrom) sp.set('from', logFrom);
+    if (logTo) sp.set('to', logTo);
+    const q = logQ.trim(); if (q) sp.set('q', q);
+    sp.set('limit', '200'); sp.set('offset', String(offset));
+    return sp.toString();
+  }
+  async function loadLog(member?: string, append = false) {
+    if (member !== undefined) setLogMember(member);
+    setLogBusy(true);
+    try {
+      const mem = member !== undefined ? member : logMember;
+      const sp = new URLSearchParams();
+      if (mem) sp.set('member', mem);
+      if (logFrom) sp.set('from', logFrom);
+      if (logTo) sp.set('to', logTo);
+      const q = logQ.trim(); if (q) sp.set('q', q);
+      sp.set('limit', '200'); sp.set('offset', String(append ? log.length : 0));
+      const r = await fetch('/api/admin/activity?' + sp.toString());
+      const j = await r.json();
+      setLog(append ? [...log, ...(j.log || [])] : (j.log || []));
+      setLogTotal(j.total || 0); setLogHasMore(!!j.hasMore);
+    } catch {}
+    setLogBusy(false);
+  }
   useEffect(() => { loadLog(); }, []);
+  // Al cambiar rango de fechas, recarga desde el servidor (historial completo).
+  useEffect(() => { loadLog(); /* eslint-disable-next-line */ }, [logFrom, logTo]);
 
   return (
     <>
@@ -2359,7 +2393,7 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
         {/* Búsqueda por palabra: acción, admin, destino, nota… */}
         <div style={{ position: 'relative', marginBottom: 10, maxWidth: 360 }}>
           <span style={{ position: 'absolute', left: 10, top: 8, color: 'var(--mut)' }}><OnyxIcon emoji="🔍" size={15} /></span>
-          <input value={logQ} onChange={(e) => { setLogQ(e.target.value); setLogAll(true); }} placeholder={lang === 'es' ? 'Buscar: crédito, email, plan, nota…' : 'Search: credit, email, plan, note…'} style={{ width: '100%', margin: 0, paddingLeft: 32 }} />
+          <input value={logQ} onChange={(e) => { setLogQ(e.target.value); setLogAll(true); }} onKeyDown={(e) => { if (e.key === 'Enter') loadLog(); }} placeholder={lang === 'es' ? 'Buscar en TODO el historial (Enter)…' : 'Search ALL history (Enter)…'} style={{ width: '100%', margin: 0, paddingLeft: 32 }} />
         </div>
         <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
           {LOG_TOPICS.map(([k, label, ic]) => {
@@ -2388,24 +2422,39 @@ function Equipo({ team, role, meEmail, reload, canManage }: { team: Team[]; role
             return true;
           });
           if (!matched.length) return <p className="muted" style={{ fontSize: 14 }}>{t.t_noActivityTopic}</p>;
-          const shown = logAll ? matched : matched.slice(0, 8);
-          const hidden = matched.length - shown.length;
           return (
             <>
-              {shown.map((e, i) => {
+              <div className="muted" style={{ fontSize: 11.5, marginBottom: 8 }}>
+                {lang === 'en' ? `Showing ${matched.length} of ${logTotal} records · click a row for full detail` : `Mostrando ${matched.length} de ${logTotal} registros · toca una fila para ver el detalle completo`}
+              </div>
+              {matched.map((e, i) => {
                 const dl = describeLog(e, lang); const cs = CAT_STYLE[dl.cat];
+                const key = (e.created_at || '') + ':' + i;
+                const open = logOpen === key;
+                const dets = open ? detailLines(e, lang) : [];
                 return (
-                  <div key={i} style={{ borderLeft: `3px solid ${cs.color}`, background: cs.bg, borderRadius: '0 8px 8px 0', padding: '8px 11px', marginTop: i ? 6 : 0 }}>
-                    <div className="row between" style={{ flexWrap: 'wrap', gap: 6 }}>
-                      <span style={{ fontSize: 13, color: 'var(--tx)' }}><span style={{ marginRight: 6 }}>{cs.icon}</span><b>{e.admin_email?.split('@')[0]}</b> · {dl.text}</span>
+                  <div key={key} style={{ borderLeft: `3px solid ${cs.color}`, background: cs.bg, borderRadius: '0 8px 8px 0', padding: '8px 11px', marginTop: i ? 6 : 0 }}>
+                    <div className="row between" style={{ flexWrap: 'wrap', gap: 6, cursor: 'pointer' }} onClick={() => setLogOpen(open ? '' : key)}>
+                      <span style={{ fontSize: 13, color: 'var(--tx)' }}><span style={{ marginRight: 6 }}>{open ? '▾' : '▸'}</span><span style={{ marginRight: 6 }}>{cs.icon}</span><b>{e.admin_email?.split('@')[0]}</b> · {dl.text}</span>
                       <span className="muted" style={{ fontSize: 12 }}>{fmtDateTime(e.created_at, lang)}</span>
                     </div>
+                    {open && (
+                      <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: '4px 16px' }}>
+                        {dets.length === 0 && <span className="muted" style={{ fontSize: 12 }}>{lang === 'en' ? 'No extra detail recorded.' : 'Sin detalle extra registrado.'}</span>}
+                        {dets.map((d, di) => (
+                          <div key={di} style={{ fontSize: 12, display: 'flex', gap: 6 }}>
+                            <span className="muted" style={{ minWidth: 92, flex: 'none' }}>{d.label}:</span>
+                            <span style={{ color: 'var(--tx)', wordBreak: 'break-word' }}>{d.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
-              {(hidden > 0 || (logAll && matched.length > 8)) && (
-                <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 12.5, color: 'var(--mut)' }} onClick={() => setLogAll(!logAll)}>
-                  {logAll ? `▲ ${t.t_showLess}` : `▼ ${t.t_showMore.replace('{n}', String(hidden))}`}
+              {logHasMore && (
+                <button className="btn btn-ghost" style={{ width: '100%', marginTop: 10, fontSize: 12.5, color: 'var(--mut)' }} disabled={logBusy} onClick={() => loadLog(undefined, true)}>
+                  {logBusy ? '…' : (lang === 'en' ? `▼ Load more (${logTotal - log.length} older)` : `▼ Cargar más (${logTotal - log.length} anteriores)`)}
                 </button>
               )}
             </>

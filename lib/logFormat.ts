@@ -6,7 +6,7 @@
 // ============================================================
 
 export type LogCat = 'money' | 'plan' | 'danger' | 'security' | 'content' | 'team' | 'other';
-export type LogEntry = { admin_email?: string; action: string; target?: any; meta?: any; created_at?: string };
+export type LogEntry = { admin_email?: string; action: string; target?: any; meta?: any; created_at?: string; ip?: string; user_agent?: string; area?: string };
 
 // Color e icono por categoría (usa variables CSS del tema).
 export const CAT_STYLE: Record<LogCat, { color: string; bg: string; icon: string; es: string; en: string }> = {
@@ -113,11 +113,97 @@ export function describeLog(e: LogEntry, lang: 'es' | 'en' = 'es'): { text: stri
   if (a === 'canned_delete') return { text: L('Borró una respuesta guardada', 'Deleted a canned reply'), cat: 'content' };
   if (a === 'ai_prompt_save' || a === 'support_ai_toggle') return { text: L('Cambió los ajustes de Onyx AI', 'Changed Onyx AI settings'), cat: 'content' };
 
+  // soporte: ruteo / escalamiento / canales
+  if (a === 'support_routing') return { text: L('Cambió el ruteo/escalamiento de soporte', 'Changed support routing/escalation'), cat: 'team' };
+  if (a === 'channel_rename') return { text: `${L('Renombró el canal', 'Renamed channel')}${m.from ? ` “${short(m.from, 24)}” → “${short(m.to, 24)}”` : m.to ? ` → “${short(m.to, 24)}”` : ''}`, cat: 'team' };
+  if (a === 'team_profile') return { text: `${L('Editó la ficha de', 'Edited the profile of')} ${short(m.email || tgt, 30)}`, cat: 'team' };
+  if (a === 'from_team_ticket') return { text: L('Convirtió un mensaje del equipo en ticket', 'Turned a team message into a ticket'), cat: 'team' };
+
+  // nómina / horarios / días libres
+  if (a === 'payroll_build') return { text: `${L('Generó la nómina de', 'Built payroll for')} ${short(tgt, 20)}`, cat: 'money' };
+  if (a === 'payroll_save_staff') return { text: L('Editó la ficha de nómina de un empleado', 'Edited an employee payroll record'), cat: 'money' };
+  if (a === 'payroll_paid') return R(`${L('Marcó un pago de nómina', 'Marked a payroll payment')}${m.amount ? ` · ${money(m.amount)}` : ''}`, 'money');
+  if (a.startsWith('team.shift') || a === 'shift_add' || a === 'shift_remove') return { text: L('Cambió un turno del horario', 'Changed a shift in the schedule'), cat: 'team' };
+  if (a.startsWith('schedule')) return { text: L('Cambió el horario del equipo', 'Changed the team schedule'), cat: 'team' };
+  if (a.startsWith('leave') || a === 'timeoff') return { text: L('Gestionó días libres', 'Managed time off'), cat: 'team' };
+  if (a === 'notif_prefs' || a.startsWith('notif')) return { text: L('Cambió preferencias de notificaciones', 'Changed notification preferences'), cat: 'security' };
+
   // otros
   if (a === 'clean_signups') return { text: `${L('Limpió registros incompletos', 'Cleaned incomplete signups')} (${tgt})`, cat: 'other' };
-  if (a && a.startsWith('settings_')) return { text: `${L('Cambió un ajuste:', 'Changed a setting:')} ${a.replace('settings_', '')}`, cat: 'other' };
+  if (a && a.startsWith('settings_')) return { text: `${L('Cambió un ajuste:', 'Changed a setting:')} ${humanAction(a.replace('settings_', ''), es)}`, cat: 'other' };
   if (a === 'academy_perks') return { text: L('Cambió los perks de la academia', 'Changed academy perks'), cat: 'other' };
 
-  // fallback legible
-  return { text: `${a}${tgt ? ` · ${short(tgt, 30)}` : ''}`, cat: 'other' };
+  // ── Fallback HUMANIZADO: nunca mostramos JSON crudo ni nombres técnicos. ──
+  const human = humanAction(a, es);
+  const chg = changeText(m, es);
+  const base = tgt && !['support_routing'].includes(a) ? `${human} · ${short(tgt, 30)}` : human;
+  return { text: chg ? `${base} (${chg})` : base, cat: catOf(a) };
+}
+
+// Convierte un nombre de acción técnico (snake_case / dotted) en texto legible:
+// 'payroll_save_staff' → 'Payroll save staff' · 'team.shift_add' → 'Team shift add'.
+function humanAction(a: string, es = true): string {
+  const words = String(a || '').replace(/[._]+/g, ' ').trim();
+  if (!words) return es ? 'Acción' : 'Action';
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+// Si el meta trae un antes→después lo resume: {from,to} / {old,new} / {before,after}.
+function changeText(m: any, es = true): string {
+  if (!m || typeof m !== 'object') return '';
+  const pairs: Array<[any, any]> = [];
+  if (m.from !== undefined || m.to !== undefined) pairs.push([m.from, m.to]);
+  if (m.old !== undefined || m.new !== undefined) pairs.push([m.old, m.new]);
+  if (m.before !== undefined || m.after !== undefined) pairs.push([m.before, m.after]);
+  if (!pairs.length) return '';
+  return pairs.map(([x, y]) => `${short(x ?? '—', 24)} → ${short(y ?? '—', 24)}`).join(', ');
+}
+
+// Categoría tentativa por palabras clave del nombre de la acción (para color).
+function catOf(a: string): LogCat {
+  if (/pay|fee|credit|money|finanz|payout|refund|invoice|wallet|topup/i.test(a)) return 'money';
+  if (/plan/i.test(a)) return 'plan';
+  if (/delete|remove|ban|purge|wipe/i.test(a)) return 'danger';
+  if (/pin|2fa|password|lock|login|security|perm|admin/i.test(a)) return 'security';
+  if (/blog|kb|catalog|seo|campaign|canned|firms|content|guide/i.test(a)) return 'content';
+  if (/team|chat|support|amb|ambassador|schedule|leave|shift|payroll|staff|routing/i.test(a)) return 'team';
+  return 'other';
+}
+
+// Humaniza una clave de meta: 'l2AfterMin' → 'L2 after min', 'job_title' → 'Job title'.
+function humanKey(k: string): string {
+  const s = String(k).replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[._]+/g, ' ').trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Líneas de detalle EXACTO de una entrada, para la fila expandible del registro.
+// Incluye cada campo del meta (humanizado, con antes→después), el destino, y el
+// contexto de auditoría: IP y dispositivo. Devuelve [{ label, value }].
+export function detailLines(e: LogEntry, lang: 'es' | 'en' = 'es'): Array<{ label: string; value: string }> {
+  const es = lang !== 'en';
+  const out: Array<{ label: string; value: string }> = [];
+  const m = e.meta || {};
+  if (e.target) out.push({ label: es ? 'Destino' : 'Target', value: short(e.target, 80) });
+  const skip = new Set(['note']);
+  for (const [k, v] of Object.entries(m)) {
+    if (skip.has(k)) continue;
+    let val: string;
+    if (v == null) val = '—';
+    else if (typeof v === 'object') { try { val = Object.entries(v).map(([kk, vv]) => `${kk}: ${short(vv as any, 30)}`).join(' · ') || '—'; } catch { val = '—'; } }
+    else val = short(v as any, 120);
+    out.push({ label: humanKey(k), value: val });
+  }
+  if (m.note) out.push({ label: es ? 'Nota' : 'Note', value: short(m.note, 200) });
+  if (e.ip) out.push({ label: 'IP', value: String(e.ip) });
+  if (e.user_agent) out.push({ label: es ? 'Dispositivo' : 'Device', value: deviceOf(e.user_agent) });
+  if (e.area) out.push({ label: es ? 'Sección' : 'Section', value: humanKey(e.area) });
+  return out;
+}
+
+// Resumen amable del user-agent: "Chrome · Windows", "Safari · iPhone", etc.
+function deviceOf(ua: string): string {
+  const s = String(ua || '');
+  const br = /Edg/i.test(s) ? 'Edge' : /OPR|Opera/i.test(s) ? 'Opera' : /Chrome/i.test(s) ? 'Chrome' : /Safari/i.test(s) ? 'Safari' : /Firefox/i.test(s) ? 'Firefox' : /curl|bot|axios|node/i.test(s) ? 'Bot/API' : '';
+  const os = /iPhone|iPad|iOS/i.test(s) ? 'iPhone/iPad' : /Android/i.test(s) ? 'Android' : /Windows/i.test(s) ? 'Windows' : /Mac OS|Macintosh/i.test(s) ? 'Mac' : /Linux/i.test(s) ? 'Linux' : '';
+  return [br, os].filter(Boolean).join(' · ') || short(s, 50);
 }

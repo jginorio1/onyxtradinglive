@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requirePerm } from '@/lib/admin';
+import { requirePerm, logAdmin, reqCtx } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -67,7 +67,7 @@ export async function PATCH(req: Request) {
     const b = await req.json().catch(() => ({}));
     const id = String(b.id || '').trim();
     if (!id) return NextResponse.json({ error: 'falta id' }, { status: 400 });
-    const { data: ch } = await supabaseAdmin.from('chat_channels').select('kind').eq('id', id).maybeSingle();
+    const { data: ch } = await supabaseAdmin.from('chat_channels').select('kind,name').eq('id', id).maybeSingle();
     if (!ch) return NextResponse.json({ error: 'canal no encontrado' }, { status: 404 });
     if (ch.kind === 'dm') return NextResponse.json({ error: 'un mensaje directo no se renombra' }, { status: 400 });
     const upd: any = {};
@@ -76,6 +76,9 @@ export async function PATCH(req: Request) {
     if (!Object.keys(upd).length) return NextResponse.json({ error: 'nada que cambiar' }, { status: 400 });
     const { error } = await supabaseAdmin.from('chat_channels').update(upd).eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // Auditoría: registra el antes→después del nombre (y el tema si cambió).
+    if (upd.name && upd.name !== ch.name) await logAdmin(g.user?.email || '', 'channel_rename', id, { from: ch.name, to: upd.name }, reqCtx(req, 'chat'));
+    else if (upd.topic !== undefined) await logAdmin(g.user?.email || '', 'channel_topic', id, { to: upd.topic }, reqCtx(req, 'chat'));
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

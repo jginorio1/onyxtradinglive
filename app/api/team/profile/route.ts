@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requirePerm } from '@/lib/admin';
+import { requirePerm, logAdmin, reqCtx } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -27,8 +27,23 @@ export async function PATCH(req: Request) {
     if (b.languages !== undefined) patch.languages = String(b.languages || '').slice(0, 120) || null;
     if (!Object.keys(patch).length) return NextResponse.json({ error: 'nada que guardar' }, { status: 400 });
 
+    // Leemos los valores actuales para registrar el antes→después en la auditoría.
+    const { data: before } = await supabaseAdmin.from('profiles').select('email,job_title,country,languages').eq('id', target).maybeSingle();
     const { error } = await supabaseAdmin.from('profiles').update(patch).eq('id', target);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Auditoría: qué campos cambió y de qué valor a qué valor.
+    try {
+      const changed: any = {};
+      for (const k of ['job_title', 'country', 'languages']) {
+        if (patch[k] !== undefined && String((before as any)?.[k] || '') !== String(patch[k] || '')) {
+          changed[k] = { from: (before as any)?.[k] || '—', to: patch[k] || '—' };
+        }
+      }
+      if (Object.keys(changed).length) {
+        await logAdmin(g.user?.email || '', 'team_profile', target, { email: (before as any)?.email || target, ...changed }, reqCtx(req, 'equipo'));
+      }
+    } catch { /* la auditoría nunca bloquea */ }
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'error' }, { status: 500 });

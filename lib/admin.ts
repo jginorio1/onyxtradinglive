@@ -64,9 +64,30 @@ export async function requireUserAction(action: string) {
   return { ...a, ok, reason };
 }
 
-// Guarda una acción del admin para auditoría (nunca lanza error).
-export async function logAdmin(adminEmail: string, action: string, target: string, meta: any = {}) {
+// Contexto del request para la auditoría: IP y dispositivo (user-agent). Se saca
+// de las cabeceras estándar de Vercel/Next. Úsalo con logAdmin(..., reqCtx(req)).
+export function reqCtx(req?: Request, area?: string): { ip?: string; ua?: string; area?: string } {
   try {
-    await supabaseAdmin.from('admin_log').insert({ admin_email: adminEmail, action, target, meta });
+    const h = req?.headers;
+    const ip = (h?.get('x-forwarded-for') || '').split(',')[0].trim() || h?.get('x-real-ip') || undefined;
+    const ua = h?.get('user-agent') || undefined;
+    return { ip: ip ? String(ip).slice(0, 60) : undefined, ua: ua ? String(ua).slice(0, 300) : undefined, area };
+  } catch { return { area }; }
+}
+
+// Guarda una acción del admin para auditoría (nunca lanza error). El 5º argumento
+// opcional añade IP/dispositivo/área (usa reqCtx(req)). Insert tolerante: si las
+// columnas nuevas aún no existen (SQL sin correr), reintenta sin ellas.
+export async function logAdmin(adminEmail: string, action: string, target: string, meta: any = {}, ctx?: { ip?: string; ua?: string; area?: string }) {
+  try {
+    const row: any = { admin_email: adminEmail, action, target, meta };
+    if (ctx?.ip) row.ip = ctx.ip;
+    if (ctx?.ua) row.user_agent = ctx.ua;
+    if (ctx?.area) row.area = ctx.area;
+    const r = await supabaseAdmin.from('admin_log').insert(row);
+    if (r.error && (ctx?.ip || ctx?.ua || ctx?.area)) {
+      // columnas nuevas inexistentes: guardar al menos lo básico
+      await supabaseAdmin.from('admin_log').insert({ admin_email: adminEmail, action, target, meta });
+    }
   } catch { /* silencioso */ }
 }
